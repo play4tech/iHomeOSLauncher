@@ -19,7 +19,8 @@ import com.android.app.animation.Interpolators;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
 
-import foundation.e.bliss.blur.BlurWallpaperProvider;
+import foundation.e.bliss.wallpaper.WallpaperEnvironmentBuilder;
+import foundation.e.bliss.wallpaper.WallpaperRepository;
 
 /**
  * Utility class to handle wallpaper scrolling along with workspace.
@@ -215,13 +216,13 @@ public class WallpaperOffsetInterpolator {
             mWallpaperIsLiveWallpaper = WallpaperManager.getInstance(mWorkspace.getContext())
                     .getWallpaperInfo() != null;
             setIsLiveWallpaper();
-            BlurWallpaperProvider.Companion.getInstanceNoCreate().updateAsync();
+            WallpaperRepository.Companion.getInstanceNoCreate().updateAsync();
             updateOffset();
         });
     }
 
     public static void setIsLiveWallpaper() {
-        BlurWallpaperProvider.Companion.getInstanceNoCreate().setLiveWallpaper(
+        WallpaperRepository.Companion.getInstanceNoCreate().setLiveWallpaper(
                 mWallpaperIsLiveWallpaper);
     }
 
@@ -314,8 +315,8 @@ public class WallpaperOffsetInterpolator {
             try {
                 mWM.setWallpaperOffsets(token, mCurrentOffset, 0.5f);
                 setIsLiveWallpaper();
-                BlurWallpaperProvider.Companion.getInstanceNoCreate()
-                        .setWallpaperOffset(mCurrentOffset);
+                WallpaperEnvironmentBuilder.Companion.getInstanceNoCreate()
+                        .setParallaxOffset(mCurrentOffset);
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "Error updating wallpaper offset: " + e);
             }

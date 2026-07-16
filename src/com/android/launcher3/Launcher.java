@@ -290,7 +290,9 @@ import java.util.stream.Stream;
 
 import foundation.e.bliss.LauncherAppMonitor;
 import foundation.e.bliss.blur.BlurBackgroundView;
-import foundation.e.bliss.blur.BlurWallpaperProvider;
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer;
+import foundation.e.bliss.wallpaper.WallpaperEnvironmentBuilder;
+import foundation.e.bliss.wallpaper.WallpaperRepository;
 import foundation.e.bliss.glass.DockGlassController;
 import foundation.e.bliss.glass.DockGlassView;
 import foundation.e.bliss.multimode.MultiModeController;
@@ -556,7 +558,9 @@ public class Launcher extends StatefulActivity<LauncherState>
         LauncherAppState app = LauncherAppState.getInstance(this);
         mModel = app.getModel();
 
-        BlurWallpaperProvider.Companion.getInstance(this);
+        WallpaperRepository.Companion.getInstance(this);
+        WallpaperEnvironmentBuilder.Companion.getInstance(this);
+        WallpaperBlurRenderer.Companion.getInstance(this);
         mRotationHelper = new RotationHelper(this);
         InvariantDeviceProfile idp = app.getInvariantDeviceProfile();
         initDeviceProfile(idp);
@@ -1425,18 +1429,15 @@ public class Launcher extends StatefulActivity<LauncherState>
         mHotseat.setWorkspace(mWorkspace);
 
         // Instantiate the LiquidGlass dock controller on API 33+.
-        // BlurWallpaperProvider is already live (created at onCreate line 549);
+        // Wallpaper architecture is already live (created at onCreate line 559);
         // mHotseat is now assigned — this is the earliest safe init point.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             DockGlassView dockGlass = findViewById(R.id.dock_glass);
-            android.widget.ImageView wallpaperProxy = findViewById(R.id.glass_wallpaper_proxy);
             android.view.ViewGroup glassSource = findViewById(R.id.glass_source);
             mDockGlassController = new DockGlassController(
                 mHotseat,
                 dockGlass,
-                wallpaperProxy,
                 glassSource,
-                BlurWallpaperProvider.Companion.getInstance(this),
                 getSharedPrefs()
             );
             boolean glassEnabled = getSharedPrefs()

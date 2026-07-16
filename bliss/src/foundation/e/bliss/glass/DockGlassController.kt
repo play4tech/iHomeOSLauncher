@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2024 MURENA SAS
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
 package foundation.e.bliss.glass
 
 import android.content.SharedPreferences
@@ -21,19 +5,18 @@ import android.os.Build
 
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import com.android.launcher3.Hotseat
 import com.android.launcher3.R
-import foundation.e.bliss.blur.BlurWallpaperProvider
 import foundation.e.bliss.preferences.BlissPrefs
+import foundation.e.bliss.wallpaper.WallpaperEnvironment
+import foundation.e.bliss.wallpaper.WallpaperEnvironmentBuilder
 
 
 /**
  * Controls the LiquidGlass dock panel ([DockGlassView]) on API 33+, falling back
  * to the classic frosted [BlurViewDelegate] path on API 30–32.
  *
- * Owns the on/off switch ([enabled]), keeps the wallpaper proxy [ImageView] in sync
- * with [BlurWallpaperProvider]'s raw bitmap, and gates [Hotseat.drawBlur] so the
+ * Owns the on/off switch ([enabled]) and gates [Hotseat.drawBlur] so the
  * two paths don't overlap.
  *
  * Instantiate at the end of [Launcher.setupViews()], after [mHotseat] is assigned.
@@ -41,11 +24,11 @@ import foundation.e.bliss.preferences.BlissPrefs
 class DockGlassController(
     private val hotseat: Hotseat,
     private val dockGlass: DockGlassView,
-    private val wallpaperProxy: ImageView,
     private val glassSource: ViewGroup,
-    private val provider: BlurWallpaperProvider,
     private val sharedPrefs: SharedPreferences,
-) : BlurWallpaperProvider.Listener, SharedPreferences.OnSharedPreferenceChangeListener {
+) : WallpaperEnvironmentBuilder.Listener, SharedPreferences.OnSharedPreferenceChangeListener {
+
+    private val envBuilder = WallpaperEnvironmentBuilder.INSTANCE.get(hotseat.context)
 
     /** True only if the device runs Android 13+ (API 33), where RenderEffect is available. */
     private val supported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -61,22 +44,14 @@ class DockGlassController(
         }
 
     init {
-        provider.addListener(this)
+        envBuilder.addListener(this)
         sharedPrefs.registerOnSharedPreferenceChangeListener(this)
         apply()
     }
 
-    // region BlurWallpaperProvider.Listener
-
-    override fun onWallpaperChanged() {
-        // Keep the proxy in sync so the glass panel refracts the latest wallpaper.
-        wallpaperProxy.setImageBitmap(provider.rawWallpaper ?: provider.placeholder)
+    override fun onEnvironmentChanged(environment: WallpaperEnvironment?, bitmapChanged: Boolean) {
         if (supported && enabled) dockGlass.invalidate()
     }
-
-    override fun onEnabledChanged() = onWallpaperChanged()
-
-    // endregion
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         if (key == BlissPrefs.PREF_GLASS_DOCK_ENABLED) {
@@ -95,17 +70,12 @@ class DockGlassController(
         hotseat.drawBlur = !active
 
         if (active) {
-            // Feed current wallpaper into the proxy before binding so the first
-            // recorded frame already has wallpaper texture.
-            wallpaperProxy.setImageBitmap(provider.rawWallpaper ?: provider.placeholder)
-
             // bind() attaches an OnPreDrawListener to glassSource that re-records
             // the subtree on every frame — no manual re-bind needed after scroll/layout.
             dockGlass.bind(glassSource)
 
             // Glass parameters matched to iOS dock aesthetic.
             // All values are tunable here without touching other files.
-            val density = hotseat.resources.displayMetrics.density
             val cornerRadiusPx = hotseat.resources.getDimension(R.dimen.dock_glass_corner_radius)
             dockGlass.setCornerRadius(cornerRadiusPx)
             dockGlass.setBlurRadius(25f)
@@ -124,7 +94,7 @@ class DockGlassController(
      * Call from [Launcher.onDestroy] to avoid a listener leak.
      */
     fun destroy() {
-        provider.removeListener(this)
+        envBuilder.removeListener(this)
         sharedPrefs.unregisterOnSharedPreferenceChangeListener(this)
     }
 }

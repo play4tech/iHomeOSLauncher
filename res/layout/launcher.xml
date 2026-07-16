@@ -55,12 +55,11 @@
               so bind() can refract real wallpaper texture. Without this, transparent
               areas of Workspace would appear as blank space in the refraction.
             -->
-            <ImageView
+            <foundation.e.bliss.wallpaper.WallpaperProxyView
                 android:id="@+id/glass_wallpaper_proxy"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 launcher:layout_ignoreInsets="true"
-                android:scaleType="centerCrop"
                 android:importantForAccessibility="no" />
 
             <!-- DO NOT CHANGE THE ID -->

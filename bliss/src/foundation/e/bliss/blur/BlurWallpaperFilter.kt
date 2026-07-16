@@ -20,25 +20,26 @@ package foundation.e.bliss.blur
 import android.content.Context
 import android.graphics.Bitmap
 import com.hoko.blur.HokoBlur
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
 
 class BlurWallpaperFilter(private val context: Context) :
-    WallpaperFilter<BlurWallpaperProvider.BlurSizes> {
+    WallpaperFilter<WallpaperBlurRenderer.BlurSizes> {
 
     override fun apply(
         wallpaper: Bitmap
-    ): WallpaperFilter.ApplyTask<BlurWallpaperProvider.BlurSizes> {
+    ): WallpaperFilter.ApplyTask<WallpaperBlurRenderer.BlurSizes> {
         return WallpaperFilter.ApplyTask.create { emitter ->
             var blurBackground: Bitmap? = null
             var blurDock: Bitmap? = null
             var blurAppGroup: Bitmap? = null
             var blurWidget: Bitmap? = null
             try {
-                blurBackground = blur(wallpaper, BlurWallpaperProvider.blurConfigBackground)
-                blurDock = blur(wallpaper, BlurWallpaperProvider.blurConfigDock)
-                blurAppGroup = blur(wallpaper, BlurWallpaperProvider.blurConfigAppGroup)
-                blurWidget = blur(wallpaper, BlurWallpaperProvider.blurConfigWidget)
+                blurBackground = blur(wallpaper, WallpaperBlurRenderer.blurConfigBackground)
+                blurDock = blur(wallpaper, WallpaperBlurRenderer.blurConfigDock)
+                blurAppGroup = blur(wallpaper, WallpaperBlurRenderer.blurConfigAppGroup)
+                blurWidget = blur(wallpaper, WallpaperBlurRenderer.blurConfigWidget)
                 emitter.onSuccess(
-                    BlurWallpaperProvider.BlurSizes(
+                    WallpaperBlurRenderer.BlurSizes(
                         blurBackground,
                         blurDock,
                         blurAppGroup,
@@ -55,7 +56,7 @@ class BlurWallpaperFilter(private val context: Context) :
         }
     }
 
-    private fun blur(wallpaper: Bitmap, config: BlurWallpaperProvider.BlurConfig): Bitmap {
+    private fun blur(wallpaper: Bitmap, config: WallpaperBlurRenderer.BlurConfig): Bitmap {
         val source =
             if (config.scale == 1) {
                 wallpaper

@@ -42,7 +42,7 @@ import com.android.launcher3.views.ActivityContext;
 import androidx.annotation.NonNull;
 
 import foundation.e.bliss.blur.BlurViewDelegate;
-import foundation.e.bliss.blur.BlurWallpaperProvider;
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer;
 import foundation.e.bliss.blur.OffsetParent;
 import foundation.e.bliss.folder.GridFolder;
 
@@ -80,7 +80,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
         mQsb = LayoutInflater.from(context).inflate(R.layout.search_container_hotseat, this, false);
         
-        mBlurDelegate = new BlurViewDelegate(this, BlurWallpaperProvider.blurConfigDock, attrs);
+        mBlurDelegate = new BlurViewDelegate(this, WallpaperBlurRenderer.blurConfigDock, attrs);
         drawBlur = true;
         setWillNotDraw(false);
         addView(mQsb);

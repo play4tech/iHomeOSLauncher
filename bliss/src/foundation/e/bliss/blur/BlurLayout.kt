@@ -20,13 +20,15 @@ package foundation.e.bliss.blur
 import android.content.Context
 import android.graphics.Canvas
 import android.util.AttributeSet
+import android.view.View
 import android.widget.FrameLayout
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
 
 open class BlurLayout @JvmOverloads constructor(context: Context, attrs: AttributeSet? = null) :
     FrameLayout(context, attrs), OffsetParent {
 
     private val delegate =
-        BlurViewDelegate(this, BlurWallpaperProvider.blurConfigWidget, attrs)
+        BlurViewDelegate(this, WallpaperBlurRenderer.blurConfigWidget, attrs)
     private val offsetParentDelegate = OffsetParent.OffsetParentDelegate()
 
     init {

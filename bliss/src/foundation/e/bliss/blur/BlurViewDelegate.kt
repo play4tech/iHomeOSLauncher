@@ -1,45 +1,24 @@
-/*
- * Copyright (C) 2024 MURENA SAS
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- *
- */
 package foundation.e.bliss.blur
 
-import android.graphics.BlendMode
 import android.graphics.Canvas
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.drawable.Drawable
-import android.os.Build
 import android.util.AttributeSet
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
-import android.widget.ScrollView
 import androidx.core.graphics.toRectF
-import com.android.launcher3.PagedView
 import com.android.launcher3.R
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
 
 class BlurViewDelegate(
     private val view: View,
-    private val config: BlurWallpaperProvider.BlurConfig,
+    private val config: WallpaperBlurRenderer.BlurConfig,
     attrs: AttributeSet? = null
-) : View.OnAttachStateChangeListener, BlurWallpaperProvider.Listener {
+) : View.OnAttachStateChangeListener {
 
     private val context = view.context
-    private val blurWallpaperProvider by lazy { BlurWallpaperProvider.getInstanceNoCreate() }
 
     private var fullBlurDrawable: BlurDrawable? = null
     private var blurAlpha = 255
@@ -56,34 +35,13 @@ class BlurViewDelegate(
         }
     }
 
-    private var wallpaperScrollOffset = 0
-    private var wallpaperOffset = 0
-
-    private var offsetParents = listOf<OffsetParent>()
-        set(value) {
-            field.forEach { it.removeOnOffsetChangeListener(onOffsetChangeListener) }
-            field = value
-            field.forEach { it.addOnOffsetChangeListener(onOffsetChangeListener) }
-        }
-    private val scrollViews = mutableListOf<View>()
-    private var isScrolling = false
-    private var previousScrollX = 0
-    private var previousScrollY = 0
-    private var parentOffsetX = 0f
-    private var parentOffsetY = 0f
+    private val locationInWindow = IntArray(2)
 
     private val onGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener { updateBounds() }
-    private val onScrollChangedListener =
-        ViewTreeObserver.OnScrollChangedListener {
-            isScrolling = true
-            view.invalidate()
-        }
-    private val onOffsetChangeListener =
-        object : OffsetParent.OnOffsetChangeListener {
-            override fun onOffsetChange() {
-                computeParentOffset()
-            }
-        }
+    private val onScrollChangedListener = ViewTreeObserver.OnScrollChangedListener { updateBounds() }
+    
+    // Kept for API compatibility with parents that might still notify it
+    var offsetParentListener: Any? = null
 
     var blurCornerRadius = 0f
 
@@ -101,8 +59,7 @@ class BlurViewDelegate(
             fullBlurDrawable?.overlayColor = value
         }
 
-    private val overlayPaint =
-        Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private val overlayPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
     init {
         createFullBlurDrawable()
@@ -117,135 +74,49 @@ class BlurViewDelegate(
     }
 
     override fun onViewAttachedToWindow(v: View) {
-        BlurWallpaperProvider.getInstanceNoCreate().addListener(this)
         fullBlurDrawable?.startListening()
         view.viewTreeObserver.addOnGlobalLayoutListener(onGlobalLayoutListener)
         view.viewTreeObserver.addOnScrollChangedListener(onScrollChangedListener)
-        onGlobalLayoutListener.onGlobalLayout()
+        updateBounds()
     }
 
     override fun onViewDetachedFromWindow(v: View) {
-        BlurWallpaperProvider.getInstanceNoCreate().removeListener(this)
         fullBlurDrawable?.stopListening()
         view.viewTreeObserver.removeOnGlobalLayoutListener(onGlobalLayoutListener)
         view.viewTreeObserver.removeOnScrollChangedListener(onScrollChangedListener)
-        scrollViews.clear()
-        offsetParents = listOf()
     }
 
     fun draw(canvas: Canvas) {
-        if (isScrolling) {
-            computeScrollOffset()
-            updateOffsets()
-        }
+        updateBounds()
         fullBlurDrawable?.apply {
             alpha = blurAlpha
             this.draw(canvas)
         }
         if (overlayColor != 0) {
-            canvas.drawRoundRect(canvas.clipBounds.toRectF(), view.x, view.y, overlayPaint)
+            canvas.drawRoundRect(canvas.clipBounds.toRectF(), blurCornerRadius, blurCornerRadius, overlayPaint)
         }
     }
 
     private fun createFullBlurDrawable() {
         fullBlurDrawable?.let { if (view.isAttachedToWindow) it.stopListening() }
-        fullBlurDrawable =
-            blurWallpaperProvider.createBlurDrawable(config).apply {
-                callback = blurDrawableCallback
-                overlayColor = this@BlurViewDelegate.overlayColor
-                setBounds(view.left, view.top, view.right, view.bottom)
-                if (view.isAttachedToWindow) startListening()
-            }
-    }
-
-    override fun onEnabledChanged() {
-        createFullBlurDrawable()
+        fullBlurDrawable = BlurDrawable(context, config).apply {
+            callback = blurDrawableCallback
+            overlayColor = this@BlurViewDelegate.overlayColor
+            if (view.isAttachedToWindow) startListening()
+        }
+        updateBounds()
     }
 
     private fun updateBounds() {
-        scrollViews.clear()
-        val offsetParents = mutableListOf<OffsetParent>()
-        var left = 0
-        var top = 0
-        var current: View? = view
-        while (current != null) {
-            left += current.left
-            top += current.top
-            if (current is ScrollView || current is PagedView<*>) {
-                scrollViews.add(current)
-            } else if (current is OffsetParent) {
-                offsetParents.add(current)
-            }
-            current = current.parent as? View
-        }
-
-        val right = left + view.width
-        val bottom = top + view.height
+        if (view.width == 0 || view.height == 0) return
+        view.getLocationInWindow(locationInWindow)
+        val left = locationInWindow[0]
+        val top = locationInWindow[1]
         fullBlurDrawable?.setBlurBounds(
             left.toFloat(),
             top.toFloat(),
-            right.toFloat(),
-            bottom.toFloat()
+            (left + view.width).toFloat(),
+            (top + view.height).toFloat()
         )
-        view.invalidate()
-        this.offsetParents = offsetParents
-        computeScrollOffset()
-        computeParentOffset()
-    }
-
-    private fun computeScrollOffset() {
-        var scrollX = 0
-        var scrollY = 0
-        scrollViews.forEach {
-            scrollX -= it.scrollX
-            scrollY -= it.scrollY
-        }
-
-        offsetParents.forEach {
-            if (it.needWallpaperScroll) {
-                scrollX += wallpaperScrollOffset
-            }
-        }
-
-        if (previousScrollX == scrollX && previousScrollY == scrollY) {
-            isScrolling = false
-            return
-        }
-        previousScrollX = scrollX
-        previousScrollY = scrollY
-    }
-
-    private fun computeParentOffset() {
-        var offsetX = 0f
-        var offsetY = 0f
-        offsetParents.forEach {
-            offsetX += it.offsetX
-            offsetY += it.offsetY
-        }
-        offsetY += wallpaperOffset
-        this.parentOffsetX = offsetX
-        this.parentOffsetY = offsetY
-        updateOffsets()
-        view.invalidate()
-    }
-
-    private fun updateOffsets() {
-        val ox = previousScrollX.toFloat() + parentOffsetX
-        val oy = previousScrollY.toFloat() + parentOffsetY
-        fullBlurDrawable?.setOffsets(ox, oy)
-    }
-
-    override fun onScrollOffsetChanged(offset: Float) {
-        offsetParents.forEach {
-            if (it.needWallpaperScroll) {
-                wallpaperScrollOffset = offset.toInt()
-                isScrolling = true
-                view.invalidate()
-            }
-        }
-    }
-
-    override fun onOffsetChanged(offset: Float) {
-        wallpaperOffset = offset.toInt()
     }
 }

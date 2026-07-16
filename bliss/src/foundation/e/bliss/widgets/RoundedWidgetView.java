@@ -35,7 +35,7 @@ import com.android.launcher3.R;
 import com.android.launcher3.widget.LauncherAppWidgetHostView;
 
 import foundation.e.bliss.blur.BlurViewDelegate;
-import foundation.e.bliss.blur.BlurWallpaperProvider;
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer;
 import foundation.e.bliss.blur.OffsetParent;
 
 @SuppressLint("ViewConstructor")
@@ -55,7 +55,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
         this.mContext = context;
         this.cornerRadius = context.getResources().getDimensionPixelSize(R.dimen.default_widget_corner_radius);
         if (blurBackground) {
-            mBlurDelegate = new BlurViewDelegate(this, BlurWallpaperProvider.blurConfigWidget, null);
+            mBlurDelegate = new BlurViewDelegate(this, WallpaperBlurRenderer.blurConfigWidget, null);
             mBlurDelegate.setBlurCornerRadius(cornerRadius);
             setWillNotDraw(false);
             setOutlineProvider(mBlurDelegate.getOutlineProvider());
