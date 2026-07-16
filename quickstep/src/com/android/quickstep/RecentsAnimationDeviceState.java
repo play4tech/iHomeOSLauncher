@@ -178,13 +178,19 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
             mIsOneHandedModeEnabled = false;
         }
 
-        Uri swipeBottomNotificationUri =
-                Settings.Secure.getUriFor(ONE_HANDED_SWIPE_BOTTOM_TO_NOTIFICATION_ENABLED);
-        SettingsCache.OnChangeListener onChangeListener =
-                enabled -> mIsSwipeToNotificationEnabled = enabled;
-        settingsCache.register(swipeBottomNotificationUri, onChangeListener);
-        mIsSwipeToNotificationEnabled = settingsCache.getValue(swipeBottomNotificationUri);
-        runOnDestroy(() -> settingsCache.unregister(swipeBottomNotificationUri, onChangeListener));
+        try {
+            Uri swipeBottomNotificationUri =
+                    Settings.Secure.getUriFor(ONE_HANDED_SWIPE_BOTTOM_TO_NOTIFICATION_ENABLED);
+            SettingsCache.OnChangeListener onChangeListener =
+                    enabled -> mIsSwipeToNotificationEnabled = enabled;
+            settingsCache.register(swipeBottomNotificationUri, onChangeListener);
+            mIsSwipeToNotificationEnabled = settingsCache.getValue(swipeBottomNotificationUri);
+            runOnDestroy(() -> settingsCache.unregister(swipeBottomNotificationUri, onChangeListener));
+        } catch (SecurityException e) {
+            // swipe_bottom_to_notification_enabled is a @hide key restricted to system apps
+            // on API 36+. Default to false on non-platform-signed installs.
+            mIsSwipeToNotificationEnabled = false;
+        }
 
         Uri setupCompleteUri = Settings.Secure.getUriFor(Settings.Secure.USER_SETUP_COMPLETE);
         mIsUserSetupComplete = settingsCache.getValue(setupCompleteUri, 0);
@@ -197,8 +203,8 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
         try {
             mPipIsActive = ActivityTaskManager.getService().getRootTaskInfo(
                     WINDOWING_MODE_PINNED, ACTIVITY_TYPE_UNDEFINED) != null;
-        } catch (RemoteException e) {
-            // Do nothing
+        } catch (RemoteException | SecurityException e) {
+            // SecurityException: MANAGE_ACTIVITY_TASKS required on non-system apps (API 36+)
         }
         mPipListener = new TaskStackChangeListener() {
             @Override

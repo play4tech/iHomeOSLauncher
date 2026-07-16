@@ -117,6 +117,12 @@ public final class TaskUtils {
      */
     public static void closeSystemWindowsAsync(String reason) {
         UI_HELPER_EXECUTOR.execute(
-                () -> ActivityManagerWrapper.getInstance().closeSystemWindows(reason));
+                () -> {
+                    try {
+                        ActivityManagerWrapper.getInstance().closeSystemWindows(reason);
+                    } catch (SecurityException e) {
+                        // Requires BROADCAST_CLOSE_SYSTEM_DIALOGS on newer Android versions
+                    }
+                });
     }
 }

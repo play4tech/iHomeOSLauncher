@@ -1875,7 +1875,12 @@ public class TaskView extends FrameLayout implements Reusable {
 
         @VisibleForTesting
         public float computeWindowCornerRadius(Context context) {
-            return QuickStepContract.getWindowCornerRadius(context);
+            try {
+                return QuickStepContract.getWindowCornerRadius(context);
+            } catch (UnsupportedOperationException e) {
+                // Background inflation can cause getDisplay() to throw on API 36+
+                return computeTaskCornerRadius(context);
+            }
         }
 
         /**

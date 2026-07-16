@@ -75,7 +75,7 @@ import com.android.launcher3.util.WindowBounds;
 import com.android.launcher3.util.window.WindowManagerProxy;
 
 import foundation.e.bliss.multimode.MultiModeController;
-import lineageos.providers.LineageSettings;
+import com.android.launcher3.util.LineageSettingsCompat;
 
 import java.io.PrintWriter;
 import java.util.Locale;
@@ -358,14 +358,16 @@ public class DeviceProfile {
         isTablet = info.isTablet(windowBounds);
         isPhone = !isTablet;
         isTwoPanels = isTablet && isMultiDisplay;
-        boolean isTaskBarEnabled = LineageSettings.System.getInt(context.getContentResolver(),
-                LineageSettings.System.ENABLE_TASKBAR, isTablet ? 1 : 0) == 1;
+        boolean isTaskBarEnabled = LineageSettingsCompat.getSystemInt(
+                context,
+                LineageSettingsCompat.ENABLE_TASKBAR, isTablet ? 1 : 0) == 1;
         isTaskbarPresent = isTaskBarEnabled && ApiWrapper.TASKBAR_DRAWN_IN_PROCESS;
 
         WindowManagerProxy wm = WindowManagerProxy.newInstance(context);
         isNoButtonGesture = wm.getNavigationMode(context) == NavigationMode.NO_BUTTON;
-        isNoHintGesture = isNoButtonGesture && LineageSettings.System.getInt(
-                context.getContentResolver(), LineageSettings.System.NAVIGATION_BAR_HINT, 0) != 1;
+        isNoHintGesture = isNoButtonGesture && LineageSettingsCompat.getSystemInt(
+                context,
+                LineageSettingsCompat.NAVIGATION_BAR_HINT, 0) != 1;
 
         // Some more constants.
         context = getContext(context, info, isVerticalBarLayout() || (isTablet && isLandscape)

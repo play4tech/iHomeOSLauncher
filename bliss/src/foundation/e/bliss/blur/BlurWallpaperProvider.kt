@@ -45,24 +45,29 @@ class BlurWallpaperProvider(val context: Context) {
     private val mDisplaySize = DisplayController.INSTANCE.get(context).info.currentSize
 
     var wallpapers: BlurSizes? = null
-        private set(value) {
-            if (field != value) {
-                field?.recycle()
-                field = value
-            }
-        }
+        private set
+
 
     var placeholder: Bitmap? = null
-        private set(value) {
-            if (field != value) {
-                field?.recycle()
-                field = value
-            }
-        }
+        private set
+
+
+    /**
+     * An unblurred copy of the current wallpaper bitmap, kept for use as the
+     * LiquidGlassView source ImageView so the glass panel can refract real
+     * wallpaper texture rather than blank transparent space.
+     *
+     * Lifecycle mirrors [wallpapers]/[placeholder]: recycled and replaced whenever
+     * the wallpaper changes. Isolated from the blur pipeline via .copy().
+     */
+    var rawWallpaper: Bitmap? = null
+        private set
+
 
     private val mVibrancyPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
     private var mWallpaperWidth: Int = 0
+    private var mOffsetY: Float = 0f
 
     private val mUpdateRunnable = Runnable { updateWallpaper() }
 
@@ -128,13 +133,18 @@ class BlurWallpaperProvider(val context: Context) {
         wallpaper = scaleAndCropToScreenSize(wallpaper)
         mWallpaperWidth = wallpaper.width
 
-        val offsetY: Float
         if (wallpaper.height > height) {
-            offsetY = (wallpaper.height - height) * 0.5f
-            mListeners.forEach { it.onOffsetChanged(offsetY) }
+            mOffsetY = (wallpaper.height - height) * 0.5f
+            mListeners.forEach { it.onOffsetChanged(mOffsetY) }
+        } else {
+            mOffsetY = 0f
+            mListeners.forEach { it.onOffsetChanged(mOffsetY) }
         }
 
         wallpaper = applyVibrancy(wallpaper)
+        // Keep an unblurred copy for the glass source ImageView. .copy() fully
+        // isolates this from the blur pipeline's own recycle bookkeeping.
+        rawWallpaper = wallpaper.copy(wallpaper.config ?: Bitmap.Config.ARGB_8888, false)
         Logger.d(TAG, "starting blur")
 
         applyTask =
@@ -152,12 +162,12 @@ class BlurWallpaperProvider(val context: Context) {
                     }
                     wallpaper.recycle()
                 }
+                applyTask = null
+                if (updatePending) {
+                    updatePending = false
+                    updateWallpaper()
+                }
             }
-        applyTask = null
-        if (updatePending) {
-            updatePending = false
-            updateWallpaper()
-        }
     }
 
     private fun createTransparentBitmap(width: Int, height: Int): Bitmap {
@@ -210,11 +220,16 @@ class BlurWallpaperProvider(val context: Context) {
         val scaledWidth = width.coerceAtLeast(ceil(wallpaper.width * upscaleFactor).toInt())
         val scaledHeight = height.coerceAtLeast(ceil(wallpaper.height * upscaleFactor).toInt())
 
-        return Bitmap.createScaledBitmap(wallpaper, scaledWidth, scaledHeight, false)
+        val scaledBitmap = Bitmap.createScaledBitmap(wallpaper, scaledWidth, scaledHeight, false)
+        return scaledBitmap
     }
+
+    private var mScrollOffset = 0f
 
     fun addListener(listener: Listener) {
         mListeners.add(listener)
+        listener.onScrollOffsetChanged(mScrollOffset)
+        listener.onOffsetChanged(mOffsetY)
     }
 
     fun removeListener(listener: Listener) {
@@ -233,14 +248,13 @@ class BlurWallpaperProvider(val context: Context) {
             xPixels += (availableWidth * (offset - .5f) + .5f).toInt()
         }
 
-        val scrollOffset =
-            Utilities.boundToRange(
-                (-xPixels).toFloat(),
-                0f,
-                (mWallpaperWidth - mDisplaySize.x).toFloat()
-            )
+        mScrollOffset = Utilities.boundToRange(
+            (-xPixels).toFloat(),
+            0f,
+            (mWallpaperWidth - mDisplaySize.x).toFloat()
+        )
 
-        runOnMainThread { mListeners.forEach { it.onScrollOffsetChanged(scrollOffset) } }
+        runOnMainThread { mListeners.forEach { it.onScrollOffsetChanged(mScrollOffset) } }
     }
 
     fun orientationChanged() {
@@ -287,11 +301,11 @@ class BlurWallpaperProvider(val context: Context) {
 
         @JvmField val blurConfigBackground = BlurConfig({ it.background }, 2, 8)
 
-        @JvmField val blurConfigDock = BlurConfig({ it.dock }, 2, 0)
+        @JvmField val blurConfigDock = BlurConfig({ it.dock }, 8, 25)
 
         @JvmField val blurConfigAppGroup = BlurConfig({ it.appGroup }, 6, 8)
 
-        @JvmField val blurConfigWidget = BlurConfig({ it.widget }, 6, 10)
+        @JvmField val blurConfigWidget = BlurConfig({ it.widget }, 6, 2)
 
         var isEnabled: Boolean = false
     }

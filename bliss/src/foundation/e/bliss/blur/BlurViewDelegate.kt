@@ -98,14 +98,11 @@ class BlurViewDelegate(
         set(value) {
             field = value
             overlayPaint.color = value
+            fullBlurDrawable?.overlayColor = value
         }
 
     private val overlayPaint =
-        Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                blendMode = BlendMode.MULTIPLY
-            }
-        }
+        Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
 
     init {
         createFullBlurDrawable()
@@ -114,7 +111,7 @@ class BlurViewDelegate(
         if (attrs != null) {
             val a = context.obtainStyledAttributes(attrs, R.styleable.BlurLayout)
             blurCornerRadius = a.getDimension(R.styleable.BlurLayout_blurCornerRadius, 0f)
-            overlayColor = a.getColor(R.styleable.BlurLayout_blurOverlayColor, 0)
+            overlayColor = a.getColor(R.styleable.BlurLayout_blurOverlayColor, 0x40FFFFFF)
             a.recycle()
         }
     }
@@ -155,6 +152,7 @@ class BlurViewDelegate(
         fullBlurDrawable =
             blurWallpaperProvider.createBlurDrawable(config).apply {
                 callback = blurDrawableCallback
+                overlayColor = this@BlurViewDelegate.overlayColor
                 setBounds(view.left, view.top, view.right, view.bottom)
                 if (view.isAttachedToWindow) startListening()
             }
@@ -232,10 +230,9 @@ class BlurViewDelegate(
     }
 
     private fun updateOffsets() {
-        fullBlurDrawable?.setOffsets(
-            previousScrollX.toFloat() + parentOffsetX,
-            previousScrollY.toFloat() + parentOffsetY
-        )
+        val ox = previousScrollX.toFloat() + parentOffsetX
+        val oy = previousScrollY.toFloat() + parentOffsetY
+        fullBlurDrawable?.setOffsets(ox, oy)
     }
 
     override fun onScrollOffsetChanged(offset: Float) {

@@ -1112,7 +1112,11 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
         }
         RemoteAnimationDefinition definition = new RemoteAnimationDefinition();
         addRemoteAnimations(definition);
-        mLauncher.registerRemoteAnimations(definition);
+        try {
+            mLauncher.registerRemoteAnimations(definition);
+        } catch (SecurityException e) {
+            // SecurityException: CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS required on non-system apps (API 36+)
+        }
     }
 
     /**
@@ -1190,7 +1194,11 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
         if (SEPARATE_RECENTS_ACTIVITY.get()) {
             return;
         }
-        mLauncher.unregisterRemoteAnimations();
+        try {
+            mLauncher.unregisterRemoteAnimations();
+        } catch (SecurityException e) {
+            // Can be thrown on API 36+ without CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS
+        }
 
         // Also clear strong references to the runners registered with the remote animation
         // definition so we don't have to wait for the system gc

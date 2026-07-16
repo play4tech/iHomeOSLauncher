@@ -26,7 +26,7 @@ open class BlurLayout @JvmOverloads constructor(context: Context, attrs: Attribu
     FrameLayout(context, attrs), OffsetParent {
 
     private val delegate =
-        BlurViewDelegate(this.rootView, BlurWallpaperProvider.blurConfigWidget, attrs)
+        BlurViewDelegate(this, BlurWallpaperProvider.blurConfigWidget, attrs)
     private val offsetParentDelegate = OffsetParent.OffsetParentDelegate()
 
     init {

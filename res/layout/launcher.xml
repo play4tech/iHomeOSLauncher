@@ -39,15 +39,52 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
-        <!-- The workspace contains 5 screens of cells -->
-        <!-- DO NOT CHANGE THE ID -->
-        <com.android.launcher3.Workspace
-            android:id="@+id/workspace"
+        <!--
+          Glass capture source: InsettableFrameLayout (NOT plain FrameLayout) so that
+          Workspace continues to receive setInsets() via the existing generic dispatch chain.
+          bind() samples only View-drawn content, so the wallpaper proxy ImageView below
+          is required to make wallpaper texture visible in the glass refraction.
+        -->
+        <com.android.launcher3.InsettableFrameLayout
+            android:id="@+id/glass_source"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <!--
+              Wallpaper proxy: fed the raw (unblurred) bitmap from BlurWallpaperProvider
+              so bind() can refract real wallpaper texture. Without this, transparent
+              areas of Workspace would appear as blank space in the refraction.
+            -->
+            <ImageView
+                android:id="@+id/glass_wallpaper_proxy"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                launcher:layout_ignoreInsets="true"
+                android:scaleType="centerCrop"
+                android:importantForAccessibility="no" />
+
+            <!-- DO NOT CHANGE THE ID -->
+            <com.android.launcher3.Workspace
+                android:id="@+id/workspace"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="center"
+                android:theme="@style/HomeScreenElementTheme"
+                launcher:pageIndicator="@+id/page_indicator" />
+
+        </com.android.launcher3.InsettableFrameLayout>
+
+        <!--
+          Glass dock panel: direct DragLayer child so setInsets() reaches it via the
+          InsettableFrameLayout generic loop. Initially hidden; DockGlassController
+          sets visibility=VISIBLE on API 33+ when the user enables it.
+          Sits below the hotseat include in z-order so icons render on top of the glass.
+        -->
+        <foundation.e.bliss.glass.DockGlassView
+            android:id="@+id/dock_glass"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="center"
-            android:theme="@style/HomeScreenElementTheme"
-            launcher:pageIndicator="@+id/page_indicator" />
+            android:visibility="gone" />
 
         <!-- DO NOT CHANGE THE ID -->
         <include
@@ -62,6 +99,7 @@
             android:layout_height="@dimen/workspace_page_indicator_height"
             android:layout_gravity="bottom|center_horizontal"
             android:theme="@style/HomeScreenElementTheme" />
+
 
         <foundation.e.bliss.widgets.SwipeSearchContainer
             android:id="@+id/swipe_search_container"

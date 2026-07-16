@@ -59,14 +59,14 @@ class AppUsageStats(private val mContext: Context) {
                 }
             }
 
-            if (
-                mContext.checkCallingOrSelfPermission(
-                    android.Manifest.permission.PACKAGE_USAGE_STATS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
+            val appOps = mContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val mode = appOps.unsafeCheckOpNoThrow(
+                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                android.os.Process.myUid(), mContext.packageName
+            )
+            if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
                 Logger.i(TAG, "The user may not allow the access to apps usage.")
-                Toast.makeText(mContext, "Permission not allowed!", Toast.LENGTH_LONG).show()
-                mContext.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                mContext.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } else if (aggregatedStats.isNotEmpty()) {
                 val statsMap = aggregatedStats.entries
 

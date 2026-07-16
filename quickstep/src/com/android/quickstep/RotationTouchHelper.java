@@ -151,7 +151,15 @@ public class RotationTouchHelper implements DisplayInfoChangeListener {
         mDisplayId = DEFAULT_DISPLAY;
 
         mOrientationTouchTransformer = new OrientationTouchTransformer(resources, mMode,
-                () -> QuickStepContract.getWindowCornerRadius(mContext));
+                () -> {
+                    try {
+                        return QuickStepContract.getWindowCornerRadius(mContext);
+                    } catch (UnsupportedOperationException e) {
+                        // Non-visual context (e.g. Application) on API 36+:
+                        // context.getDisplay() throws. Return 0 as a safe fallback.
+                        return 0f;
+                    }
+                });
 
         // Register for navigation mode changes
         mDisplayController.addChangeListener(this);

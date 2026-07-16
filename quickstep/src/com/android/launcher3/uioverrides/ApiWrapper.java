@@ -57,7 +57,11 @@ public class ApiWrapper {
     }
 
     public static Map<String, LauncherActivityInfo> getActivityOverrides(Context context) {
-        return context.getSystemService(LauncherApps.class).getActivityOverrides();
+        try {
+            return context.getSystemService(LauncherApps.class).getActivityOverrides();
+        } catch (SecurityException e) {
+            return java.util.Collections.emptyMap();
+        }
     }
 
     /**
@@ -78,7 +82,7 @@ public class ApiWrapper {
         List<UserHandle> usersActual = um.getUserProfiles();
         if (usersActual != null) {
             for (UserHandle user : usersActual) {
-                if (android.os.Flags.allowPrivateProfile() && Flags.enablePrivateSpace()) {
+                if (false /* android.os.Flags.allowPrivateProfile() */ && Flags.enablePrivateSpace()) {
                     LauncherApps launcherApps = context.getSystemService(LauncherApps.class);
                     LauncherUserInfo launcherUserInfo = launcherApps.getLauncherUserInfo(user);
                     if (launcherUserInfo == null) {
@@ -118,7 +122,7 @@ public class ApiWrapper {
      */
     public static List<String> getPreInstalledSystemPackages(Context context, UserHandle user) {
         LauncherApps launcherApps = context.getSystemService(LauncherApps.class);
-        if (android.os.Flags.allowPrivateProfile() && Flags.enablePrivateSpace()
+        if (false /* android.os.Flags.allowPrivateProfile() */ && Flags.enablePrivateSpace()
                 && Flags.privateSpaceSysAppsSeparation()) {
             return launcherApps.getPreInstalledSystemPackages(user);
         } else {
@@ -133,7 +137,7 @@ public class ApiWrapper {
     public static Intent getAppMarketActivityIntent(Context context, String packageName,
             UserHandle user) {
         LauncherApps launcherApps = context.getSystemService(LauncherApps.class);
-        if (android.os.Flags.allowPrivateProfile()
+        if (false /* android.os.Flags.allowPrivateProfile() */
                 && Flags.enablePrivateSpace()
                 && (Flags.privateSpaceAppInstallerButton()
                         || Flags.enablePrivateSpaceInstallShortcut())) {

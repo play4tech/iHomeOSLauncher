@@ -291,7 +291,10 @@ import java.util.stream.Stream;
 import foundation.e.bliss.LauncherAppMonitor;
 import foundation.e.bliss.blur.BlurBackgroundView;
 import foundation.e.bliss.blur.BlurWallpaperProvider;
+import foundation.e.bliss.glass.DockGlassController;
+import foundation.e.bliss.glass.DockGlassView;
 import foundation.e.bliss.multimode.MultiModeController;
+import foundation.e.bliss.preferences.BlissPrefs;
 import foundation.e.bliss.utils.Logger;
 import foundation.e.bliss.widgets.RoundedWidgetView;
 import foundation.e.bliss.widgets.WidgetContainer;
@@ -358,6 +361,13 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     @Thunk
     Hotseat mHotseat;
+
+    /**
+     * Controls the LiquidGlass dock panel on API 33+.
+     * Null on API 30-32 — the existing BlurViewDelegate path handles those.
+     */
+    @Nullable
+    private DockGlassController mDockGlassController;
 
     private DropTargetBar mDropTargetBar;
 
@@ -1414,6 +1424,26 @@ public class Launcher extends StatefulActivity<LauncherState>
         mHotseat = findViewById(R.id.hotseat);
         mHotseat.setWorkspace(mWorkspace);
 
+        // Instantiate the LiquidGlass dock controller on API 33+.
+        // BlurWallpaperProvider is already live (created at onCreate line 549);
+        // mHotseat is now assigned — this is the earliest safe init point.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            DockGlassView dockGlass = findViewById(R.id.dock_glass);
+            android.widget.ImageView wallpaperProxy = findViewById(R.id.glass_wallpaper_proxy);
+            android.view.ViewGroup glassSource = findViewById(R.id.glass_source);
+            mDockGlassController = new DockGlassController(
+                mHotseat,
+                dockGlass,
+                wallpaperProxy,
+                glassSource,
+                BlurWallpaperProvider.Companion.getInstance(this),
+                getSharedPrefs()
+            );
+            boolean glassEnabled = getSharedPrefs()
+                .getBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, true);
+            mDockGlassController.setEnabled(glassEnabled);
+        }
+
         // Setup the drag layer
         mDragLayer.setup(mDragController, mWorkspace);
 
@@ -1834,6 +1864,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         getRootView().getViewTreeObserver().removeOnPreDrawListener(mOnInitialBindListener);
         mOverlayManager.onActivityDestroyed();
         mAppMonitor.onLauncherDestroy(this);
+        if (mDockGlassController != null) {
+            mDockGlassController.destroy();
+            mDockGlassController = null;
+        }
     }
 
     public LauncherAccessibilityDelegate getAccessibilityDelegate() {

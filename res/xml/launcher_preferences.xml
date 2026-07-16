@@ -105,4 +105,11 @@
         android:key="pref_notif_count"
         android:persistent="true"
         android:title="@string/show_notification_count" />
+
+    <SwitchPreference
+        android:defaultValue="true"
+        android:key="pref_glass_dock_enabled"
+        android:persistent="true"
+        android:title="@string/pref_glass_dock_title"
+        android:summary="@string/pref_glass_dock_summary" />
 </androidx.preference.PreferenceScreen>

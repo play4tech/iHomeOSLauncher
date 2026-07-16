@@ -288,7 +288,7 @@ public class QuickstepModelDelegate extends ModelDelegate {
                     }
             );
             Log.d(TAG, "Successfully registered for launcher snapshot logging!");
-        } catch (RuntimeException e) {
+        } catch (Exception e) {
             Log.e(TAG, "Failed to register launcher snapshot logging callback with StatsManager",
                     e);
         }
@@ -340,31 +340,36 @@ public class QuickstepModelDelegate extends ModelDelegate {
 
     @WorkerThread
     private void recreatePredictors() {
-        destroyPredictors();
-        if (!mActive) {
-            return;
+        try {
+            destroyPredictors();
+            if (!mActive) {
+                return;
+            }
+            Context context = mApp.getContext();
+            AppPredictionManager apm = context.getSystemService(AppPredictionManager.class);
+            if (apm == null) {
+                return;
+            }
+
+            registerPredictor(mAllAppsState, apm.createAppPredictionSession(
+                    new AppPredictionContext.Builder(context)
+                            .setUiSurface("home")
+                            .setPredictedTargetCount(mIDP.numDatabaseAllAppsColumns)
+                            .build()));
+
+            // TODO: get bundle
+            registerHotseatPredictor(apm, context);
+
+            registerWidgetsPredictor(apm.createAppPredictionSession(
+                    new AppPredictionContext.Builder(context)
+                            .setUiSurface("widgets")
+                            .setExtras(getBundleForWidgetsOnWorkspace(context, mDataModel))
+                            .setPredictedTargetCount(NUM_OF_RECOMMENDED_WIDGETS_PREDICATION)
+                            .build()));
+        } catch (SecurityException e) {
+            // Permission Denial: createPredictionSession requires PACKAGE_USAGE_STATS
+            // This happens on API 36+ if we are not the default launcher.
         }
-        Context context = mApp.getContext();
-        AppPredictionManager apm = context.getSystemService(AppPredictionManager.class);
-        if (apm == null) {
-            return;
-        }
-
-        registerPredictor(mAllAppsState, apm.createAppPredictionSession(
-                new AppPredictionContext.Builder(context)
-                        .setUiSurface("home")
-                        .setPredictedTargetCount(mIDP.numDatabaseAllAppsColumns)
-                        .build()));
-
-        // TODO: get bundle
-        registerHotseatPredictor(apm, context);
-
-        registerWidgetsPredictor(apm.createAppPredictionSession(
-                new AppPredictionContext.Builder(context)
-                        .setUiSurface("widgets")
-                        .setExtras(getBundleForWidgetsOnWorkspace(context, mDataModel))
-                        .setPredictedTargetCount(NUM_OF_RECOMMENDED_WIDGETS_PREDICATION)
-                        .build()));
     }
 
     @WorkerThread

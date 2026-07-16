@@ -22,7 +22,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.android.launcher3" >
 
-    <uses-sdk android:targetSdkVersion="29" android:minSdkVersion="25"/>
+    <uses-sdk android:targetSdkVersion="36" android:minSdkVersion="30"/>
 
     <uses-permission android:name="android.permission.GET_TOP_ACTIVITY_INFO" />
 

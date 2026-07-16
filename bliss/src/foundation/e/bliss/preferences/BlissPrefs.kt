@@ -20,4 +20,6 @@ package foundation.e.bliss.preferences
 object BlissPrefs {
     const val PREF_SINGLE_LAYER_MODE = "pref_single_layer"
     const val PREF_NOTIF_COUNT = "pref_notif_count"
+    /** Enables the LiquidGlass dock panel on API 33+. Default off. */
+    const val PREF_GLASS_DOCK_ENABLED = "pref_glass_dock_enabled"
 }

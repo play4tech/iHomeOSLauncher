@@ -32,7 +32,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
-import com.android.launcher3.uioverrides.QuickstepLauncher;
 import com.android.launcher3.widget.LauncherAppWidgetHostView;
 
 import foundation.e.bliss.blur.BlurViewDelegate;
@@ -47,7 +46,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
     private ImageView resizeBorder;
     private boolean mChildrenFocused;
     private BlurViewDelegate mBlurDelegate = null;
-    protected QuickstepLauncher mLauncher;
+    protected Launcher mLauncher;
 
     private final OffsetParentDelegate offsetParentDelegate = new OffsetParentDelegate();
 

@@ -19,11 +19,11 @@ afterEvaluate {
 allprojects {
     plugins.withType(BasePlugin).configureEach {
         project.android {
-            compileSdk 34
+            compileSdk 36
 
             defaultConfig {
                 minSdkVersion 30
-                targetSdkVersion 34
+                targetSdkVersion 36
                 versionCode 1
                 versionName "1.0"
                 vectorDrawables.useSupportLibrary = true
@@ -140,7 +140,7 @@ android {
 
     defaultConfig {
         minSdkVersion 30
-        targetSdkVersion 33
+        targetSdkVersion 36
         versionCode getVersionCode()
         versionName getVersionName()
         buildConfigField "boolean", "IS_STUDIO_BUILD", "false"
@@ -169,9 +169,9 @@ android {
     applicationVariants.configureEach { variant ->
         variant.outputs.configureEach { output ->
             if (variant.buildType.name == 'release') {
-                outputFileName = "BlissLauncher-apiU-release.apk"
+                outputFileName = "BlissLauncher-api36-release.apk"
             } else if (variant.buildType.name == 'debug') {
-                outputFileName = "BlissLauncher-apiU-debug.apk"
+                outputFileName = "BlissLauncher-api36-debug.apk"
             }
         }
     }
@@ -294,6 +294,13 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    // Prefer 16 KB page-size–aligned native libs (required on Android 15+ devices)
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
     lintOptions { disable "LogNotTimber" }
 
     addFrameworkJar('framework-14.jar')
@@ -333,6 +340,8 @@ dependencies {
     implementation libs.androidx.slice.view
     implementation libs.reactivex.rxkotlin3
     implementation libs.hoko.blur
+    implementation libs.qmdeve.liquidglass
+
     implementation libs.elib
     implementation libs.e.telemetry
     implementation libs.timber

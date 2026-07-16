@@ -42,7 +42,7 @@ It is the default launcher for [/e/ OS](https://e.foundation/e-os/).
 
 - Below conditions are required to install the app:
 
-  - User should be on **Android 14** /e/OS or LineageOS
+  - User should be on **Android 16 (API 36)** /e/OS or LineageOS (or a compatible ROM)
   - Rom should be signed with **test keys**
 
 - Download and install the APK like any other normal app from the [pipeline](https://gitlab.e.foundation/e/os/BlissLauncher/-/pipelines/latest?ref=v1-u)
