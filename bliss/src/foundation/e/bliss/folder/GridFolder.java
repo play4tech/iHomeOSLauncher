@@ -63,6 +63,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
     private final Alarm wobbleExpireAlarm = new Alarm();
     public View mFolderTab;
     public int mFolderTabHeight;
+    public View mGlassView;
     public FrameLayout mGridFolderPage;
     private LauncherState mLastStateBeforeOpen = NORMAL;
     private boolean mNeedResetState = false;
@@ -97,9 +98,28 @@ public class GridFolder extends Folder implements OnAlarmListener {
         int cellIconGap = (grid.folderCellWidthPx - mActivityContext.getDeviceProfile().iconSizePx);
         mContent.setPadding(cellIconGap, cellIconGap, cellIconGap, cellIconGap);
 
+        mFolderName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, mFolderName.getTextSize() * 3);
+        
         int measureSpec = MeasureSpec.UNSPECIFIED;
         mFolderTab.measure(measureSpec, measureSpec);
         mFolderTabHeight = mFolderTab.getMeasuredHeight();
+
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            android.graphics.drawable.Drawable bg = mGridFolderPage.getBackground();
+            if (bg instanceof android.graphics.drawable.GradientDrawable) {
+                android.graphics.drawable.GradientDrawable gd = (android.graphics.drawable.GradientDrawable) bg.mutate();
+                gd.setColor(android.graphics.Color.TRANSPARENT);
+            }
+            
+            mGlassView = new foundation.e.bliss.glass.FolderOpenGlassView(getContext());
+            mGlassView.setVisibility(VISIBLE);
+            
+            if (mGlassView != null) {
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                mGridFolderPage.addView(mGlassView, 0, lp);
+            }
+        }
     }
 
     @Override
@@ -115,13 +135,18 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
         mFolderTab.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(mFolderTabHeight, MeasureSpec.EXACTLY));
 
-        mGridFolderPage.measure(contentAreaWidthSpec, contentAreaHeightSpec);
+        mGridFolderPage.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(contentHeight + mFooterHeight, MeasureSpec.EXACTLY));
 
         mFooter.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(mFooterHeight, MeasureSpec.EXACTLY));
 
-        int folderWidth = getPaddingLeft() + getPaddingRight() + contentWidth;
+        int folderWidth = getFolderWidth();
         int folderHeight = getFolderHeight();
         setMeasuredDimension(folderWidth, folderHeight);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
     }
 
     @Override
@@ -137,7 +162,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
         DeviceProfile grid = mActivityContext.getDeviceProfile();
         int maxContentAreaHeight = grid.availableHeightPx - grid.getTotalWorkspacePadding().y
                 + (grid.isVerticalBarLayout() ? 0 : grid.hotseatBarSizePx);
-        int height = Math.min(maxContentAreaHeight, getFolderHeight());
+        int height = Math.min(maxContentAreaHeight, mContent.getDesiredHeight());
         return Math.max(height, MIN_CONTENT_DIMEN);
     }
 
@@ -146,7 +171,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
     }
 
     private int getFolderHeight() {
-        return mContent.getDesiredHeight() + mFooterHeight;
+        return mFolderTabHeight + mContent.getDesiredHeight() + mFooterHeight + getPaddingTop() + getPaddingBottom();
     }
 
     @Override
@@ -258,7 +283,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
     }
 
     private void showOrHideDesktop(Launcher launcher, boolean hide) {
-        if (isAnimating)
+        if (isAnimating || foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode())
             return;
 
         AnimatorSet set = new AnimatorSet();
@@ -319,10 +344,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     @Override
     public int getUnusedOffsetYOnAnimate(boolean isOpening) {
-        return mFolderTabHeight + mFolderTab.getPaddingBottom() + mFooterHeight + mFooter.getPaddingBottom()
-                + mContent.getPaddingBottom() + mContent.getPaddingTop() + mContent.getPaddingBottom()
-                + mGridFolderPage.getPaddingBottom() + mGridFolderPage.getPaddingTop();
-
+        // Tab height correction is now applied directly in FolderAnimationManager
+        // (not through this method which gets scaled by initialScale, making it too small).
+        return 0;
     }
 
     @Override
@@ -381,6 +405,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     @SuppressWarnings("unchecked")
     public <T extends View & ClipPathView> T getAnimateObject() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            return (T) this;
+        }
         return (T) mGridFolderPage;
     }
 

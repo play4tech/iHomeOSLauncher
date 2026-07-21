@@ -76,9 +76,7 @@ class DockGlassController(
 
             // Glass parameters matched to iOS dock aesthetic.
             // All values are tunable here without touching other files.
-            val cornerRadiusPx = hotseat.resources.getDimension(R.dimen.dock_glass_corner_radius)
-            dockGlass.setCornerRadius(cornerRadiusPx)
-            dockGlass.setBlurRadius(25f)
+            dockGlass.setBlurRadius(2f)
             dockGlass.setDispersion(0.2f)
             dockGlass.setTintAlpha(0.25f)     // iOS frosted look
             dockGlass.setTintColorRed(1.0f)

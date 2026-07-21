@@ -261,5 +261,12 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
      */
     @Override
     public void setInsets(Rect insets) {
+        com.android.launcher3.DeviceProfile grid = com.android.launcher3.views.ActivityContext.lookupContext(getContext()).getDeviceProfile();
+        if (grid.isFloatingDockEnabled() && grid.hotseatGeometry != null) {
+            android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) getLayoutParams();
+            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
+            lp.topMargin = grid.hotseatGeometry.getPageIndicatorY();
+            setLayoutParams(lp);
+        }
     }
 }

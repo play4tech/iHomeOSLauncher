@@ -110,7 +110,16 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 
         RippleDrawable drawable = new RippleDrawable(ColorStateList.valueOf(color),
                 mTransparentDrawable, backgroundMask);
+        
+        // Setting the background resets the view padding. We must preserve it.
+        int padStart = mBubbleText.getPaddingStart();
+        int padTop = mBubbleText.getPaddingTop();
+        int padEnd = mBubbleText.getPaddingEnd();
+        int padBottom = mBubbleText.getPaddingBottom();
+        
         mBubbleText.setBackground(drawable);
+        
+        mBubbleText.setPaddingRelative(padStart, padTop, padEnd, padBottom);
     }
 
     @Override

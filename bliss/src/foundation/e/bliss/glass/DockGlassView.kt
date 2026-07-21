@@ -22,8 +22,13 @@ import android.util.AttributeSet
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.view.View
 import com.android.launcher3.Insettable
 import com.android.launcher3.views.ActivityContext
+import foundation.e.bliss.graphics.ContinuousCornerGeometry
+import android.graphics.Canvas
+import android.graphics.Outline
+import android.view.ViewOutlineProvider
 import com.qmdeve.liquidglass.widget.LiquidGlassView
 
 /**
@@ -42,6 +47,27 @@ class DockGlassView @JvmOverloads constructor(
     attrs: AttributeSet? = null,
 ) : LiquidGlassView(context, attrs), Insettable {
 
+    private val continuousGeometry = ContinuousCornerGeometry()
+
+    init {
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                val grid = ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
+                if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
+                    val path = continuousGeometry.getPath(
+                        width = view.width.toFloat(),
+                        height = view.height.toFloat(),
+                        radius = grid.hotseatGeometry.cornerRadius
+                    )
+                    outline.setConvexPath(path)
+                } else {
+                    outline.setRect(0, 0, view.width, view.height)
+                }
+            }
+        }
+        clipToOutline = true
+    }
+
     override fun setInsets(insets: Rect) {
         val lp = layoutParams as? FrameLayout.LayoutParams ?: return
         val grid = ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
@@ -55,11 +81,35 @@ class DockGlassView @JvmOverloads constructor(
                 lp.gravity = Gravity.RIGHT
                 lp.width = grid.hotseatBarSizePx + insets.right
             }
+        } else if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
+            lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            lp.width = grid.hotseatGeometry.bounds.width()
+            lp.height = grid.hotseatGeometry.bounds.height()
+            lp.bottomMargin = insets.bottom + grid.hotseatBarBottomSpacePx
+            setCornerRadius(0f)
         } else {
             lp.gravity = Gravity.BOTTOM
             lp.width = ViewGroup.LayoutParams.MATCH_PARENT
             lp.height = grid.hotseatBarSizePx
+            lp.bottomMargin = 0
         }
         layoutParams = lp
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        val grid = ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
+        if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
+            val path = continuousGeometry.getPath(
+                width = width.toFloat(),
+                height = height.toFloat(),
+                radius = grid.hotseatGeometry.cornerRadius
+            )
+            canvas.save()
+            canvas.clipPath(path)
+            super.dispatchDraw(canvas)
+            canvas.restore()
+        } else {
+            super.dispatchDraw(canvas)
+        }
     }
 }

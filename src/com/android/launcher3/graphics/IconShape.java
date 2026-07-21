@@ -28,6 +28,7 @@ import android.content.res.TypedArray;
 import android.content.res.XmlResourceParser;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
@@ -397,6 +398,62 @@ public abstract class IconShape {
         }
     }
 
+    public static final class SystemIconMask extends PathShape {
+        private final Path mMaskPath;
+        private final Matrix mMatrix = new Matrix();
+
+        private float mCachedRadius = -1f;
+        private float mCachedOffsetX = -1f;
+        private float mCachedOffsetY = -1f;
+        private final Path mCachedPath = new Path();
+
+        public SystemIconMask(Path maskPath) {
+            mMaskPath = maskPath;
+        }
+
+        @Override
+        public void addToPath(Path path, float offsetX, float offsetY, float radius) {
+            if (radius != mCachedRadius || offsetX != mCachedOffsetX || offsetY != mCachedOffsetY) {
+                mCachedRadius = radius;
+                mCachedOffsetX = offsetX;
+                mCachedOffsetY = offsetY;
+                mMatrix.reset();
+                // AdaptiveIconDrawable.getIconMask() uses a 100x100 coordinate space (MASK_SIZE=100).
+                // Diameter = radius * 2, so scale = diameter / 100.
+                float scale = (radius * 2f) / 100f;
+                mMatrix.setScale(scale, scale);
+                mMatrix.postTranslate(offsetX, offsetY);
+                mCachedPath.reset();
+                mMaskPath.transform(mMatrix, mCachedPath);
+            }
+            path.addPath(mCachedPath);
+        }
+
+        @Override
+        protected AnimatorUpdateListener newUpdateListener(Rect startRect, Rect endRect,
+                float endRadius, Path outPath) {
+            Path tempPath = new Path();
+            return (anim) -> {
+                float progress = (Float) anim.getAnimatedValue();
+                float left = (1 - progress) * startRect.left + progress * endRect.left;
+                float top = (1 - progress) * startRect.top + progress * endRect.top;
+                float right = (1 - progress) * startRect.right + progress * endRect.right;
+                float bottom = (1 - progress) * startRect.bottom + progress * endRect.bottom;
+
+                mMatrix.reset();
+                // Use 100 to match AdaptiveIconDrawable coordinate space (MASK_SIZE=100).
+                float scaleX = (right - left) / 100f;
+                float scaleY = (bottom - top) / 100f;
+                mMatrix.setScale(scaleX, scaleY);
+                mMatrix.postTranslate(left, top);
+
+                tempPath.reset();
+                mMaskPath.transform(mMatrix, tempPath);
+                outPath.addPath(tempPath);
+            };
+        }
+    }
+
     private static List<IconShape> getAllShapes(Context context) {
         ArrayList<IconShape> result = new ArrayList<>();
         try (XmlResourceParser parser = context.getResources().getXml(R.xml.folder_shapes)) {
@@ -430,40 +487,13 @@ public abstract class IconShape {
 
     @TargetApi(Build.VERSION_CODES.O)
     protected static void pickBestShape(Context context) {
-        // Pick any large size
-        final int size = 200;
-
-        Region full = new Region(0, 0, size, size);
-        Region iconR = new Region();
+        // Use a RoundedSquare with iOS-matching corner ratio.
+        // iOS icon corner radius is ~22.5% of the icon size (radius/size = 0.225).
+        // The ratio parameter here is relative to half-size (radius), so 0.45 gives
+        // corner_radius = 0.45 * (icon_size / 2) = 0.225 * icon_size — matching iOS exactly.
+        sInstance = new RoundedSquare(0.45f);
         AdaptiveIconDrawable drawable = new AdaptiveIconDrawable(
                 new ColorDrawable(Color.BLACK), new ColorDrawable(Color.BLACK));
-        drawable.setBounds(0, 0, size, size);
-        iconR.setPath(drawable.getIconMask(), full);
-
-        Path shapePath = new Path();
-        Region shapeR = new Region();
-
-        // Find the shape with minimum area of divergent region.
-        int minArea = Integer.MAX_VALUE;
-        IconShape closestShape = null;
-        for (IconShape shape : getAllShapes(context)) {
-            shapePath.reset();
-            shape.addToPath(shapePath, 0, 0, size / 2f);
-            shapeR.setPath(shapePath, full);
-            shapeR.op(iconR, Op.XOR);
-
-            int area = GraphicsUtils.getArea(shapeR);
-            if (area < minArea) {
-                minArea = area;
-                closestShape = shape;
-            }
-        }
-
-        if (closestShape != null) {
-            sInstance = closestShape;
-        }
-
-        // Initialize shape properties
-        sNormalizationScale = IconNormalizer.normalizeAdaptiveIcon(drawable, size, null);
+        sNormalizationScale = IconNormalizer.normalizeAdaptiveIcon(drawable, 200, null);
     }
 }

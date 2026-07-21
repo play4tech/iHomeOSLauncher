@@ -87,6 +87,12 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
     private static final int SHORTCUT_COLLAPSE_THRESHOLD = 6;
 
+    private BubbleTextView mIconProxyView;
+    private View mDarkOverlayView;
+
+    // The liquid glass view behind the popup
+    private foundation.e.bliss.glass.PopupGlassView mPopupGlassView;
+
     private final float mShortcutHeight;
 
     private BubbleTextView mOriginalIcon;
@@ -421,6 +427,14 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     }
 
     @Override
+    protected boolean shouldAddArrow() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            return false;
+        }
+        return super.shouldAddArrow();
+    }
+
+    @Override
     protected void getTargetObjectLocation(Rect outPos) {
         getPopupContainer().getDescendantRectRelativeToSelf(mOriginalIcon, outPos);
         outPos.top += mOriginalIcon.getPaddingTop();
@@ -436,6 +450,217 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         for (int i = 0; i < total; i++) {
             DeepShortcutView view = mDeepShortcuts.get(i);
             view.setVisibility(i >= MAX_SHORTCUTS ? GONE : VISIBLE);
+        }
+    }
+
+    private void applyiOSStyleToShortcuts(android.view.View view, boolean isRoot) {
+        if (view == null) return;
+        
+        // Only strip backgrounds from the root shortcut containers (which have the solid grey backgrounds)
+        if (isRoot) {
+            view.setBackground(null);
+        }
+        
+        // Force text color to black for contrast against white glass
+        if (view instanceof android.widget.TextView) {
+            ((android.widget.TextView) view).setTextColor(android.graphics.Color.BLACK);
+        }
+        
+        // Force icon tint to black
+        if (view.getId() == R.id.icon) {
+            view.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.BLACK));
+        }
+        
+        // Recurse for view groups
+        if (view instanceof android.view.ViewGroup) {
+            android.view.ViewGroup vg = (android.view.ViewGroup) view;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                applyiOSStyleToShortcuts(vg.getChildAt(i), false);
+            }
+        }
+    }
+
+    @Override
+    protected void assignMarginsAndBackgrounds(ViewGroup viewGroup, int backgroundColor) {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            super.assignMarginsAndBackgrounds(viewGroup, android.graphics.Color.TRANSPARENT);
+            // In single layer mode, we also need to strip backgrounds off all items and containers
+            // so the liquid glass view shines through. We also force text/icons to be black.
+            int count = viewGroup.getChildCount();
+            for (int i = 0; i < count; i++) {
+                android.view.View view = viewGroup.getChildAt(i);
+                if (view.getVisibility() == VISIBLE) {
+                    if (isShortcutOrWrapper(view) || isShortcutContainer(view)) {
+                        applyiOSStyleToShortcuts(view, true);
+                    }
+                }
+            }
+        } else {
+            super.assignMarginsAndBackgrounds(viewGroup, backgroundColor);
+        }
+    }
+
+    @Override
+    protected void setupForDisplay() {
+        super.setupForDisplay();
+
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            // Remove popup background so we only see the glass
+            setBackground(null);
+            
+            // Create and add dark overlay
+            mDarkOverlayView = new android.view.View(getContext());
+            mDarkOverlayView.setBackgroundColor(android.graphics.Color.BLACK);
+            mDarkOverlayView.setAlpha(0f);
+            com.android.launcher3.views.BaseDragLayer.LayoutParams overlayLp =
+                    new com.android.launcher3.views.BaseDragLayer.LayoutParams(
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                            android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+            getPopupContainer().addView(mDarkOverlayView, getPopupContainer().indexOfChild(this), overlayLp);
+
+            // Create and add proxy icon
+            if (mOriginalIcon != null) {
+                mIconProxyView = (BubbleTextView) mActivityContext.getLayoutInflater().inflate(R.layout.app_icon, getPopupContainer(), false);
+                
+                com.android.launcher3.model.data.ItemInfo info = (com.android.launcher3.model.data.ItemInfo) mOriginalIcon.getTag();
+                if (info instanceof com.android.launcher3.model.data.WorkspaceItemInfo) {
+                    mIconProxyView.applyFromWorkspaceItem((com.android.launcher3.model.data.WorkspaceItemInfo) info);
+                } else if (info instanceof com.android.launcher3.model.data.AppInfo) {
+                    mIconProxyView.applyFromApplicationInfo((com.android.launcher3.model.data.AppInfo) info);
+                }
+                mIconProxyView.setIconVisible(true);
+                mIconProxyView.setTextVisibility(mOriginalIcon.shouldTextBeVisible());
+                mIconProxyView.setForceHideDot(true);
+                mIconProxyView.setPadding(mOriginalIcon.getPaddingLeft(), mOriginalIcon.getPaddingTop(), mOriginalIcon.getPaddingRight(), mOriginalIcon.getPaddingBottom());
+                
+                com.android.launcher3.views.BaseDragLayer.LayoutParams proxyLp =
+                        new com.android.launcher3.views.BaseDragLayer.LayoutParams(mOriginalIcon.getWidth(), mOriginalIcon.getHeight());
+                proxyLp.customPosition = true;
+                
+                android.graphics.Rect pos = new android.graphics.Rect();
+                getPopupContainer().getDescendantRectRelativeToSelf(mOriginalIcon, pos);
+                proxyLp.x = pos.left;
+                proxyLp.y = pos.top;
+                
+                getPopupContainer().addView(mIconProxyView, getPopupContainer().indexOfChild(this), proxyLp);
+                
+                mOriginalIcon.setVisibility(INVISIBLE);
+            }
+
+            // Add glass view
+            mPopupGlassView = new foundation.e.bliss.glass.PopupGlassView(getContext());
+            mPopupGlassView.setPopupRadius(mOutlineRadius);
+            // Insert it just below this popup in the drag layer
+            getPopupContainer().addView(mPopupGlassView, getPopupContainer().indexOfChild(this));
+            
+            // Sync initial state
+            syncGlassBounds();
+            mPopupGlassView.setAlpha(getAlpha());
+            mPopupGlassView.setScaleX(getScaleX());
+            mPopupGlassView.setScaleY(getScaleY());
+            mPopupGlassView.setPivotX(getPivotX());
+            mPopupGlassView.setPivotY(getPivotY());
+        }
+    }
+
+    private void syncGlassBounds() {
+        if (mPopupGlassView != null) {
+            com.android.launcher3.views.BaseDragLayer.LayoutParams lp =
+                    new com.android.launcher3.views.BaseDragLayer.LayoutParams(getWidth(), getHeight());
+            lp.customPosition = true;
+            lp.x = getLeft();
+            lp.y = getTop();
+            mPopupGlassView.setLayoutParams(lp);
+            // Force immediate layout since we might be inside a layout pass
+            mPopupGlassView.measure(
+                    MeasureSpec.makeMeasureSpec(getWidth(), MeasureSpec.EXACTLY),
+                    MeasureSpec.makeMeasureSpec(getHeight(), MeasureSpec.EXACTLY)
+            );
+            mPopupGlassView.layout(getLeft(), getTop(), getRight(), getBottom());
+            
+            // Catch any translations that might have been applied before creation
+            mPopupGlassView.setTranslationX(getTranslationX());
+            mPopupGlassView.setTranslationY(getTranslationY());
+        }
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        if (changed) {
+            syncGlassBounds();
+        }
+    }
+
+    @Override
+    public void setAlpha(float alpha) {
+        super.setAlpha(alpha);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setAlpha(alpha);
+        }
+    }
+
+    @Override
+    public void setScaleX(float scaleX) {
+        super.setScaleX(scaleX);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setScaleX(scaleX);
+        }
+    }
+
+    @Override
+    public void setScaleY(float scaleY) {
+        super.setScaleY(scaleY);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setScaleY(scaleY);
+        }
+    }
+
+    @Override
+    public void setPivotX(float pivotX) {
+        super.setPivotX(pivotX);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setPivotX(pivotX);
+        }
+    }
+
+    @Override
+    public void setPivotY(float pivotY) {
+        super.setPivotY(pivotY);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setPivotY(pivotY);
+        }
+    }
+
+    @Override
+    public void setTranslationX(float translationX) {
+        super.setTranslationX(translationX);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setTranslationX(translationX);
+        }
+    }
+
+    @Override
+    public void setTranslationY(float translationY) {
+        super.setTranslationY(translationY);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setTranslationY(translationY);
+        }
+    }
+
+    @Override
+    public void setX(float x) {
+        super.setX(x);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setX(x);
+        }
+    }
+
+    @Override
+    public void setY(float y) {
+        super.setY(y);
+        if (mPopupGlassView != null) {
+            mPopupGlassView.setY(y);
         }
     }
 
@@ -551,22 +776,71 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     }
 
     @Override
+    protected void onCreateOpenAnimation(AnimatorSet anim) {
+        super.onCreateOpenAnimation(anim);
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            if (mDarkOverlayView != null) {
+                anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, 0f, 0.4f));
+            }
+            if (mIconProxyView != null) {
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_X, 1f, 1.03f));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_Y, 1f, 1.03f));
+            }
+        }
+    }
+
+    @Override
     protected void onCreateCloseAnimation(AnimatorSet anim) {
-        // Animate original icon's text back in.
-        anim.play(mOriginalIcon.createTextAlphaAnimator(true /* fadeIn */));
-        mOriginalIcon.setForceHideDot(false);
+        super.onCreateCloseAnimation(anim);
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            if (mDarkOverlayView != null) {
+                anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, mDarkOverlayView.getAlpha(), 0f));
+            }
+            if (mIconProxyView != null) {
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_X, mIconProxyView.getScaleX(), 1f));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_Y, mIconProxyView.getScaleY(), 1f));
+            }
+        }
     }
 
     @Override
     protected void closeComplete() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && mOriginalIcon != null) {
+            mOriginalIcon.setVisibility(android.view.View.VISIBLE);
+            mOriginalIcon.setAlpha(1f);
+        }
+
         super.closeComplete();
+
         if (mActivityContext.getDragController() != null) {
             mActivityContext.getDragController().removeDragListener(this);
         }
         PopupContainerWithArrow openPopup = getOpen(mActivityContext);
         if (openPopup == null || openPopup.mOriginalIcon != mOriginalIcon) {
-            mOriginalIcon.setTextVisibility(mOriginalIcon.shouldTextBeVisible());
-            mOriginalIcon.setForceHideDot(false);
+            if (mOriginalIcon != null) {
+                mOriginalIcon.setTextVisibility(mOriginalIcon.shouldTextBeVisible());
+                mOriginalIcon.setForceHideDot(false);
+            }
+        }
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            if (mIconProxyView != null) {
+                try {
+                    getPopupContainer().removeView(mIconProxyView);
+                } catch (Exception ignored) {}
+                mIconProxyView = null;
+            }
+            if (mDarkOverlayView != null) {
+                try {
+                    getPopupContainer().removeView(mDarkOverlayView);
+                } catch (Exception ignored) {}
+                mDarkOverlayView = null;
+            }
+            if (mPopupGlassView != null) {
+                try {
+                    getPopupContainer().removeView(mPopupGlassView);
+                } catch (Exception ignored) {}
+                mPopupGlassView = null;
+            }
         }
     }
 

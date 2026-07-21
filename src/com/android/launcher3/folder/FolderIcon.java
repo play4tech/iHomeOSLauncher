@@ -31,6 +31,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -41,6 +42,8 @@ import android.view.View;
 import android.view.ViewDebug;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+
+import foundation.e.bliss.glass.FolderGlassView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -117,6 +120,9 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     PreviewBackground mBackground = new PreviewBackground();
     private boolean mBackgroundIsVisible = true;
+
+    /** Liquid glass background view. Non-null only on API 33+ when attached to a window. */
+    @Nullable private FolderGlassView mGlassView;
 
     FolderGridOrganizer mPreviewVerifier;
     private ClippedFolderIconLayoutRule mPreviewLayoutRule;
@@ -600,6 +606,9 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     @Override
     public void setIconVisible(boolean visible) {
         mBackgroundIsVisible = visible;
+        if (mGlassView != null) {
+            mGlassView.setAlpha(visible ? 1f : 0f);
+        }
         invalidate();
     }
 
@@ -616,7 +625,28 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     }
 
     @Override
+    protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
+        if (child == mGlassView) {
+            int saveCount = canvas.save();
+            canvas.scale(mBackground.mScale, mBackground.mScale,
+                    mBackground.getOffsetX() + mBackground.previewSize / 2f,
+                    mBackground.getOffsetY() + mBackground.previewSize / 2f);
+            
+            if (!mBackground.drawingDelegated()) {
+                mBackground.drawShadow(canvas);
+            }
+            
+            boolean result = super.drawChild(canvas, child, drawingTime);
+            canvas.restore();
+            return result;
+        }
+        return super.drawChild(canvas, child, drawingTime);
+    }
+
+    @Override
     protected void dispatchDraw(Canvas canvas) {
+        // super.dispatchDraw draws children — including the FolderGlassView if present.
+        // It will call our drawChild override for mGlassView, handling scale and shadow.
         super.dispatchDraw(canvas);
 
         if (!mBackgroundIsVisible) return;
@@ -624,7 +654,9 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         mPreviewItemManager.recomputePreviewDrawingParams();
 
         if (!mBackground.drawingDelegated()) {
-            mBackground.drawBackground(canvas);
+            if (mGlassView == null) {
+                mBackground.drawBackground(canvas);
+            }
         }
 
         if (mCurrentPreviewItems.isEmpty() && !mAnimating) return;
@@ -632,10 +664,98 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         mPreviewItemManager.draw(canvas);
 
         if (!mBackground.drawingDelegated()) {
-            mBackground.drawBackgroundStroke(canvas);
+            if (mGlassView == null) {
+                mBackground.drawBackgroundStroke(canvas);
+            }
         }
 
         drawDot(canvas);
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        attachGlassView();
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        detachGlassView();
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        // Attach or reposition the glass view once layout dimensions are known.
+        if (mBackground.previewSize > 0) {
+            updateGlassViewPosition();
+        }
+    }
+
+    /**
+     * Finds the launcher's glass_source ViewGroup and adds a {@link FolderGlassView}
+     * as the first child of this FrameLayout, positioned to exactly cover the preview
+     * background area. Requires API 33+ (Android 13) to match the dock's glass behavior.
+     */
+    private void attachGlassView() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        if (mGlassView != null) return; // already attached
+
+        DeviceProfile grid = mActivity.getDeviceProfile();
+        if (grid == null || !grid.isFloatingDockEnabled()) return; // Match dock toggle
+
+        View root = getRootView();
+        if (root == null) return;
+        int proxyId = root.getResources().getIdentifier("glass_wallpaper_proxy", "id", root.getContext().getPackageName());
+        View glassSourceView = root.findViewById(proxyId);
+        if (!(glassSourceView instanceof ViewGroup)) return;
+
+        mGlassView = new FolderGlassView(getContext());
+        mGlassView.bind((ViewGroup) glassSourceView);
+        mGlassView.setVisibility(VISIBLE);
+        mGlassView.setAlpha(mBackgroundIsVisible ? 1f : 0f);
+
+        int size = Math.max(1, mBackground.previewSize); // placeholder if not laid out yet
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(size, size);
+        lp.leftMargin = mBackground.basePreviewOffsetX;
+        lp.topMargin = mBackground.basePreviewOffsetY;
+        // Insert at index 0 so glass renders below preview items and dot
+        addView(mGlassView, 0, lp);
+    }
+
+    /** Removes the glass view and cleans up the reference. */
+    private void detachGlassView() {
+        if (mGlassView != null) {
+            try {
+                // LiquidGlassView might have an unbind method, we call it if possible.
+                java.lang.reflect.Method unbind = mGlassView.getClass().getMethod("unbind");
+                unbind.invoke(mGlassView);
+            } catch (Exception e) {
+                // If it doesn't exist, we fallback to visibility GONE to halt rendering.
+                mGlassView.setVisibility(GONE);
+            }
+            if (mGlassView.getParent() == this) {
+                removeView(mGlassView);
+            }
+            mGlassView = null;
+        }
+    }
+
+    /**
+     * Updates the glass view's LayoutParams to match the current preview background bounds.
+     * Called when the FolderIcon is laid out again (e.g. after device rotation).
+     */
+    private void updateGlassViewPosition() {
+        if (mGlassView == null) return;
+        FrameLayout.LayoutParams lp =
+                (FrameLayout.LayoutParams) mGlassView.getLayoutParams();
+        if (lp == null) return;
+        lp.width = mBackground.previewSize;
+        lp.height = mBackground.previewSize;
+        lp.leftMargin = mBackground.basePreviewOffsetX - getPaddingLeft();
+        lp.topMargin = mBackground.basePreviewOffsetY - getPaddingTop();
+        mGlassView.setLayoutParams(lp);
     }
 
     public void drawDot(Canvas canvas) {

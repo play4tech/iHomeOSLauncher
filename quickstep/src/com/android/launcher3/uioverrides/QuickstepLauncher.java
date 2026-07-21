@@ -445,7 +445,7 @@ public class QuickstepLauncher extends Launcher {
         if (Flags.enableShortcutDontSuggestApp()) {
             shortcuts.add(DONT_SUGGEST_APP);
         }
-        if (Flags.enablePrivateSpace()) {
+        if (Flags.enablePrivateSpace() || foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
             shortcuts.add(UNINSTALL_APP);
         }
         return shortcuts.stream();

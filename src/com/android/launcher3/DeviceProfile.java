@@ -32,6 +32,8 @@ import static com.android.launcher3.testing.shared.ResourceUtils.INVALID_RESOURC
 import static com.android.launcher3.testing.shared.ResourceUtils.pxFromDp;
 import static com.android.launcher3.testing.shared.ResourceUtils.roundPxValueFromFloat;
 
+import foundation.e.bliss.glass.HotseatGeometry;
+
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.Configuration;
@@ -221,6 +223,7 @@ public class DeviceProfile {
     public int numShownHotseatIcons;
     public int hotseatCellHeightPx;
     public final boolean areNavButtonsInline;
+    public HotseatGeometry hotseatGeometry;
     // In portrait: size = height, in landscape: size = width
     public int hotseatBarSizePx;
     public int hotseatBarBottomSpacePx;
@@ -896,9 +899,14 @@ public class DeviceProfile {
         // Ensure there is enough space for folder icons, which have a slightly larger radius.
         hotseatCellHeightPx = getIconSizeWithOverlap(hotseatIconSizePx);
 
+        computeHotseatGeometry();
+
         if (isVerticalBarLayout()) {
             hotseatBarSizePx = hotseatIconSizePx + mHotseatBarEdgePaddingPx
                     + mHotseatBarWorkspaceSpacePx;
+        } else if (isFloatingDockEnabled() && hotseatGeometry != null) {
+            hotseatBarSizePx = availableHeightPx - hotseatGeometry.getPageIndicatorY();
+            hotseatBarBottomSpacePx = availableHeightPx - hotseatGeometry.getBounds().bottom;
         } else if (isQsbInline) {
             hotseatBarSizePx = Math.max(hotseatIconSizePx, hotseatQsbVisualHeight)
                     + hotseatBarBottomSpacePx;
@@ -1826,27 +1834,35 @@ public class DeviceProfile {
             }
 
         } else if (mIsScalableGrid) {
-            int iconExtraSpacePx = iconSizePx - getIconVisibleSizePx(iconSizePx);
-            int sideSpacing = (availableWidthPx - (hotseatQsbWidth + iconExtraSpacePx)) / 2;
-            hotseatBarPadding.set(sideSpacing,
-                    0,
-                    sideSpacing,
-                    getHotseatBarBottomPadding());
+            if (isFloatingDockEnabled() && hotseatGeometry != null) {
+                hotseatBarPadding.set(0, 0, 0, 0);
+            } else {
+                int iconExtraSpacePx = iconSizePx - getIconVisibleSizePx(iconSizePx);
+                int sideSpacing = (availableWidthPx - (hotseatQsbWidth + iconExtraSpacePx)) / 2;
+                hotseatBarPadding.set(sideSpacing,
+                        0,
+                        sideSpacing,
+                        getHotseatBarBottomPadding());
+            }
         } else {
             // We want the edges of the hotseat to line up with the edges of the workspace, but the
             // icons in the hotseat are a different size, and so don't line up perfectly. To account
             // for this, we pad the left and right of the hotseat with half of the difference of a
             // workspace cell vs a hotseat cell.
-            float workspaceCellWidth = (float) widthPx / inv.numColumns;
-            float hotseatCellWidth = (float) widthPx / numShownHotseatIcons;
-            int hotseatAdjustment = Math.round((workspaceCellWidth - hotseatCellWidth) / 2);
-            hotseatBarPadding.set(
-                    hotseatAdjustment + workspacePadding.left + cellLayoutPaddingPx.left
-                            + mInsets.left,
-                    0,
-                    hotseatAdjustment + workspacePadding.right + cellLayoutPaddingPx.right
-                            + mInsets.right,
-                    getHotseatBarBottomPadding());
+            if (isFloatingDockEnabled() && hotseatGeometry != null) {
+                hotseatBarPadding.set(0, 0, 0, 0);
+            } else {
+                float workspaceCellWidth = (float) widthPx / inv.numColumns;
+                float hotseatCellWidth = (float) widthPx / numShownHotseatIcons;
+                int hotseatAdjustment = Math.round((workspaceCellWidth - hotseatCellWidth) / 2);
+                hotseatBarPadding.set(
+                        hotseatAdjustment + workspacePadding.left + cellLayoutPaddingPx.left
+                                + mInsets.left,
+                        0,
+                        hotseatAdjustment + workspacePadding.right + cellLayoutPaddingPx.right
+                                + mInsets.right,
+                        getHotseatBarBottomPadding());
+            }
         }
         return hotseatBarPadding;
     }
@@ -1998,6 +2014,50 @@ public class DeviceProfile {
      */
     public boolean isVerticalBarLayout() {
         return isLandscape && transposeLayoutWithOrientation;
+    }
+
+    public boolean isFloatingDockEnabled() {
+        return !isVerticalBarLayout();
+    }
+
+    private void computeHotseatGeometry() {
+        if (!isFloatingDockEnabled()) {
+            hotseatGeometry = null;
+            return;
+        }
+
+        int dockSideMargin = pxFromDp(10, mMetrics);
+        int dockBottomMargin = pxFromDp(24, mMetrics);
+        int dockPaddingVertical = pxFromDp(8, mMetrics);
+        
+        int dockWidth = availableWidthPx - (2 * dockSideMargin);
+        int maxDockWidth = pxFromDp(600, mMetrics);
+        if (dockWidth > maxDockWidth) {
+            dockWidth = maxDockWidth;
+            dockSideMargin = (availableWidthPx - dockWidth) / 2;
+        }
+
+        int dockHeight = hotseatCellHeightPx + (2 * dockPaddingVertical);
+        float cornerRadius = dockHeight / 2f;
+
+        Rect bounds = new Rect(
+                dockSideMargin,
+                availableHeightPx - dockHeight - dockBottomMargin,
+                dockSideMargin + dockWidth,
+                availableHeightPx - dockBottomMargin
+        );
+
+        Rect contentBounds = new Rect(
+                bounds.left,
+                bounds.top + dockPaddingVertical,
+                bounds.right,
+                bounds.bottom - dockPaddingVertical
+        );
+
+        int indicatorMargin = pxFromDp(16, mMetrics);
+        int indicatorY = bounds.top - indicatorMargin - workspacePageIndicatorHeight;
+
+        hotseatGeometry = new HotseatGeometry(bounds, contentBounds, dockHeight, cornerRadius, indicatorY);
     }
 
     /**

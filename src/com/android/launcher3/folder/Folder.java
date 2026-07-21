@@ -322,6 +322,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         } else return false;
     }
 
+    public boolean startDrag(View v) {
+        return startDrag(v, new DragOptions());
+    }
+
     public boolean startDrag(View v, DragOptions options) {
         Object tag = v.getTag();
         if (tag instanceof WorkspaceItemInfo) {

@@ -150,12 +150,13 @@ public class FolderAnimationManager {
         mFolder.setPivotY(0);
 
         // Scale the contents of the folder.
-        mFolder.mContent.setScaleX(scale);
-        mFolder.mContent.setScaleY(scale);
+        float contentScale = MultiModeController.isSingleLayerMode() ? 1f : scale;
+        mFolder.mContent.setScaleX(contentScale);
+        mFolder.mContent.setScaleY(contentScale);
         mFolder.mContent.setPivotX(0);
         mFolder.mContent.setPivotY(0);
-        mFolder.mFooter.setScaleX(scale);
-        mFolder.mFooter.setScaleY(scale);
+        mFolder.mFooter.setScaleX(contentScale);
+        mFolder.mFooter.setScaleY(contentScale);
         mFolder.mFooter.setPivotX(0);
         mFolder.mFooter.setPivotY(0);
 
@@ -180,6 +181,21 @@ public class FolderAnimationManager {
         int initialY = folderIconPos.top + mFolder.getPaddingTop()
                 + Math.round(mPreviewBackground.getOffsetY() * scaleRelativeToDragLayer)
                 - paddingOffsetY;
+
+        // In single-layer mode (GridFolder), we scale the entire folder (iOS style).
+        // This requires aligning the scaled content position to the icon position.
+        if (MultiModeController.isSingleLayerMode()
+                && mFolder instanceof foundation.e.bliss.folder.GridFolder) {
+            float folderScaleEnd = initialSize / Math.max(lp.width, 1);
+            int folderTabHeight = ((foundation.e.bliss.folder.GridFolder) mFolder).mFolderTabHeight;
+            
+            float scaledOffsetX = (mFolder.getPaddingLeft() + mContent.getPaddingLeft() + previewItemOffsetX) * folderScaleEnd;
+            float scaledOffsetY = (mFolder.getPaddingTop() + folderTabHeight + mContent.getPaddingTop()) * folderScaleEnd;
+            
+            initialX = (int) (folderIconPos.left + Math.round(mPreviewBackground.getOffsetX() * scaleRelativeToDragLayer) - scaledOffsetX);
+            initialY = (int) (folderIconPos.top + Math.round(mPreviewBackground.getOffsetY() * scaleRelativeToDragLayer) - scaledOffsetY);
+        }
+        
         final float xDistance = initialX - lp.x;
         final float yDistance = initialY - lp.y - unusedOffsetY;
 
@@ -188,8 +204,8 @@ public class FolderAnimationManager {
         int finalColor = Themes.getAttrColor(mContext, R.attr.folderBackgroundColor);
 
         if (MultiModeController.isSingleLayerMode()) {
-            initialColor = ContextCompat.getColor(mContext, R.color.gridFolderPreview);
-            finalColor = ContextCompat.getColor(mContext, R.color.gridFolderBackground);
+            initialColor = android.graphics.Color.TRANSPARENT;
+            finalColor = android.graphics.Color.TRANSPARENT;
         }
 
         mFolderBackground.mutate();
@@ -223,8 +239,13 @@ public class FolderAnimationManager {
         play(a, mBgColorAnimator);
         play(a, getAnimator(mFolder, View.TRANSLATION_X, xDistance, 0f));
         play(a, getAnimator(mFolder, View.TRANSLATION_Y, yDistance, 0f));
-        play(a, getAnimator(mFolder.mContent, SCALE_PROPERTY, initialScale, finalScale));
-        play(a, getAnimator(mFolder.mFooter, SCALE_PROPERTY, initialScale, finalScale));
+        
+        // In standard Launcher3, the content and footer scale individually.
+        // In iOS-style single-layer mode, we scale the ENTIRE folder view instead.
+        if (!MultiModeController.isSingleLayerMode()) {
+            play(a, getAnimator(mFolder.mContent, SCALE_PROPERTY, initialScale, finalScale));
+            play(a, getAnimator(mFolder.mFooter, SCALE_PROPERTY, initialScale, finalScale));
+        }
 
         final int footerAlphaDuration;
         final int footerStartDelay;
@@ -243,9 +264,79 @@ public class FolderAnimationManager {
         }
         play(a, getAnimator(mFolder.mFooter, ALPHA, 0, 1f), footerStartDelay, footerAlphaDuration);
 
-        // Create reveal animator for the folder background
-        play(a, getShape().createRevealAnimator(
-                mFolder.getAnimateObject(), startRect, endRect, finalRadius, !mIsOpening));
+        // Create reveal animator for the folder background.
+        if (MultiModeController.isSingleLayerMode()) {
+            // iOS-style: scale the entire folder view symmetrically toward the icon,
+            // and fade it out. This avoids the asymmetric clip-reveal that cuts
+            // the right side off with a sharp edge.
+            float folderScaleEnd = initialSize / Math.max(lp.width, 1);
+            mFolder.setPivotX(0f);
+            mFolder.setPivotY(0f);
+            
+            float folderScale = mIsOpening ? folderScaleEnd : 1f;
+            mFolder.setScaleX(folderScale);
+            mFolder.setScaleY(folderScale);
+            
+            play(a, getAnimator(mFolder, View.SCALE_X, folderScaleEnd, 1f));
+            play(a, getAnimator(mFolder, View.SCALE_Y, folderScaleEnd, 1f));
+            // Fade out the folder as it shrinks
+            play(a, getAnimator(mFolder, View.ALPHA, 0f, 1f));
+        } else {
+            play(a, getShape().createRevealAnimator(
+                    mFolder.getAnimateObject(), startRect, endRect, finalRadius, !mIsOpening));
+        }
+        if (MultiModeController.isSingleLayerMode()) {
+            com.android.launcher3.Launcher launcher = com.android.launcher3.Launcher.getLauncher(mContext);
+            BaseDragLayer dragLayer = mFolder.mActivityContext.getDragLayer();
+            View dockGlass = dragLayer.findViewById(R.id.dock_glass);
+            View hotseat = dragLayer.findViewById(R.id.hotseat);
+            View pageIndicator = dragLayer.findViewById(R.id.page_indicator);
+            View workspace = dragLayer.findViewById(R.id.workspace);
+            View scrimView = dragLayer.findViewById(R.id.scrim_view);
+            foundation.e.bliss.blur.BlurBackgroundView blurLayer = launcher.mBlurLayer;
+            View qsb = hotseat instanceof com.android.launcher3.Hotseat ? ((com.android.launcher3.Hotseat) hotseat).getQsb() : null;
+            
+            // v1 = closed-state value, v2 = open-state value (fixed constants -- getAnimator's
+            // own mIsOpening check handles direction, so don't also branch on it here or read
+            // a live .getAlpha(); doing both was double-applying direction and caused these
+            // views to animate the wrong way on close).
+            if (dockGlass != null) {
+                play(a, getAnimator(dockGlass, View.ALPHA, 1f, 0f));
+            }
+            if (hotseat != null) {
+                play(a, getAnimator(hotseat, View.ALPHA, 1f, 0f));
+            }
+            if (pageIndicator != null) {
+                play(a, getAnimator(pageIndicator, View.ALPHA, 1f, 0f));
+            }
+            if (workspace != null) {
+                play(a, getAnimator(workspace, View.ALPHA, 1f, 0f));
+            }
+            if (qsb != null) {
+                play(a, getAnimator(qsb, View.ALPHA, 1f, 0f));
+            }
+            if (scrimView != null) {
+                play(a, getAnimator(scrimView, View.ALPHA, 1f, 0f));
+            }
+            if (blurLayer != null) {
+                play(a, getAnimator(blurLayer, View.ALPHA, 0f, 1f));
+            }
+            
+            // Cross-fade the folder icon back in during close so it doesn't blink at the end.
+            // Use ObjectAnimator directly — getAnimator() reverses values on close, which would
+            // fade the icon OUT (1→0) instead of IN (0→1).
+            if (!mIsOpening && mFolderIcon != null) {
+                // Restore mBackgroundIsVisible so the canvas actually draws the icon content.
+                // setIconVisible(false) was called when opening; without this the icon draws nothing.
+                mFolderIcon.setIconVisible(true);
+                mFolderIcon.setAlpha(0f);
+                mFolderIcon.setVisibility(View.VISIBLE);
+                int iconFadeStartDelay = mDuration / 2;
+                int iconFadeDuration = mDuration - iconFadeStartDelay;
+                ObjectAnimator iconFade = ObjectAnimator.ofFloat(mFolderIcon, View.ALPHA, 0f, 1f);
+                play(a, iconFade, iconFadeStartDelay, iconFadeDuration);
+            }
+        }
 
         int column = MultiModeController.isSingleLayerMode() ? 3 : 2;
         int row = MultiModeController.isSingleLayerMode() ? 3 : 2;
@@ -259,8 +350,10 @@ public class FolderAnimationManager {
         int left = mContent.getPaddingLeft() + page * lp.width;
         Rect contentStart = new Rect(left, 0, left + width, height);
         Rect contentEnd = new Rect(left, 0, left + lp.width, lp.height);
-        play(a, getShape().createRevealAnimator(
-                mFolder.getContent(), contentStart, contentEnd, finalRadius, !mIsOpening));
+        if (!MultiModeController.isSingleLayerMode()) {
+            play(a, getShape().createRevealAnimator(
+                    mFolder.getContent(), contentStart, contentEnd, finalRadius, !mIsOpening));
+        }
 
 
         // Fade in the folder name, as the text can overlap the icons when grid size is small.
@@ -321,6 +414,9 @@ public class FolderAnimationManager {
                 mFolder.setTranslationX(0.0f);
                 mFolder.setTranslationY(0.0f);
                 mFolder.setTranslationZ(0.0f);
+                mFolder.setScaleX(1f);
+                mFolder.setScaleY(1f);
+                mFolder.setAlpha(1f);
                 mFolder.mContent.setScaleX(1f);
                 mFolder.mContent.setScaleY(1f);
                 mFolder.mFooter.setScaleX(1f);

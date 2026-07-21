@@ -108,7 +108,6 @@ import android.view.View;
 import android.view.ViewRootImpl;
 import android.view.ViewTreeObserver;
 import android.view.WindowManager;
-import android.view.animation.AnimationUtils;
 import android.view.animation.Interpolator;
 import android.view.animation.PathInterpolator;
 import android.window.RemoteTransition;
@@ -190,10 +189,17 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
      */
     public static final int STATUS_BAR_TRANSITION_PRE_DELAY = 96;
 
-    public static final long APP_LAUNCH_DURATION = 500;
+    public static final long APP_LAUNCH_DURATION = 440;
 
-    private static final long APP_LAUNCH_ALPHA_DURATION = 50;
-    private static final long APP_LAUNCH_ALPHA_START_DELAY = 25;
+    private static final long APP_LAUNCH_ALPHA_DURATION = 180;
+    private static final long APP_LAUNCH_ALPHA_START_DELAY = 110;
+
+    /**
+     * iOS-like curve for the icon expanding into the app window.
+     * This is intentionally softer than the stock launcher launch motion.
+     */
+    private static final Interpolator IOS_LAUNCH_INTERPOLATOR =
+            new PathInterpolator(0.22f, 1f, 0.36f, 1f);
 
     public static final int ANIMATION_NAV_FADE_IN_DURATION = 266;
     public static final int ANIMATION_NAV_FADE_OUT_DURATION = 133;
@@ -304,9 +310,10 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
                     mStartingWindowListener);
         }
 
-        mOpeningXInterpolator = AnimationUtils.loadInterpolator(context, R.interpolator.app_open_x);
-        mOpeningInterpolator = AnimationUtils.loadInterpolator(context,
-                R.interpolator.emphasized_interpolator);
+        // Use a softer, more iOS-like ease for app launches so the icon feels like it expands
+        // into the app window instead of snapping into place.
+        mOpeningXInterpolator = IOS_LAUNCH_INTERPOLATOR;
+        mOpeningInterpolator = IOS_LAUNCH_INTERPOLATOR;
         mCoordinateTransfer = new RemoteAnimationCoordinateTransfer(mLauncher);
     }
 
@@ -349,10 +356,16 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
 
         long statusBarTransitionDelay = duration - STATUS_BAR_TRANSITION_DURATION
                 - STATUS_BAR_TRANSITION_PRE_DELAY;
-        ActivityOptions options = ActivityOptions.makeRemoteAnimation(
-                new RemoteAnimationAdapter(runner, duration, statusBarTransitionDelay),
-                new RemoteTransition(runner.toRemoteTransition(),
-                        mLauncher.getIApplicationThread(), "QuickstepLaunch"));
+        boolean hasPermission = mLauncher.checkSelfPermission(
+                "android.permission.CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS")
+                == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        ActivityOptions options = hasPermission
+                ? ActivityOptions.makeRemoteAnimation(
+                        new RemoteAnimationAdapter(runner, duration, statusBarTransitionDelay),
+                        new RemoteTransition(runner.toRemoteTransition(),
+                                mLauncher.getIApplicationThread(), "QuickstepLaunch"))
+                : ActivityOptions.makeClipRevealAnimation(v, 0, 0,
+                        v.getMeasuredWidth(), v.getMeasuredHeight());
         IRemoteCallback endCallback = completeRunnableListCallback(onEndCallback);
         options.setOnAnimationAbortListener(endCallback);
         options.setOnAnimationFinishedListener(endCallback);
@@ -756,7 +769,8 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
             FloatProp mIconScaleToFitScreen = new FloatProp(prop.initialAppIconScale,
                     prop.finalAppIconScale, 0, APP_LAUNCH_DURATION, mOpeningInterpolator);
             FloatProp mIconAlpha = new FloatProp(prop.iconAlphaStart, 0f,
-                    APP_LAUNCH_ALPHA_START_DELAY, APP_LAUNCH_ALPHA_DURATION, LINEAR);
+                    APP_LAUNCH_ALPHA_START_DELAY, APP_LAUNCH_ALPHA_DURATION,
+                    IOS_LAUNCH_INTERPOLATOR);
 
             FloatProp mWindowRadius = new FloatProp(initialWindowRadius, finalWindowRadius, 0,
                     APP_LAUNCH_DURATION, mOpeningInterpolator);

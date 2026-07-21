@@ -367,12 +367,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         setEnableOverscroll(getPageCount() > 1);
 
         // Update footer
-        boolean showIndicator;
-        if (mFolder instanceof GridFolder) {
-            showIndicator = true;
-        } else {
-            showIndicator = getPageCount() > 1;
-        }
+        boolean showIndicator = getPageCount() > 1;
         mPageIndicator.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
 
         if (!MultiModeController.isSingleLayerMode()) {

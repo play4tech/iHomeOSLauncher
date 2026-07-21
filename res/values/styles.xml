@@ -159,7 +159,7 @@
         <item name="popupColorSecondary">@color/popup_color_secondary_dark</item>
         <item name="popupColorTertiary">@color/popup_color_tertiary_dark</item>
         <item name="popupColorBackground">#1F2020</item>
-        <item name="popupTextColor">@color/popup_text_color_dark</item>
+        <item name="popupTextColor">@color/popup_text_color_light</item>
         <item name="popupNotificationDotColor">@color/popup_notification_dot_dark</item>
         <item name="popupShadeFirst">@color/popup_shade_first_dark</item>
         <item name="popupShadeSecond">@color/popup_shade_second_dark</item>

@@ -340,13 +340,15 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
                 if (originalView == null) {
                     return null;
                 }
-                if (!Flags.enablePrivateSpace()) {
-                    return null;
-                }
-                if (!UserCache.INSTANCE.get(originalView.getContext()).getUserInfo(
-                        itemInfo.user).isPrivate()) {
-                    // If app is not Private Space app.
-                    return null;
+                if (!foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                    if (!Flags.enablePrivateSpace()) {
+                        return null;
+                    }
+                    if (!UserCache.INSTANCE.get(originalView.getContext()).getUserInfo(
+                            itemInfo.user).isPrivate()) {
+                        // If app is not Private Space app.
+                        return null;
+                    }
                 }
                 ComponentName cn = SecondaryDropTarget.getUninstallTarget(originalView.getContext(),
                         itemInfo);
@@ -367,6 +369,18 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
                     itemInfo, originalView);
             mComponentName = cn;
 
+        }
+
+        @Override
+        public void setIconAndLabelFor(View iconView, TextView labelView) {
+            super.setIconAndLabelFor(iconView, labelView);
+            if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                int red = android.graphics.Color.parseColor("#FF3B30"); // iOS destructive red
+                labelView.setTextColor(red);
+                if (iconView instanceof ImageView) {
+                    ((ImageView) iconView).setColorFilter(red, android.graphics.PorterDuff.Mode.SRC_IN);
+                }
+            }
         }
 
         @Override

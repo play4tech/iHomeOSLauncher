@@ -210,11 +210,18 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
                 lp.gravity = Gravity.RIGHT;
                 lp.width = grid.hotseatBarSizePx + insets.right;
             }
+        } else if (grid.isFloatingDockEnabled() && grid.hotseatGeometry != null) {
+            mQsb.setVisibility(View.GONE);
+            lp.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+            lp.width = grid.hotseatGeometry.getBounds().width();
+            lp.height = grid.hotseatGeometry.getBounds().height();
+            lp.bottomMargin = insets.bottom + grid.hotseatBarBottomSpacePx;
         } else {
             mQsb.setVisibility(View.VISIBLE);
             lp.gravity = Gravity.BOTTOM;
             lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
             lp.height = grid.hotseatBarSizePx;
+            lp.bottomMargin = 0;
         }
 
         Rect padding = grid.getHotseatLayoutPadding(getContext());
@@ -371,7 +378,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
         Folder folder = Folder.getOpen(mActivity);
         if (folder instanceof GridFolder) {
             GridFolder gridFolder = (GridFolder) folder;
-            if (gridFolder.isAnimating()) {
+            if (gridFolder.isAnimating() || foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
                 super.setAlpha(alpha);
             }
         } else {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="52dp"
+    android:insetRight="0dp">
+    <shape>
+        <size android:height="1dp" />
+        <!-- Subtle divider color -->
+        <solid android:color="#20000000" />
+    </shape>
+</inset>

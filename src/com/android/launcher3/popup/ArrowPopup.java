@@ -56,7 +56,9 @@ import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
 import com.android.launcher3.views.BaseDragLayer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * A container for shortcuts to deep links and notifications associated with an app.
@@ -138,13 +140,23 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
         mOutlineRadius = Themes.getDialogCornerRadius(context);
         mActivityContext = ActivityContext.lookupContext(context);
         mIsRtl = Utilities.isRtl(getResources());
-        mElevation = getResources().getDimension(R.dimen.deep_shortcuts_elevation);
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            mElevation = getResources().getDisplayMetrics().density * 8; // 8dp
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                setOutlineAmbientShadowColor(android.graphics.Color.argb(20, 0, 0, 0)); // 8%
+                setOutlineSpotShadowColor(android.graphics.Color.argb(46, 0, 0, 0)); // 18%
+            }
+        } else {
+            mElevation = getResources().getDimension(R.dimen.deep_shortcuts_elevation);
+        }
 
         // Initialize arrow view
         final Resources resources = getResources();
         mArrowColor = getColorStateList(getContext(), R.color.popup_color_background)
                 .getDefaultColor();
-        mChildContainerMargin = resources.getDimensionPixelSize(R.dimen.popup_margin);
+        mChildContainerMargin = foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() 
+                ? 0 
+                : resources.getDimensionPixelSize(R.dimen.popup_margin);
         mArrowWidth = resources.getDimensionPixelSize(R.dimen.popup_arrow_width);
         mArrowHeight = resources.getDimensionPixelSize(R.dimen.popup_arrow_height);
         mArrow = new View(context);
@@ -659,29 +671,58 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
         float[] alphaValues = isOpening ? new float[] {0, 1} : new float[] {1, 0};
         float[] scaleValues = isOpening ? new float[] {0.5f, 1.02f} : new float[] {1f, 0.5f};
+        
+        Animator scaleY;
+        Animator scaleX;
+        
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            scaleValues = isOpening ? new float[] {0.92f, 1f} : new float[] {1f, 0.92f};
+            float damping = 0.86f;
+            float stiffness = 304.6f;
+            scaleX = new com.android.launcher3.anim.SpringAnimationBuilder(getContext())
+                    .setStartValue(scaleValues[0]).setEndValue(scaleValues[1])
+                    .setDampingRatio(damping).setStiffness(stiffness).build(this, com.android.launcher3.LauncherAnimUtils.SCALE_PROPERTY);
+            scaleY = ObjectAnimator.ofFloat(this, View.SCALE_Y, scaleValues[1], scaleValues[1]).setDuration(0); // dummy, scale handled by SCALE_PROPERTY
+            
+            // Single layer mode overrides durations
+            fadeDuration = isOpening ? 140 : 130;
+            childFadeStartDelay = isOpening ? 0 : 0;
+            childFadeDuration = isOpening ? 90 : 90;
+        } else {
+            scaleY = getAnimatorOfFloat(this, View.SCALE_Y, scaleDuration, 0, interpolator,
+                    scaleValues);
+            scaleX = getAnimatorOfFloat(this, View.SCALE_X, scaleDuration, 0, interpolator,
+                    scaleValues);
+        }
+
         Animator alpha = getAnimatorOfFloat(this, View.ALPHA, fadeDuration, fadeStartDelay,
                 LINEAR, alphaValues);
         Animator arrowAlpha = getAnimatorOfFloat(mArrow, View.ALPHA, fadeDuration, fadeStartDelay,
                 LINEAR, alphaValues);
-        Animator scaleY = getAnimatorOfFloat(this, View.SCALE_Y, scaleDuration, 0, interpolator,
-                scaleValues);
-        Animator scaleX = getAnimatorOfFloat(this, View.SCALE_X, scaleDuration, 0, interpolator,
-                scaleValues);
 
         final AnimatorSet animatorSet = new AnimatorSet();
-        if (isOpening) {
-            float[] scaleValuesOvershoot = new float[] {1.02f, 1f};
-            PathInterpolator overshootInterpolator = new PathInterpolator(0.3f, 0, 0.33f, 1f);
-            Animator overshootY = getAnimatorOfFloat(this, View.SCALE_Y,
-                    OPEN_OVERSHOOT_DURATION_U, scaleDuration, overshootInterpolator,
-                    scaleValuesOvershoot);
-            Animator overshootX = getAnimatorOfFloat(this, View.SCALE_X,
-                    OPEN_OVERSHOOT_DURATION_U, scaleDuration, overshootInterpolator,
-                    scaleValuesOvershoot);
+        List<Animator> animators = new ArrayList<>();
+        animators.add(alpha);
+        animators.add(arrowAlpha);
+        animators.add(scaleY);
+        animators.add(scaleX);
 
-            animatorSet.playTogether(alpha, arrowAlpha, scaleY, scaleX, overshootX, overshootY);
+        if (isOpening) {
+            if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                animatorSet.playTogether(animators);
+            } else {
+                float[] scaleValuesOvershoot = new float[] {1.02f, 1f};
+                PathInterpolator overshootInterpolator = new PathInterpolator(0.3f, 0, 0.33f, 1f);
+                animators.add(getAnimatorOfFloat(this, View.SCALE_Y,
+                        OPEN_OVERSHOOT_DURATION_U, scaleDuration, overshootInterpolator,
+                        scaleValuesOvershoot));
+                animators.add(getAnimatorOfFloat(this, View.SCALE_X,
+                        OPEN_OVERSHOOT_DURATION_U, scaleDuration, overshootInterpolator,
+                        scaleValuesOvershoot));
+                animatorSet.playTogether(animators);
+            }
         } else {
-            animatorSet.playTogether(alpha, arrowAlpha, scaleY, scaleX);
+            animatorSet.playTogether(animators);
         }
 
         fadeInChildViews(this, alphaValues, childFadeStartDelay, childFadeDuration, animatorSet);

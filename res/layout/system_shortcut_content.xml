@@ -24,9 +24,10 @@
         android:gravity="start|center_vertical"
         android:minHeight="@dimen/bg_popup_item_height"
         android:textAlignment="viewStart"
-        android:paddingStart="@dimen/deep_shortcuts_text_padding_start"
-        android:paddingEnd="@dimen/popup_padding_end"
-        android:textSize="14sp"
+        android:paddingStart="68dp"
+        android:paddingEnd="20dp"
+        android:textSize="17sp"
+        android:fontFamily="sans-serif-medium"
         android:lines="1"
         android:ellipsize="end"
         android:hyphenationFrequency="full"
@@ -39,7 +40,7 @@
         android:id="@+id/icon"
         android:layout_width="@dimen/system_shortcut_icon_size"
         android:layout_height="@dimen/system_shortcut_icon_size"
-        android:layout_marginStart="@dimen/system_shortcut_margin_start"
+        android:layout_marginStart="20dp"
         android:layout_gravity="start|center_vertical"
         android:backgroundTint="?attr/popupTextColor"/>
 </merge>

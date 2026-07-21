@@ -1405,11 +1405,19 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (progress < 0)
             return;
 
-        int dockHeight = getHotseat().getHeight() + getPageIndicator().getHeight();
-        float dockTranslationY = progress * dockHeight;
+        int slideDistance = mLauncher.getDragLayer().getHeight() - getPageIndicator().getTop();
+        if (slideDistance <= 0) {
+            slideDistance = getHotseat().getHeight() + getPageIndicator().getHeight() + 200;
+        }
+        float dockTranslationY = progress * slideDistance;
 
         getHotseat().setForcedTranslationY(dockTranslationY);
         ((PageIndicatorDots) getPageIndicator()).setForcedTranslationY(dockTranslationY);
+        
+        View dockGlass = mLauncher.findViewById(R.id.dock_glass);
+        if (dockGlass != null) {
+            dockGlass.setTranslationY(dockTranslationY);
+        }
 
         mLauncher.mBlurLayer.setAlpha(progress);
     }
@@ -1504,14 +1512,22 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (MultiModeController.isSingleLayerMode()) {
             if (currentPage == FIRST_SCREEN_ID) {
                 Hotseat hotseat = getHotseat();
-                int height = hotseat.getHeight() + getPageIndicator().getHeight();
+                int slideDistance = mLauncher.getDragLayer().getHeight() - getPageIndicator().getTop();
+                if (slideDistance <= 0) {
+                    slideDistance = hotseat.getHeight() + getPageIndicator().getHeight() + 200;
+                }
                 if (hotseat.getTranslationY() >= 0) {
-                    hotseat.setForcedTranslationY(height);
+                    hotseat.setForcedTranslationY(slideDistance);
                 }
 
                 PageIndicatorDots pageIndicatorDots = (PageIndicatorDots) getPageIndicator();
                 if (pageIndicatorDots.getTranslationY() >= 0) {
-                    pageIndicatorDots.setForcedTranslationY(height);
+                    pageIndicatorDots.setForcedTranslationY(slideDistance);
+                }
+                
+                View dockGlass = mLauncher.findViewById(R.id.dock_glass);
+                if (dockGlass != null && dockGlass.getTranslationY() >= 0) {
+                    dockGlass.setTranslationY(slideDistance);
                 }
 
                 mLauncher.mBlurLayer.setAlpha(1);
@@ -1795,14 +1811,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public void startDrag(CellInfo cellInfo, DragOptions options) {
         View child = cellInfo.cell;
 
-        if (MultiModeController.isSingleLayerMode() ) {
-            if (!isWobbling()) {
-                wobbleLayouts(true);
-                return;
-            } else {
-                child.setOnTouchListener(null);
-            }
-        }
+        // The single layer mode wobbleLayouts call was moved to PopupContainerWithArrow 
+        // to match iOS Quick Action state machine.
 
         if (wobbleExpireAlarm.alarmPending()) {
             wobbleExpireAlarm.cancelAlarm();
