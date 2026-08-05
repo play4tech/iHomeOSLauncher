@@ -1,5 +1,0 @@
---------- beginning of main
-07-23 23:08:07.621 11539 11539 D AppLibraryPage: refreshApps called
-07-23 23:08:07.626 11539 11539 D AppLibraryPage: refreshApps: launcher and appsStore are valid
-07-23 23:08:07.626 11539 11539 D AppLibraryPage: Registering AppsStore update listener
-07-23 23:08:07.626 11539 11539 D AppLibraryPage: Manual sync in refreshApps found 0 apps
