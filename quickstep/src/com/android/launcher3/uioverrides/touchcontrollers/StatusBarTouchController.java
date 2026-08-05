@@ -81,11 +81,7 @@ public class StatusBarTouchController implements TouchController {
 
     private void dispatchTouchEvent(MotionEvent ev) {
         mLastAction = ev.getActionMasked();
-        if (MultiModeController.isSingleLayerMode()) {
-            if (ev.getAction() == ACTION_UP) {
-                mLauncher.toggleSwipeSearchState();
-            }
-        } else if (mSystemUiProxy.isActive()) {
+        if (mSystemUiProxy.isActive()) {
             mSystemUiProxy.onStatusBarTouchEvent(ev);
         }
     }
@@ -101,12 +97,6 @@ public class StatusBarTouchController implements TouchController {
                 return false;
             }
             mDownEvents.put(pid, new PointF(ev.getX(), ev.getY()));
-            if (MultiModeController.isSingleLayerMode() && mLauncher.swipeSearchContainer != null &&
-                    mLauncher.swipeSearchContainer.getVisibility() == View.VISIBLE &&
-                    ev.getY(idx) > mLauncher.swipeSearchContainer.getHeight()) {
-                setWindowSlippery(true);
-                return true;
-            }
             mIsTrackpadReverseScroll = !mLauncher.isNaturalScrollingEnabled()
                     && isTrackpadScroll(ev);
         } else if (ev.getActionMasked() == MotionEvent.ACTION_POINTER_DOWN) {
@@ -125,9 +115,7 @@ public class StatusBarTouchController implements TouchController {
             // Currently input dispatcher will not do touch transfer if there are more than
             // one touch pointer. Hence, even if slope passed, only set the slippery flag
             // when there is single touch event. (context: InputDispatcher.cpp line 1445)
-            if (dy > mTouchSlop && dy > Math.abs(dx) && ev.getPointerCount() == 1 &&
-                    (!MultiModeController.isSingleLayerMode() ||
-                            mLauncher.swipeSearchContainer.getVisibility() == View.GONE)) {
+            if (dy > mTouchSlop && dy > Math.abs(dx) && ev.getPointerCount() == 1) {
                 ev.setAction(ACTION_DOWN);
                 dispatchTouchEvent(ev);
                 setWindowSlippery(true);

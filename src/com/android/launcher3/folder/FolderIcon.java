@@ -82,6 +82,7 @@ import com.android.launcher3.model.data.WorkspaceItemFactory;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.util.Executors;
 import com.android.launcher3.util.MultiTranslateDelegate;
+import com.android.launcher3.util.SafeCloseable;
 import com.android.launcher3.util.Thunk;
 import com.android.launcher3.views.ActivityContext;
 import com.android.launcher3.views.IconLabelDotView;
@@ -350,8 +351,10 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     public void performDestroyAnimation(Runnable onCompleteRunnable) {
         // This will animate the final item in the preview to be full size.
-        mPreviewItemManager.createFirstItemAnimation(true /* reverse */, onCompleteRunnable)
-                .start();
+        FolderPreviewItemAnim anim = mPreviewItemManager.createFirstItemAnimation(true /* reverse */, onCompleteRunnable);
+        if (anim != null) {
+            anim.start();
+        }
     }
 
     public void onDragExit() {
@@ -653,8 +656,12 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
         mPreviewItemManager.recomputePreviewDrawingParams();
 
+        // Draw the fallback squircle background when the glass view is absent OR hidden.
+        // When hidden (e.g. during drag-preview bitmap capture), we fall back to the
+        // solid/blurred PreviewBackground so the squircle is visible in the drag shadow.
+        boolean glassVisible = mGlassView != null && mGlassView.getVisibility() == VISIBLE;
         if (!mBackground.drawingDelegated()) {
-            if (mGlassView == null) {
+            if (!glassVisible) {
                 mBackground.drawBackground(canvas);
             }
         }
@@ -664,7 +671,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         mPreviewItemManager.draw(canvas);
 
         if (!mBackground.drawingDelegated()) {
-            if (mGlassView == null) {
+            if (!glassVisible) {
                 mBackground.drawBackgroundStroke(canvas);
             }
         }
@@ -945,6 +952,24 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     @Override
     public int getViewType() {
         return DRAGGABLE_ICON;
+    }
+
+    @Override
+    @NonNull
+    public SafeCloseable prepareDrawDragView() {
+        // The FolderGlassView renders the squircle via live-wallpaper blur, which cannot
+        // be sampled into an offscreen bitmap. Hide it before the drag-preview bitmap is
+        // captured so that dispatchDraw falls back to the solid PreviewBackground and the
+        // squircle is visible in the drag shadow, then restore it afterwards.
+        if (mGlassView != null && mGlassView.getVisibility() == VISIBLE) {
+            mGlassView.setVisibility(GONE);
+            return () -> {
+                if (mGlassView != null) {
+                    mGlassView.setVisibility(VISIBLE);
+                }
+            };
+        }
+        return () -> {};
     }
 
     @Override

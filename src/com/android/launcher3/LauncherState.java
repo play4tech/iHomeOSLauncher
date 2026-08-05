@@ -108,7 +108,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
                 }
             };
 
-    private static final LauncherState[] sAllStates = new LauncherState[11];
+    private static final LauncherState[] sAllStates = new LauncherState[12];
 
     /**
      * TODO: Create a separate class for NORMAL state.

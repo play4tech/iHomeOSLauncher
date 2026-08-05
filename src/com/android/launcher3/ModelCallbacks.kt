@@ -125,7 +125,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         val currentPage =
             if (pagesBoundFirst != null && !pagesBoundFirst.isEmpty)
                 launcher.workspace.getPageIndexForScreenId(pagesBoundFirst.array[0])
-            else Workspace.DEFAULT_PAGE
+            else launcher.workspace.defaultPage
         // When undoing the removal of the last item on a page, return to that page.
         // Since we are just resetting the current page without user interaction,
         // override the previous page so we don't log the page switch.
@@ -178,6 +178,22 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         Preconditions.assertUIThread()
         val hadWorkApps = launcher.appsView.shouldShowTabs()
         launcher.appsView.appsStore.setApps(apps, flags, packageUserKeytoUidMap)
+        
+        android.util.Log.d("ModelCallbacks", "bindAllApplications called with apps array length: " + (apps?.size ?: -1));
+        // Push the update directly to the App Library page if it is instantiated
+        apps?.let {
+            val nonNullApps = it.filterNotNull()
+            android.util.Log.d("ModelCallbacks", "bindAllApplications received " + nonNullApps.size + " apps");
+            val appLibraryPage = launcher.workspace.appLibraryPinnedItem
+            android.util.Log.d("ModelCallbacks", "appLibraryPinnedItem is: " + appLibraryPage);
+            if (appLibraryPage is com.android.launcher3.applibrary.view.AppLibraryPage) {
+                android.util.Log.d("ModelCallbacks", "Calling updateApps on AppLibraryPage");
+                appLibraryPage.updateApps(nonNullApps)
+            } else {
+                android.util.Log.d("ModelCallbacks", "appLibraryPinnedItem is NOT an AppLibraryPage!");
+            }
+        }
+        
         PopupContainerWithArrow.dismissInvalidPopup(launcher)
         if (
             hadWorkApps != launcher.appsView.shouldShowTabs() &&
@@ -281,7 +297,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
             launcher.workspace.getScreenWithId(WorkspaceLayoutManager.FIRST_SCREEN_ID)
         val spanX = InvariantDeviceProfile.INSTANCE.get(launcher).numSearchContainerColumns
 
-        if (cl?.isRegionVacant(0, 0, spanX, 1) != true) {
+        if (cl?.shortcutsAndWidgets?.childCount ?: 0 > 0) {
             return
         }
 
@@ -328,6 +344,9 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
             launcher.workspace.addExtraEmptyScreens()
         }
         bindAddScreens(orderedScreenIds)
+
+        // Inject the App Library as the absolute last page after all DB screens are bound
+        launcher.workspace.bindAndInitAppLibraryScreen()
 
         // After we have added all the screens, if the wallpaper was locked to the default state,
         // then notify to indicate that it can be released and a proper wallpaper offset can be

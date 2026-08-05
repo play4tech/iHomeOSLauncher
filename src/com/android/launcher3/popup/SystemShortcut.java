@@ -340,31 +340,16 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
                 if (originalView == null) {
                     return null;
                 }
-                if (!foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-                    if (!Flags.enablePrivateSpace()) {
-                        return null;
-                    }
-                    if (!UserCache.INSTANCE.get(originalView.getContext()).getUserInfo(
-                            itemInfo.user).isPrivate()) {
-                        // If app is not Private Space app.
-                        return null;
-                    }
-                }
                 ComponentName cn = SecondaryDropTarget.getUninstallTarget(originalView.getContext(),
                         itemInfo);
-                if (cn == null) {
-                    // If component name is null, don't show uninstall shortcut.
-                    // System apps will have component name as null.
-                    return null;
-                }
                 return new UninstallApp(activityContext, itemInfo, originalView, cn);
             };
 
     private static class UninstallApp<T extends ActivityContext> extends SystemShortcut<T> {
-        @NonNull ComponentName mComponentName;
+        @Nullable ComponentName mComponentName;
 
         UninstallApp(T target, ItemInfo itemInfo, @NonNull View originalView,
-                @NonNull ComponentName cn) {
+                @Nullable ComponentName cn) {
             super(R.drawable.ic_uninstall_no_shadow, R.string.uninstall_drop_target_label, target,
                     itemInfo, originalView);
             mComponentName = cn;
@@ -374,12 +359,10 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
         @Override
         public void setIconAndLabelFor(View iconView, TextView labelView) {
             super.setIconAndLabelFor(iconView, labelView);
-            if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-                int red = android.graphics.Color.parseColor("#FF3B30"); // iOS destructive red
-                labelView.setTextColor(red);
-                if (iconView instanceof ImageView) {
-                    ((ImageView) iconView).setColorFilter(red, android.graphics.PorterDuff.Mode.SRC_IN);
-                }
+            int red = android.graphics.Color.parseColor("#FF3B30"); // iOS destructive red
+            labelView.setTextColor(red);
+            if (iconView instanceof ImageView) {
+                ((ImageView) iconView).setColorFilter(red, android.graphics.PorterDuff.Mode.SRC_IN);
             }
         }
 

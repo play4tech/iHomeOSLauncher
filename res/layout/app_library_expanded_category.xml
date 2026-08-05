@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="false">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="false">
+
+        <!-- Heavy blur full screen background — covers entire window -->
+        <com.android.launcher3.applibrary.view.AppLibraryOverlayGlassView
+            android:id="@+id/app_library_overlay_glass"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fitsSystemWindows="false" />
+
+        <!-- Content overlay — centred vertically like iOS reference -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:paddingTop="120dp"
+            android:paddingBottom="80dp"
+            android:fitsSystemWindows="false">
+
+            <!-- Spacer to push content to bottom -->
+            <Space
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <!-- Category Title -->
+            <TextView
+                android:id="@+id/expanded_category_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="24dp"
+                android:paddingBottom="16dp"
+                android:textColor="#FFFFFF"
+                android:textSize="34sp"
+                android:textStyle="bold"
+                android:fontFamily="sans-serif-medium" />
+
+            <!-- Grid of apps -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/expanded_category_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="16dp"
+                android:clipToPadding="false" />
+
+        </LinearLayout>
+    </FrameLayout>
+</com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView>

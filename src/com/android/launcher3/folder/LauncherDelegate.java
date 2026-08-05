@@ -86,6 +86,9 @@ public class LauncherDelegate {
             public void run() {
                 int itemCount = folder.getItemCount();
                 FolderInfo info = folder.mInfo;
+                android.util.Log.d("ICON_TRACE", "replaceFolderWithFinalItem folder=" + info.id
+                        + " itemCount=" + itemCount
+                        + " container=" + info.container + " screenId=" + info.screenId);
                 if (itemCount <= 1) {
                     View newIcon = null;
                     WorkspaceItemInfo finalItem = null;
@@ -119,10 +122,6 @@ public class LauncherDelegate {
 
                         // Focus the newly created child
                         newIcon.requestFocus();
-
-                        if (mLauncher.getWorkspace().isWobbling()) {
-                            mLauncher.getWorkspace().wobbleLayouts(true);
-                        }
                     }
                     if (finalItem != null) {
                         StatsLogger logger = mLauncher.getStatsLogManager().logger()

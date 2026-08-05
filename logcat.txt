@@ -1,0 +1,493 @@
+--------- beginning of main
+07-21 17:53:38.854 32077 32077 I Finsky:background: [2] Memory trim requested to level 40
+07-21 17:53:38.859 32077 32077 I Finsky:background: [2] Memory trim requested to level 40
+07-21 17:53:38.868 32077 32077 I Finsky:background: [2] Memory trim requested to level 40
+07-21 17:53:38.868 32077 32077 I Finsky:background: [2] Memory trim requested to level 40
+07-21 17:53:38.892 32077 32077 I Finsky:background: [2] akle - Received: android.intent.action.PACKAGE_REMOVED, [vJRUyR-H8XC10B-mZFd4jG-svRIvuhioDdzoeWj7T_k]
+--------- beginning of system
+07-21 17:53:39.329   568   568 W Looper  : Slow dispatch took 215ms main app=system_server main=true group=FOREGROUND h=com.android.server.alarm.AlarmManagerService$AlarmHandler c=null m=11
+07-21 17:53:39.472   568   568 W AlarmManager: Package foundation.e.blisslauncher, uid 10247 lost permission to set exact alarms!
+07-21 17:53:39.473 32077 32077 I Finsky:background: [2] akle - Received: android.intent.action.PACKAGE_ADDED, [vJRUyR-H8XC10B-mZFd4jG-svRIvuhioDdzoeWj7T_k]
+07-21 17:53:39.487  1329  1329 W MediaProvider: WorkProfileOwnerApps cache is empty
+07-21 17:53:39.497 32003 32003 I Finsky  : [2] aklo - Received: android.intent.action.PACKAGE_ADDED, [vJRUyR-H8XC10B-mZFd4jG-svRIvuhioDdzoeWj7T_k]
+07-21 17:53:39.504   568   568 W Looper  : Slow dispatch took 124ms main app=system_server main=true group=FOREGROUND h=com.android.server.alarm.AlarmManagerService$AlarmHandler c=null m=13
+07-21 17:53:39.525  1364  1364 I ffji    : (REDACTED) O received %s
+07-21 17:53:39.614 32003 32003 I Finsky  : [2] aklo - Deduping intent android.intent.action.PACKAGE_ADDED
+07-21 17:53:39.652   568   568 W Looper  : Slow dispatch took 104ms main app=system_server main=true group=FOREGROUND h=android.os.Handler c=com.android.server.telecom.DefaultDialerCache$1$$ExternalSyntheticLambda0@af82967 m=0
+07-21 17:53:39.683  1329  1329 D PickerSyncLockManager: Trying to acquire lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@fe710a8[Unlocked]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+07-21 17:53:39.687  1329  1329 D CloseableReentrantLock: Successfully acquired lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@fe710a8[Locked by thread main]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+07-21 17:53:39.736  1329  1329 D CloseableReentrantLock: Successfully released lock com.android.providers.media.photopicker.sync.CloseableReentrantLock@fe710a8[Unlocked]. Lock Name = CLOUD_PROVIDER_LOCK. Threads that may be waiting to acquire this lock = []
+07-21 17:53:39.819 32077 32077 I Finsky:background: [2] akle - Received: android.intent.action.PACKAGE_ADDED, [vJRUyR-H8XC10B-mZFd4jG-svRIvuhioDdzoeWj7T_k]
+07-21 17:53:39.828 32003 32003 I Finsky  : [2] aklo - Received: android.intent.action.PACKAGE_ADDED, [vJRUyR-H8XC10B-mZFd4jG-svRIvuhioDdzoeWj7T_k]
+07-21 17:53:39.832   568   568 W Looper  : Slow dispatch took 131ms main app=system_server main=true group=FOREGROUND h=android.os.Handler c=<recycled PooledLambda@28b49> m=0
+07-21 17:53:39.911 32003 32003 I Finsky  : [2] aklo - Deduping intent android.intent.action.PACKAGE_ADDED
+07-21 17:53:39.917 32077 32077 I Finsky:background: [2] akle - Deduping intent android.intent.action.PACKAGE_ADDED
+07-21 17:53:39.930   568   568 W Looper  : Drained
+07-21 17:53:39.935 32003 32022 I Finsky  : [83] RECEIVER_PACKAGE_MONITOR#logWorkEndAndFinishGoAsync: SUCCESS
+07-21 17:53:40.043   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:40.071   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:40.071   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:40.098   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:40.211 32077 32077 I Finsky:background: [2] akle - Received: android.intent.action.PACKAGE_ADDED, [vJRUyR-H8XC10B-mZFd4jG-svRIvuhioDdzoeWj7T_k]
+07-21 17:53:40.295   568   622 V GrammaticalInflectionUtils: AttributionSource: android.content.AttributionSource@c30b4afb does not have READ_SYSTEM_GRAMMATICAL_GENDER permission.
+07-21 17:53:40.300 32077 32172 I Finsky:background: [89] IQ:PSL: skipping onPackageRemoved(replacing=true) for untracked package=foundation.e.blisslauncher
+07-21 17:53:40.362   568   622 W ActivityManager: Slow operation: 81ms so far, now at startProcess: done starting proc!
+07-21 17:53:40.413   568   632 W ActivityManager: Slow operation: 117ms so far, now at startProcess: asking zygote to start proc
+07-21 17:53:40.504 32077 32077 I Finsky:background: [2] akle - Deduping intent android.intent.action.PACKAGE_ADDED
+07-21 17:53:40.546   568   622 W ProcessStats: Tracking association SourceState{bf11e32 com.google.android.apps.nexuslauncher/10177 BTop #132830} whose proc state 2 is better than process ProcessState{e725915 com.google.android.apps.wellbeing/10145 pkg=com.google.android.apps.wellbeing} proc state 14 (0 skipped)
+07-21 17:53:40.588 32077 32174 I Finsky:background: [91] RECEIVER_PACKAGE_MONITOR_BACKGROUND#logWorkEndAndFinishGoAsync: SUCCESS
+07-21 17:53:41.015   568   619 W Looper  : Slow dispatch took 109ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.location.injector.SystemAppForegroundHelper$$ExternalSyntheticLambda1@453f6b m=0
+07-21 17:53:41.516   364   364 D Zygote  : Forked child process 354
+07-21 17:53:41.645   568   632 W ActivityManager: Slow operation: 1348ms so far, now at startProcess: returned from zygote!
+07-21 17:53:42.027   354   354 I e.blisslauncher: Late-enabling -Xcheck:jni
+07-21 17:53:42.039   354   354 W e.blisslauncher: Suspending all threads took: 9.030ms
+07-21 17:53:42.456 32003 32030 I Finsky  : [91] WM::SCH: Logging work initialize for 12-1
+07-21 17:53:42.623 32077   345 I SQLiteConnection: Long db operation: /data/user/0/com.android.vending/databases/frosting.db
+07-21 17:53:42.642 32077   345 I SQLiteConnection: Long db operation: /data/user/0/com.android.vending/databases/frosting.db
+07-21 17:53:42.643 32077   345 I Finsky:background: [136] Wrote row to frosting DB: 2544
+07-21 17:53:42.687 32003 32030 I Finsky  : [91] WM::SCH: Logging work initialize for 12-1
+07-21 17:53:42.807 32077   345 I Finsky:background: [136] Wrote row to frosting DB: 2545
+07-21 17:53:42.920 32003 32035 I Finsky  : [94] SCH: Scheduling phonesky job Id: 12-1, CT: 1784636614600, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+07-21 17:53:42.947 32077   345 I Finsky:background: [136] Wrote row to frosting DB: 2546
+07-21 17:53:43.132 32077   345 I Finsky:background: [136] Wrote row to frosting DB: 2547
+07-21 17:53:43.164 32003 32072 I Finsky  : [97] SCH: Scheduling 1 system job(s)
+07-21 17:53:43.204 32003 32072 I Finsky  : [97] SCH: Scheduling system job Id: 9968, L: 6436, D: 56248689, C: false, I: false, N: 1
+07-21 17:53:43.264 32077   345 I Finsky:background: [136] Wrote row to frosting DB: 2548
+07-21 17:53:43.360 32077   345 I Finsky:background: [136] Wrote row to frosting DB: 2549
+07-21 17:53:43.374   568  2170 W SignedPackage: Package doesn't have required signing certificate: com.google.android.retaildemo
+07-21 17:53:43.602   568  2170 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms.supervision, role: android.app.role.SYSTEM_SUPERVISION
+07-21 17:53:43.626   568   622 W BLASTSyncEngine: Sync group 2169 timeout
+07-21 17:53:43.627   568   622 I BLASTSyncEngine: Unfinished container: ActivityRecord{212125733 u0 foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher t1464}
+07-21 17:53:43.627   568   622 I BLASTSyncEngine: Unfinished container: Task{5932923 #1464 type=standard I=foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher}
+07-21 17:53:43.706   568   632 W ActivityManager: Slow operation: 3410ms so far, now at startProcess: done updating battery stats
+07-21 17:53:43.719   568   632 W ActivityManager: Slow operation: 3423ms so far, now at startProcess: building log message
+07-21 17:53:43.740   568   632 I ActivityManager: Start proc 354:foundation.e.blisslauncher/u0a247 for top-activity {foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher}
+07-21 17:53:43.740   568   632 W ActivityManager: Slow operation: 3444ms so far, now at startProcess: starting to update pids map
+07-21 17:53:43.797   354   354 I e.blisslauncher: Using CollectorTypeCMC GC.
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: <DWB> Call failed: get_actions
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: java.util.concurrent.TimeoutException: Waited 5000 milliseconds (plus 134 milliseconds, 546461 nanoseconds delay) for orl@d18fd1d[status=PENDING, info=[inputFuture=[ork@230cb92[status=PENDING, setFuture=[oqr@1b95963[status=PENDING, info=[inputFuture=[orl@ab96960[status=PENDING, info=[inputFuture=[orl@f4d4e19[status=PENDING, info=[inputFuture=[osh@20c0ede[status=PENDING, info=[futures=[orl@95e28bf[status=PENDING, info=[inputFuture=[orl@3bbb8c[status=PENDING, info=[inputFuture=[oth@6dbb2d5[status=PENDING, info=[delegate=[oun@1c63aea[status=PENDING, setFuture=[orl@25691db[status=PENDING, info=[inputFuture=[ork@9af0478[status=PENDING, info=[inputFuture=[oth@fb1a751[status=PENDING, info=[delegate=[oun@9451bb6[status=PENDING, setFuture=[ork@5a270b7[status=PENDING, info=[function=[propagating=[emn@90bf024]]]]]]]]]], function=[propagating=[edz@d18678d]]]]], function=[propagating=[eeb@6ff3d42]]]]]]]]]], function=[propagating=[edm@2636153]]]]], function=[propagating=[fgp@529ea90]]]]]]]], function=[propagating=[fgo@3b0ef89]]]]], function=[propagating=[eba@847eb8e]]]]], exceptionType=[class java.lang.Throwable], fallback=[propagating=[eeb@e38bfaf]]]]]]], function=[propagating=[eba@8eb1fbc]]]]
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at ori.t(PG:370)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at ora.get(PG:6)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at osz.get(PG:10)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at com.google.android.apps.wellbeing.api.impl.WellbeingSettingsProvider.i(PG:9)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at com.google.android.apps.wellbeing.api.impl.WellbeingSettingsProvider.call(PG:150)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at android.content.ContentProvider.call(ContentProvider.java:2709)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at android.content.ContentProvider$Transport.call(ContentProvider.java:638)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at android.content.ContentProviderNative.onTransact(ContentProviderNative.java:307)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at android.os.Binder.execTransactInternal(Binder.java:1414)
+07-21 17:53:43.861 32308 32547 W WellbeingSettingsProvid: 	at android.os.Binder.execTransact(Binder.java:1353)
+07-21 17:53:43.880 19713 19794 I PhenotypeProcessReaper: Memory state is: 200
+07-21 17:53:43.908   440   458 I adbd    : jdwp connection from 354
+07-21 17:53:44.165   568   619 V WindowManager: Sent Transition (#2169) createdAt=07-21 17:53:36.915 via request=TransitionRequestInfo { type = OPEN, triggerTask = TaskInfo{userId=0 taskId=1464 effectiveUid=10247 displayId=0 isRunning=true baseIntent=Intent { flg=0x10000000 cmp=foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher } baseActivity=ComponentInfo{foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher} topActivity=ComponentInfo{foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher} origActivity=null realActivity=ComponentInfo{foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher} numActivities=1 lastActiveTime=216561741 supportsMultiWindow=true resizeMode=2 isResizeable=true minWidth=-1 minHeight=-1 defaultMinSize=220 token=WCT{RemoteToken{5cef06a Task{5932923 #1464 type=standard I=foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher}}} topActivityType=1 pictureInPictureParams=null shouldDockBigOverlays=false launchIntoPipHostTaskId=-1 lastParentTaskIdBeforePip=-1 displayCutoutSafeInsets=Rect(0, 0 - 0, 0) topActivityInfo=ActivityInfo{258d95b com.android.launcher3.uioverrides.QuickstepLauncher} launchCookies=[] positionInParent=Point(0, 0) parentTaskId=-1 isFocused=false isVisible=false isVisibleRequested=true isTopActivityNoDisplay=false isSleeping=false locusId=null displayAreaFeatureId=1 isTopActivityTransparent=false isActivityStackTransparent=false lastNonFullscreenBounds=Rect(284, 660 - 796, 1740) capturedLink=null capturedLinkTimestamp=0 requestedVisibleTypes=-9 topActivityRequestOpenInBrowserEducationTimestamp=0 appCompatTaskInfo=AppCompatTaskInfo { topActivityInSizeCompat=false eligibleForLetterboxEducation= false isLetterboxEducationEnabled= true isLetterboxDoubleTapEnabled= false eligibleForUserAspectRatioButton= false topActivityBoundsLetterboxed= false isFromLetterboxDoubleTap= false topActivityLetterboxVerticalPosition= -1 topActivityLetterboxHorizontalPosition= -1 topActivityLetterboxWidth=-1 topActivityLetterboxHeight=-1 topActivityAppBounds=Rect(0, 0 - 1080, 2400) isUserFullscreenOverrideEnabled=false isSystemFullscreenOverrideEnabled=false hasMinAspectRatioOverride=false topActivityLetterboxBounds=null cameraCompatTaskInfo=CameraCompatTaskInfo { freeformCameraCompatMode=inactive}} topActivityMainWindowFrame=null}, pipChange = null, remoteTransition = null, displayChange = null, flags = 0, debugId = 2169 }
+07-21 17:53:44.268   568   632 W ActivityManager: Slow operation: 3907ms so far, now at startProcess: done updating pids map
+07-21 17:53:44.276   568   619 V WindowManager:     startWCT=WindowContainerTransaction { changes= {} hops= [] errorCallbackToken=null taskFragmentOrganizer=null }
+07-21 17:53:44.333 32077 32077 I Finsky:background: [2] Memory trim requested to level 40
+07-21 17:53:44.402   354   354 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+07-21 17:53:44.386   568   619 V WindowManager:     info={id=2169 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+07-21 17:53:44.386   568   619 V WindowManager:         {WCT{RemoteToken{5cef06a Task{5932923 #1464 type=standard I=foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher}}} m=OPEN f=NONE leash=Surface(name=Task=1464)/@0xf41150c sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+07-21 17:53:44.386   568   619 V WindowManager:         {WCT{RemoteToken{c1c3c0 Task{9ac8592 #1146 type=home}}} m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1146)/@0x76890f9 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+07-21 17:53:44.386   568   619 V WindowManager:         {m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{6b013f showWhenLocked=false})/@0x88731b3 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+07-21 17:53:44.386   568   619 V WindowManager:     ]}
+07-21 17:53:44.419   568   619 W Looper  : Slow dispatch took 255ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.TransitionController$Logger@ea3fad1 m=0
+07-21 17:53:44.500 31973 31973 I SafetyLabelChangedBroadcastReceiver: received broadcast packageName: foundation.e.blisslauncher, current user: UserHandle{0}, packageChangeEvent: UPDATE, intent user: UserHandle{0}
+07-21 17:53:44.716   568   701 I InputDispatcher: No new touched window at (800.0, 1000.0) in display 0
+07-21 17:53:44.879   568   568 W Looper  : Slow dispatch took 287ms main app=system_server main=true group=FOREGROUND h=android.app.ActivityThread$H c=android.app.LoadedApk$ServiceDispatcher$RunConnection@441b037 m=0
+07-21 17:53:45.139   568   568 W Looper  : Slow dispatch took 189ms main app=system_server main=true group=FOREGROUND h=com.android.server.power.Notifier$NotifierHandler c=null m=1
+07-21 17:53:45.143   568   568 W Looper  : Slow delivery took 403ms main app=system_server main=true group=FOREGROUND h=com.android.server.power.Notifier$NotifierHandler c=null m=7
+07-21 17:53:45.638   568  2170 W SignedPackage: Package doesn't have required signing certificate: com.google.android.apps.work.clouddpc
+07-21 17:53:45.683  9093  9105 V WindowManagerShell: onTransitionReady(transaction=2439541488273)
+07-21 17:53:45.691   568 31227 V Configuration: Updating configuration, locales updated from [] to [en_US]
+07-21 17:53:45.910  9093  9110 V WindowManagerShell: onTransitionReady (#2169) android.os.BinderProxy@eb759cf: {id=2169 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[
+07-21 17:53:45.910  9093  9110 V WindowManagerShell:         {m=OPEN f=NONE leash=Surface(name=Task=1464)/@0xeadab3a sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+07-21 17:53:45.910  9093  9110 V WindowManagerShell:         {m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1146)/@0x2f9c3eb sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},
+07-21 17:53:45.910  9093  9110 V WindowManagerShell:         {m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{6b013f showWhenLocked=false})/@0xcc3548 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}
+07-21 17:53:45.910  9093  9110 V WindowManagerShell:     ]}
+07-21 17:53:45.955   966   970 I m.android.phone: Background concurrent mark compact GC freed 4426KB AllocSpace bytes, 0(0B) LOS objects, 49% free, 4450KB/8901KB, paused 46.942ms,63.896ms total 11.881s
+07-21 17:53:46.022   568 31227 V Configuration: Updating configuration, locales updated from [] to [en_US]
+07-21 17:53:46.022   568 31227 V Configuration: Updating configuration, locales updated from [] to [en_US]
+07-21 17:53:46.022   568 31227 V Configuration: Updating configuration, locales updated from [] to [en_US]
+07-21 17:53:46.022   568 31227 V Configuration: Updating configuration, locales updated from [] to [en_US]
+07-21 17:53:46.023   568 31227 D IntervalStats: Unable to parse usage stats packages: [231, 232, 239]
+07-21 17:53:46.087   568  1845 W ActivityManager: Slow operation: 655ms so far, now at attachApplicationLocked: before bindApplication
+07-21 17:53:46.145   568  1845 W ActivityManager: Slow operation: 713ms so far, now at attachApplicationLocked: immediately before bindApplication
+07-21 17:53:46.147  9093  9110 V WindowManagerShell: Playing animation for (#2169) android.os.BinderProxy@eb759cf@0
+07-21 17:53:46.216  9093  9110 V ShellRecents: RecentsTransitionHandler.startAnimation: no controller found
+07-21 17:53:46.279  9093  9110 V WindowManagerShell: Transition doesn't have explicit remote, search filters for match for {id=2169 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=OPEN f=NONE leash=Surface(name=Task=1464)/@0xeadab3a sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1146)/@0x2f9c3eb sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{6b013f showWhenLocked=false})/@0xcc3548 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}]}
+07-21 17:53:46.402  9093  9110 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=undefined independent=true modes=[CLOSE,TO_BACK] flags=IN_TASK_WITH_EMBEDDED_ACTIVITY mustBeTask=false order=ANY topActivity=null launchCookie=null taskFragmentToken=android.os.BinderProxy@68546a9 windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@1fcc42e, appThread = android.app.IApplicationThread$Stub$Proxy@5f9bbcf, debugName = overlayBackTransition }}
+07-21 17:53:46.402  9093  9110 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x0 checks=[{atype=dream independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{atype=home independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@3a8395c, appThread = android.app.IApplicationThread$Stub$Proxy@942a465, debugName = LauncherToDream }}
+07-21 17:53:46.402  9093  9110 V WindowManagerShell:  Checking filter Pair{{types=[] flags=0x0] notFlags=0x100 checks=[{atype=home independent=true modes=[OPEN,TO_FRONT] flags=NONE mustBeTask=false order=TOP topActivity=ComponentInfo{com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity} launchCookie=null windowingMode=undefined},{atype=standard independent=true modes=[CLOSE,TO_BACK] flags=NONE mustBeTask=false order=ANY topActivity=null launchCookie=null windowingMode=undefined},{NOT atype=undefined independent=true modes=[] flags=NONE mustBeTask=true order=ANY topActivity=null launchCookie=null customAnim=true windowingMode=undefined}]} RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@a94f53a, appThread = android.app.IApplicationThread$Stub$Proxy@90045eb, debugName = QuickstepLaunchHome }}
+07-21 17:53:46.402  9093  9110 V WindowManagerShell:  Delegate animation for (#2169) to null
+07-21 17:53:46.567  9093  9110 V WindowManagerShell: start default transition animation, info = {id=2169 t=OPEN f=0x0 trk=0 r=[0@Point(0, 0)] c=[{m=OPEN f=NONE leash=Surface(name=Task=1464)/@0xeadab3a sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=SHOW_WALLPAPER leash=Surface(name=Task=1146)/@0x2f9c3eb sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0 taskParent=-1},{m=TO_BACK f=IS_WALLPAPER leash=Surface(name=WallpaperWindowToken{6b013f showWhenLocked=false})/@0xcc3548 sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) epz=Point(1080, 2400) d=0}]}
+07-21 17:53:46.577   432   627 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+07-21 17:53:46.789  1364  1364 I ffji    : (REDACTED) O received %s
+07-21 17:53:46.799 31804 31814 W ndroid.keychain: Suspending all threads took: 13.681ms
+07-21 17:53:47.031   568  1630 V WindowManager: Queueing transition: TransitionRecord{87718d3 id=-1 type=CLOSE flags=0x0 overrideAnimOptions=null}
+07-21 17:53:47.031  9093  9110 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@2aeb3c7 animAttr=0x13 type=OPEN isEntrance=false
+07-21 17:53:47.061   568  1845 W ActivityManager: Slow operation: 1629ms so far, now at attachApplicationLocked: immediately after bindApplication
+07-21 17:53:47.083   568  1845 W ActivityManager: Slow operation: 1651ms so far, now at attachApplicationLocked: after updateLruProcessLocked
+07-21 17:53:47.334   568   687 W JobServiceContext: Timed out while trying to bind for 4a7eaad {androidx.work.systemjobscheduler} #u0a165/292 @androidx.work.systemjobscheduler@com.google.android.apps.youtube.music/androidx.work.impl.background.systemjob.SystemJobService
+07-21 17:53:47.491   568  1845 W ActivityManager: Slow operation: 2059ms so far, now at attachApplicationLocked: after updateOomAdjLocked
+07-21 17:53:47.571   568   568 W Looper  : Drained
+07-21 17:53:47.601   568   622 W ActivityTaskManager: Launch timeout has expired, giving up wake lock!
+07-21 17:53:47.625  1364  1364 I ffji    : (REDACTED) O received %s
+07-21 17:53:48.003  9093  9110 V WindowManagerShell: loadAnimation: anim=android.view.animation.AnimationSet@7d8c563 animAttr=0x12 type=OPEN isEntrance=true
+07-21 17:53:48.526   568   701 I InputDispatcher: No new touched window at (800.0, 1000.0) in display 0
+07-21 17:53:48.552   568   568 W Looper  : Slow delivery took 275ms main app=system_server main=true group=FOREGROUND h=com.android.server.power.Notifier$NotifierHandler c=null m=7
+07-21 17:53:48.610  9093  9110 V WindowManagerShell:  animated by com.android.wm.shell.transition.DefaultTransitionHandler@782d6b4
+07-21 17:53:48.639   568   568 W Looper  : Drained
+07-21 17:53:48.737  9093  9110 V WindowManagerShell: Transition requested (#2170): android.os.BinderProxy@1026560 TransitionRequestInfo { type = OPEN, triggerTask = null, pipChange = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@1289a19, appThread = null, debugName = TaskFragmentComponent }, displayChange = null, flags = 0, debugId = 2170 }
+07-21 17:53:49.013  9093  9110 V WindowManagerShell: RemoteTransition directly requested for (#2170) android.os.BinderProxy@1026560: RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@1289a19, appThread = null, debugName = TaskFragmentComponent }
+07-21 17:53:49.211   354   354 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+07-21 17:53:49.231   354   354 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+07-21 17:53:49.492  9093  9105 V WindowManagerShell: onTransitionReady(transaction=2439541488280)
+07-21 17:53:49.533   568   620 W Looper  : Slow dispatch took 111ms android.ui app=system_server main=false group=TOP_APP h=com.android.server.wm.DisplayPolicy$PolicyHandler c=com.android.server.wm.DisplayPolicy$2$$ExternalSyntheticLambda0@eb9d93c m=0
+07-21 17:53:50.385   354   354 D nativeloader: Configuring clns-7 for other apk /data/app/~~rjpg0n_hd2nC3akpJgvA4w==/foundation.e.blisslauncher-V2sHXGKVzi6uvyzsevXN2w==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~rjpg0n_hd2nC3akpJgvA4w==/foundation.e.blisslauncher-V2sHXGKVzi6uvyzsevXN2w==/lib/arm64:/data/app/~~rjpg0n_hd2nC3akpJgvA4w==/foundation.e.blisslauncher-V2sHXGKVzi6uvyzsevXN2w==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/foundation.e.blisslauncher
+07-21 17:53:50.420  9093  9110 V WindowManagerShell: onTransitionReady (#2170) android.os.BinderProxy@1026560: {id=2170 t=OPEN f=0x0 trk=0 r=[] c=[]}
+07-21 17:53:50.423  9093  9110 V WindowManagerShell: No transition roots in (#2170) android.os.BinderProxy@1026560@0 so abort
+07-21 17:53:50.551  9093  9115 I Choreographer: Skipped 50 frames!  The application may be doing too much work on its main thread.
+07-21 17:53:50.570  9093  9110 V WindowManagerShell: Transition was merged: (#2170) android.os.BinderProxy@1026560@0 into (#2169) android.os.BinderProxy@eb759cf@0
+07-21 17:53:50.572  9093  9110 V WindowManagerShell: Transition animation finished (aborted=false), notifying core (#2169) android.os.BinderProxy@eb759cf@0
+07-21 17:53:50.672   354   354 I e.blisslauncher: AssetManager2(0xb40000729e718238) locale list changing from [] to [en-US]
+07-21 17:53:50.830   432   500 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+07-21 17:53:50.854   568   619 V WindowManager: Sent Transition (#2170) createdAt=07-21 17:53:45.735 via request=TransitionRequestInfo { type = OPEN, triggerTask = null, pipChange = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@e3ecf4b, appThread = null, debugName = TaskFragmentComponent }, displayChange = null, flags = 0, debugId = 2170 }
+07-21 17:53:50.855   568   619 V WindowManager:     startWCT=WindowContainerTransaction { changes= {} hops= [] errorCallbackToken=null taskFragmentOrganizer=null }
+07-21 17:53:50.855   568   619 V WindowManager:     info={id=2170 t=OPEN f=0x0 trk=0 r=[] c=[]}
+07-21 17:53:50.855   568   619 W Looper  : Slow dispatch took 1288ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.TransitionController$Logger@2e94d28 m=0
+07-21 17:53:50.887   568   622 W OptProp : Cannot read opt property android.window.PROPERTY_COMPAT_ENABLE_FAKE_FOCUS
+07-21 17:53:51.071   354   354 V GraphicsEnvironment: Currently set values for:
+07-21 17:53:51.085   354   354 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+07-21 17:53:51.090   354   354 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+07-21 17:53:51.090   354   354 V GraphicsEnvironment: foundation.e.blisslauncher is not listed in per-application setting
+07-21 17:53:51.092   354   354 V GraphicsEnvironment: ANGLE allowlist from config: 
+07-21 17:53:51.092   354   354 V GraphicsEnvironment: foundation.e.blisslauncher is not listed in ANGLE allowlist or settings, returning default
+07-21 17:53:51.093   354   354 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+07-21 17:53:51.156 15888 15888 D VRI[NexusLauncherActivity]: visibilityChanged oldVisibility=true newVisibility=false
+07-21 17:53:51.253 15888 15888 D NexusLauncherModelDelegate: notifySmartspaceEvent: SmartspaceTargetEvent{mSmartspaceTarget=null, mSmartspaceActionId='null', mEventType=7}
+07-21 17:53:51.264   568   619 V WindowManager: Finish Transition (#2169): created at 07-21 17:53:36.915 collect-started=0.305ms request-sent=720.222ms started=948.977ms ready=-2.16561037265E8ms sent=7218.432ms commit=4273.737ms finished=14212.104ms
+07-21 17:53:51.351  9093  9110 V WindowManagerShell: Track 0 became idle
+07-21 17:53:51.351  9093  9110 V WindowManagerShell: All active transition animations finished
+07-21 17:53:51.555  9093  9110 V WindowManagerShell: Transition requested (#2171): android.os.BinderProxy@818778c TransitionRequestInfo { type = CLOSE, triggerTask = null, pipChange = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@91fbed5, appThread = null, debugName = TaskFragmentComponent }, displayChange = null, flags = 0, debugId = 2171 }
+07-21 17:53:51.559  9093  9110 V WindowManagerShell: RemoteTransition directly requested for (#2171) android.os.BinderProxy@818778c: RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@91fbed5, appThread = null, debugName = TaskFragmentComponent }
+07-21 17:53:51.672   568   619 W Looper  : Slow dispatch took 409ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.Transition$$ExternalSyntheticLambda5@7291527 m=0
+07-21 17:53:51.681 15888 15888 D TaskFragmentComponent: finishTransitionToFragment transition didn't complete within timeout
+07-21 17:53:51.761 32744 32744 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/org.apache.http.legacy.jar
+07-21 17:53:51.839   432   432 I BpBinder: onLastStrongRef automatically unlinking death recipients: 
+07-21 17:53:51.859   568   619 V WindowManager: Finish Transition (#2170): created at 07-21 17:53:45.735 collect-started=0.697ms request-sent=580.833ms started=3372.111ms ready=3371.417ms sent=3721.221ms commit=1330.816ms finished=5584.508ms
+07-21 17:53:51.976   354   354 D Sentry  : io.sentry.auto-init read: false
+07-21 17:53:51.983   354   354 I Sentry  : Retrieving auto-init from AndroidManifest.xml
+07-21 17:53:51.984 32744 32744 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.extensions.jar
+07-21 17:53:51.984 32744 32744 D ApplicationLoaders: Returning zygote-cached class loader: /system_ext/framework/androidx.window.sidecar.jar
+07-21 17:53:52.052  9093  9120 V WindowManagerShell: onTransitionReady(transaction=2439541488293)
+07-21 17:53:52.111 32077 32087 W ding:background: Suspending all threads took: 5.765ms
+07-21 17:53:52.219  9093  9110 V WindowManagerShell: onTransitionReady (#2171) android.os.BinderProxy@818778c: {id=2171 t=CLOSE f=0x0 trk=1 r=[] c=[]}
+07-21 17:53:52.244  1364  1814 W agsa    : (REDACTED) Timeout future task has been cancelled: %d milliseconds
+07-21 17:53:52.268  9093  9110 V WindowManagerShell: No transition roots in (#2171) android.os.BinderProxy@818778c@1 so abort
+07-21 17:53:52.299  9093  9110 V WindowManagerShell: Transition animation finished (aborted=true), notifying core (#2171) android.os.BinderProxy@818778c@1
+07-21 17:53:52.322  9093  9110 V WindowManagerShell: Track 1 became idle
+07-21 17:53:52.322  9093  9110 V WindowManagerShell: All active transition animations finished
+07-21 17:53:52.886   568   619 W Looper  : Slow delivery took 446ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.Transition$$ExternalSyntheticLambda5@26971be m=0
+07-21 17:53:52.886   568   619 W Looper  : Slow dispatch took 159ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.Transition$$ExternalSyntheticLambda5@26971be m=0
+07-21 17:53:52.888   568   619 V WindowManager: Sent Transition (#2171) createdAt=07-21 17:53:46.916 via request=TransitionRequestInfo { type = CLOSE, triggerTask = null, pipChange = null, remoteTransition = RemoteTransition { remoteTransition = android.window.IRemoteTransition$Stub$Proxy@e81821f, appThread = null, debugName = TaskFragmentComponent }, displayChange = null, flags = 0, debugId = 2171 }
+07-21 17:53:52.974   568   701 W InputDispatcher: Not sending touch gesture to 5f1941c ActivityRecordInputSink foundation.e.blisslauncher/com.android.launcher3.uioverrides.QuickstepLauncher because it has config NO_INPUT_CHANNEL
+07-21 17:53:52.987   568   619 V WindowManager:     startWCT=WindowContainerTransaction { changes= {} hops= [] errorCallbackToken=null taskFragmentOrganizer=null }
+07-21 17:53:52.987   568   619 V WindowManager:     info={id=2171 t=CLOSE f=0x0 trk=1 r=[] c=[]}
+07-21 17:53:52.987   568   619 W Looper  : Slow dispatch took 100ms android.fg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.TransitionController$Logger@5c4096c m=0
+07-21 17:53:52.988   568   619 V WindowManager: Finish Transition (#2171): created at 07-21 17:53:46.916 collect-started=2567.077ms request-sent=4190.967ms started=4903.291ms ready=4902.554ms sent=5126.189ms commit=296.662ms finished=5391.684ms
+07-21 17:53:53.066   568  1626 D ActivityManager: sync unfroze 32056 com.google.android.googlequicksearchbox:search for 6
+07-21 17:53:53.227 32308 32320 W .apps.wellbeing: Suspending all threads took: 326.788ms
+07-21 17:53:53.240 32003 32072 I Finsky  : [97] SCH: Scheduling phonesky job Id: 12-1, CT: 1784636615186, Constraints: [{ L: 15000, D: 86400000, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+07-21 17:53:53.271 32003 32028 I Finsky  : [88] [ContentSync] finished, scheduled=true
+07-21 17:53:53.335 32003   356 I SQLiteConnection: Long db operation: /data/user/0/com.android.vending/databases/work_main_dumpsys.db
+07-21 17:53:53.346 32003   356 I SQLiteConnection: Long db operation: /data/user/0/com.android.vending/databases/work_main_dumpsys.db
+07-21 17:53:53.365 32003 32035 I Finsky  : [94] SCH: Scheduling 0 system job(s)
+07-21 17:53:53.367 32003 32035 I Finsky  : [94] [ContentSync] finished, scheduled=true
+07-21 17:53:54.317 32003 32003 I Finsky  : [2] Memory trim requested to level 40
+07-21 17:53:54.347   568   687 W JobScheduler.Concurrency: Had fewer than 16 in existence
+07-21 17:53:54.352 32003 32003 I Finsky  : [2] Flushing in-memory image cache
+07-21 17:53:54.733   354   354 W InteractionJankMonitor: Initializing without READ_DEVICE_CONFIG permission. enabled=false, interval=1, missedFrameThreshold=3, frameTimeThreshold=64, package=foundation.e.blisslauncher
+07-21 17:53:54.810   568   631 I ActivityManager: Extending process start timeout by 15000ms for ProcessRecord{d3fe682 32744:com.google.android.apps.youtube.music/u0a165}
+07-21 17:53:54.990   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:55.066   568   687 W ActivityManager: Unable to start service Intent { flg=0x4 cmp=com.android.chrome/org.chromium.components.background_task_scheduler.internal.BackgroundTaskJobService } U=0: not found
+07-21 17:53:55.084   568   687 W ActivityManager: Unbind failed: could not find connection for android.app.LoadedApk$ServiceDispatcher$InnerConnection@c8e3ba5
+07-21 17:53:55.130   568   687 E JobScheduler.Concurrency: Error executing JobStatus{c8fc303 #u0a148/54 com.android.chrome/org.chromium.components.background_task_scheduler.internal.BackgroundTaskJobService u=0 s=10148 TIME=-1d16h49m55s337ms:-16h49m55s337ms PERSISTED READY}
+07-21 17:53:55.290   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:55.290   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:55.290   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:53:55.291 32056 32056 D ActivityThread: Package [foundation.e.blisslauncher] reported as REPLACED, but missing application info. Assuming REMOVED.
+07-21 17:53:55.351 32056 32056 D ActivityThread: Package [foundation.e.blisslauncher] reported as REPLACED, but missing application info. Assuming REMOVED.
+07-21 17:53:55.674   568  1626 W ActivityManager: Slow operation: 535ms so far, now at finishAttachApplicationInner: after updateOomAdjLocked
+07-21 17:53:55.783  9093  9124 W Looper  : Slow dispatch took 10740ms SysUiBg app=com.android.systemui main=false group=FOREGROUND h=android.os.Handler c=android.telephony.TelephonyCallback$IPhoneStateListenerStub$$ExternalSyntheticLambda52@c6756ea m=0
+07-21 17:53:56.092   354   354 I e.blisslauncher: AssetManager2(0xb40000729e715998) locale list changing from [] to [en-US]
+07-21 17:53:56.143 32003 32008 I android.vending: CollectorTransition concurrent mark compact GC freed 4058KB AllocSpace bytes, 6(408KB) LOS objects, 49% free, 5763KB/11MB, paused 11.879ms,60.520ms total 1.794s
+07-21 17:53:56.275  1364  1814 W agsa    : (REDACTED) Timeout future task has been cancelled: %d milliseconds
+07-21 17:53:56.543  1364  1364 E afaf    : (REDACTED) Task %s failed or timed out. Client %d disconnecting from SearchService!
+07-21 17:53:56.543  1364  1364 E afaf    : java.util.concurrent.CancellationException: Task was cancelled.
+07-21 17:53:56.543  1364  1364 E afaf    : 	at fruw.j(PG:33)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at frux.t(PG:23)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at fruw.get(PG:1)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at a.di(PG:2)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at frzf.z(PG:10)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at frxn.run(PG:23)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at agum.run(PG:3)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at android.os.Handler.handleCallback(Handler.java:995)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at android.os.Handler.dispatchMessage(Handler.java:103)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at android.os.Looper.loopOnce(Looper.java:248)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at android.os.Looper.loop(Looper.java:338)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at android.app.ActivityThread.main(ActivityThread.java:8982)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at java.lang.reflect.Method.invoke(Native Method)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+07-21 17:53:56.543  1364  1364 E afaf    : 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+07-21 17:53:56.550   568   926 D ActivityManager: sync unfroze 32038 com.google.android.gms for 6
+07-21 17:53:56.610 32003 32003 I Finsky  : [2] SCH: job service start with id 9968.
+07-21 17:53:56.815 32056 32056 I Choreographer: Skipped 105 frames!  The application may be doing too much work on its main thread.
+07-21 17:53:56.860  1364  1364 E afaf    : (REDACTED) Task %s failed or timed out. Client %d disconnecting from SearchService!
+07-21 17:53:56.860  1364  1364 E afaf    : java.util.concurrent.CancellationException: Task was cancelled.
+07-21 17:53:56.860  1364  1364 E afaf    : 	at fruw.j(PG:33)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at frux.t(PG:23)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at fruw.get(PG:1)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at a.di(PG:2)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at frzf.z(PG:10)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at frxn.run(PG:23)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at agum.run(PG:3)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at android.os.Handler.handleCallback(Handler.java:995)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at android.os.Handler.dispatchMessage(Handler.java:103)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at android.os.Looper.loopOnce(Looper.java:248)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at android.os.Looper.loop(Looper.java:338)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at android.app.ActivityThread.main(ActivityThread.java:8982)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at java.lang.reflect.Method.invoke(Native Method)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+07-21 17:53:56.860  1364  1364 E afaf    : 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+07-21 17:53:57.409   354   354 I e.blisslauncher: AssetManager2(0xb40000729e723a98) locale list changing from [] to [en-US]
+07-21 17:53:57.445   354   354 I e.blisslauncher: AssetManager2(0xb40000729e71dff8) locale list changing from [] to [en-US]
+07-21 17:53:57.450   568   619 W Looper  : Drained
+07-21 17:53:57.470   568  1626 E WindowManager: Unable to verify uid for getPossibleDisplayInfo on uid 10247
+07-21 17:53:57.592   354   354 D DesktopModeFlags: Toggle override initialized to: OVERRIDE_UNSET
+07-21 17:53:57.625 32003   322 I Finsky  : [168] SCH: Satisfied jobs for 9968 are: 12-1
+07-21 17:53:57.635   354   354 I e.blisslauncher: AssetManager2(0xb40000729e721838) locale list changing from [] to [en-US]
+07-21 17:53:57.640 32003   556 I Finsky  : [175] SCH: Job 12-1 starting
+07-21 17:53:57.643  9093  9124 W Looper  : Slow dispatch took 1214ms SysUiBg app=com.android.systemui main=false group=FOREGROUND h=android.os.Handler c=com.android.systemui.navigationbar.gestural.EdgeBackGestureHandler$$ExternalSyntheticLambda3@7777ddb m=0
+07-21 17:53:57.656 32003 32003 I Finsky  : [2] WM::SCH: Logging work start for 12-1
+07-21 17:53:57.671 32003 32003 I Finsky  : [2] [ContentSync] job started
+07-21 17:53:57.844   354   354 I DisplayController: (CTOR) perDisplayBounds: {CachedDisplayInfo{size=Point(1080, 2400), cutout=DisplayCutout{insets=Rect(0, 0 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=0 displayHeight=0 physicalDisplayWidth=0 physicalDisplayHeight=0 density={0.0} cutoutSpec={} rotation={0} scale={0.0} physicalPixelDisplaySizeRatio={0.0}}} sideOverrides=null}, rotation=0}=[WindowBounds{bounds=Rect(0, 0 - 1080, 2400), insets=Rect(0, 63 - 0, 63), availableSize=Point(1080, 2274), rotationHint=0}, WindowBounds{bounds=Rect(0, 0 - 2400, 1080), insets=Rect(0, 63 - 0, 63), availableSize=Point(2400, 954), rotationHint=1}, WindowBounds{bounds=Rect(0, 0 - 1080, 2400), insets=Rect(0, 63 - 0, 63), availableSize=Point(1080, 2274), rotationHint=2}, WindowBounds{bounds=Rect(0, 0 - 2400, 1080), insets=Rect(0, 63 - 0, 63), availableSize=Point(2400, 954), rotationHint=3}]}
+07-21 17:53:58.169   568   693 D ActivityManager: freezing 32077 com.android.vending:background
+07-21 17:53:58.188   354   354 I e.blisslauncher: AssetManager2(0xb40000729e720898) locale list changing from [] to [en-US]
+07-21 17:53:58.292   354   548 I EGL_emulation: Opening libGLESv1_CM_emulation.so
+07-21 17:53:58.297   354   548 I EGL_emulation: Opening libGLESv2_emulation.so
+07-21 17:53:58.403   354   548 W HWUI    : Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+07-21 17:53:58.405   354   548 W HWUI    : Failed to initialize 101010-2 format, error = EGL_SUCCESS
+07-21 17:53:58.500 32038 32038 D ActivityThread: Package [foundation.e.blisslauncher] reported as REPLACED, but missing application info. Assuming REMOVED.
+07-21 17:53:58.596 32038 32038 D ActivityThread: Package [foundation.e.blisslauncher] reported as REPLACED, but missing application info. Assuming REMOVED.
+07-21 17:53:58.616  1364  1814 W agsa    : (REDACTED) Timeout future task has been cancelled: %d milliseconds
+07-21 17:53:58.920  1364  1364 E afaf    : (REDACTED) Task %s failed or timed out. Client %d disconnecting from SearchService!
+07-21 17:53:58.920  1364  1364 E afaf    : java.util.concurrent.CancellationException: Task was cancelled.
+07-21 17:53:58.920  1364  1364 E afaf    : 	at fruw.j(PG:33)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at frux.t(PG:23)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at fruw.get(PG:1)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at a.di(PG:2)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at frzf.z(PG:10)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at frxn.run(PG:23)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at agum.run(PG:3)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at android.os.Handler.handleCallback(Handler.java:995)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at android.os.Handler.dispatchMessage(Handler.java:103)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at android.os.Looper.loopOnce(Looper.java:248)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at android.os.Looper.loop(Looper.java:338)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at android.app.ActivityThread.main(ActivityThread.java:8982)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at java.lang.reflect.Method.invoke(Native Method)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+07-21 17:53:58.920  1364  1364 E afaf    : 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+07-21 17:53:59.755   354   354 I e.blisslauncher: AssetManager2(0xb40000729e71f5d8) locale list changing from [] to [en-US]
+07-21 17:54:00.136 32056 32495 W agur    : (REDACTED) Task %s was queued for %dms before starting on executor %s
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: <DWB> Call failed: get_actions
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: java.util.concurrent.TimeoutException: Waited 5000 milliseconds (plus 186 milliseconds, 545086 nanoseconds delay) for orl@413efec[status=PENDING, info=[inputFuture=[ork@c1f3fb5[status=PENDING, setFuture=[oqr@9b5764a[status=PENDING, info=[inputFuture=[orl@38a19bb[status=PENDING, info=[inputFuture=[orl@7461ed8[status=PENDING, info=[inputFuture=[osh@9512231[status=PENDING, info=[futures=[orl@2dcad16[status=PENDING, info=[inputFuture=[orl@9b69697[status=PENDING, info=[inputFuture=[oth@46a5084[status=PENDING, info=[delegate=[oun@fe4b06d[status=PENDING, info=[task=[running=[NOT STARTED YET], propagating=[eec@36e84a2]]]]]]]], function=[propagating=[edm@9c40533]]]]], function=[propagating=[fgp@a7df0f0]]]]]]]], function=[propagating=[fgo@a8e669]]]]], function=[propagating=[eba@c5448ee]]]]], exceptionType=[class java.lang.Throwable], fallback=[propagating=[eeb@42fc18f]]]]]]], function=[propagating=[eba@8e92c1c]]]]
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at ori.t(PG:370)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at ora.get(PG:6)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at osz.get(PG:10)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at com.google.android.apps.wellbeing.api.impl.WellbeingSettingsProvider.i(PG:9)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at com.google.android.apps.wellbeing.api.impl.WellbeingSettingsProvider.call(PG:150)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at android.content.ContentProvider.call(ContentProvider.java:2709)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at android.content.ContentProvider$Transport.call(ContentProvider.java:638)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at android.content.ContentProviderNative.onTransact(ContentProviderNative.java:307)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at android.os.Binder.execTransactInternal(Binder.java:1414)
+07-21 17:54:00.554 32308 32547 W WellbeingSettingsProvid: 	at android.os.Binder.execTransact(Binder.java:1353)
+07-21 17:54:00.691   354   354 V Launcher: LauncherAppState initiated
+07-21 17:54:00.807 32003   561 I Finsky  : [176] App states replicator found 26 unowned apps
+07-21 17:54:00.857 32003 32055 I Finsky  : [95] Completed 0 account content syncs with 0 successful.
+07-21 17:54:00.862 32003 32003 I Finsky  : [2] [ContentSync] Installation state replication succeeded.
+07-21 17:54:00.863 32003 32003 I Finsky  : [2] SCH: jobFinished: 12-1. TimeElapsed: 3208ms.
+07-21 17:54:00.865 32003 32003 I Finsky  : [2] WM::SCH: Logging work end for 12-1
+07-21 17:54:01.104   568   622 W IPCThreadState: Sending oneway calls to frozen process.
+07-21 17:54:01.109   568   622 W IPCThreadState: Sending oneway calls to frozen process.
+07-21 17:54:01.109   568   622 W IPCThreadState: Sending oneway calls to frozen process.
+07-21 17:54:01.109   568   622 W IPCThreadState: Sending oneway calls to frozen process.
+07-21 17:54:01.109   568   622 W IPCThreadState: Sending oneway calls to frozen process.
+07-21 17:54:01.131   568   622 W ProcessStats: Tracking association SourceState{bf11e32 com.google.android.apps.nexuslauncher/10177 BFgs #132873} whose proc state 4 is better than process ProcessState{e725915 com.google.android.apps.wellbeing/10145 pkg=com.google.android.apps.wellbeing} proc state 14 (0 skipped)
+07-21 17:54:01.135 32003 32033 I Finsky  : [93] SCH: Scheduling phonesky job Id: 1-1337, CT: 1784606523194, Constraints: [{ L: 43148659, D: 86348659, C: CHARGING_NONE, I: IDLE_NONE, N: NET_ANY, B: BATTERY_ANY }]
+07-21 17:54:01.220 32003 32035 I Finsky  : [94] SCH: Scheduling 1 system job(s)
+07-21 17:54:01.221 32003 32035 I Finsky  : [94] SCH: Scheduling system job Id: 9971, L: 13030633, D: 56230633, C: false, I: false, N: 1
+07-21 17:54:01.599 15888 15888 D BaseDepthController: setSurface:
+07-21 17:54:01.599 15888 15888 D BaseDepthController: 	mWaitingOnSurfaceValidity: false
+07-21 17:54:01.599 15888 15888 D BaseDepthController: 	mSurface: null
+07-21 17:54:01.719 32003   556 I Finsky  : [175] SCH: job service finished with id 9968.
+07-21 17:54:01.721 30562   585 I ProximityAuth: [RecentAppsMediator] Package added: (user=UserHandle{0}) foundation.e.blisslauncher
+07-21 17:54:01.737 15888 15888 D BaseDepthController: mSurface is null and mCurrentBlur is: 0
+07-21 17:54:01.757 32003 32008 I android.vending: Background concurrent mark compact GC freed 5508KB AllocSpace bytes, 12(240KB) LOS objects, 49% free, 5999KB/11MB, paused 1.655ms,22.032ms total 850.071ms
+07-21 17:54:01.931   568  2170 E RoleControllerServiceImpl: Default/fallback role holder package doesn't qualify for the role, package: com.google.android.gms, role: android.app.role.WALLET
+07-21 17:54:01.964 15888 15888 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+07-21 17:54:01.964 15888 15888 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(go/retraceme 3b224f24b7011ff2b8f3ec383b256aa6cde54792fadda945a2f0c96bb78b055c:5)
+07-21 17:54:01.964 15888 15888 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(go/retraceme 3b224f24b7011ff2b8f3ec383b256aa6cde54792fadda945a2f0c96bb78b055c:2)
+07-21 17:54:01.964 15888 15888 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(go/retraceme 3b224f24b7011ff2b8f3ec383b256aa6cde54792fadda945a2f0c96bb78b055c:34)
+07-21 17:54:02.054   568   687 W JobScheduler.Concurrency: Had fewer than 16 in existence
+07-21 17:54:02.153 30562   579 I Fitness : (REDACTED) FitCleanupIntentOperation received Intent %s
+07-21 17:54:02.175   568   687 W ActivityManager: Unable to start service Intent { flg=0x4 cmp=com.android.chrome/org.chromium.components.background_task_scheduler.internal.BackgroundTaskJobService } U=0: not found
+07-21 17:54:02.176   568   687 W ActivityManager: Unbind failed: could not find connection for android.app.LoadedApk$ServiceDispatcher$InnerConnection@a1b4a65
+07-21 17:54:02.236   568   687 E JobScheduler.Concurrency: Error executing JobStatus{c8fc303 #u0a148/54 com.android.chrome/org.chromium.components.background_task_scheduler.internal.BackgroundTaskJobService u=0 s=10148 TIME=-1d16h50m2s442ms:-16h50m2s442ms PERSISTED READY}
+07-21 17:54:02.531 32038 32038 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+07-21 17:54:02.553 32003 32003 I Finsky  : [2] Memory trim requested to level 40
+07-21 17:54:02.559 32003 32003 I Finsky  : [2] Flushing in-memory image cache
+07-21 17:54:02.618 30562   585 I .gms.persistent: AssetManager2(0xb40000729e720578) locale list changing from [] to [en-US]
+07-21 17:54:02.733 15888 15888 D StatsLog: LAUNCHER_ONSTOP
+07-21 17:54:02.750   354   582 W HWUI    : Image decoding logging dropped!
+07-21 17:54:02.796   568  1446 W ActivityTaskManager: Permission Denial: registerTaskStackListener() from pid=354, uid=10247 requires android.permission.MANAGE_ACTIVITY_TASKS
+07-21 17:54:02.812  9093  9127 W Looper  : Slow dispatch took 1910ms BroadcastRunning app=com.android.systemui main=false group=FOREGROUND h=android.os.Handler c=com.android.systemui.broadcast.ActionReceiver$onReceive$1@89b8078 m=0
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: Failed to call registerTaskStackListener
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: java.lang.SecurityException: Permission Denial: registerTaskStackListener() from pid=354, uid=10247 requires android.permission.MANAGE_ACTIVITY_TASKS
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3262)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.createException(Parcel.java:3246)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.readException(Parcel.java:3229)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.readException(Parcel.java:3171)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.IActivityTaskManager$Stub$Proxy.registerTaskStackListener(IActivityTaskManager.java:3014)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.systemui.shared.system.TaskStackChangeListeners$Impl.addListener(TaskStackChangeListeners.java:169)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.systemui.shared.system.TaskStackChangeListeners.registerTaskStackListener(TaskStackChangeListeners.java:99)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsModel.<init>(RecentsModel.java:124)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsModel.<init>(RecentsModel.java:88)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsModel.<init>(RecentsModel.java:84)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsModel.$r8$lambda$6vQaiFDqIiLIBNhYUBBc0ue2kH4(Unknown Source:2)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsModel$$ExternalSyntheticLambda0.get(D8$$SyntheticClass:0)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject.lambda$get$0(MainThreadInitializedObject.java:58)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject.$r8$lambda$jeoH4EKO3m1c-S7-sJSjrbw_Ei4(Unknown Source:0)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject$$ExternalSyntheticLambda1.get(D8$$SyntheticClass:0)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.TraceHelper.allowIpcs(TraceHelper.java:92)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject.get(MainThreadInitializedObject.java:57)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.views.RecentsView.<init>(RecentsView.java:788)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.views.LauncherRecentsView.<init>(LauncherRecentsView.java:75)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.views.LauncherRecentsView.<init>(LauncherRecentsView.java:71)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at java.lang.reflect.Constructor.newInstance0(Native Method)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at java.lang.reflect.Constructor.newInstance(Constructor.java:343)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.createView(LayoutInflater.java:742)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.createViewFromTag(LayoutInflater.java:894)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.createViewFromTag(LayoutInflater.java:849)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.rInflate(LayoutInflater.java:1011)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.parseInclude(LayoutInflater.java:1115)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.rInflate(LayoutInflater.java:1007)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.rInflateChildren(LayoutInflater.java:972)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.rInflate(LayoutInflater.java:1014)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.rInflateChildren(LayoutInflater.java:972)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.inflate(LayoutInflater.java:570)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.inflate(LayoutInflater.java:462)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.view.LayoutInflater.inflate(LayoutInflater.java:413)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.statemanager.StatefulActivity.inflateRootView(StatefulActivity.java:90)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.Launcher.setupViews(Launcher.java:1420)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.uioverrides.QuickstepLauncher.setupViews(QuickstepLauncher.java:257)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.Launcher.onCreate(Launcher.java:576)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.uioverrides.QuickstepLauncher.onCreate(QuickstepLauncher.java:671)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.Activity.performCreate(Activity.java:9140)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.Activity.performCreate(Activity.java:9118)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1505)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4217)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4422)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+07-21 17:54:02.841   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2782)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.os.Looper.loopOnce(Looper.java:248)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.os.Looper.loop(Looper.java:338)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread.main(ActivityThread.java:8982)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at java.lang.reflect.Method.invoke(Native Method)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: Caused by: android.os.RemoteException: Remote stack trace:
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at com.android.server.wm.ActivityTaskManagerService.enforceTaskPermission(ActivityTaskManagerService.java:3410)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at com.android.server.wm.ActivityTaskManagerService.registerTaskStackListener(ActivityTaskManagerService.java:3177)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.app.IActivityTaskManager$Stub.onTransact(IActivityTaskManager.java:1580)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at com.android.server.wm.ActivityTaskManagerService.onTransact(ActivityTaskManagerService.java:5864)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 	at android.os.Binder.execTransactInternal(Binder.java:1414)
+07-21 17:54:02.842   354   354 W TaskStackChangeListeners: 
+07-21 17:54:02.883   354   354 D CompatChangeReporter: Compat change id reported: 376561342; UID 10247; state: ENABLED
+07-21 17:54:02.985   568   630 W Looper  : Slow dispatch took 36215ms android.bg app=system_server main=false group=FOREGROUND h=com.android.server.pinner.PinnerService$PinnerHandler c=<recycled PooledLambda@b8e8eef> m=0
+07-21 17:54:03.027 32038   593 I AppBackupStateCleanupIO: Backup state cleanup on uninstall is disabled. [CONTEXT service_id=229 ]
+07-21 17:54:03.145 32038   593 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: %b
+07-21 17:54:03.165 32038   593 I PackageInstalledIntentO: (REDACTED) Package %s is not a bank app. Skipping updates.
+07-21 17:54:03.175 32038   590 I gle.android.gms: AssetManager2(0xb40000729e71e638) locale list changing from [] to [en-US]
+07-21 17:54:03.295 15888 15888 D StatsLog: LAUNCHER_GOOGLE_SEARCH_RESTORE_LIST_SIZE_AFTER_ACTIVITY_RESTART
+07-21 17:54:03.481 32744 32744 I s.youtube.music: Waiting for a blocking GC AddRemoveAppImageSpace
+07-21 17:54:03.860  1364  1820 I basw    : (REDACTED) getHotwordActive::active query: %s, watch: %s, devices connected: %s
+07-21 17:54:03.883 32038   602 I Auth    : (REDACTED) [SupervisedAccountIntentOperation] onHandleIntent: %s
+07-21 17:54:03.938 32038   602 I FraudProtectUtils: (REDACTED) Latest bank app list size: %d, %s isBankApp: %b
+07-21 17:54:03.938 32038   602 I PackageInstalledIntentO: (REDACTED) Package %s is not a bank app. Skipping updates.
+07-21 17:54:03.941 32038   595 W AppInstallOperation: FDL Migration::InstallIntentOperation by FDL Module [CONTEXT service_id=77 ]
+07-21 17:54:03.944   568   568 W Looper  : Slow dispatch took 330ms main app=system_server main=true group=FOREGROUND h=com.android.server.power.Notifier$NotifierHandler c=com.android.server.power.Notifier$$ExternalSyntheticLambda5@22c34b7 m=0
+07-21 17:54:03.974   568   568 W Looper  : Slow delivery took 382ms main app=system_server main=true group=FOREGROUND h=android.os.Handler c=<recycled PooledLambda@e0cdac4> m=0
+07-21 17:54:04.040   568   568 W Looper  : Drained
+07-21 17:54:04.264 32038 32038 D BoundBrokerSvc: onBind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+07-21 17:54:04.294 32038 32038 D BoundBrokerSvc: Loading bound service for intent: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+07-21 17:54:04.349 32038   603 I NearbyDiscovery: (REDACTED) processGrantSlicePermission: %s
+07-21 17:54:04.356   354   354 E WidgetFragment: saved widgets added
+07-21 17:54:04.406 32744 32744 I s.youtube.music: WaitForGcToComplete blocked AddRemoveAppImageSpace on Background for 925.975ms
+07-21 17:54:04.822   568   794 D BackgroundInstallControlService: Package event received: 0
+07-21 17:54:04.853 32038   593 W SQLiteLog: (28) double-quoted string literal: "foundation.e.blisslauncher"
+07-21 17:54:04.978  9093  9127 W Looper  : Slow delivery took 2987ms BroadcastRunning app=com.android.systemui main=false group=FOREGROUND h=android.os.Handler c=com.android.systemui.broadcast.ActionReceiver$onReceive$1@2a7351 m=0
+07-21 17:54:05.071   568   630 W Looper  : Slow delivery took 36411ms android.bg app=system_server main=false group=FOREGROUND h=android.os.Handler c=com.android.server.wm.VisibleActivityProcessTracker$CpuTimeRecord@8c31e54 m=0
+07-21 17:54:05.320 32038 32288 I gle.android.gms: AssetManager2(0xb40000729e71e958) locale list changing from [] to [en-US]
+07-21 17:54:05.470   568  1631 W ActivityTaskManager: Permission Denial: registerTaskStackListener() from pid=354, uid=10247 requires android.permission.MANAGE_ACTIVITY_TASKS
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: Failed to call registerTaskStackListener
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: java.lang.SecurityException: Permission Denial: registerTaskStackListener() from pid=354, uid=10247 requires android.permission.MANAGE_ACTIVITY_TASKS
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.createExceptionOrNull(Parcel.java:3262)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.createException(Parcel.java:3246)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.readException(Parcel.java:3229)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Parcel.readException(Parcel.java:3171)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.IActivityTaskManager$Stub$Proxy.registerTaskStackListener(IActivityTaskManager.java:3014)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.systemui.shared.system.TaskStackChangeListeners$Impl.addListener(TaskStackChangeListeners.java:169)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.systemui.shared.system.TaskStackChangeListeners.registerTaskStackListener(TaskStackChangeListeners.java:99)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RotationTouchHelper.setupOrientationSwipeHandler(RotationTouchHelper.java:193)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RotationTouchHelper.onDisplayInfoChangedInternal(RotationTouchHelper.java:301)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RotationTouchHelper.init(RotationTouchHelper.java:167)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RotationTouchHelper.<init>(RotationTouchHelper.java:141)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RotationTouchHelper.$r8$lambda$3xM9uNXTiT3i5gw9rdmpEDPnnUg(Unknown Source:2)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RotationTouchHelper$$ExternalSyntheticLambda1.get(D8$$SyntheticClass:0)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject.lambda$get$0(MainThreadInitializedObject.java:58)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject.$r8$lambda$jeoH4EKO3m1c-S7-sJSjrbw_Ei4(Unknown Source:0)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject$$ExternalSyntheticLambda1.get(D8$$SyntheticClass:0)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.TraceHelper.allowIpcs(TraceHelper.java:92)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.util.MainThreadInitializedObject.get(MainThreadInitializedObject.java:57)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsAnimationDeviceState.<init>(RecentsAnimationDeviceState.java:153)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.RecentsAnimationDeviceState.<init>(RecentsAnimationDeviceState.java:130)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.quickstep.util.SplitWithKeyboardShortcutController.<init>(SplitWithKeyboardShortcutController.java:68)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.uioverrides.QuickstepLauncher.setupViews(QuickstepLauncher.java:274)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.Launcher.onCreate(Launcher.java:576)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.launcher3.uioverrides.QuickstepLauncher.onCreate(QuickstepLauncher.java:671)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.Activity.performCreate(Activity.java:9140)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.Activity.performCreate(Activity.java:9118)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.Instrumentation.callActivityOnCreate(Instrumentation.java:1505)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread.performLaunchActivity(ActivityThread.java:4217)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread.handleLaunchActivity(ActivityThread.java:4422)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.LaunchActivityItem.execute(LaunchActivityItem.java:222)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.TransactionExecutor.executeNonLifecycleItem(TransactionExecutor.java:133)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.TransactionExecutor.executeTransactionItems(TransactionExecutor.java:103)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.servertransaction.TransactionExecutor.execute(TransactionExecutor.java:80)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2782)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Handler.dispatchMessage(Handler.java:110)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Looper.loopOnce(Looper.java:248)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.os.Looper.loop(Looper.java:338)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at android.app.ActivityThread.main(ActivityThread.java:8982)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at java.lang.reflect.Method.invoke(Native Method)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:593)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:932)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: Caused by: android.os.RemoteException: Remote stack trace:
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.server.wm.ActivityTaskManagerService.enforceTaskPermission(ActivityTaskManagerService.java:3410)
+07-21 17:54:05.511   354   354 W TaskStackChangeListeners: 	at com.android.server.wm.ActivityTaskManagerService.registerTaskStackListener(ActivityTaskManagerService.java:3177)
+07-21 17:54:05.516   354   354 W TaskStackChangeListeners: 	at android.app.IActivityTaskManager$Stub.onTransact(IActivityTaskManager.java:1580)
+07-21 17:54:05.516   354   354 W TaskStackChangeListeners: 	at com.android.server.wm.ActivityTaskManagerService.onTransact(ActivityTaskManagerService.java:5864)
+07-21 17:54:05.516   354   354 W TaskStackChangeListeners: 	at android.os.Binder.execTransactInternal(Binder.java:1414)
+07-21 17:54:05.516   354   354 W TaskStackChangeListeners: 

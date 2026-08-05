@@ -68,10 +68,29 @@ public class PluginManagerWrapper {
                 c.getSystemService(NotificationManager.class), mPluginEnabler,
                 privilegedPlugins, instanceFactory);
 
-        mPluginManager = new PluginManagerImpl(c, instanceManagerFactory,
-                Utilities.IS_DEBUG_DEVICE,
-                UNCAUGHT_EXCEPTION_PRE_HANDLER_MANAGER, mPluginEnabler,
-                new PluginPrefs(c), privilegedPlugins);
+        PluginManager pm;
+        try {
+            pm = new PluginManagerImpl(c, instanceManagerFactory,
+                    Utilities.IS_DEBUG_DEVICE,
+                    UNCAUGHT_EXCEPTION_PRE_HANDLER_MANAGER, mPluginEnabler,
+                    new PluginPrefs(c), privilegedPlugins);
+        } catch (Throwable e) {
+            // This build's ART/core-oj doesn't expose the hidden
+            // Thread.setUncaughtExceptionPreHandler API that PluginManagerImpl's
+            // constructor relies on when isDebug=true.
+            // Degrade to isDebug=false path (skips pre-handler registration) instead of crashing Launcher.onCreate().
+            android.util.Log.e("PluginManagerWrapper", "Plugin framework pre-handler unavailable on this build", e);
+            try {
+                pm = new PluginManagerImpl(c, instanceManagerFactory,
+                        false /* isDebug: skips pre-handler registration */,
+                        UNCAUGHT_EXCEPTION_PRE_HANDLER_MANAGER, mPluginEnabler,
+                        new PluginPrefs(c), privilegedPlugins);
+            } catch (Throwable e2) {
+                android.util.Log.e("PluginManagerWrapper", "Failed fallback PluginManagerImpl init", e2);
+                pm = null;
+            }
+        }
+        mPluginManager = pm;
     }
 
     public PluginEnablerImpl getPluginEnabler() {
@@ -87,11 +106,15 @@ public class PluginManagerWrapper {
     /** */
     public <T extends Plugin> void addPluginListener(
             PluginListener<T> listener, Class<T> pluginClass, boolean allowMultiple) {
-        mPluginManager.addPluginListener(listener, pluginClass, allowMultiple);
+        if (mPluginManager != null) {
+            mPluginManager.addPluginListener(listener, pluginClass, allowMultiple);
+        }
     }
 
     public void removePluginListener(PluginListener<? extends Plugin> listener) {
-        mPluginManager.removePluginListener(listener);
+        if (mPluginManager != null) {
+            mPluginManager.removePluginListener(listener);
+        }
     }
 
     public Set<String> getPluginActions() {

@@ -94,6 +94,7 @@ import static com.android.launcher3.model.ItemInstallQueue.FLAG_DRAG_AND_DROP;
 import static com.android.launcher3.popup.SystemShortcut.APP_INFO;
 import static com.android.launcher3.popup.SystemShortcut.INSTALL;
 import static com.android.launcher3.popup.SystemShortcut.WIDGETS;
+import static com.android.launcher3.popup.SystemShortcut.UNINSTALL_APP;
 import static com.android.launcher3.states.RotationHelper.REQUEST_LOCK;
 import static com.android.launcher3.states.RotationHelper.REQUEST_NONE;
 import static com.android.launcher3.testing.shared.TestProtocol.LAUNCHER_ACTIVITY_STOPPED_MESSAGE;
@@ -230,6 +231,7 @@ import com.android.launcher3.testing.shared.ResourceUtils;
 import com.android.launcher3.testing.shared.TestProtocol;
 import com.android.launcher3.touch.AllAppsSwipeController;
 import com.android.launcher3.touch.ItemLongClickListener;
+import com.android.launcher3.touch.LauncherInteractionController;
 import com.android.launcher3.uioverrides.plugins.PluginManagerWrapper;
 import com.android.launcher3.util.ActivityResultInfo;
 import com.android.launcher3.util.ActivityTracker;
@@ -349,6 +351,12 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     private final KeyboardShortcutsDelegate mKeyboardShortcutsDelegate =
             new KeyboardShortcutsDelegate(this);
+
+    private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
+
+    public LauncherInteractionController getInteractionController() {
+        return mInteractionController;
+    }
 
     @Thunk
     Workspace<?> mWorkspace;
@@ -617,6 +625,23 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         setContentView(getRootView());
         ComposeInitializer.initCompose(this);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (!android.os.Environment.isExternalStorageManager()) {
+                try {
+                    android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                    intent.setData(android.net.Uri.parse("package:" + getPackageName()));
+                    startActivityForResult(intent, 2);
+                } catch (Exception e) {
+                    android.content.Intent intent = new android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                    startActivityForResult(intent, 2);
+                }
+            }
+        } else {
+            if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+            }
+        }
 
         if (mOnInitialBindListener != null) {
             getRootView().getViewTreeObserver().addOnPreDrawListener(mOnInitialBindListener);
@@ -1064,7 +1089,18 @@ public class Launcher extends StatefulActivity<LauncherState>
             mPendingActivityRequestCode = -1;
             return;
         }
+        if (requestCode == 2) {
+            foundation.e.bliss.wallpaper.WallpaperRepository.Companion.getInstance(this).updateAsync();
+        }
         handleActivityResult(requestCode, resultCode, data);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1) {
+            foundation.e.bliss.wallpaper.WallpaperRepository.Companion.getInstance(this).updateAsync();
+        }
     }
 
     /**
@@ -3074,8 +3110,10 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     @SuppressLint("ClickableViewAccessibility")
     public void showWidgetResizeContainer(RoundedWidgetView roundedWidgetView) {
+        if (mWorkspace == null || mWorkspace.getFirstPagePinnedItem() == null) return;
         RelativeLayout widgetResizeContainer = mWorkspace.getFirstPagePinnedItem()
                 .findViewById(R.id.widget_resizer_container);
+        if (widgetResizeContainer == null) return;
 
         if (widgetResizeContainer.getVisibility() != View.VISIBLE) {
             activeRoundedWidgetView = roundedWidgetView;
@@ -3146,7 +3184,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 int newHeight = minHeight + (normalisedDifference * seekBar.getProgress());
-                if (getWorkspace().getFirstPagePinnedItem() instanceof WidgetContainer) {
+                if (getWorkspace() != null && getWorkspace().getFirstPagePinnedItem() instanceof WidgetContainer) {
                     ((WidgetContainer) getWorkspace().getFirstPagePinnedItem()).updateWidgets();
                 }
                 Logger.d("Launcher.WidgetResize", "newHeight: " + newHeight);
@@ -3157,42 +3195,49 @@ public class Launcher extends StatefulActivity<LauncherState>
     }
 
     public void hideWidgetResizeContainer() {
+        if (mWorkspace == null || mWorkspace.getFirstPagePinnedItem() == null) return;
         RelativeLayout widgetResizeContainer = mWorkspace.getFirstPagePinnedItem().findViewById(R.id.widget_resizer_container);
-        if (widgetResizeContainer.getVisibility() == View.VISIBLE) {
-            if (currentAnimator != null) {
-                currentAnimator.cancel();
+        if (widgetResizeContainer == null || widgetResizeContainer.getVisibility() != View.VISIBLE) return;
+
+        if (currentAnimator != null) {
+            currentAnimator.cancel();
+        }
+        AnimatorSet set = new AnimatorSet();
+        set.play(ObjectAnimator.ofFloat(widgetResizeContainer, View.TRANSLATION_Y,
+                ResourceUtils.pxFromDp(48, getResources().getDisplayMetrics())));
+        set.setDuration(200);
+        set.setInterpolator(new LinearInterpolator());
+        set.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+                super.onAnimationStart(animation);
+                if (mWorkspace != null && mWorkspace.getFirstPagePinnedItem() != null) {
+                    SeekBar sb = mWorkspace.getFirstPagePinnedItem().findViewById(R.id.widget_resizer_seekbar);
+                    if (sb != null) {
+                        sb.setOnSeekBarChangeListener(null);
+                    }
+                }
             }
-            AnimatorSet set = new AnimatorSet();
-            set.play(ObjectAnimator.ofFloat(widgetResizeContainer, View.TRANSLATION_Y,
-                    ResourceUtils.pxFromDp(48, getResources().getDisplayMetrics())));
-            set.setDuration(200);
-            set.setInterpolator(new LinearInterpolator());
-            set.addListener(new AnimatorListenerAdapter() {
-                @Override
-                public void onAnimationStart(Animator animation) {
-                    super.onAnimationStart(animation);
-                    ((SeekBar) mWorkspace.getFirstPagePinnedItem().findViewById(R.id.widget_resizer_seekbar))
-                            .setOnSeekBarChangeListener(null);
-                }
 
-                @Override
-                public void onAnimationCancel(Animator animation) {
-                    super.onAnimationCancel(animation);
-                    currentAnimator = null;
-                    widgetResizeContainer.setVisibility(View.VISIBLE);
-                }
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                super.onAnimationCancel(animation);
+                currentAnimator = null;
+                widgetResizeContainer.setVisibility(View.VISIBLE);
+            }
 
-                @Override
-                public void onAnimationEnd(Animator animation) {
-                    super.onAnimationEnd(animation);
-                    currentAnimator = null;
-                    widgetResizeContainer.setVisibility(View.GONE);
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                super.onAnimationEnd(animation);
+                currentAnimator = null;
+                widgetResizeContainer.setVisibility(View.GONE);
+                if (activeRoundedWidgetView != null) {
                     activeRoundedWidgetView.removeBorder();
                 }
-            });
-            set.start();
-            currentAnimator = set;
-        }
+            }
+        });
+        set.start();
+        currentAnimator = set;
     }
 
     // Getters and Setters
@@ -3373,7 +3418,7 @@ public class Launcher extends StatefulActivity<LauncherState>
     }
 
     public Stream<SystemShortcut.Factory> getSupportedShortcuts() {
-        return Stream.of(APP_INFO, WIDGETS, INSTALL);
+        return Stream.of(APP_INFO, WIDGETS, INSTALL, UNINSTALL_APP);
     }
 
     /**

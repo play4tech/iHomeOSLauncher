@@ -360,6 +360,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             return;
         }
 
+        mDragInProgress = true;
+        mItemAddedBackToSelfViaIcon = false;
+
         mContent.removeItem(mCurrentDragView);
         if (dragObject.dragInfo instanceof WorkspaceItemInfo) {
             mItemsInvalidated = true;
@@ -370,8 +373,6 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 mInfo.remove((WorkspaceItemInfo) dragObject.dragInfo, true);
             }
         }
-        mDragInProgress = true;
-        mItemAddedBackToSelfViaIcon = false;
     }
 
     @Override
@@ -870,6 +871,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void closeComplete(boolean wasAnimated) {
+        Log.d("ICON_TRACE", "closeComplete folder=" + mInfo.id + " mDragInProgress=" + mDragInProgress + " itemCount=" + getItemCount());
         // TODO: Clear all active animations.
         BaseDragLayer parent = (BaseDragLayer) getParent();
         if (parent != null) {
@@ -1062,6 +1064,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     public void onDropCompleted(final View target, final DragObject d,
             final boolean success) {
         if (success) {
+            Log.d("ICON_TRACE", "onDropCompleted folder=" + mInfo.id
+                    + " itemCount=" + getItemCount() + " target=" + target
+                    + " thisFolder=" + (target == this));
             if (getItemCount() <= 1) {
                 mDeleteFolderOnDropCompleted = true;
             }
@@ -1085,6 +1090,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
 
         if (target != this) {
+            if (mIsOpen) {
+                close(true);
+            }
             if (mOnExitAlarm.alarmPending()) {
                 mOnExitAlarm.cancelAlarm();
                 if (!success) {
@@ -1427,6 +1435,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     @Override
     public void onRemove(List<WorkspaceItemInfo> items) {
+        Log.d("ICON_TRACE", "onRemove folder=" + mInfo.id + " items=" + items + " mDragInProgress=" + mDragInProgress + " itemCount=" + getItemCount());
         mItemsInvalidated = true;
         items.stream().map(this::getViewForInfo).forEach(mContent::removeItem);
         if (mState == STATE_ANIMATING) {
@@ -1434,7 +1443,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         } else {
             rearrangeChildren();
         }
-        if (getItemCount() <= 1) {
+        if (!mDragInProgress && getItemCount() <= 1) {
             if (mIsOpen) {
                 close(true);
             } else {

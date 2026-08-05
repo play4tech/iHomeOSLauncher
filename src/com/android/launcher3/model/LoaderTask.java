@@ -183,8 +183,11 @@ public class LoaderTask implements Runnable {
         // down.
         LooperIdleLock idleLock = mLauncherBinder.newIdleLock(this);
         // Just in case mFlushingWorkerThread changes but we aren't woken up,
-        // wait no longer than 1sec at a time
-        while (!mStopped && idleLock.awaitLocked(1000));
+        // wait no longer than 1sec at a time. We don't loop here anymore to prevent
+        // the loader from getting completely stuck if the UI thread never goes fully idle.
+        if (!mStopped) {
+            idleLock.awaitLocked(1000);
+        }
     }
 
     private synchronized void verifyNotStopped() throws CancellationException {

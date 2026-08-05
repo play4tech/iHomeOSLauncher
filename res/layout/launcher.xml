@@ -37,7 +37,8 @@
         <foundation.e.bliss.blur.BlurBackgroundView
             android:id="@+id/blur_layer"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            launcher:layout_ignoreInsets="true" />
 
         <!--
           Glass capture source: InsettableFrameLayout (NOT plain FrameLayout) so that

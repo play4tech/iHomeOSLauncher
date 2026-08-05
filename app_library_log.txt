@@ -1,0 +1,6 @@
+07-23 23:01:42.631 11117 11117 D AppLibraryTouch: Controller in list: LauncherDragController
+07-23 23:01:42.637 11117 11117 D AppLibraryTouch: Controller in list: NoButtonQuickSwitchTouchController
+07-23 23:01:42.637 11117 11117 D AppLibraryTouch: Controller in list: NavBarToHomeTouchController
+07-23 23:01:42.639 11117 11117 D AppLibraryTouch: Controller in list: NoButtonNavbarToOverviewTouchController
+07-23 23:01:42.645 11117 11117 D AppLibraryTouch: Controller in list: StatusBarTouchController
+07-23 23:01:42.647 11117 11117 D AppLibraryTouch: Controller in list: LauncherTaskViewController

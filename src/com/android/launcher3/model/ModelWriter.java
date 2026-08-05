@@ -95,11 +95,18 @@ public class ModelWriter {
             ItemInfo item, int container, int screenId, int cellX, int cellY) {
         CellPos modelPos = mCellPosMapper.mapPresenterToModel(cellX, cellY, screenId, container);
 
+        android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
+                + " title=" + item.title
+                + " container " + item.container + "->" + container
+                + " screen " + item.screenId + "->" + modelPos.screenId
+                + " cell(" + item.cellX + "," + item.cellY + ")->("
+                + modelPos.cellX + "," + modelPos.cellY + ")",
+                new Throwable("caller"));
+
         item.container = container;
         item.cellX = modelPos.cellX;
         item.cellY = modelPos.cellY;
         item.screenId = modelPos.screenId;
-
     }
 
     /**

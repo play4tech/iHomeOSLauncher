@@ -166,6 +166,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
         mBubbleText.setOnClickListener(container.getItemClickListener());
         mBubbleText.setOnLongClickListener(container.getItemDragHandler());
         mBubbleText.setOnTouchListener(container.getItemDragHandler());
+        setVisibility(VISIBLE);
     }
 
     /**

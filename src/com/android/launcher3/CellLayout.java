@@ -161,7 +161,7 @@ public class CellLayout extends ViewGroup {
 
     // Used to visualize the grid and drop locations
     private boolean mVisualizeCells = false;
-    private boolean mVisualizeDropLocation = true;
+    private boolean mVisualizeDropLocation = false;
     private RectF mVisualizeGridRect = new RectF();
     private Paint mVisualizeGridPaint = new Paint();
     private int mGridVisualizationRoundingRadius;
@@ -964,7 +964,7 @@ public class CellLayout extends ViewGroup {
         DeviceProfile grid = mActivity.getDeviceProfile();
         float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
         // Halfway between reorder radius and icon.
-        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 4;
+        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
     }
 
     /**
@@ -1442,7 +1442,7 @@ public class CellLayout extends ViewGroup {
         int childCount = mShortcutsAndWidgets.getChildCount();
         for (int i = 0; i < childCount; i++) {
             View child = mShortcutsAndWidgets.getChildAt(i);
-            //if (child == dragView) continue;
+            if (child == dragView) continue;
             CellAndSpan c = solution.map.get(child);
             if (c != null) {
                 animateChildToPosition(child, c.cellX, c.cellY, REORDER_ANIMATION_DURATION, 0,
@@ -1502,7 +1502,7 @@ public class CellLayout extends ViewGroup {
             ItemInfo info = (ItemInfo) child.getTag();
             // We do a null check here because the item info can be null in the case of the
             // AllApps button in the hotseat.
-            if (info != null && child != dragView) {
+            if (info != null && (child != dragView || dragView == null)) {
                 CellPos presenterPos = mActivity.getCellPosMapper().mapModelToPresenter(info);
                 final boolean requiresDbUpdate = (presenterPos.cellX != lp.getTmpCellX()
                         || presenterPos.cellY != lp.getTmpCellY() || info.spanX != lp.cellHSpan
@@ -1820,20 +1820,16 @@ public class CellLayout extends ViewGroup {
             result = new int[]{-1, -1};
         }
 
-        ItemConfiguration finalSolution = null;
-        // We want the solution to match the animation of the preview and to match the drop so we
-        // only recalculate in mode MODE_SHOW_REORDER_HINT because that the first one to run in the
-        // reorder cycle.
+        ItemConfiguration finalSolution;
         if (mode == MODE_SHOW_REORDER_HINT || mPreviousSolution == null) {
-            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
-                    dragView);
+            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY, dragView);
             mPreviousSolution = finalSolution;
         } else {
             finalSolution = mPreviousSolution;
-            // We reset this vector after drop
-            if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
-                mPreviousSolution = null;
-            }
+        }
+        
+        if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
+            mPreviousSolution = null;
         }
 
         if (finalSolution == null || !finalSolution.isSolution) {
@@ -1883,7 +1879,7 @@ public class CellLayout extends ViewGroup {
             if (!DESTRUCTIVE_REORDER
                     && (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL)) {
                 // Since the temp solution didn't update dragView, don't commit it either
-                commitTempPlacement(null);
+                commitTempPlacement(dragView);
                 completeAndClearReorderPreviewAnimations();
                 setItemPlacementDirty(false);
             } else {

@@ -134,6 +134,7 @@ public class PortraitStatesTouchController extends AbstractStateChangeTouchContr
             mCurrentAnimation.dispatchOnCancel();
         }
 
+
         mGoingBetweenStates = true;
         if (mFromState == OVERVIEW && mToState == NORMAL
                 && mOverviewPortraitStateTouchHelper.shouldSwipeDownReturnToApp()) {

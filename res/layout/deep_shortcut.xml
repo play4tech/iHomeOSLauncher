@@ -21,6 +21,7 @@
     android:layout_height="@dimen/bg_popup_item_height"
     android:elevation="@dimen/deep_shortcuts_elevation"
     android:background="@drawable/middle_item_primary"
+    android:visibility="invisible"
     android:theme="@style/PopupItem" >
 
     <com.android.launcher3.shortcuts.DeepShortcutTextView

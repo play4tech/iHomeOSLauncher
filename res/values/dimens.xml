@@ -507,4 +507,8 @@
 
     <!-- WindowManagerProxy -->
     <dimen name="max_width_and_height_of_small_display_cutout">136px</dimen>
+
+    <!-- App Library -->
+    <dimen name="app_library_card_margin">8dp</dimen>
+    <dimen name="app_library_card_padding">14dp</dimen>
 </resources>

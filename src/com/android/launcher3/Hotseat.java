@@ -375,14 +375,14 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
     @Override
     public void setAlpha(float alpha) {
-        Folder folder = Folder.getOpen(mActivity);
-        if (folder instanceof GridFolder) {
-            GridFolder gridFolder = (GridFolder) folder;
-            if (gridFolder.isAnimating() || foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-                super.setAlpha(alpha);
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            Folder folder = Folder.getOpen(mActivity);
+            if (folder == null && alpha < 1.0f) {
+                super.setAlpha(1f);
+                return;
             }
-        } else {
-            super.setAlpha(alpha);
         }
+
+        super.setAlpha(alpha);
     }
 }

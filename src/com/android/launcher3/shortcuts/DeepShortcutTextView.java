@@ -87,7 +87,7 @@ public class DeepShortcutTextView extends BubbleTextView {
     }
 
     @Override
-    protected boolean shouldIgnoreTouchDown(float x, float y) {
+    public boolean shouldIgnoreTouchDown(float x, float y) {
         // assume the whole view as clickable
         return false;
     }

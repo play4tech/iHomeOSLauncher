@@ -257,9 +257,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     @Override
     protected void onFolderCloseComplete() {
-        if (getOpen(mLauncher) == null) {
-            showOrHideDesktop(mLauncher, false);
-        }
+        showOrHideDesktop(mLauncher, false);
+        android.util.Log.d("GRID_FOLDER_TRACE", "onFolderCloseComplete restored desktop workspaceAlpha="
+                + (mLauncher.getWorkspace() != null ? mLauncher.getWorkspace().getAlpha() : "null"));
     }
 
     @Override
@@ -277,63 +277,118 @@ public class GridFolder extends Folder implements OnAlarmListener {
     @Override
     public void onDragEnd() {
         if (isFolderWobbling) {
-            wobbleFolder(true);
+            wobbleFolder(false);
         }
         super.onDragEnd();
     }
 
-    private void showOrHideDesktop(Launcher launcher, boolean hide) {
-        if (isAnimating || foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode())
-            return;
+    private AnimatorSet mDesktopVisibilityAnimator;
 
-        AnimatorSet set = new AnimatorSet();
+    private void showOrHideDesktop(Launcher launcher, boolean hide) {
+        if (mDesktopVisibilityAnimator != null) {
+            mDesktopVisibilityAnimator.cancel();
+            mDesktopVisibilityAnimator = null;
+        }
+
+        boolean isSingleLayer = foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode();
 
         Workspace<?> workspace = launcher.getWorkspace();
-        if (workspace != null) {
-            play(set, getAnimator(workspace, 1f, 0f, hide));
-            if (workspace.getPageIndicator() != null) {
-                play(set, getAnimator(workspace.getPageIndicator(), 1f, 0f, hide));
-                if (!hide && launcher.isInState(LauncherState.SPRING_LOADED)) {
+        Hotseat hotseat = launcher.getHotseat();
+
+        if (!hide) {
+            if (workspace != null) {
+                workspace.setAlpha(1f);
+            }
+            if (workspace != null && workspace.getPageIndicator() != null) {
+                workspace.getPageIndicator().setAlpha(1f);
+                if (launcher.isInState(LauncherState.SPRING_LOADED)) {
                     workspace.showPageIndicatorAtCurrentScroll();
                 }
             }
+            if (hotseat != null) {
+                hotseat.setAlpha(1f);
+                hotseat.setIconsAlpha(1f);
+                if (hotseat.getQsb() != null) {
+                    hotseat.getQsb().setAlpha(1f);
+                }
+                hotseat.setVisibility(VISIBLE);
+            }
+            if (!isSingleLayer) {
+                ScrimView scrimView = launcher.findViewById(R.id.scrim_view);
+                if (scrimView != null) {
+                    scrimView.setAlpha(1f);
+                }
+                BlurBackgroundView blur = launcher.mBlurLayer;
+                if (blur != null) {
+                    blur.setAlpha(0f);
+                }
+            }
+            return;
         }
 
-        Hotseat hotseat = launcher.getHotseat();
+        AnimatorSet set = new AnimatorSet();
+
+        if (workspace != null) {
+            // In SingleLayerMode, we want to keep the workspace visible so it can be blurred
+            // behind the folder. We do not fade the workspace itself.
+            if (!isSingleLayer) {
+                play(set, getAnimator(workspace, 1f, 0f, hide));
+            }
+            if (workspace.getPageIndicator() != null) {
+                play(set, getAnimator(workspace.getPageIndicator(), 1f, 0f, hide));
+            }
+        }
+
         if (hotseat != null) {
+            hotseat.setIconsAlpha(hide ? 0f : 1f);
             play(set, getAnimator(hotseat, 1f, 0f, hide));
             View qsb = hotseat.getQsb();
             if (qsb != null) {
                 play(set, getAnimator(qsb, 1f, 0f, hide));
             }
-
         }
 
-        ScrimView scrimView = launcher.findViewById(R.id.scrim_view);
-        if (scrimView != null) {
-            play(set, getAnimator(scrimView, 1f, 0f, hide));
-        }
+        if (!isSingleLayer) {
+            ScrimView scrimView = launcher.findViewById(R.id.scrim_view);
+            if (scrimView != null) {
+                play(set, getAnimator(scrimView, 1f, 0f, hide));
+            }
 
-        BlurBackgroundView blur = launcher.mBlurLayer;
-        if (blur != null) {
-            play(set, getAnimator(blur, 0f, 1f, hide));
+            BlurBackgroundView blur = launcher.mBlurLayer;
+            if (blur != null) {
+                play(set, getAnimator(blur, 0f, 1f, hide));
+            }
         }
         set.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                super.onAnimationEnd(animation);
-                isAnimating = false;
-                if (!hide && hotseat != null) {
-                    hotseat.setVisibility(VISIBLE);
-                }
+                mDesktopVisibilityAnimator = null;
             }
 
             @Override
-            public void onAnimationStart(Animator animation) {
-                super.onAnimationStart(animation);
-                isAnimating = true;
+            public void onAnimationCancel(Animator animation) {
+                // force-apply the end state even if cancelled mid-flight
+                if (workspace != null && !isSingleLayer) {
+                    workspace.setAlpha(hide ? 0f : 1f);
+                }
+                if (workspace != null && workspace.getPageIndicator() != null) {
+                    workspace.getPageIndicator().setAlpha(hide ? 0f : 1f);
+                }
+                if (hotseat != null) {
+                    hotseat.setAlpha(hide ? 0f : 1f);
+                }
+                if (hotseat != null && hotseat.getQsb() != null) {
+                    hotseat.getQsb().setAlpha(hide ? 0f : 1f);
+                }
+                if (!isSingleLayer) {
+                    ScrimView scrimView = launcher.findViewById(R.id.scrim_view);
+                    if (scrimView != null) scrimView.setAlpha(hide ? 0f : 1f);
+                    BlurBackgroundView blur = launcher.mBlurLayer;
+                    if (blur != null) blur.setAlpha(hide ? 1f : 0f);
+                }
             }
         });
+        mDesktopVisibilityAnimator = set;
         set.start();
     }
 
@@ -372,9 +427,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 }
                 index.getAndIncrement();
                 if (index.get() % 2 == 0) {
-                    view.startAnimation(mLauncher.getWorkspace().getWobbleAnimation());
+                    // view.startAnimation(mLauncher.getWorkspace().getWobbleAnimation());
                 } else {
-                    view.startAnimation(mLauncher.getWorkspace().getReverseWobbleAnimation());
+                    // view.startAnimation(mLauncher.getWorkspace().getReverseWobbleAnimation());
                 }
                 if (view instanceof BubbleTextView) {
                     ((BubbleTextView) view).applyUninstallIconState(true);

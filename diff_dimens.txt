@@ -1,0 +1,13 @@
+diff --git a/res/values/dimens.xml b/res/values/dimens.xml
+index 726edcd861..0efae7844e 100644
+--- a/res/values/dimens.xml
++++ b/res/values/dimens.xml
+@@ -507,4 +507,8 @@
+ 
+     <!-- WindowManagerProxy -->
+     <dimen name="max_width_and_height_of_small_display_cutout">136px</dimen>
++
++    <!-- App Library -->
++    <dimen name="app_library_card_margin">8dp</dimen>
++    <dimen name="app_library_card_padding">14dp</dimen>
+ </resources>

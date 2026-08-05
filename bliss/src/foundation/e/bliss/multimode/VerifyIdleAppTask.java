@@ -114,13 +114,26 @@ public class VerifyIdleAppTask implements Runnable {
 
     List<Pair<ItemInfo, Object>> verifyAllApps(Context context, Map<ComponentKey, Object> map, boolean animated) {
         List<Pair<ItemInfo, Object>> newItems = new ArrayList<>();
+        Logger.d("ICON_TRACE", "verifyAllApps scanning " + map.size()
+                + " components against " + mBgdataModel.itemsIdMap.size() + " itemsIdMap entries"
+                + " ignoreLoaded=" + mIgnoreLoaded);
         synchronized (mBgdataModel) {
             for (Map.Entry<ComponentKey, Object> entry : map.entrySet()) {
                 ComponentKey componentKey = entry.getKey();
                 HashSet<ComponentName> components = new HashSet<>(1);
                 components.add(componentKey.componentName);
-                Predicate<ItemInfo> matcher = ItemInfoMatcher.ofComponents(components, componentKey.user);
-                if (mBgdataModel.workspaceItems.stream().noneMatch(matcher)) {
+                Predicate<ItemInfo> componentMatcher = ItemInfoMatcher.ofComponents(components, componentKey.user);
+                Predicate<ItemInfo> matcher = componentMatcher.or(ItemInfoMatcher.forFolderMatch(componentMatcher));
+                
+                boolean found = false;
+                for (ItemInfo info : mBgdataModel.itemsIdMap) {
+                    if (matcher.test(info)) {
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
                     Object obj = entry.getValue();
                     if (obj instanceof AppInfo) {
                         verifyShortcutHighRes(context, (AppInfo) obj);
@@ -130,7 +143,8 @@ public class VerifyIdleAppTask implements Runnable {
                         newItems.add(new ItemInstallQueue.PendingInstallShortcutInfo(
                                 info.getApplicationInfo().packageName, info.getUser()).getItemInfo(context));
                     }
-                    Logger.d(TAG, "will bind " + componentKey.componentName + " to workspace.");
+                    Logger.d("ICON_TRACE", "will bind " + componentKey.componentName
+                            + " to workspace — NOT found in itemsIdMap");
                 }
             }
         }

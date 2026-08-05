@@ -269,11 +269,6 @@ class BlissInput(context: Context, attrs: AttributeSet) :
     }
 
     override fun onBackKey(): Boolean {
-        val launcher = LauncherAppMonitor.getInstanceNoCreate().launcher
-        if (launcher.swipeSearchContainer.visibility == VISIBLE) {
-            launcher.hideSwipeSearchContainer()
-            return true
-        }
         return false
     }
 

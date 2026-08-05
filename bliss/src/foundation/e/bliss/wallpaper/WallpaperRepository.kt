@@ -53,21 +53,20 @@ class WallpaperRepository(val context: Context) {
         
         if (!isLive) {
             try {
-                // Ask for the system wallpaper explicitly. The generic drawable accessor can
-                // return a cached/live-wallpaper representation instead of the wallpaper used
-                // behind the home screen, which makes our blur and glass layers disagree with
-                // the system launcher.
                 wallpaper = decodeSystemWallpaper()
+                android.util.Log.d("WallpaperRepository", "decodeSystemWallpaper result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}")
             } catch (e: Exception) {
-                // Ignore exception and fallback
+                android.util.Log.e("WallpaperRepository", "Error in decodeSystemWallpaper", e)
             }
         }
 
         if (wallpaper == null) {
             try {
-                wallpaper = mWallpaperManager.drawable?.toBitmap()
+                val drawable = mWallpaperManager.drawable
+                wallpaper = drawable?.toBitmap()
+                android.util.Log.d("WallpaperRepository", "mWallpaperManager.drawable result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}")
             } catch (e: Exception) {
-                // Ignore
+                android.util.Log.e("WallpaperRepository", "Error fetching wallpaper drawable", e)
             }
         }
 

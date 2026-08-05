@@ -126,6 +126,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     public static final int DISPLAY_SEARCH_RESULT_SMALL = 7;
     public static final int DISPLAY_PREDICTION_ROW = 8;
     public static final int DISPLAY_SEARCH_RESULT_APP_ROW = 9;
+    public static final int DISPLAY_APP_LIBRARY_EXPANDED = 10;
 
     private static final float MIN_LETTER_SPACING = -0.05f;
     private static final int MAX_SEARCH_LOOP_COUNT = 20;
@@ -570,9 +571,23 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     /**
      * Returns true if the touch down at the provided position be ignored
      */
-    protected boolean shouldIgnoreTouchDown(float x, float y) {
+    public boolean shouldIgnoreTouchDown(float x, float y) {
         if (mDisplay == DISPLAY_TASKBAR) {
             // Allow touching within padding on taskbar, given icon sizes are smaller.
+            return false;
+        }
+        if (mDisplay == DISPLAY_APP_LIBRARY_EXPANDED) {
+            android.graphics.Rect bounds = new android.graphics.Rect();
+            getIconBounds(bounds);
+            // Add 16px (~8dp) hit margin around the icon image and label
+            int margin = 16;
+            int hitLeft = bounds.left - margin;
+            int hitRight = bounds.right + margin;
+            int hitTop = bounds.top - margin;
+            int hitBottom = getHeight();
+            if (x < hitLeft || x > hitRight || y < hitTop || y > hitBottom) {
+                return true;
+            }
             return false;
         }
         return y < getPaddingTop()
@@ -742,6 +757,14 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         }
     }
 
+    public boolean isOnUninstallIcon(float x, float y) {
+        if (!isUninstallVisible) return false;
+        Rect iconBounds = mDotParams.iconBounds;
+        getIconBounds(iconBounds);
+        Rect uninstallIconBounds = mUninstallButtonRenderer.getBoundsScaled(iconBounds);
+        return uninstallIconBounds.contains((int) x, (int) y);
+    }
+
     public boolean tryToHandleUninstallClick(Launcher launcher) {
         if (!isUninstallVisible) return false;
         Rect iconBounds = mDotParams.iconBounds;
@@ -864,9 +887,11 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int height = MeasureSpec.getSize(heightMeasureSpec);
         if (mCenterVertically && (getTag() != null && !(getTag() instanceof FolderInfo))) {
-            Paint.FontMetrics fm = getPaint().getFontMetrics();
-            int cellHeightPx = mIconSize + getCompoundDrawablePadding() +
-                    (int) Math.ceil(fm.bottom - fm.top);
+            int cellHeightPx = mIconSize;
+            if (getText().length() > 0) {
+                Paint.FontMetrics fm = getPaint().getFontMetrics();
+                cellHeightPx += getCompoundDrawablePadding() + (int) Math.ceil(fm.bottom - fm.top);
+            }
             setPadding(getPaddingLeft(), (height - cellHeightPx) / 2, getPaddingRight(),
                     getPaddingBottom());
         }
@@ -1378,6 +1403,12 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * Starts a long press action and returns the corresponding pre-drag condition
      */
     public PreDragCondition startLongPressAction() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            Launcher launcher = Launcher.getLauncher(getContext());
+            if (launcher != null && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+                return null;
+            }
+        }
         PopupContainerWithArrow popup = PopupContainerWithArrow.showForIcon(this);
         return popup != null ? popup.createPreDragCondition(true) : null;
     }
@@ -1403,6 +1434,12 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * Returns true if the view can show long-press popup
      */
     public boolean canShowLongPressPopup() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            Launcher launcher = Launcher.getLauncher(getContext());
+            if (launcher != null && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+                return false;
+            }
+        }
         return getTag() instanceof ItemInfo && ShortcutUtil.supportsShortcuts((ItemInfo) getTag());
     }
 }

@@ -61,6 +61,7 @@ class DockGlassController(
 
     private fun apply() {
         val active = supported && enabled
+        android.util.Log.d("DockGlassController", "LiquidGlass apply: supported=$supported, enabled=$enabled, active=$active");
 
         dockGlass.visibility = if (active) View.VISIBLE else View.GONE
 

@@ -193,6 +193,7 @@ import com.android.systemui.unfold.config.UnfoldTransitionConfig;
 import com.android.systemui.unfold.progress.RemoteUnfoldTransitionReceiver;
 import com.android.systemui.unfold.updates.RotationChangeProvider;
 
+
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -564,7 +565,7 @@ public class QuickstepLauncher extends Launcher {
             case HINT_STATE_ORDINAL: {
                 Workspace<?> workspace = getWorkspace();
                 getStateManager().goToState(NORMAL);
-                if (workspace.getNextPage() != Workspace.DEFAULT_PAGE) {
+                if (workspace.getNextPage() != workspace.getDefaultPage()) {
                     workspace.post(workspace::moveToDefaultScreen);
                 }
                 break;
@@ -637,6 +638,8 @@ public class QuickstepLauncher extends Launcher {
         if (!getDeviceProfile().isMultiWindowMode) {
             list.add(new StatusBarTouchController(this));
         }
+
+
 
         list.add(new LauncherTaskViewController(this));
         return list.toArray(new TouchController[list.size()]);
@@ -1089,6 +1092,7 @@ public class QuickstepLauncher extends Launcher {
         super.collectStateHandlers(out);
         out.add(getDepthController());
         out.add(new RecentsViewStateController(this));
+
     }
 
     public DepthController getDepthController() {

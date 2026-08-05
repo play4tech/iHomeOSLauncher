@@ -221,6 +221,10 @@ public abstract class DragController<T extends ActivityContext>
                     .start();
         }
         mDragObject.dragView.onDragStart();
+        android.util.Log.d("DragDebug", "DragController.callOnDragStart() called for: " + (mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
+        if (mActivity instanceof com.android.launcher3.Launcher) {
+            ((com.android.launcher3.Launcher) mActivity).getInteractionController().beginDrag(mDragObject.dragView, mDragObject.dragInfo);
+        }
         for (DragListener listener : new ArrayList<>(mListeners)) {
             listener.onDragStart(mDragObject, mOptions);
         }
@@ -268,6 +272,8 @@ public abstract class DragController<T extends ActivityContext>
             mDragObject.dragComplete = true;
             if (!mIsInPreDrag) {
                 dispatchDropComplete(null, false);
+            } else if (mDragObject != null && mDragObject.dragSource != null) {
+                mDragObject.dragSource.onDropCompleted(null, mDragObject, false);
             }
         }
         endDrag();
@@ -341,6 +347,9 @@ public abstract class DragController<T extends ActivityContext>
         mOptions = null;
         for (DragListener listener : new ArrayList<>(mListeners)) {
             listener.onDragEnd();
+        }
+        if (mActivity instanceof com.android.launcher3.Launcher) {
+            ((com.android.launcher3.Launcher) mActivity).getInteractionController().endDrag();
         }
     }
 

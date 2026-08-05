@@ -245,14 +245,16 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setAlpha(float alpha) {
-        Launcher launcher = Launcher.getLauncher(getContext());
-        if (launcher.getWorkspace().getPageIndicator() == this) {
-            if (Folder.getOpen(launcher) == null) {
-                super.setAlpha(alpha);
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            Launcher launcher = Launcher.getLauncher(getContext());
+            Folder folder = Folder.getOpen(launcher);
+            if (folder == null && alpha < 1.0f) {
+                super.setAlpha(1f);
+                return;
             }
-        } else {
-            super.setAlpha(alpha);
         }
+
+        super.setAlpha(alpha);
     }
 
     private void animatePaginationToAlpha(int alpha) {

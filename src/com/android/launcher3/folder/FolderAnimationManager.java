@@ -126,6 +126,7 @@ public class FolderAnimationManager {
      * Prepares the Folder for animating between open / closed states.
      */
     public AnimatorSet getAnimator() {
+        android.util.Log.d("ANIM_TRACE", "FolderAnimationManager.getAnimator isOpening=" + mIsOpening + " folderId=" + mFolder.mInfo.id);
         final BaseDragLayer.LayoutParams lp =
                 (BaseDragLayer.LayoutParams) mFolder.getLayoutParams();
         mFolderIcon.getPreviewItemManager().recomputePreviewDrawingParams();

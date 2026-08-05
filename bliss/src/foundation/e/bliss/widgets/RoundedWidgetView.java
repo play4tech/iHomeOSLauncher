@@ -153,7 +153,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
 
     public void startWobble() {
         mLauncher = Launcher.cast(Launcher.getLauncher(mContext));
-        startAnimation(mLauncher.getWorkspace().getWobbleAnimation());
+        // startAnimation(mLauncher.getWorkspace().getWobbleAnimation());
     }
 
     public void removeBorder() {

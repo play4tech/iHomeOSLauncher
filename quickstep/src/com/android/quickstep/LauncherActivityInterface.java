@@ -305,9 +305,6 @@ public final class LauncherActivityInterface extends
         } else {
             om.hideOverlay(150);
         }
-        if (launcher.swipeSearchContainer.getVisibility() == View.VISIBLE) {
-            launcher.hideSwipeSearchContainer();
-        }
     }
 
     @Override

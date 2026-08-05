@@ -45,6 +45,10 @@ public interface WorkspaceLayoutManager {
     // This is the second page. On two panel home it is always present, even if its empty.
     int SECOND_SCREEN_ID = 1;
 
+    // Sentinel screen ID for the App Library pinned page.
+    // Must never be persisted to the Launcher DB — managed programmatically.
+    int APP_LIBRARY_SCREEN_ID = Integer.MAX_VALUE;
+
     /**
      * At bind time, we use the rank (screenId) to compute x and y for hotseat items.
      * See {@link #addInScreen}.
@@ -94,6 +98,8 @@ public interface WorkspaceLayoutManager {
                 new Throwable().printStackTrace();
                 return;
             }
+            Log.d("ICON_TRACE", "addInScreen OK id=" + (child.getTag() != null ? child.getTag() : "?")
+                    + " screenId=" + screenId + " cell(" + x + "," + y + ")");
         }
         if (EXTRA_EMPTY_SCREEN_IDS.contains(screenId)) {
             // This should never happen
@@ -144,6 +150,8 @@ public interface WorkspaceLayoutManager {
             // maybe we should be deleting these items from the LauncherModel?
             Log.e(TAG, "Failed to add to item at (" + lp.getCellX() + "," + lp.getCellY()
                     + ") to CellLayout");
+            Log.e("ICON_TRACE", "Failed to add to item at (" + lp.getCellX() + "," + lp.getCellY()
+                    + ") to CellLayout screenId=" + screenId + " child=" + child);
         }
 
         child.setHapticFeedbackEnabled(false);

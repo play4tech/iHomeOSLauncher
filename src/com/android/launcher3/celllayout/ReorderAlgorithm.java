@@ -637,11 +637,23 @@ public class ReorderAlgorithm {
     public ItemConfiguration calculateReorder(ReorderParameters reorderParameters) {
         getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
 
-        int[] vacantCell = new int[2];
-        boolean isVacantCellAvailable = mCellLayout.findCellForSpan(
-                vacantCell, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY());
-        if (!isWidget() && !isVacantCellAvailable &&
-                !mCellLayout.isOccupied(vacantCell[0], vacantCell[1])) {
+        android.util.Log.d("ReorderDebug", "calculateReorder START pixelXY=(" +
+                reorderParameters.getPixelX() + "," + reorderParameters.getPixelY() + ")" +
+                " span=(" + reorderParameters.getSpanX() + "," + reorderParameters.getSpanY() + ")");
+
+        // Log current occupied state
+        StringBuilder occupiedLog = new StringBuilder("mOccupied grid:\n");
+        for (int row = 0; row < mCellLayout.getCountY(); row++) {
+            occupiedLog.append("  row").append(row).append(": ");
+            for (int col = 0; col < mCellLayout.getCountX(); col++) {
+                occupiedLog.append(mCellLayout.isOccupied(col, row) ? "X" : ".").append(" ");
+            }
+            occupiedLog.append("\n");
+        }
+        android.util.Log.d("ReorderDebug", occupiedLog.toString());
+
+        if (!isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
+            android.util.Log.d("ReorderDebug", "calculateReorder: NO EMPTY CELL FOUND -> returning no-solution");
             ItemConfiguration solution = new ItemConfiguration();
             solution.cellX = solution.cellY = solution.spanX = solution.spanY = -1;
             solution.isSolution =  true;
@@ -654,22 +666,37 @@ public class ReorderAlgorithm {
         }
 
         ItemConfiguration dropInPlaceSolution = dropInPlaceSolution(reorderParameters);
+        android.util.Log.d("ReorderDebug", "dropInPlaceSolution: isSolution=" + dropInPlaceSolution.isSolution
+                + " cell=(" + dropInPlaceSolution.cellX + "," + dropInPlaceSolution.cellY + ")");
 
         // Find a solution involving pushing / displacing any items in the way
         ItemConfiguration swapSolution = findReorderSolution(reorderParameters, true);
+        android.util.Log.d("ReorderDebug", "swapSolution:        isSolution=" + swapSolution.isSolution
+                + " cell=(" + swapSolution.cellX + "," + swapSolution.cellY + ")"
+                + " area=" + swapSolution.area());
 
         // We attempt the approach which doesn't shuffle views at all
         ItemConfiguration closestSpaceSolution = closestEmptySpaceReorder(reorderParameters);
+        android.util.Log.d("ReorderDebug", "closestSpaceSolution: isSolution=" + closestSpaceSolution.isSolution
+                + " cell=(" + closestSpaceSolution.cellX + "," + closestSpaceSolution.cellY + ")"
+                + " area=" + closestSpaceSolution.area());
 
         // If the reorder solution requires resizing (shrinking) the item being dropped, we instead
         // favor a solution in which the item is not resized, but
         if (swapSolution.isSolution && swapSolution.area() >= closestSpaceSolution.area()) {
+            android.util.Log.d("ReorderDebug", "CHOSEN: swapSolution -> Cell(" + swapSolution.cellX + "," + swapSolution.cellY + ")");
             return swapSolution;
-        } else if (closestSpaceSolution.isSolution && isWidget()) {
+        } else if (closestSpaceSolution.isSolution) {
+            android.util.Log.d("ReorderDebug", "CHOSEN: closestSpaceSolution -> Cell(" + closestSpaceSolution.cellX + "," + closestSpaceSolution.cellY + ")");
             return closestSpaceSolution;
-        } else if (dropInPlaceSolution.isSolution && isWidget()) {
+        } else if (dropInPlaceSolution.isSolution) {
+            android.util.Log.d("ReorderDebug", "CHOSEN: dropInPlaceSolution -> Cell(" + dropInPlaceSolution.cellX + "," + dropInPlaceSolution.cellY + ")");
             return dropInPlaceSolution;
+        } else if (swapSolution.isSolution) {
+            android.util.Log.d("ReorderDebug", "CHOSEN: swapSolution (fallback) -> Cell(" + swapSolution.cellX + "," + swapSolution.cellY + ")");
+            return swapSolution;
         }
+        android.util.Log.d("ReorderDebug", "CHOSEN: null (no solution found)");
         return null;
     }
 

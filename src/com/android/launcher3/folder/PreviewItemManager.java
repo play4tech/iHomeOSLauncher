@@ -117,6 +117,12 @@ public class PreviewItemManager {
      */
     public FolderPreviewItemAnim createFirstItemAnimation(final boolean reverse,
             final Runnable onCompleteRunnable) {
+        if (mFirstPageParams == null || mFirstPageParams.isEmpty()) {
+            if (onCompleteRunnable != null) {
+                onCompleteRunnable.run();
+            }
+            return null;
+        }
         return reverse
                 ? new FolderPreviewItemAnim(this, mFirstPageParams.get(0), 0, 2, -1, -1,
                 FINAL_ITEM_ANIMATION_DURATION, onCompleteRunnable)

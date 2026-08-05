@@ -85,7 +85,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
     private final int mStartDragThreshold;
 
-    private static final int SHORTCUT_COLLAPSE_THRESHOLD = 6;
+    private static final int SHORTCUT_COLLAPSE_THRESHOLD = 100;
 
     private BubbleTextView mIconProxyView;
     private View mDarkOverlayView;
@@ -200,6 +200,13 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             icon.clearFocus();
             return null;
         }
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+            return null; // Suppress Quick Actions entirely in Jiggle Mode
+        }
+        if (!icon.canShowLongPressPopup()) {
+            icon.clearFocus();
+            return null;
+        }
         ItemInfo item = (ItemInfo) icon.getTag();
         if (!ShortcutUtil.supportsShortcuts(item)) {
             return null;
@@ -217,6 +224,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         container.configureForLauncher(launcher, item);
         container.populateAndShowRows(icon, deepShortcutCount, systemShortcuts);
         launcher.refreshAndBindWidgetsForPackageUser(PackageUserKey.fromItemInfo(item));
+        launcher.getInteractionController().beginPopup(container, icon, item);
         container.requestFocus();
         return container;
     }
@@ -280,17 +288,21 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     private void addAllShortcuts(int deepShortcutCount,
             List<SystemShortcut> systemShortcuts) {
         if (deepShortcutCount + systemShortcuts.size() <= SHORTCUT_COLLAPSE_THRESHOLD) {
-            // add all system shortcuts including widgets shortcut to same container
+            // add deep shortcuts first so they appear at the top
+            addDeepShortcuts(deepShortcutCount, 0);
+            float currentHeight = (mShortcutHeight * deepShortcutCount)
+                    + mChildContainerMargin;
+            // add all system shortcuts including widgets shortcut below deep shortcuts
             addSystemShortcuts(systemShortcuts,
                     R.layout.system_shortcut_rows_container,
                     R.layout.system_shortcut);
-            float currentHeight = (mShortcutHeight * systemShortcuts.size())
-                    + mChildContainerMargin;
-            addDeepShortcuts(deepShortcutCount, currentHeight);
             return;
         }
 
-        float currentHeight = mShortcutHeight + mChildContainerMargin;
+        // add deep shortcuts first
+        addDeepShortcuts(deepShortcutCount, 0);
+        float currentHeight = (mShortcutHeight * deepShortcutCount) + mChildContainerMargin;
+
         List<SystemShortcut> nonWidgetSystemShortcuts =
                 getNonWidgetSystemShortcuts(systemShortcuts);
         // If total shortcuts over threshold, collapse system shortcuts to single row
@@ -305,9 +317,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             mWidgetContainer = inflateAndAdd(R.layout.widget_shortcut_container_material_u,
                     this);
             initializeWidgetShortcut(mWidgetContainer, widgetShortcutOpt.get());
-            currentHeight += mShortcutHeight + mChildContainerMargin;
         }
-        addDeepShortcuts(deepShortcutCount, currentHeight);
     }
 
     /**
@@ -516,6 +526,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                     new com.android.launcher3.views.BaseDragLayer.LayoutParams(
                             android.view.ViewGroup.LayoutParams.MATCH_PARENT,
                             android.view.ViewGroup.LayoutParams.MATCH_PARENT);
+            overlayLp.ignoreInsets = true;
             getPopupContainer().addView(mDarkOverlayView, getPopupContainer().indexOfChild(this), overlayLp);
 
             // Create and add proxy icon
@@ -716,6 +727,10 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 if (!updateIconUi) {
                     return;
                 }
+                if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                    mOriginalIcon.setVisibility(INVISIBLE);
+                    return;
+                }
                 if (mIsAboveIcon) {
                     // Hide only the icon, keep the text visible.
                     mOriginalIcon.setIconVisible(false);
@@ -736,6 +751,10 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                     // Make sure we keep the original icon hidden while it is being dragged.
                     mOriginalIcon.setVisibility(INVISIBLE);
                 } else {
+                    if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                        mOriginalIcon.setVisibility(VISIBLE);
+                        return;
+                    }
                     // TODO: add WW logging if want to add logging for long press on popup
                     //  container.
                     //  mLauncher.getUserEventDispatcher().logDeepShortcutsOpen(mOriginalIcon);
@@ -757,7 +776,12 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         // Either the original icon or one of the shortcuts was dragged.
         // Hide the container, but don't remove it yet because that interferes with touch events.
         mDeferContainerRemoval = true;
-        animateClose();
+        teardownVisuals(); // force-remove mIconProxyView/mDarkOverlayView/mPopupGlassView right now
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            close(false);
+        } else {
+            animateClose();
+        }
     }
 
     @Override
@@ -779,6 +803,12 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     protected void onCreateOpenAnimation(AnimatorSet anim) {
         super.onCreateOpenAnimation(anim);
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            if (mActivityContext instanceof com.android.launcher3.Launcher) {
+                com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mActivityContext;
+                if (launcher.mBlurLayer != null) {
+                    anim.play(android.animation.ObjectAnimator.ofFloat(launcher.mBlurLayer, View.ALPHA, launcher.mBlurLayer.getAlpha(), 1f));
+                }
+            }
             if (mDarkOverlayView != null) {
                 anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, 0f, 0.4f));
             }
@@ -793,6 +823,13 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     protected void onCreateCloseAnimation(AnimatorSet anim) {
         super.onCreateCloseAnimation(anim);
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            if (mActivityContext instanceof com.android.launcher3.Launcher) {
+                com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mActivityContext;
+                if (launcher.mBlurLayer != null) {
+                    float targetAlpha = launcher.getStateManager().getState().getWorkspaceBackgroundAlpha(launcher);
+                    anim.play(android.animation.ObjectAnimator.ofFloat(launcher.mBlurLayer, View.ALPHA, launcher.mBlurLayer.getAlpha(), targetAlpha));
+                }
+            }
             if (mDarkOverlayView != null) {
                 anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, mDarkOverlayView.getAlpha(), 0f));
             }
@@ -803,9 +840,62 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         }
     }
 
+    private boolean mCancelledForDrag = false;
+
+    public void cancelForDrag() {
+        if (mCancelledForDrag) return;
+        mCancelledForDrag = true;
+        android.util.Log.d("DragDebug", "PopupContainerWithArrow.cancelForDrag() invoked for item: " + (mOriginalIcon != null && mOriginalIcon.getTag() instanceof ItemInfo ? ((ItemInfo) mOriginalIcon.getTag()).title : "null"));
+        teardownVisuals();
+        destroy();
+    }
+
+    private void teardownVisuals() {
+        if (mOpenCloseAnimator != null && mOpenCloseAnimator.isRunning()) {
+            mOpenCloseAnimator.cancel();
+        }
+        if (mIconProxyView != null) {
+            try {
+                getPopupContainer().removeView(mIconProxyView);
+            } catch (Exception ignored) {}
+            mIconProxyView = null;
+        }
+        if (mDarkOverlayView != null) {
+            try {
+                getPopupContainer().removeView(mDarkOverlayView);
+            } catch (Exception ignored) {}
+            mDarkOverlayView = null;
+        }
+        if (mPopupGlassView != null) {
+            try {
+                getPopupContainer().removeView(mPopupGlassView);
+            } catch (Exception ignored) {}
+            mPopupGlassView = null;
+        }
+    }
+
+    private void destroy() {
+        if (mActivityContext.getDragController() != null) {
+            mActivityContext.getDragController().removeDragListener(this);
+        }
+        if (getParent() != null) {
+            getPopupContainer().removeView(this);
+        }
+        if (mActivityContext instanceof Launcher) {
+            ((Launcher) mActivityContext).getInteractionController().endPopup(this);
+        }
+    }
+
     @Override
     protected void closeComplete() {
-        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && mOriginalIcon != null) {
+        if (mCancelledForDrag) {
+            teardownVisuals();
+            destroy();
+            return;
+        }
+
+        boolean isDragging = mActivityContext.getDragController() != null && mActivityContext.getDragController().isDragging();
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && mOriginalIcon != null && !isDragging) {
             mOriginalIcon.setVisibility(android.view.View.VISIBLE);
             mOriginalIcon.setAlpha(1f);
         }
@@ -820,28 +910,14 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             if (mOriginalIcon != null) {
                 mOriginalIcon.setTextVisibility(mOriginalIcon.shouldTextBeVisible());
                 mOriginalIcon.setForceHideDot(false);
+                mOriginalIcon.setIconVisible(true);
+                if (!isDragging) {
+                    mOriginalIcon.setVisibility(VISIBLE);
+                }
             }
         }
-        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-            if (mIconProxyView != null) {
-                try {
-                    getPopupContainer().removeView(mIconProxyView);
-                } catch (Exception ignored) {}
-                mIconProxyView = null;
-            }
-            if (mDarkOverlayView != null) {
-                try {
-                    getPopupContainer().removeView(mDarkOverlayView);
-                } catch (Exception ignored) {}
-                mDarkOverlayView = null;
-            }
-            if (mPopupGlassView != null) {
-                try {
-                    getPopupContainer().removeView(mPopupGlassView);
-                } catch (Exception ignored) {}
-                mPopupGlassView = null;
-            }
-        }
+        teardownVisuals();
+        destroy();
     }
 
     /**

@@ -21,6 +21,13 @@
         layout="@layout/all_apps_bottom_sheet_background"
         android:visibility="gone" />
 
+    <com.android.launcher3.applibrary.view.AppLibraryDashboardView
+        android:id="@+id/app_library_dashboard"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/search_container_all_apps"
+        android:visibility="gone" />
+
     <include
         layout="@layout/search_results_rv_layout"
         android:visibility="gone" />

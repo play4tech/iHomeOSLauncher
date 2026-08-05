@@ -164,27 +164,33 @@ public class WorkspaceStateTransitionAnimation {
         propertySetter.setViewAlpha(hotseat, hotseatIconsAlpha, hotseatFadeInterpolator);
 
         if (FeatureFlags.SHOW_HOME_GARDENING.get() && QSB_ON_FIRST_SCREEN) {
-            propertySetter.setViewAlpha(
-                    mWorkspace.getFirstPagePinnedItem(),
-                    state == SPRING_LOADED ? FIRST_PAGE_PINNED_WIDGET_DISABLED_ALPHA : 1,
-                    workspaceFadeInterpolator);
-            propertySetter.addEndListener(success -> {
-                if (success) {
-                    mWorkspace.getFirstPagePinnedItem().setClickable(state != SPRING_LOADED);
-                }
-            });
+            View firstPagePinnedItem = mWorkspace.getFirstPagePinnedItem();
+            if (firstPagePinnedItem != null) {
+                propertySetter.setViewAlpha(
+                        firstPagePinnedItem,
+                        state == SPRING_LOADED ? FIRST_PAGE_PINNED_WIDGET_DISABLED_ALPHA : 1,
+                        workspaceFadeInterpolator);
+                propertySetter.addEndListener(success -> {
+                    if (success) {
+                        firstPagePinnedItem.setClickable(state != SPRING_LOADED);
+                    }
+                });
+            }
         }
 
         if (FeatureFlags.SHOW_HOME_GARDENING.get()) {
-            propertySetter.setViewAlpha(
-                    mLauncher.getHotseat().getQsb(),
-                    state == SPRING_LOADED ? 0 : 1,
-                    workspaceFadeInterpolator);
-            propertySetter.addEndListener(success -> {
-                if (success) {
-                    mLauncher.getHotseat().getQsb().setClickable(state != SPRING_LOADED);
-                }
-            });
+            View qsb = mLauncher.getHotseat().getQsb();
+            if (qsb != null) {
+                propertySetter.setViewAlpha(
+                        qsb,
+                        state == SPRING_LOADED ? 0 : 1,
+                        workspaceFadeInterpolator);
+                propertySetter.addEndListener(success -> {
+                    if (success) {
+                        qsb.setClickable(state != SPRING_LOADED);
+                    }
+                });
+            }
         }
 
         // Update the accessibility flags for hotseat based on launcher state.
@@ -229,6 +235,11 @@ public class WorkspaceStateTransitionAnimation {
         Scrim workspaceDragScrim = mLauncher.getDragLayer().getWorkspaceDragScrim();
         propertySetter.setFloat(workspaceDragScrim, SCRIM_PROGRESS,
                 state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
+
+        if (mLauncher.mBlurLayer != null) {
+            propertySetter.setViewAlpha(mLauncher.mBlurLayer,
+                    state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
+        }
 
         SysUiScrim sysUiScrim = mLauncher.getRootView().getSysUiScrim();
         propertySetter.setFloat(sysUiScrim.getSysUIProgress(), AnimatedFloat.VALUE,

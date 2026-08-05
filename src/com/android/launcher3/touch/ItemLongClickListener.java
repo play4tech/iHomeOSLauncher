@@ -30,6 +30,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnLongClickListener;
 
+import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.DragSource;
 import com.android.launcher3.DropTarget;
 import com.android.launcher3.Launcher;
@@ -64,23 +65,30 @@ public class ItemLongClickListener {
             ItemLongClickListener::onTouchTest;
 
     public static boolean onTouchTest(View v, MotionEvent ev) {
-        if (ev.getEventTime() - ev.getDownTime() < 150) {
+        long dt = ev.getEventTime() - ev.getDownTime();
+        if (dt < 150) {
             return false;
         }
+        android.util.Log.d("DragDebug", "onTouchTest triggered long-press for view: " + (v != null ? v.getTag() : "null") + " (timeHeld=" + dt + "ms, action=" + ev.getActionMasked() + ")");
         return onWorkspaceItemLongClick(v);
     }
 
     public static boolean onWorkspaceItemLongClick(View v) {
+        android.util.Log.d("DragDebug", "onWorkspaceItemLongClick called for: " + v.getTag());
         if (v instanceof LauncherAppWidgetHostView) {
             TestLogging.recordEvent(TestProtocol.SEQUENCE_MAIN, "Widgets.onLongClick");
         } else {
             TestLogging.recordEvent(TestProtocol.SEQUENCE_MAIN, "onWorkspaceItemLongClick");
         }
         Launcher launcher = Launcher.getLauncher(v.getContext());
-        if (!canStartDrag(launcher)) return false;
+        if (!canStartDrag(launcher)) {
+            android.util.Log.d("DragDebug", "canStartDrag returned false");
+            return false;
+        }
         if (!launcher.isInState(NORMAL)
                 && !launcher.isInState(OVERVIEW)
                 && !launcher.isInState(EDIT_MODE)) {
+            android.util.Log.d("DragDebug", "Not in a draggable state: " + launcher.getStateManager().getState());
             return false;
         }
         if (!(v.getTag() instanceof ItemInfo)) return false;
@@ -187,15 +195,23 @@ public class ItemLongClickListener {
 
     public static boolean canStartDrag(Launcher launcher) {
         if (launcher == null) {
+            android.util.Log.d("DragDebug", "canStartDrag: launcher is null");
             return false;
         }
         // We prevent dragging when we are loading the workspace as it is possible to pick up a view
-        // that is subsequently removed from the workspace in startBinding().
-        if (launcher.isWorkspaceLocked()) return false;
+        // that is subsequently removed from the workspace in startBinding().\
+        if (launcher.isWorkspaceLocked()) {
+            android.util.Log.d("DragDebug", "canStartDrag: workspace is locked");
+            return false;
+        }
         // Return early if an item is already being dragged (e.g. when long-pressing two shortcuts)
-        if (launcher.getDragController().isDragging()) return false;
+        if (launcher.getDragController().isDragging()) {
+            android.util.Log.d("DragDebug", "canStartDrag: already dragging");
+            return false;
+        }
         // Return early if user is in the middle of selecting split-screen apps
         if (FeatureFlags.enableSplitContextually() && launcher.isSplitSelectionActive()) {
+            android.util.Log.d("DragDebug", "canStartDrag: split selection active");
             return false;
         }
 
