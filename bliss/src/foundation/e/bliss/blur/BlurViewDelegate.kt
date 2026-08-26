@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.blur
 
 import android.graphics.Canvas
@@ -8,9 +25,12 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.ViewTreeObserver
-import androidx.core.graphics.toRectF
 import com.android.launcher3.R
 import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.pow
+import kotlin.math.sin
 
 class BlurViewDelegate(
     private val view: View,
@@ -38,17 +58,58 @@ class BlurViewDelegate(
     private val locationInWindow = IntArray(2)
 
     private val onGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener { updateBounds() }
-    private val onScrollChangedListener = ViewTreeObserver.OnScrollChangedListener { updateBounds() }
-    
+    private val onScrollChangedListener =
+        ViewTreeObserver.OnScrollChangedListener { updateBounds() }
+
     // Kept for API compatibility with parents that might still notify it
     var offsetParentListener: Any? = null
 
     var blurCornerRadius = 0f
 
+    private fun dockPath(
+        width: Float,
+        height: Float,
+        radiusRatio: Float = 0.65f,
+        n: Double = 5.0,
+        segments: Int = 16
+    ): android.graphics.Path {
+        val r = min(height / 2f * radiusRatio, min(width, height) / 2f)
+        val path = android.graphics.Path()
+        fun qx(t: Double) = (r * cos(t).pow(2.0 / n)).toFloat()
+        fun qy(t: Double) = (r * sin(t).pow(2.0 / n)).toFloat()
+
+        path.moveTo(r, 0f)
+        path.lineTo(width - r, 0f)
+        for (i in 1..segments) {
+            val t = (Math.PI / 2) * i / segments
+            path.lineTo(width - qx(t), qy(t))
+        } // top-right
+        path.lineTo(width, height - r)
+        for (i in 1..segments) {
+            val t = (Math.PI / 2) * i / segments
+            path.lineTo(width - qy(t), height - qx(t))
+        } // bottom-right
+        path.lineTo(r, height)
+        for (i in 1..segments) {
+            val t = (Math.PI / 2) * i / segments
+            path.lineTo(qx(t), height - qy(t))
+        } // bottom-left
+        path.lineTo(0f, r)
+        for (i in 1..segments) {
+            val t = (Math.PI / 2) * i / segments
+            path.lineTo(qy(t), qx(t))
+        } // top-left
+        path.close()
+        return path
+    }
+
     val outlineProvider =
         object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, view.width, view.height, blurCornerRadius)
+                if (view.width > 0 && view.height > 0) {
+                    val path = dockPath(view.width.toFloat(), view.height.toFloat())
+                    outline.setConvexPath(path)
+                }
             }
         }
 
@@ -93,17 +154,21 @@ class BlurViewDelegate(
             this.draw(canvas)
         }
         if (overlayColor != 0) {
-            canvas.drawRoundRect(canvas.clipBounds.toRectF(), blurCornerRadius, blurCornerRadius, overlayPaint)
+            val bounds = canvas.clipBounds
+            val path = dockPath(bounds.width().toFloat(), bounds.height().toFloat())
+            path.offset(bounds.left.toFloat(), bounds.top.toFloat())
+            canvas.drawPath(path, overlayPaint)
         }
     }
 
     private fun createFullBlurDrawable() {
         fullBlurDrawable?.let { if (view.isAttachedToWindow) it.stopListening() }
-        fullBlurDrawable = BlurDrawable(context, config).apply {
-            callback = blurDrawableCallback
-            overlayColor = this@BlurViewDelegate.overlayColor
-            if (view.isAttachedToWindow) startListening()
-        }
+        fullBlurDrawable =
+            BlurDrawable(context, config).apply {
+                callback = blurDrawableCallback
+                overlayColor = this@BlurViewDelegate.overlayColor
+                if (view.isAttachedToWindow) startListening()
+            }
         updateBounds()
     }
 
