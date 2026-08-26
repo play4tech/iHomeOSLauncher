@@ -1,23 +1,36 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.glass
 
 import android.content.SharedPreferences
 import android.os.Build
-
 import android.view.View
 import android.view.ViewGroup
 import com.android.launcher3.Hotseat
-import com.android.launcher3.R
 import foundation.e.bliss.preferences.BlissPrefs
 import foundation.e.bliss.wallpaper.WallpaperEnvironment
 import foundation.e.bliss.wallpaper.WallpaperEnvironmentBuilder
 
-
 /**
- * Controls the LiquidGlass dock panel ([DockGlassView]) on API 33+, falling back
- * to the classic frosted [BlurViewDelegate] path on API 30–32.
+ * Controls the LiquidGlass dock panel ([DockGlassView]) on API 33+, falling back to the classic
+ * frosted [BlurViewDelegate] path on API 30–32.
  *
- * Owns the on/off switch ([enabled]) and gates [Hotseat.drawBlur] so the
- * two paths don't overlap.
+ * Owns the on/off switch ([enabled]) and gates [Hotseat.drawBlur] so the two paths don't overlap.
  *
  * Instantiate at the end of [Launcher.setupViews()], after [mHotseat] is assigned.
  */
@@ -61,7 +74,10 @@ class DockGlassController(
 
     private fun apply() {
         val active = supported && enabled
-        android.util.Log.d("DockGlassController", "LiquidGlass apply: supported=$supported, enabled=$enabled, active=$active");
+        android.util.Log.d(
+            "DockGlassController",
+            "LiquidGlass apply: supported=$supported, enabled=$enabled, active=$active"
+        )
 
         dockGlass.visibility = if (active) View.VISIBLE else View.GONE
 
@@ -79,7 +95,7 @@ class DockGlassController(
             // All values are tunable here without touching other files.
             dockGlass.setBlurRadius(2f)
             dockGlass.setDispersion(0.2f)
-            dockGlass.setTintAlpha(0.25f)     // iOS frosted look
+            dockGlass.setTintAlpha(0.25f) // iOS frosted look
             dockGlass.setTintColorRed(1.0f)
             dockGlass.setTintColorGreen(1.0f)
             dockGlass.setTintColorBlue(1.0f)
@@ -89,9 +105,7 @@ class DockGlassController(
         }
     }
 
-    /**
-     * Call from [Launcher.onDestroy] to avoid a listener leak.
-     */
+    /** Call from [Launcher.onDestroy] to avoid a listener leak. */
     fun destroy() {
         envBuilder.removeListener(this)
         sharedPrefs.unregisterOnSharedPreferenceChangeListener(this)

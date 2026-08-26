@@ -68,13 +68,14 @@ class BlurWallpaperFilter(private val context: Context) :
                     true
                 )
             }
-        val blurred = HokoBlur.with(context)
-            .scheme(HokoBlur.SCHEME_NATIVE)
-            .mode(HokoBlur.MODE_STACK)
-            .radius(config.radius)
-            .forceCopy(false)
-            .processor()
-            .blur(source)
+        val blurred =
+            HokoBlur.with(context)
+                .scheme(HokoBlur.SCHEME_NATIVE)
+                .mode(HokoBlur.MODE_STACK)
+                .radius(config.radius)
+                .forceCopy(false)
+                .processor()
+                .blur(source)
         return blurred
     }
 }

@@ -13,36 +13,39 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
  */
 package foundation.e.bliss.glass
 
 import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Outline
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.Gravity
-import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.view.View
+import android.view.ViewGroup
+import android.view.ViewOutlineProvider
+import android.widget.FrameLayout
 import com.android.launcher3.Insettable
 import com.android.launcher3.views.ActivityContext
-import foundation.e.bliss.graphics.ContinuousCornerGeometry
-import android.graphics.Canvas
-import android.graphics.Outline
-import android.view.ViewOutlineProvider
 import com.qmdeve.liquidglass.widget.LiquidGlassView
+import foundation.e.bliss.graphics.ContinuousCornerGeometry
 
 /**
- * A [LiquidGlassView] that implements [Insettable] so it receives insets automatically
- * from [com.android.launcher3.InsettableFrameLayout]'s generic dispatch loop —
- * no explicit wiring in Launcher.java is needed.
+ * A [LiquidGlassView] that implements [Insettable] so it receives insets automatically from
+ * [com.android.launcher3.InsettableFrameLayout]'s generic dispatch loop — no explicit wiring in
+ * Launcher.java is needed.
  *
- * Its [setInsets] mirrors [com.android.launcher3.Hotseat.setInsets] exactly, so this
- * panel always occupies the same rect as the dock bar.
+ * Its [setInsets] mirrors [com.android.launcher3.Hotseat.setInsets] exactly, so this panel always
+ * occupies the same rect as the dock bar.
  *
- * Sits as a direct child of DragLayer, between `glass_source` and the hotseat include,
- * so it renders above Workspace/wallpaper but below the icon layer.
+ * Sits as a direct child of DragLayer, between `glass_source` and the hotseat include, so it
+ * renders above Workspace/wallpaper but below the icon layer.
  */
-class DockGlassView @JvmOverloads constructor(
+class DockGlassView
+@JvmOverloads
+constructor(
     context: Context,
     attrs: AttributeSet? = null,
 ) : LiquidGlassView(context, attrs), Insettable {
@@ -50,27 +53,32 @@ class DockGlassView @JvmOverloads constructor(
     private val continuousGeometry = ContinuousCornerGeometry()
 
     init {
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                val grid = ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
-                if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
-                    val path = continuousGeometry.getPath(
-                        width = view.width.toFloat(),
-                        height = view.height.toFloat(),
-                        radius = grid.hotseatGeometry.cornerRadius
-                    )
-                    outline.setConvexPath(path)
-                } else {
-                    outline.setRect(0, 0, view.width, view.height)
+        outlineProvider =
+            object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    val grid =
+                        ActivityContext.lookupContext<com.android.launcher3.Launcher>(context)
+                            .deviceProfile
+                    if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
+                        val path =
+                            continuousGeometry.getPath(
+                                width = view.width.toFloat(),
+                                height = view.height.toFloat(),
+                                radius = grid.hotseatGeometry.cornerRadius
+                            )
+                        outline.setConvexPath(path)
+                    } else {
+                        outline.setRect(0, 0, view.width, view.height)
+                    }
                 }
             }
-        }
         clipToOutline = true
     }
 
     override fun setInsets(insets: Rect) {
         val lp = layoutParams as? FrameLayout.LayoutParams ?: return
-        val grid = ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
+        val grid =
+            ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
 
         if (grid.isVerticalBarLayout) {
             lp.height = ViewGroup.LayoutParams.MATCH_PARENT
@@ -97,13 +105,15 @@ class DockGlassView @JvmOverloads constructor(
     }
 
     override fun dispatchDraw(canvas: Canvas) {
-        val grid = ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
+        val grid =
+            ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
         if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
-            val path = continuousGeometry.getPath(
-                width = width.toFloat(),
-                height = height.toFloat(),
-                radius = grid.hotseatGeometry.cornerRadius
-            )
+            val path =
+                continuousGeometry.getPath(
+                    width = width.toFloat(),
+                    height = height.toFloat(),
+                    radius = grid.hotseatGeometry.cornerRadius
+                )
             canvas.save()
             canvas.clipPath(path)
             super.dispatchDraw(canvas)

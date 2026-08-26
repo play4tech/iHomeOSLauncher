@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.glass
 
 import android.content.Context
@@ -12,31 +29,34 @@ import com.qmdeve.liquidglass.widget.LiquidGlassView
 import foundation.e.bliss.graphics.ContinuousCornerGeometry
 import foundation.e.bliss.graphics.GlassShapeSpec
 
-class PopupGlassView @JvmOverloads constructor(
-    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : LiquidGlassView(context, attrs, defStyleAttr) {
+class PopupGlassView
+@JvmOverloads
+constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) :
+    LiquidGlassView(context, attrs, defStyleAttr) {
 
     private val geometry = ContinuousCornerGeometry()
-    
+
     // Popup container radius is typically smaller than folder, match it.
     private var cornerRadiusPx = 24f * context.resources.displayMetrics.density
 
     init {
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                if (view.width <= 0 || view.height <= 0) return
-                val path = geometry.getPath(
-                    width = view.width.toFloat(),
-                    height = view.height.toFloat(),
-                    radius = cornerRadiusPx,
-                    smoothing = GlassShapeSpec.IOS_SMOOTHING
-                )
-                outline.setConvexPath(path)
+        outlineProvider =
+            object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    if (view.width <= 0 || view.height <= 0) return
+                    val path =
+                        geometry.getPath(
+                            width = view.width.toFloat(),
+                            height = view.height.toFloat(),
+                            radius = cornerRadiusPx,
+                            smoothing = GlassShapeSpec.IOS_SMOOTHING
+                        )
+                    outline.setConvexPath(path)
+                }
             }
-        }
         clipToOutline = true
         setCornerRadius(0f)
-        
+
         // Glass visual parameters for the popup
         setBlurRadius(15f)
         setDispersion(0.2f)
@@ -59,7 +79,13 @@ class PopupGlassView @JvmOverloads constructor(
             super.dispatchDraw(canvas)
             return
         }
-        val path = geometry.getPath(width.toFloat(), height.toFloat(), cornerRadiusPx, GlassShapeSpec.IOS_SMOOTHING)
+        val path =
+            geometry.getPath(
+                width.toFloat(),
+                height.toFloat(),
+                cornerRadiusPx,
+                GlassShapeSpec.IOS_SMOOTHING
+            )
         canvas.save()
         canvas.clipPath(path)
         super.dispatchDraw(canvas)

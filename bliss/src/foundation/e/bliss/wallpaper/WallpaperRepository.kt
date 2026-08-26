@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.wallpaper
 
 import android.annotation.SuppressLint
@@ -20,10 +37,10 @@ class WallpaperRepository(val context: Context) {
     private val mListeners = ArrayList<Listener>()
     private val wallpaperChangeReceiver = SimpleBroadcastReceiver { updateAsync() }
     private var latestRequestId = 0L
-    
+
     var currentWallpaper: Bitmap? = null
         private set
-        
+
     var isLiveWallpaper = false
         private set
 
@@ -31,7 +48,7 @@ class WallpaperRepository(val context: Context) {
         wallpaperChangeReceiver.register(context, Intent.ACTION_WALLPAPER_CHANGED)
         updateAsync()
     }
-    
+
     fun setLiveWallpaper(isLive: Boolean) {
         if (isLiveWallpaper != isLive) {
             isLiveWallpaper = isLive
@@ -40,9 +57,7 @@ class WallpaperRepository(val context: Context) {
     }
 
     fun updateAsync() {
-        val requestId = synchronized(this) {
-            ++latestRequestId
-        }
+        val requestId = synchronized(this) { ++latestRequestId }
         Executors.THREAD_POOL_EXECUTOR.execute { updateWallpaper(requestId) }
     }
 
@@ -50,11 +65,14 @@ class WallpaperRepository(val context: Context) {
     private fun updateWallpaper(requestId: Long) {
         var wallpaper: Bitmap? = null
         val isLive = mWallpaperManager.wallpaperInfo != null
-        
+
         if (!isLive) {
             try {
                 wallpaper = decodeSystemWallpaper()
-                android.util.Log.d("WallpaperRepository", "decodeSystemWallpaper result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}")
+                android.util.Log.d(
+                    "WallpaperRepository",
+                    "decodeSystemWallpaper result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
+                )
             } catch (e: Exception) {
                 android.util.Log.e("WallpaperRepository", "Error in decodeSystemWallpaper", e)
             }
@@ -64,7 +82,10 @@ class WallpaperRepository(val context: Context) {
             try {
                 val drawable = mWallpaperManager.drawable
                 wallpaper = drawable?.toBitmap()
-                android.util.Log.d("WallpaperRepository", "mWallpaperManager.drawable result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}")
+                android.util.Log.d(
+                    "WallpaperRepository",
+                    "mWallpaperManager.drawable result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
+                )
             } catch (e: Exception) {
                 android.util.Log.e("WallpaperRepository", "Error fetching wallpaper drawable", e)
             }
@@ -75,9 +96,7 @@ class WallpaperRepository(val context: Context) {
         if (synchronized(this) { requestId != latestRequestId }) return
 
         currentWallpaper = wallpaper
-        runOnMainThread {
-            mListeners.forEach { it.onWallpaperChanged(wallpaper) }
-        }
+        runOnMainThread { mListeners.forEach { it.onWallpaperChanged(wallpaper) } }
     }
 
     private fun decodeSystemWallpaper(): Bitmap? {
@@ -85,14 +104,12 @@ class WallpaperRepository(val context: Context) {
         // Clear that cache before reading so a newly-applied wallpaper is never replaced by
         // the previous bitmap if the file descriptor is unavailable.
         mWallpaperManager.forgetLoadedWallpaper()
-        val wallpaperFile: ParcelFileDescriptor = mWallpaperManager
-            .getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
+        val wallpaperFile: ParcelFileDescriptor =
+            mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
 
-        return wallpaperFile.use {
-            BitmapFactory.decodeFileDescriptor(it.fileDescriptor)
-        }
+        return wallpaperFile.use { BitmapFactory.decodeFileDescriptor(it.fileDescriptor) }
     }
-    
+
     fun addListener(listener: Listener) {
         mListeners.add(listener)
         listener.onWallpaperChanged(currentWallpaper)
@@ -110,11 +127,11 @@ class WallpaperRepository(val context: Context) {
         val INSTANCE = MainThreadInitializedObject { context: Context ->
             WallpaperRepository(context)
         }
-        
+
         fun getInstanceNoCreate(): WallpaperRepository {
             return INSTANCE.getNoCreate()
         }
-        
+
         fun getInstance(context: Context): WallpaperRepository {
             return INSTANCE.get(context)
         }

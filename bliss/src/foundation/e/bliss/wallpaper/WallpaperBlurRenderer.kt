@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.wallpaper
 
 import android.content.Context
@@ -16,13 +33,13 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
 
     private val builder = WallpaperEnvironmentBuilder.INSTANCE.get(context)
     private val mListeners = ArrayList<Listener>()
-    
+
     private val wallpaperFilter = BlurWallpaperFilter(context)
     private var applyTask: WallpaperFilter.ApplyTask<BlurSizes>? = null
-    
+
     var blurSizes: BlurSizes? = null
         private set
-        
+
     private var isFirstBuild = true
 
     init {
@@ -46,32 +63,35 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
     private fun regenerateBlur(wallpaper: Bitmap) {
         val vibrantBitmap = applyVibrancy(wallpaper)
 
-        applyTask = wallpaperFilter.apply(vibrantBitmap).setCallback { result: BlurSizes?, error: Throwable? ->
-            vibrantBitmap.recycle()
-            applyTask = null
-            
-            if (error == null) {
-                blurSizes?.recycle()
-                blurSizes = result
-                notifyListeners()
-            } else {
-                if (error is OutOfMemoryError) {
-                    runOnMainThread {
-                        Toast.makeText(context, "Blur Failed! (OOM)", Toast.LENGTH_LONG).show()
+        applyTask =
+            wallpaperFilter.apply(vibrantBitmap).setCallback { result: BlurSizes?, error: Throwable?
+                ->
+                vibrantBitmap.recycle()
+                applyTask = null
+
+                if (error == null) {
+                    blurSizes?.recycle()
+                    blurSizes = result
+                    notifyListeners()
+                } else {
+                    if (error is OutOfMemoryError) {
+                        runOnMainThread {
+                            Toast.makeText(context, "Blur Failed! (OOM)", Toast.LENGTH_LONG).show()
+                        }
                     }
+                    blurSizes?.recycle()
+                    blurSizes = null
+                    notifyListeners()
                 }
-                blurSizes?.recycle()
-                blurSizes = null
-                notifyListeners()
             }
-        }
     }
 
-    private val mVibrancyPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
-        val colorMatrix = ColorMatrix()
-        colorMatrix.setSaturation(1.25f)
-        colorFilter = ColorMatrixColorFilter(colorMatrix)
-    }
+    private val mVibrancyPaint =
+        Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+            val colorMatrix = ColorMatrix()
+            colorMatrix.setSaturation(1.25f)
+            colorFilter = ColorMatrixColorFilter(colorMatrix)
+        }
 
     private fun applyVibrancy(wallpaper: Bitmap): Bitmap {
         val bitmap = Bitmap.createBitmap(wallpaper.width, wallpaper.height, Bitmap.Config.ARGB_8888)
@@ -81,9 +101,7 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
     }
 
     private fun notifyListeners() {
-        runOnMainThread {
-            mListeners.forEach { it.onBlurCacheUpdated(blurSizes) }
-        }
+        runOnMainThread { mListeners.forEach { it.onBlurCacheUpdated(blurSizes) } }
     }
 
     fun addListener(listener: Listener) {
@@ -119,15 +137,15 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
         val INSTANCE = MainThreadInitializedObject { context: Context ->
             WallpaperBlurRenderer(context)
         }
-        
+
         fun getInstanceNoCreate(): WallpaperBlurRenderer {
             return INSTANCE.getNoCreate()
         }
-        
+
         fun getInstance(context: Context): WallpaperBlurRenderer {
             return INSTANCE.get(context)
         }
-        
+
         @JvmField val blurConfigBackground = BlurConfig({ it.background }, 2, 8)
         @JvmField val blurConfigDock = BlurConfig({ it.dock }, 8, 2)
         @JvmField val blurConfigAppGroup = BlurConfig({ it.appGroup }, 6, 8)

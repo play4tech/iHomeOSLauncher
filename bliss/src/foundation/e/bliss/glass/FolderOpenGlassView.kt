@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.glass
 
 import android.content.Context
@@ -12,26 +29,29 @@ import com.qmdeve.liquidglass.widget.LiquidGlassView
 import foundation.e.bliss.graphics.ContinuousCornerGeometry
 import foundation.e.bliss.graphics.GlassShapeSpec
 
-class FolderOpenGlassView @JvmOverloads constructor(
-    context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
-) : LiquidGlassView(context, attrs, defStyleAttr) {
+class FolderOpenGlassView
+@JvmOverloads
+constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) :
+    LiquidGlassView(context, attrs, defStyleAttr) {
 
     private val geometry = ContinuousCornerGeometry()
     private val cornerRadiusPx = 38f * context.resources.displayMetrics.density
 
     init {
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                if (view.width <= 0 || view.height <= 0) return
-                val path = geometry.getPath(
-                    width = view.width.toFloat(),
-                    height = view.height.toFloat(),
-                    radius = cornerRadiusPx,
-                    smoothing = GlassShapeSpec.IOS_SMOOTHING
-                )
-                outline.setConvexPath(path)
+        outlineProvider =
+            object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    if (view.width <= 0 || view.height <= 0) return
+                    val path =
+                        geometry.getPath(
+                            width = view.width.toFloat(),
+                            height = view.height.toFloat(),
+                            radius = cornerRadiusPx,
+                            smoothing = GlassShapeSpec.IOS_SMOOTHING
+                        )
+                    outline.setConvexPath(path)
+                }
             }
-        }
         clipToOutline = true
         // Shape handled by canvas clipping below; skip the library's own rounding.
         setCornerRadius(0f)
@@ -50,7 +70,13 @@ class FolderOpenGlassView @JvmOverloads constructor(
             super.dispatchDraw(canvas)
             return
         }
-        val path = geometry.getPath(width.toFloat(), height.toFloat(), cornerRadiusPx, GlassShapeSpec.IOS_SMOOTHING)
+        val path =
+            geometry.getPath(
+                width.toFloat(),
+                height.toFloat(),
+                cornerRadiusPx,
+                GlassShapeSpec.IOS_SMOOTHING
+            )
         canvas.save()
         canvas.clipPath(path)
         super.dispatchDraw(canvas)

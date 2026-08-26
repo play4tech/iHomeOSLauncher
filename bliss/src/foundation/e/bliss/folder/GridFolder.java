@@ -99,7 +99,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
         mContent.setPadding(cellIconGap, cellIconGap, cellIconGap, cellIconGap);
 
         mFolderName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, mFolderName.getTextSize() * 3);
-        
+
         int measureSpec = MeasureSpec.UNSPECIFIED;
         mFolderTab.measure(measureSpec, measureSpec);
         mFolderTabHeight = mFolderTab.getMeasuredHeight();
@@ -107,16 +107,17 @@ public class GridFolder extends Folder implements OnAlarmListener {
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
             android.graphics.drawable.Drawable bg = mGridFolderPage.getBackground();
             if (bg instanceof android.graphics.drawable.GradientDrawable) {
-                android.graphics.drawable.GradientDrawable gd = (android.graphics.drawable.GradientDrawable) bg.mutate();
+                android.graphics.drawable.GradientDrawable gd = (android.graphics.drawable.GradientDrawable) bg
+                        .mutate();
                 gd.setColor(android.graphics.Color.TRANSPARENT);
             }
-            
+
             mGlassView = new foundation.e.bliss.glass.FolderOpenGlassView(getContext());
             mGlassView.setVisibility(VISIBLE);
-            
+
             if (mGlassView != null) {
-                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT);
+                FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT);
                 mGridFolderPage.addView(mGlassView, 0, lp);
             }
         }
@@ -135,7 +136,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
         mFolderTab.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(mFolderTabHeight, MeasureSpec.EXACTLY));
 
-        mGridFolderPage.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(contentHeight + mFooterHeight, MeasureSpec.EXACTLY));
+        mGridFolderPage.measure(contentAreaWidthSpec,
+                MeasureSpec.makeMeasureSpec(contentHeight + mFooterHeight, MeasureSpec.EXACTLY));
 
         mFooter.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(mFooterHeight, MeasureSpec.EXACTLY));
 
@@ -329,7 +331,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
         AnimatorSet set = new AnimatorSet();
 
         if (workspace != null) {
-            // In SingleLayerMode, we want to keep the workspace visible so it can be blurred
+            // In SingleLayerMode, we want to keep the workspace visible so it can be
+            // blurred
             // behind the folder. We do not fade the workspace itself.
             if (!isSingleLayer) {
                 play(set, getAnimator(workspace, 1f, 0f, hide));
@@ -382,9 +385,11 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 }
                 if (!isSingleLayer) {
                     ScrimView scrimView = launcher.findViewById(R.id.scrim_view);
-                    if (scrimView != null) scrimView.setAlpha(hide ? 0f : 1f);
+                    if (scrimView != null)
+                        scrimView.setAlpha(hide ? 0f : 1f);
                     BlurBackgroundView blur = launcher.mBlurLayer;
-                    if (blur != null) blur.setAlpha(hide ? 1f : 0f);
+                    if (blur != null)
+                        blur.setAlpha(hide ? 1f : 0f);
                 }
             }
         });
@@ -400,7 +405,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
     @Override
     public int getUnusedOffsetYOnAnimate(boolean isOpening) {
         // Tab height correction is now applied directly in FolderAnimationManager
-        // (not through this method which gets scaled by initialScale, making it too small).
+        // (not through this method which gets scaled by initialScale, making it too
+        // small).
         return 0;
     }
 

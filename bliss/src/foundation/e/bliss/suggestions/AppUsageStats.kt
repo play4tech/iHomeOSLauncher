@@ -21,9 +21,7 @@ import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.provider.Settings
-import android.widget.Toast
 import com.android.launcher3.R
 import foundation.e.bliss.utils.Logger
 import java.util.Calendar
@@ -59,14 +57,20 @@ class AppUsageStats(private val mContext: Context) {
                 }
             }
 
-            val appOps = mContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
-            val mode = appOps.unsafeCheckOpNoThrow(
-                android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
-                android.os.Process.myUid(), mContext.packageName
-            )
+            val appOps =
+                mContext.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+            val mode =
+                appOps.unsafeCheckOpNoThrow(
+                    android.app.AppOpsManager.OPSTR_GET_USAGE_STATS,
+                    android.os.Process.myUid(),
+                    mContext.packageName
+                )
             if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
                 Logger.i(TAG, "The user may not allow the access to apps usage.")
-                mContext.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                mContext.startActivity(
+                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
             } else if (aggregatedStats.isNotEmpty()) {
                 val statsMap = aggregatedStats.entries
 

@@ -1,3 +1,20 @@
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ *
+ */
 package foundation.e.bliss.wallpaper
 
 import android.content.Context
@@ -12,10 +29,10 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
 
     private val repository = WallpaperRepository.INSTANCE.get(context)
     private val mListeners = ArrayList<Listener>()
-    
+
     var environment: WallpaperEnvironment? = null
         private set
-        
+
     private var parallaxOffset: Float = 0.5f
 
     init {
@@ -31,7 +48,7 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         this.parallaxOffset = offset
         rebuildEnvironment(repository.currentWallpaper, offset)
     }
-    
+
     fun onConfigurationChanged() {
         rebuildEnvironment(repository.currentWallpaper, parallaxOffset)
     }
@@ -46,10 +63,11 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         val displaySize = DisplayController.INSTANCE.get(context).info.currentSize
         val wallpaperSize = Point(bitmap.width, bitmap.height)
 
-        val scale = Math.max(
-            displaySize.x.toFloat() / wallpaperSize.x,
-            displaySize.y.toFloat() / wallpaperSize.y
-        )
+        val scale =
+            Math.max(
+                displaySize.x.toFloat() / wallpaperSize.x,
+                displaySize.y.toFloat() / wallpaperSize.y
+            )
 
         val scaledWidth = wallpaperSize.x * scale
         val scaledHeight = wallpaperSize.y * scale
@@ -65,30 +83,28 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
             dx += (availableWidth * (offset - 0.5f) + 0.5f)
         }
 
-        val transform = WallpaperTransform(
-            scaleX = scale,
-            scaleY = scale,
-            translateX = dx,
-            translateY = dy
-        )
+        val transform =
+            WallpaperTransform(scaleX = scale, scaleY = scale, translateX = dx, translateY = dy)
 
-        val cropRect = RectF(
-            -dx / scale,
-            -dy / scale,
-            (displaySize.x - dx) / scale,
-            (displaySize.y - dy) / scale
-        )
+        val cropRect =
+            RectF(
+                -dx / scale,
+                -dy / scale,
+                (displaySize.x - dx) / scale,
+                (displaySize.y - dy) / scale
+            )
 
         val oldEnv = environment
-        environment = WallpaperEnvironment(
-            wallpaper = bitmap,
-            displaySize = displaySize,
-            wallpaperSize = wallpaperSize,
-            transform = transform,
-            cropRect = cropRect,
-            parallaxOffset = offset
-        )
-        
+        environment =
+            WallpaperEnvironment(
+                wallpaper = bitmap,
+                displaySize = displaySize,
+                wallpaperSize = wallpaperSize,
+                transform = transform,
+                cropRect = cropRect,
+                parallaxOffset = offset
+            )
+
         // Only signal a "wallpaper changed" event if the actual bitmap reference changed.
         val bitmapChanged = oldEnv == null || oldEnv.wallpaper !== bitmap
         notifyListeners(bitmapChanged)
@@ -117,11 +133,11 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         val INSTANCE = MainThreadInitializedObject { context: Context ->
             WallpaperEnvironmentBuilder(context)
         }
-        
+
         fun getInstanceNoCreate(): WallpaperEnvironmentBuilder {
             return INSTANCE.getNoCreate()
         }
-        
+
         fun getInstance(context: Context): WallpaperEnvironmentBuilder {
             return INSTANCE.get(context)
         }

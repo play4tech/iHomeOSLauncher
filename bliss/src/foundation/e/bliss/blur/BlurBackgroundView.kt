@@ -23,8 +23,8 @@ import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.View
 import com.android.launcher3.Insettable
-import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
 import foundation.e.bliss.blur.OffsetParent.OffsetParentDelegate
+import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
 
 class BlurBackgroundView(context: Context, attrs: AttributeSet?) :
     View(context, attrs), Insettable, OffsetParent {
