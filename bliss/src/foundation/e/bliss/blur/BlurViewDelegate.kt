@@ -66,48 +66,73 @@ class BlurViewDelegate(
 
     var blurCornerRadius = 0f
 
-    private fun dockPath(
+    private var cachedPathWidth = 0f
+    private var cachedPathHeight = 0f
+    private val cachedPath = android.graphics.Path()
+
+    private fun getOrCreateDockPath(
         width: Float,
         height: Float,
         radiusRatio: Float = 0.65f,
         n: Double = 5.0,
         segments: Int = 16
     ): android.graphics.Path {
+        if (width == cachedPathWidth && height == cachedPathHeight && !cachedPath.isEmpty) {
+            return cachedPath
+        }
+        cachedPathWidth = width
+        cachedPathHeight = height
+        cachedPath.rewind()
+
+        if (width <= 0f || height <= 0f) return cachedPath
+
+        if (blurCornerRadius > 0f) {
+            cachedPath.addRoundRect(
+                0f,
+                0f,
+                width,
+                height,
+                blurCornerRadius,
+                blurCornerRadius,
+                android.graphics.Path.Direction.CW
+            )
+            return cachedPath
+        }
+
         val r = min(height / 2f * radiusRatio, min(width, height) / 2f)
-        val path = android.graphics.Path()
         fun qx(t: Double) = (r * cos(t).pow(2.0 / n)).toFloat()
         fun qy(t: Double) = (r * sin(t).pow(2.0 / n)).toFloat()
 
-        path.moveTo(r, 0f)
-        path.lineTo(width - r, 0f)
+        cachedPath.moveTo(r, 0f)
+        cachedPath.lineTo(width - r, 0f)
         for (i in 1..segments) {
             val t = (Math.PI / 2) * i / segments
-            path.lineTo(width - qx(t), qy(t))
+            cachedPath.lineTo(width - qx(t), qy(t))
         } // top-right
-        path.lineTo(width, height - r)
+        cachedPath.lineTo(width, height - r)
         for (i in 1..segments) {
             val t = (Math.PI / 2) * i / segments
-            path.lineTo(width - qy(t), height - qx(t))
+            cachedPath.lineTo(width - qy(t), height - qx(t))
         } // bottom-right
-        path.lineTo(r, height)
+        cachedPath.lineTo(r, height)
         for (i in 1..segments) {
             val t = (Math.PI / 2) * i / segments
-            path.lineTo(qx(t), height - qy(t))
+            cachedPath.lineTo(qx(t), height - qy(t))
         } // bottom-left
-        path.lineTo(0f, r)
+        cachedPath.lineTo(0f, r)
         for (i in 1..segments) {
             val t = (Math.PI / 2) * i / segments
-            path.lineTo(qy(t), qx(t))
+            cachedPath.lineTo(qy(t), qx(t))
         } // top-left
-        path.close()
-        return path
+        cachedPath.close()
+        return cachedPath
     }
 
     val outlineProvider =
         object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 if (view.width > 0 && view.height > 0) {
-                    val path = dockPath(view.width.toFloat(), view.height.toFloat())
+                    val path = getOrCreateDockPath(view.width.toFloat(), view.height.toFloat())
                     outline.setConvexPath(path)
                 }
             }
@@ -155,9 +180,15 @@ class BlurViewDelegate(
         }
         if (overlayColor != 0) {
             val bounds = canvas.clipBounds
-            val path = dockPath(bounds.width().toFloat(), bounds.height().toFloat())
-            path.offset(bounds.left.toFloat(), bounds.top.toFloat())
-            canvas.drawPath(path, overlayPaint)
+            val w = bounds.width().toFloat()
+            val h = bounds.height().toFloat()
+            if (w > 0f && h > 0f) {
+                val path = getOrCreateDockPath(w, h)
+                val count = canvas.save()
+                canvas.translate(bounds.left.toFloat(), bounds.top.toFloat())
+                canvas.drawPath(path, overlayPaint)
+                canvas.restoreToCount(count)
+            }
         }
     }
 

@@ -144,6 +144,12 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
 
+        <foundation.e.bliss.wobble.JiggleTopBarView
+            android:id="@+id/jiggle_top_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone" />
+
     </com.android.launcher3.dragndrop.DragLayer>
 
 </com.android.launcher3.LauncherRootView>

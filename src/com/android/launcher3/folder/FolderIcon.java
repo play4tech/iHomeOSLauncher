@@ -734,14 +734,8 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     /** Removes the glass view and cleans up the reference. */
     private void detachGlassView() {
         if (mGlassView != null) {
-            try {
-                // LiquidGlassView might have an unbind method, we call it if possible.
-                java.lang.reflect.Method unbind = mGlassView.getClass().getMethod("unbind");
-                unbind.invoke(mGlassView);
-            } catch (Exception e) {
-                // If it doesn't exist, we fallback to visibility GONE to halt rendering.
-                mGlassView.setVisibility(GONE);
-            }
+            mGlassView.unbind();
+            mGlassView.setVisibility(GONE);
             if (mGlassView.getParent() == this) {
                 removeView(mGlassView);
             }

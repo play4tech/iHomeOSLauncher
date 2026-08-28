@@ -45,10 +45,11 @@ class ContinuousCornerGeometry {
             cachedPath.rewind()
             return cachedPath
         }
-        // Clamp radius so it never exceeds half the shortest side.
+        // Clamp radius taking smoothing factor into account to prevent overlapping corner curves.
         // RoundedPolygon throws "Can't get the direction of a 0-length vector" when
-        // corners overlap and collapse a side to zero length.
-        val safeRadius = radius.coerceAtMost(minOf(width, height) / 2f)
+        // corners overlap and collapse an edge to zero length.
+        val maxSafeRadius = (minOf(width, height) / 2f) / (1f + smoothing * 0.5f)
+        val safeRadius = radius.coerceIn(0f, maxSafeRadius)
 
         if (
             width == cachedWidth &&
@@ -64,36 +65,52 @@ class ContinuousCornerGeometry {
         cachedRadius = safeRadius
         cachedSmoothing = smoothing
 
-        // Generate the underlying AndroidX geometry
-        val polygon =
-            RoundedPolygon.rectangle(
-                width = width,
-                height = height,
-                rounding = CornerRounding(safeRadius, smoothing)
-            )
-
-        // Convert polygon cubics to android.graphics.Path
         cachedPath.rewind()
-        var first = true
-        for (element in polygon.cubics) {
-            if (first) {
-                cachedPath.moveTo(element.anchor0X, element.anchor0Y)
-                first = false
+        try {
+            // Generate the underlying AndroidX geometry
+            val polygon =
+                RoundedPolygon.rectangle(
+                    width = width,
+                    height = height,
+                    rounding = CornerRounding(safeRadius, smoothing)
+                )
+
+            // Convert polygon cubics to android.graphics.Path
+            var first = true
+            for (element in polygon.cubics) {
+                if (first) {
+                    cachedPath.moveTo(element.anchor0X, element.anchor0Y)
+                    first = false
+                }
+                cachedPath.cubicTo(
+                    element.control0X,
+                    element.control0Y,
+                    element.control1X,
+                    element.control1Y,
+                    element.anchor1X,
+                    element.anchor1Y
+                )
             }
-            cachedPath.cubicTo(
-                element.control0X,
-                element.control0Y,
-                element.control1X,
-                element.control1Y,
-                element.anchor1X,
-                element.anchor1Y
+            cachedPath.close()
+
+            // RoundedPolygon centers shapes at (0,0). We must translate the path to (width/2,
+            // height/2)
+            // so its top-left corner matches the view's (0,0) coordinate system.
+            cachedPath.offset(width / 2f, height / 2f)
+        } catch (t: Throwable) {
+            // Safe fallback to standard rounded rect if polygon generation fails on degenerate
+            // dimensions
+            cachedPath.rewind()
+            cachedPath.addRoundRect(
+                0f,
+                0f,
+                width,
+                height,
+                safeRadius,
+                safeRadius,
+                Path.Direction.CW
             )
         }
-        cachedPath.close()
-
-        // RoundedPolygon centers shapes at (0,0). We must translate the path to (width/2, height/2)
-        // so its top-left corner matches the view's (0,0) coordinate system.
-        cachedPath.offset(width / 2f, height / 2f)
 
         return cachedPath
     }

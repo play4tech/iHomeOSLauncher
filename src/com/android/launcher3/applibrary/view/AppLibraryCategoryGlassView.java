@@ -42,18 +42,8 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView {
             }
         });
 
-        // iOS App Library category glass properties
-        setBlurRadius(25f);
-        setDispersion(0.1f);
-        setTintAlpha(0.20f);
-        setTintColorRed(1.0f);
-        setTintColorGreen(1.0f);
-        setTintColorBlue(1.0f);
-
-        setDraggableEnabled(false);
-        setElasticEnabled(false);
-        setTouchEffectEnabled(false);
-        setCornerRadius(0f);
+        // Standard master glass parameters from GlassConfig
+        foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this);
     }
 
     @Override

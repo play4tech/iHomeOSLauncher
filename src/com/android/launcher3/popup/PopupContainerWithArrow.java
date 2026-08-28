@@ -261,8 +261,20 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                     R.layout.system_shortcut_rows_container,
                     R.layout.system_shortcut);
         }
+
+        ItemInfo originalItemInfo = (ItemInfo) originalIcon.getTag();
+        PopupPopulator.CachedShortcutData cachedData = PopupPopulator.getCachedShortcuts(originalItemInfo);
+        if (cachedData != null && !mDeepShortcuts.isEmpty()) {
+            for (int i = 0; i < cachedData.shortcuts.size() && i < mDeepShortcuts.size(); i++) {
+                mDeepShortcuts.get(i).applyShortcutInfo(
+                        cachedData.itemInfos.get(i),
+                        cachedData.shortcuts.get(i),
+                        this);
+            }
+        }
+
         show();
-        loadAppShortcuts((ItemInfo) originalIcon.getTag());
+        loadAppShortcuts(originalItemInfo);
     }
 
     /**

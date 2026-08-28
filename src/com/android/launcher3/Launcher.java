@@ -1089,6 +1089,12 @@ public class Launcher extends StatefulActivity<LauncherState>
             mPendingActivityRequestCode = -1;
             return;
         }
+        if (requestCode == foundation.e.bliss.wallpaper.WallpaperPickerHelper.REQUEST_PICK_WALLPAPER) {
+            if (resultCode == android.app.Activity.RESULT_OK && data != null) {
+                foundation.e.bliss.wallpaper.WallpaperPickerHelper.handleWallpaperResult(this, data.getData());
+            }
+            return;
+        }
         if (requestCode == 2) {
             foundation.e.bliss.wallpaper.WallpaperRepository.Companion.getInstance(this).updateAsync();
         }
@@ -2853,7 +2859,12 @@ public class Launcher extends StatefulActivity<LauncherState>
      * Shows the default options popup
      */
     public void showDefaultOptions(float x, float y) {
-        if (MultiModeController.isSingleLayerMode()) return;
+        if (MultiModeController.isSingleLayerMode()) {
+            if (mWorkspace != null && !mWorkspace.isWobbling()) {
+                mWorkspace.wobbleLayouts(true);
+            }
+            return;
+        }
 
         OptionsPopupView.show(this, getPopupTarget(x, y), OptionsPopupView.getOptions(this),
                 false);

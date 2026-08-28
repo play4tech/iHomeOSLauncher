@@ -28,11 +28,12 @@ import com.android.launcher3.util.MainThreadInitializedObject
 import foundation.e.bliss.blur.BlurWallpaperFilter
 import foundation.e.bliss.blur.WallpaperFilter
 import foundation.e.bliss.utils.runOnMainThread
+import java.util.concurrent.CopyOnWriteArrayList
 
 class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.Listener {
 
     private val builder = WallpaperEnvironmentBuilder.INSTANCE.get(context)
-    private val mListeners = ArrayList<Listener>()
+    private val mListeners = CopyOnWriteArrayList<Listener>()
 
     private val wallpaperFilter = BlurWallpaperFilter(context)
     private var applyTask: WallpaperFilter.ApplyTask<BlurSizes>? = null
@@ -48,7 +49,6 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
 
     override fun onEnvironmentChanged(environment: WallpaperEnvironment?, bitmapChanged: Boolean) {
         if (environment == null) {
-            blurSizes?.recycle()
             blurSizes = null
             notifyListeners()
             return
@@ -70,7 +70,6 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
                 applyTask = null
 
                 if (error == null) {
-                    blurSizes?.recycle()
                     blurSizes = result
                     notifyListeners()
                 } else {
@@ -79,7 +78,6 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
                             Toast.makeText(context, "Blur Failed! (OOM)", Toast.LENGTH_LONG).show()
                         }
                     }
-                    blurSizes?.recycle()
                     blurSizes = null
                     notifyListeners()
                 }

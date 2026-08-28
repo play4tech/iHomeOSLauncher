@@ -49,6 +49,8 @@ internal constructor(
     private val dstRect = RectF()
 
     private val shaderMatrix = Matrix()
+    private val globalMatrix = Matrix()
+    private var cachedBitmap: android.graphics.Bitmap? = null
 
     var overlayColor: Int = Color.TRANSPARENT
 
@@ -65,11 +67,9 @@ internal constructor(
 
         val blurBitmap = config.getDrawable(blurSizes)
 
-        // Prepare BitmapShader if needed
-        if (
-            blurPaint.shader == null ||
-                (blurPaint.shader as? BitmapShader)?.hashCode() != blurBitmap.hashCode()
-        ) {
+        // Prepare BitmapShader if needed (avoid allocating new shader every frame)
+        if (blurPaint.shader == null || cachedBitmap !== blurBitmap) {
+            cachedBitmap = blurBitmap
             val shader = BitmapShader(blurBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
             blurPaint.shader = shader
         }
@@ -83,7 +83,6 @@ internal constructor(
         shaderMatrix.reset()
         shaderMatrix.setScale(config.scale.toFloat(), config.scale.toFloat())
 
-        val globalMatrix = Matrix()
         environment.transform.toMatrix(globalMatrix)
         shaderMatrix.postConcat(globalMatrix)
 

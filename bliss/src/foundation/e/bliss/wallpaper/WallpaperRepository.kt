@@ -29,12 +29,13 @@ import com.android.launcher3.util.Executors
 import com.android.launcher3.util.MainThreadInitializedObject
 import com.android.launcher3.util.SimpleBroadcastReceiver
 import foundation.e.bliss.utils.runOnMainThread
+import java.util.concurrent.CopyOnWriteArrayList
 
 @SuppressLint("NewApi")
 class WallpaperRepository(val context: Context) {
 
     private val mWallpaperManager = WallpaperManager.getInstance(context)
-    private val mListeners = ArrayList<Listener>()
+    private val mListeners = CopyOnWriteArrayList<Listener>()
     private val wallpaperChangeReceiver = SimpleBroadcastReceiver { updateAsync() }
     private var latestRequestId = 0L
 
@@ -73,8 +74,8 @@ class WallpaperRepository(val context: Context) {
                     "WallpaperRepository",
                     "decodeSystemWallpaper result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
                 )
-            } catch (e: Exception) {
-                android.util.Log.e("WallpaperRepository", "Error in decodeSystemWallpaper", e)
+            } catch (t: Throwable) {
+                android.util.Log.e("WallpaperRepository", "Error in decodeSystemWallpaper", t)
             }
         }
 
@@ -86,8 +87,8 @@ class WallpaperRepository(val context: Context) {
                     "WallpaperRepository",
                     "mWallpaperManager.drawable result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
                 )
-            } catch (e: Exception) {
-                android.util.Log.e("WallpaperRepository", "Error fetching wallpaper drawable", e)
+            } catch (t: Throwable) {
+                android.util.Log.e("WallpaperRepository", "Error fetching wallpaper drawable", t)
             }
         }
 
@@ -99,6 +100,11 @@ class WallpaperRepository(val context: Context) {
         runOnMainThread { mListeners.forEach { it.onWallpaperChanged(wallpaper) } }
     }
 
+    fun updateDirectly(bitmap: Bitmap) {
+        currentWallpaper = bitmap
+        runOnMainThread { mListeners.forEach { it.onWallpaperChanged(bitmap) } }
+    }
+
     private fun decodeSystemWallpaper(): Bitmap? {
         // The drawable fallback below is cached by WallpaperManager on some OEM builds.
         // Clear that cache before reading so a newly-applied wallpaper is never replaced by
@@ -107,7 +113,14 @@ class WallpaperRepository(val context: Context) {
         val wallpaperFile: ParcelFileDescriptor =
             mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
 
-        return wallpaperFile.use { BitmapFactory.decodeFileDescriptor(it.fileDescriptor) }
+        return wallpaperFile.use {
+            try {
+                BitmapFactory.decodeFileDescriptor(it.fileDescriptor)
+            } catch (t: Throwable) {
+                android.util.Log.e("WallpaperRepository", "Failed to decode wallpaper fd", t)
+                null
+            }
+        }
     }
 
     fun addListener(listener: Listener) {

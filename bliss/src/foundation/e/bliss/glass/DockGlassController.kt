@@ -91,17 +91,8 @@ class DockGlassController(
             // the subtree on every frame — no manual re-bind needed after scroll/layout.
             dockGlass.bind(glassSource)
 
-            // Glass parameters matched to iOS dock aesthetic.
-            // All values are tunable here without touching other files.
-            dockGlass.setBlurRadius(2f)
-            dockGlass.setDispersion(0.2f)
-            dockGlass.setTintAlpha(0.25f) // iOS frosted look
-            dockGlass.setTintColorRed(1.0f)
-            dockGlass.setTintColorGreen(1.0f)
-            dockGlass.setTintColorBlue(1.0f)
-            dockGlass.setDraggableEnabled(false)
-            dockGlass.setElasticEnabled(false)
-            dockGlass.setTouchEffectEnabled(false)
+            // Standard master glass parameters from GlassConfig
+            GlassConfig.applyDefaultConfig(dockGlass)
         }
     }
 

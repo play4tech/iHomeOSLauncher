@@ -102,29 +102,81 @@ public class PopupPopulator {
         return filteredShortcuts;
     }
 
-    /**
-     * Returns a runnable to update the provided shortcuts
-     */
-    public static <T extends Context & ActivityContext> Runnable createUpdateRunnable(
-            final T context,
-            final ItemInfo originalInfo,
-            final Handler uiHandler, final PopupContainerWithArrow container,
-            final List<DeepShortcutView> shortcutViews) {
+    public static class CachedShortcutData {
+        public final List<ShortcutInfo> shortcuts;
+        public final List<WorkspaceItemInfo> itemInfos;
+
+        public CachedShortcutData(List<ShortcutInfo> shortcuts, List<WorkspaceItemInfo> itemInfos) {
+            this.shortcuts = shortcuts;
+            this.itemInfos = itemInfos;
+        }
+    }
+
+    private static final android.util.LruCache<com.android.launcher3.util.ComponentKey, CachedShortcutData> sShortcutCache =
+            new android.util.LruCache<>(30);
+
+    public static CachedShortcutData getCachedShortcuts(ItemInfo info) {
+        if (info == null || info.getTargetComponent() == null || info.user == null) return null;
+        return sShortcutCache.get(new com.android.launcher3.util.ComponentKey(info.getTargetComponent(), info.user));
+    }
+
+    public static void preloadShortcuts(
+            final Context context, final ItemInfo originalInfo) {
+        if (originalInfo == null || originalInfo.getTargetComponent() == null || originalInfo.user == null) return;
+        final com.android.launcher3.util.ComponentKey key =
+                new com.android.launcher3.util.ComponentKey(originalInfo.getTargetComponent(), originalInfo.user);
+        if (sShortcutCache.get(key) != null) return;
+
+        com.android.launcher3.util.Executors.MODEL_EXECUTOR.execute(() -> {
+            loadAndCacheShortcuts(context, originalInfo);
+        });
+    }
+
+    public static CachedShortcutData loadAndCacheShortcuts(
+            final Context context, final ItemInfo originalInfo) {
         final ComponentName activity = originalInfo.getTargetComponent();
         final UserHandle user = originalInfo.user;
-        return () -> {
+        if (activity == null || user == null) return null;
+        final com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(activity, user);
+
+        try {
             List<ShortcutInfo> shortcuts = new ShortcutRequest(context, user)
                     .withContainer(activity)
                     .query(ShortcutRequest.PUBLISHED);
             shortcuts = PopupPopulator.sortAndFilterShortcuts(shortcuts);
             IconCache cache = LauncherAppState.getInstance(context).getIconCache();
-            for (int i = 0; i < shortcuts.size() && i < shortcutViews.size(); i++) {
+            List<WorkspaceItemInfo> itemInfos = new ArrayList<>(shortcuts.size());
+            for (int i = 0; i < shortcuts.size(); i++) {
                 final ShortcutInfo shortcut = shortcuts.get(i);
                 final WorkspaceItemInfo si = new WorkspaceItemInfo(shortcut, context);
                 cache.getShortcutIcon(si, shortcut);
                 si.rank = i;
                 si.container = CONTAINER_SHORTCUTS;
+                itemInfos.add(si);
+            }
+            CachedShortcutData data = new CachedShortcutData(shortcuts, itemInfos);
+            sShortcutCache.put(key, data);
+            return data;
+        } catch (Throwable t) {
+            android.util.Log.e("PopupPopulator", "Failed to load and cache shortcuts", t);
+            return null;
+        }
+    }
 
+    /**
+     * Returns a runnable to update the provided shortcuts
+     */
+    public static Runnable createUpdateRunnable(
+            final Context context,
+            final ItemInfo originalInfo,
+            final Handler uiHandler, final PopupContainerWithArrow container,
+            final List<DeepShortcutView> shortcutViews) {
+        return () -> {
+            CachedShortcutData data = loadAndCacheShortcuts(context, originalInfo);
+            if (data == null) return;
+            for (int i = 0; i < data.shortcuts.size() && i < shortcutViews.size(); i++) {
+                final ShortcutInfo shortcut = data.shortcuts.get(i);
+                final WorkspaceItemInfo si = data.itemInfos.get(i);
                 final DeepShortcutView view = shortcutViews.get(i);
                 uiHandler.post(() -> view.applyShortcutInfo(si, shortcut, container));
             }

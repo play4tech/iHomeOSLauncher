@@ -4210,8 +4210,25 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 return false;
             });
             wobbleExpireAlarm.setAlarm(WOBBLE_EXPIRATION_TIMEOUT);
+            View topBar = mLauncher.findViewById(R.id.jiggle_top_bar);
+            if (topBar instanceof foundation.e.bliss.wobble.JiggleTopBarView) {
+                ((foundation.e.bliss.wobble.JiggleTopBarView) topBar).show();
+            }
+            animate().translationY(getResources().getDisplayMetrics().density * 32f)
+                    .setDuration(250)
+                    .setInterpolator(com.android.app.animation.Interpolators.EMPHASIZED_DECELERATE)
+                    .start();
         } else {
             wobbleExpireAlarm.cancelAlarm();
+            View topBar = mLauncher.findViewById(R.id.jiggle_top_bar);
+            if (topBar instanceof foundation.e.bliss.wobble.JiggleTopBarView) {
+                ((foundation.e.bliss.wobble.JiggleTopBarView) topBar).hide();
+            }
+            animate().translationY(0f)
+                    .setDuration(200)
+                    .setInterpolator(com.android.app.animation.Interpolators.EMPHASIZED_ACCELERATE)
+                    .start();
+            AbstractFloatingView.closeAllOpenViews(mLauncher);
             mapOverItems((info, view) -> {
                 view.setOnTouchListener(null);
                 view.setLayerType(LAYER_TYPE_NONE, null);

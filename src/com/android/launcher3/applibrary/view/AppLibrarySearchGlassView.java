@@ -40,19 +40,8 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
             }
         });
 
-        // iOS App Library search bar glass properties
-        // Slightly less blurred and more opaque than folders
-        setBlurRadius(20f);
-        setDispersion(0.05f);
-        setTintAlpha(0.25f);
-        setTintColorRed(1.0f);
-        setTintColorGreen(1.0f);
-        setTintColorBlue(1.0f);
-
-        setDraggableEnabled(false);
-        setElasticEnabled(false);
-        setTouchEffectEnabled(false);
-        setCornerRadius(0f);
+        // Standard master glass parameters from GlassConfig
+        foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this);
     }
 
     @Override
@@ -65,6 +54,11 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
         }
     }
 
+    private final Path mClipPath = new Path();
+    private final RectF mClipRect = new RectF();
+    private float mCachedW = -1;
+    private float mCachedH = -1;
+
     @Override
     protected void dispatchDraw(Canvas canvas) {
         float w = getWidth();
@@ -73,12 +67,17 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
             super.dispatchDraw(canvas);
             return;
         }
-        Path path = new Path();
-        float radius = h / 2f;
-        path.addRoundRect(new RectF(0, 0, w, h), radius, radius, Path.Direction.CW);
+        if (w != mCachedW || h != mCachedH) {
+            mCachedW = w;
+            mCachedH = h;
+            mClipPath.rewind();
+            float radius = h / 2f;
+            mClipRect.set(0, 0, w, h);
+            mClipPath.addRoundRect(mClipRect, radius, radius, Path.Direction.CW);
+        }
         
         canvas.save();
-        canvas.clipPath(path);
+        canvas.clipPath(mClipPath);
         super.dispatchDraw(canvas);
         canvas.restore();
     }

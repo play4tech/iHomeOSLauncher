@@ -93,6 +93,13 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     }
 
     private fun findWallpaperProxy(): ViewGroup? {
+        val root = rootView
+        if (root != null) {
+            val proxy = root.findViewById<View>(R.id.glass_source)
+            if (proxy is ViewGroup) return proxy
+            val proxy2 = root.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy2 is ViewGroup) return proxy2
+        }
         var p = parent
         while (p is ViewGroup) {
             val proxy = p.findViewById<View>(R.id.glass_source)
@@ -102,6 +109,13 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             p = p.parent
         }
         return null
+    }
+
+    fun bindToWallpaper() {
+        val proxy = findWallpaperProxy()
+        if (proxy != null) {
+            bind(proxy)
+        }
     }
 
     fun setPopupRadius(radius: Float) {

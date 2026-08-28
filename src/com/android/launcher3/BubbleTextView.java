@@ -557,6 +557,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             if (shouldIgnoreTouchDown(event.getX(), event.getY())) {
                 return false;
             }
+            if (isLongClickable() && getTag() instanceof com.android.launcher3.model.data.ItemInfo) {
+                com.android.launcher3.popup.PopupPopulator.preloadShortcuts(getContext(), (com.android.launcher3.model.data.ItemInfo) getTag());
+            }
         }
         if (isLongClickable()) {
             super.onTouchEvent(event);

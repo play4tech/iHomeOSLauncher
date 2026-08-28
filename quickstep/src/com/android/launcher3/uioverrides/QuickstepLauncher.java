@@ -943,7 +943,7 @@ public class QuickstepLauncher extends Launcher {
 
     @Override
     public void startActivityForResult(Intent intent, int requestCode, Bundle options) {
-        if (requestCode != -1) {
+        if (requestCode != -1 && requestCode != foundation.e.bliss.wallpaper.WallpaperPickerHelper.REQUEST_PICK_WALLPAPER) {
             mPendingActivityRequestCode = requestCode;
             StartActivityParams params = new StartActivityParams(this, requestCode);
             params.intent = intent;

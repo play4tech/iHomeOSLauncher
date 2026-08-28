@@ -53,8 +53,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 }
             }
         clipToOutline = true
-        // Shape handled by canvas clipping below; skip the library's own rounding.
-        setCornerRadius(0f)
+        // Standard master glass parameters from GlassConfig
+        GlassConfig.applyDefaultConfig(this)
     }
 
     override fun onAttachedToWindow() {
