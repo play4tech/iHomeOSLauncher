@@ -825,7 +825,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
 
         int size = getIconsInReadingOrder().size();
-        if (size <= 1) {
+        if (size <= 1 && !MultiModeController.isSingleLayerMode()) {
             Log.d(TAG, "Couldn't animate folder closed because there's " + size + " icons");
             closeComplete(false);
             post(this::announceAccessibilityChanges);
@@ -882,6 +882,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (mFolderIcon != null) {
             mFolderIcon.setVisibility(View.VISIBLE);
             mFolderIcon.setIconVisible(true);
+            mFolderIcon.setAlpha(1f);
             mFolderIcon.mFolderName.setTextVisibility(true);
             if (wasAnimated) {
                 mFolderIcon.animateBgShadowAndStroke();
@@ -1036,7 +1037,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         // a drop has occurred above the folder.
         if (!d.dragComplete) {
             mOnExitAlarm.setOnAlarmListener(mOnExitAlarmListener);
-            mOnExitAlarm.setAlarm(ON_EXIT_CLOSE_DELAY);
+            mOnExitAlarm.setAlarm(MultiModeController.isSingleLayerMode() ? 50 : ON_EXIT_CLOSE_DELAY);
         }
         mReorderAlarm.cancelAlarm();
 
@@ -1254,6 +1255,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public boolean isDestroyed() {
         return mDestroyed;
+    }
+
+    public boolean isDragInProgress() {
+        return mDragInProgress;
     }
 
     // This method keeps track of the first and last item in the folder for the purposes

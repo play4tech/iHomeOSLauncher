@@ -34,6 +34,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.util.Property;
 import android.view.View;
 import android.view.animation.AnimationUtils;
+import android.view.animation.PathInterpolator;
 
 import androidx.core.content.ContextCompat;
 
@@ -104,11 +105,16 @@ public class FolderAnimationManager {
         mIsOpening = isOpening;
 
         Resources res = mContent.getResources();
-        mDuration = res.getInteger(R.integer.config_materialFolderExpandDuration);
         mDelay = res.getInteger(R.integer.config_folderDelay);
 
-        mFolderInterpolator = AnimationUtils.loadInterpolator(mContext,
-                R.interpolator.standard_interpolator);
+        if (MultiModeController.isSingleLayerMode()) {
+            mDuration = 280;
+            mFolderInterpolator = new PathInterpolator(0.25f, 0.1f, 0.25f, 1f);
+        } else {
+            mDuration = res.getInteger(R.integer.config_materialFolderExpandDuration);
+            mFolderInterpolator = AnimationUtils.loadInterpolator(mContext,
+                    R.interpolator.standard_interpolator);
+        }
         mLargeFolderPreviewItemOpenInterpolator = AnimationUtils.loadInterpolator(mContext,
                 R.interpolator.large_folder_preview_item_open_interpolator);
         mLargeFolderPreviewItemCloseInterpolator = AnimationUtils.loadInterpolator(mContext,
@@ -138,12 +144,18 @@ public class FolderAnimationManager {
         float scaleRelativeToDragLayer = mFolder.mActivityContext.getDragLayer()
                 .getDescendantRectRelativeToSelf(mFolderIcon, folderIconPos);
         int scaledRadius = mPreviewBackground.getScaledRadius();
-        float initialSize = (scaledRadius * 2) * scaleRelativeToDragLayer;
+        float initialSize = (MultiModeController.isSingleLayerMode()
+                ? mPreviewBackground.previewSize
+                : (scaledRadius * 2)) * scaleRelativeToDragLayer;
 
         // Match size/scale of icons in the preview
-        float previewScale = rule.scaleForItem(itemsInPreview.size());
+        int numItems = Math.max(itemsInPreview.size(), 1);
+        float previewScale = rule.scaleForItem(numItems);
         float previewSize = rule.getIconSize() * previewScale;
-        float initialScale = previewSize / itemsInPreview.get(0).getIconSize()
+        float itemIconSize = itemsInPreview.isEmpty()
+                ? mDeviceProfile.iconSizePx
+                : itemsInPreview.get(0).getIconSize();
+        float initialScale = previewSize / itemIconSize
                 * scaleRelativeToDragLayer;
         final float finalScale = 1f;
         float scale = mIsOpening ? initialScale : finalScale;
@@ -189,12 +201,12 @@ public class FolderAnimationManager {
                 && mFolder instanceof foundation.e.bliss.folder.GridFolder) {
             float folderScaleEnd = initialSize / Math.max(lp.width, 1);
             int folderTabHeight = ((foundation.e.bliss.folder.GridFolder) mFolder).mFolderTabHeight;
-            
-            float scaledOffsetX = (mFolder.getPaddingLeft() + mContent.getPaddingLeft() + previewItemOffsetX) * folderScaleEnd;
-            float scaledOffsetY = (mFolder.getPaddingTop() + folderTabHeight + mContent.getPaddingTop()) * folderScaleEnd;
-            
-            initialX = (int) (folderIconPos.left + Math.round(mPreviewBackground.getOffsetX() * scaleRelativeToDragLayer) - scaledOffsetX);
-            initialY = (int) (folderIconPos.top + Math.round(mPreviewBackground.getOffsetY() * scaleRelativeToDragLayer) - scaledOffsetY);
+
+            float scaledOffsetX = mFolder.getPaddingLeft() * folderScaleEnd;
+            float scaledOffsetY = (mFolder.getPaddingTop() + folderTabHeight) * folderScaleEnd;
+
+            initialX = (int) (folderIconPos.left + Math.round(mPreviewBackground.basePreviewOffsetX * scaleRelativeToDragLayer) - scaledOffsetX);
+            initialY = (int) (folderIconPos.top + Math.round(mPreviewBackground.basePreviewOffsetY * scaleRelativeToDragLayer) - scaledOffsetY);
         }
         
         final float xDistance = initialX - lp.x;
@@ -327,6 +339,9 @@ public class FolderAnimationManager {
             // Use ObjectAnimator directly — getAnimator() reverses values on close, which would
             // fade the icon OUT (1→0) instead of IN (0→1).
             if (!mIsOpening && mFolderIcon != null) {
+                if (mFolder.isDragInProgress()) {
+                    mFolderIcon.onItemsChanged(false);
+                }
                 // Restore mBackgroundIsVisible so the canvas actually draws the icon content.
                 // setIconVisible(false) was called when opening; without this the icon draws nothing.
                 mFolderIcon.setIconVisible(true);
@@ -364,10 +379,12 @@ public class FolderAnimationManager {
                 mIsOpening ? mDuration - FOLDER_NAME_ALPHA_DURATION : FOLDER_NAME_ALPHA_DURATION);
 
         // Translate the footer so that it tracks the bottom of the content.
-        float normalHeight = mFolder.getContentAreaHeight();
-        float scaledHeight = normalHeight * initialScale;
-        float diff = normalHeight - scaledHeight;
-        play(a, getAnimator(mFolder.mFooter, View.TRANSLATION_Y, -diff, 0f));
+        if (!MultiModeController.isSingleLayerMode()) {
+            float normalHeight = mFolder.getContentAreaHeight();
+            float scaledHeight = normalHeight * initialScale;
+            float diff = normalHeight - scaledHeight;
+            play(a, getAnimator(mFolder.mFooter, View.TRANSLATION_Y, -diff, 0f));
+        }
 
         // Animate the elevation midway so that the shadow is not noticeable in the background.
         int midDuration = mDuration / 2;
@@ -441,10 +458,12 @@ public class FolderAnimationManager {
         }
 
         int radiusDiff = scaledRadius - mPreviewBackground.getRadius();
-        addPreviewItemAnimators(a, initialScale / scaleRelativeToDragLayer,
-                // Background can have a scaled radius in drag and drop mode, so we need to add the
-                // difference to keep the preview items centered.
-                (int) (previewItemOffsetX / scaleRelativeToDragLayer) + radiusDiff, radiusDiff);
+        if (!MultiModeController.isSingleLayerMode() && !mFolder.isDragInProgress()) {
+            addPreviewItemAnimators(a, initialScale / scaleRelativeToDragLayer,
+                    // Background can have a scaled radius in drag and drop mode, so we need to add the
+                    // difference to keep the preview items centered.
+                    (int) (previewItemOffsetX / scaleRelativeToDragLayer) + radiusDiff, radiusDiff);
+        }
         return a;
     }
 
@@ -466,6 +485,9 @@ public class FolderAnimationManager {
         final List<BubbleTextView> itemsInPreview = getPreviewIconsOnPage(
                 isOnFirstPage ? 0 : mFolder.mContent.getCurrentPage());
         final int numItemsInPreview = itemsInPreview.size();
+        if (numItemsInPreview == 0) {
+            return;
+        }
         final int numItemsInFirstPagePreview = isOnFirstPage
                 ? numItemsInPreview : mFolderIcon.getLayoutRule().getMaxNumItemsInPreview();
 
