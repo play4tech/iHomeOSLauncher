@@ -84,6 +84,10 @@ public class CategoryCardView extends ViewGroup {
             icon.applyFromApplicationInfo(apps.get(i));
             icon.setText(""); // Ensure no text for App Library icons in the card
             icon.setOnClickListener(launcher.getItemOnClickListener());
+            icon.setOnLongClickListener(v -> {
+                com.android.launcher3.popup.PopupContainerWithArrow.showForIcon(icon);
+                return true;
+            });
             addView(icon);
         }
         
@@ -142,5 +146,9 @@ public class CategoryCardView extends ViewGroup {
                 iconIndex++;
             }
         }
+    }
+
+    public AppLibraryCategoryGlassView getGlassView() {
+        return mGlassView;
     }
 }

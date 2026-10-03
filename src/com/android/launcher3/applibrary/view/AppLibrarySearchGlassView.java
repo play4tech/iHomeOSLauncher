@@ -6,10 +6,12 @@ import android.graphics.Outline;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 
-import com.qmdeve.liquidglass.widget.LiquidGlassView;
+import com.example.liquidglass.LiquidGlassView;
+import foundation.e.bliss.glass.GlassConfig;
 
 public class AppLibrarySearchGlassView extends LiquidGlassView {
 
@@ -22,7 +24,7 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
     }
 
     public AppLibrarySearchGlassView(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
+        super(context, attrs);
         init();
     }
 
@@ -41,17 +43,39 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
         });
 
         // Standard master glass parameters from GlassConfig
-        foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this);
+        GlassConfig.applyDefaultConfig(this);
+        setRefractionHeight(40f);
+        setBevelWidth(16f);
+        setDispersionStrength(0.04f);
+        setEnableAdaptiveTint(false);
+        setGlassTint(android.graphics.Color.WHITE, 0.18f);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // Never consume touches so search bar input, focus, and clicks work properly
+        return false;
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        // Bind to wallpaper proxy for glass effect
-        View target = getRootView().findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
-        if (target instanceof android.view.ViewGroup) {
-            bind((android.view.ViewGroup) target);
+        View root = getRootView();
+        if (root != null) {
+            View target = root.findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
+            if (target == null) {
+                target = root.findViewById(com.android.launcher3.R.id.glass_source);
+            }
+            if (target != null) {
+                setBackdropSource(target);
+            }
         }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        setBackdropSource(null);
     }
 
     private final Path mClipPath = new Path();
@@ -60,11 +84,11 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
     private float mCachedH = -1;
 
     @Override
-    protected void dispatchDraw(Canvas canvas) {
+    public void draw(Canvas canvas) {
         float w = getWidth();
         float h = getHeight();
         if (w <= 0 || h <= 0) {
-            super.dispatchDraw(canvas);
+            super.draw(canvas);
             return;
         }
         if (w != mCachedW || h != mCachedH) {
@@ -78,7 +102,7 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
         
         canvas.save();
         canvas.clipPath(mClipPath);
-        super.dispatchDraw(canvas);
+        super.draw(canvas);
         canvas.restore();
     }
 }

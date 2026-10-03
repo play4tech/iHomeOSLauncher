@@ -66,11 +66,8 @@ class AppUsageStats(private val mContext: Context) {
                     mContext.packageName
                 )
             if (mode != android.app.AppOpsManager.MODE_ALLOWED) {
-                Logger.i(TAG, "The user may not allow the access to apps usage.")
-                mContext.startActivity(
-                    Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
+                Logger.i(TAG, "The user has not granted access to apps usage.")
+                return usageStats
             } else if (aggregatedStats.isNotEmpty()) {
                 val statsMap = aggregatedStats.entries
 

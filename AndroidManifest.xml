@@ -21,7 +21,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.android.launcher3">
-    <uses-sdk android:targetSdkVersion="36" android:minSdkVersion="30"/>
+    <uses-sdk android:targetSdkVersion="36" android:minSdkVersion="33"/>
     <!--
     Manifest entries specific to Launcher3. This is merged with AndroidManifest-common.xml.
     Refer comments around specific entries on how to extend individual components.
@@ -32,13 +32,13 @@
         android:fullBackupOnly="true"
         android:fullBackupContent="@xml/backupscheme"
         android:hardwareAccelerated="true"
-        android:debuggable="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/derived_app_name"
         android:theme="@style/AppTheme"
         android:largeHeap="@bool/config_largeHeap"
         android:restoreAnyVersion="true"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
         tools:ignore="GoogleAppIndexingWarning"
         tools:replace="android:icon">
 

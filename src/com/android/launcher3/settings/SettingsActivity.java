@@ -309,6 +309,9 @@ public class SettingsActivity extends FragmentActivity
                     preference.setDefaultValue(showCount);
                     ((SwitchPreference) preference).setChecked(showCount);
                     return true;
+
+                case BlissPrefs.PREF_GLASS_DOCK_ENABLED:
+                    return true;
             }
 
             return true;

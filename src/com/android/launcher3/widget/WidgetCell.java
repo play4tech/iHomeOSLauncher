@@ -245,6 +245,9 @@ public class WidgetCell extends LinearLayout {
         } else {
             setTag(new PendingAddWidgetInfo(item.widgetInfo, mSourceContainer));
         }
+        if (mWidgetImageContainer != null) {
+            mWidgetImageContainer.setTag(getTag());
+        }
 
         if (mRemoteViewsPreview != null) {
             mAppWidgetHostViewPreview = createAppWidgetHostView(context);

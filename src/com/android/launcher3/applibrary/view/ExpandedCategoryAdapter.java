@@ -43,6 +43,10 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         AppInfo app = mApps.get(position);
         holder.icon.applyFromApplicationInfo(app);
+        holder.icon.setOnLongClickListener(v -> {
+            com.android.launcher3.popup.PopupContainerWithArrow.showForIcon(holder.icon);
+            return true;
+        });
     }
 
     @Override

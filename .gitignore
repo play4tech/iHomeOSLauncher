@@ -16,3 +16,7 @@ build/
 version.properties
 blissWithQuickstep
 blissWithoutQuickstep
+.scratch/
+.agents/skills/
+skills/
+

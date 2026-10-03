@@ -139,7 +139,7 @@ android {
     }
 
     defaultConfig {
-        minSdkVersion 30
+        minSdkVersion 33
         targetSdkVersion 36
         versionCode getVersionCode()
         versionName getVersionName()
@@ -341,7 +341,7 @@ dependencies {
     implementation libs.androidx.graphics.shapes
     implementation libs.reactivex.rxkotlin3
     implementation libs.hoko.blur
-    implementation libs.qmdeve.liquidglass
+    implementation libs.qwea0.liquidglass
 
     implementation libs.elib
     implementation libs.e.telemetry

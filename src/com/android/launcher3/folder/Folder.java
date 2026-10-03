@@ -58,8 +58,10 @@ import android.view.accessibility.AccessibilityEvent;
 import android.view.animation.AnimationUtils;
 import android.view.inputmethod.EditorInfo;
 import android.widget.TextView;
+import android.window.BackEvent;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.res.ResourcesCompat;
 
@@ -163,7 +165,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     private static final int FOLDER_NAME_ANIMATION_DURATION = 633;
     private static final int FOLDER_COLOR_ANIMATION_DURATION = 200;
 
-    private static final int REORDER_DELAY = 250;
+    private static final int REORDER_DELAY = 150;
     private static final int ON_EXIT_CLOSE_DELAY = 400;
     private static final Rect sTempRect = new Rect();
     private static final int MIN_FOLDERS_FOR_HARDWARE_OPTIMIZATION = 10;
@@ -307,11 +309,6 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     public boolean onLongClick(View v) {
         // Return if global dragging is not enabled
         if (!mLauncherDelegate.isDraggingEnabled()) return true;
-        Launcher launcher = mLauncherDelegate.getLauncher();
-        if (MultiModeController.isSingleLayerMode() && launcher != null
-                && !launcher.getWorkspace().isWobbling()) {
-            launcher.getWorkspace().wobbleLayouts(true);
-        }
         return startDrag(v, new DragOptions());
     }
 
@@ -942,10 +939,30 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private int getTargetRank(DragObject d, float[] recycle) {
-        recycle = d.getVisualCenter(recycle);
+        float[] visualCenter = d.getVisualCenter(null);
+        if (recycle != null) {
+            recycle[0] = visualCenter[0];
+            recycle[1] = visualCenter[1];
+            if (mActivityContext != null && mActivityContext.getDragLayer() != null) {
+                mActivityContext.getDragLayer().mapCoordInSelfToDescendant(this, recycle);
+            }
+        }
+        if (mContent != null) {
+            int pageIndex = mContent.getNextPage();
+            com.android.launcher3.CellLayout page = mContent.getPageAt(pageIndex);
+            if (page != null) {
+                float[] coord = new float[] { visualCenter[0], visualCenter[1] };
+                if (mActivityContext != null && mActivityContext.getDragLayer() != null) {
+                    mActivityContext.getDragLayer().mapCoordInSelfToDescendant(page, coord);
+                } else {
+                    com.android.launcher3.Utilities.mapCoordInSelfToDescendant(page, this, coord);
+                }
+                return mContent.findNearestArea((int) coord[0], (int) coord[1]);
+            }
+        }
         return mContent.findNearestArea(
-                (int) recycle[0] - getPaddingLeft(),
-                (int) recycle[1] - getPaddingTop());
+                (int) visualCenter[0] - getPaddingLeft(),
+                (int) visualCenter[1] - getPaddingTop());
     }
 
     @Override
@@ -1037,7 +1054,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         // a drop has occurred above the folder.
         if (!d.dragComplete) {
             mOnExitAlarm.setOnAlarmListener(mOnExitAlarmListener);
-            mOnExitAlarm.setAlarm(MultiModeController.isSingleLayerMode() ? 50 : ON_EXIT_CLOSE_DELAY);
+            mOnExitAlarm.setAlarm(ON_EXIT_CLOSE_DELAY);
         }
         mReorderAlarm.cancelAlarm();
 
@@ -1638,6 +1655,20 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
      */
     public static Folder getOpen(ActivityContext activityContext) {
         return getOpenView(activityContext, TYPE_FOLDER);
+    }
+
+    @Override
+    public void onBackProgressed(@NonNull BackEvent backEvent) {
+        if (!isEditingName()) {
+            super.onBackProgressed(backEvent);
+        }
+    }
+
+    @Override
+    public void onBackCancelled() {
+        if (!isEditingName()) {
+            super.onBackCancelled();
+        }
     }
 
     /** Navigation bar back key or hardware input back key has been issued. */

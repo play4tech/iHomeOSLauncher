@@ -369,7 +369,13 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
         @Override
         public void onClick(View view) {
             dismissTaskMenuView(mTarget);
-            SecondaryDropTarget.performUninstall(view.getContext(), mComponentName, mItemInfo);
+            if (mOriginalView instanceof com.android.launcher3.BubbleTextView
+                    && mTarget instanceof com.android.launcher3.Launcher) {
+                ((com.android.launcher3.BubbleTextView) mOriginalView).showRemoveAppDialog(
+                        (com.android.launcher3.Launcher) mTarget);
+            } else {
+                SecondaryDropTarget.performUninstall(view.getContext(), mComponentName, mItemInfo);
+            }
             mTarget.getStatsLogManager()
                     .logger()
                     .withItemInfo(mItemInfo)
@@ -377,8 +383,123 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
         }
     }
 
+    public static final Factory<ActivityContext> ADD_TO_HOME_SCREEN =
+            (activityContext, itemInfo, originalView) -> {
+                if (!(activityContext instanceof com.android.launcher3.Launcher)) {
+                    return null;
+                }
+                ComponentName cn = itemInfo.getTargetComponent();
+                if (cn == null) return null;
+                boolean isRemoved = com.android.launcher3.util.RemovedAppStore.isRemoved(
+                        (Context) activityContext, cn.flattenToString());
+                boolean isWorkspace = (itemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_DESKTOP
+                        || itemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_HOTSEAT
+                        || itemInfo.container > 0);
+                if (isWorkspace && !isRemoved) {
+                    return null;
+                }
+                return new AddToHomeScreen<>(activityContext, itemInfo, originalView);
+            };
+
+    private static class AddToHomeScreen<T extends ActivityContext> extends SystemShortcut<T> {
+        AddToHomeScreen(T target, ItemInfo itemInfo, @NonNull View originalView) {
+            super(R.drawable.ic_add_to_home, R.string.add_to_home_screen, target, itemInfo, originalView);
+        }
+
+        @Override
+        public void onClick(View view) {
+            dismissTaskMenuView(mTarget);
+            AbstractFloatingView.closeAllOpenViews(mTarget);
+            if (mTarget instanceof com.android.launcher3.Launcher) {
+                com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mTarget;
+                ComponentName cn = mItemInfo.getTargetComponent();
+                if (cn != null) {
+                    com.android.launcher3.util.RemovedAppStore.unmarkRemoved(
+                            launcher, cn.flattenToString());
+                }
+                WorkspaceItemInfo itemToAdd = null;
+                if (mItemInfo instanceof com.android.launcher3.model.data.WorkspaceItemFactory) {
+                    itemToAdd = ((com.android.launcher3.model.data.WorkspaceItemFactory) mItemInfo)
+                            .makeWorkspaceItem(launcher);
+                } else if (mItemInfo instanceof WorkspaceItemInfo) {
+                    itemToAdd = new WorkspaceItemInfo((WorkspaceItemInfo) mItemInfo);
+                }
+                if (itemToAdd != null) {
+                    launcher.getModel().addAndBindAddedWorkspaceItems(
+                            java.util.Collections.singletonList(android.util.Pair.create(itemToAdd, null)));
+                    android.widget.Toast.makeText(launcher, R.string.add_to_home_screen,
+                            android.widget.Toast.LENGTH_SHORT).show();
+                }
+            }
+        }
+    }
+
+    public static final Factory<ActivityContext> EDIT_HOME_SCREEN =
+            (activityContext, itemInfo, originalView) -> {
+                if (originalView == null) {
+                    return null;
+                }
+                return new EditHomeScreen<>(activityContext, itemInfo, originalView);
+            };
+
+    private static class EditHomeScreen<T extends ActivityContext> extends SystemShortcut<T> {
+        EditHomeScreen(T target, ItemInfo itemInfo, @NonNull View originalView) {
+            super(R.drawable.ic_setting, R.string.edit_home_screen, target, itemInfo, originalView);
+        }
+
+        @Override
+        public void onClick(View view) {
+            dismissTaskMenuView(mTarget);
+            AbstractFloatingView.closeAllOpenViews(mTarget);
+            if (mTarget instanceof com.android.launcher3.Launcher launcher) {
+                if (launcher.getWorkspace() != null) {
+                    launcher.getWorkspace().wobbleLayouts(true);
+                }
+            }
+        }
+    }
+
     public static <T extends ActivityContext> void dismissTaskMenuView(T activity) {
         AbstractFloatingView.closeOpenViews(activity, true,
                 AbstractFloatingView.TYPE_ALL & ~AbstractFloatingView.TYPE_REBIND_SAFE);
+    }
+
+    public static class CustomShortcut extends SystemShortcut<ActivityContext> {
+        private final int mCustomIconResId;
+        private final CharSequence mCustomLabel;
+        private final boolean mIsDestructive;
+        private final View.OnClickListener mListener;
+
+        public CustomShortcut(ActivityContext target, ItemInfo itemInfo, View originalView,
+                int iconResId, CharSequence label, boolean isDestructive, View.OnClickListener listener) {
+            super(iconResId, 0, target, itemInfo, originalView);
+            mCustomIconResId = iconResId;
+            mCustomLabel = label;
+            mIsDestructive = isDestructive;
+            mListener = listener;
+        }
+
+        @Override
+        public void setIconAndLabelFor(View iconView, TextView labelView) {
+            if (mCustomIconResId != 0) {
+                iconView.setBackgroundResource(mCustomIconResId);
+                if (mIsDestructive && iconView.getBackground() != null) {
+                    iconView.getBackground().mutate().setTint(android.graphics.Color.parseColor("#FF3B30"));
+                }
+            }
+            labelView.setText(mCustomLabel);
+            if (mIsDestructive) {
+                labelView.setTextColor(android.graphics.Color.parseColor("#FF3B30"));
+            }
+        }
+
+        @Override
+        public void onClick(View view) {
+            dismissTaskMenuView(mTarget);
+            AbstractFloatingView.closeAllOpenViews(mTarget);
+            if (mListener != null) {
+                mListener.onClick(view);
+            }
+        }
     }
 }

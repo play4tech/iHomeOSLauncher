@@ -75,8 +75,12 @@ public class FlagsFactory {
         if (!FLAG_AUTO_APPLY_ENABLED) {
             return;
         }
-        DeviceConfig.addOnPropertiesChangedListener(
-                NAMESPACE_LAUNCHER, UI_HELPER_EXECUTOR, this::onPropertiesChanged);
+        try {
+            DeviceConfig.addOnPropertiesChangedListener(
+                    NAMESPACE_LAUNCHER, UI_HELPER_EXECUTOR, this::onPropertiesChanged);
+        } catch (Throwable e) {
+            Log.w(TAG, "DeviceConfig listener not available: " + e.getMessage());
+        }
     }
 
     static boolean getEnabledValue(FlagState flagState) {
@@ -119,7 +123,13 @@ public class FlagsFactory {
             int bugId, String key, FlagState flagState, String description) {
         INSTANCE.mKeySet.add(key);
         boolean defaultValueInCode = getEnabledValue(flagState);
-        boolean defaultValue = DeviceConfig.getBoolean(NAMESPACE_LAUNCHER, key, defaultValueInCode);
+        boolean defaultValue;
+        try {
+            defaultValue = DeviceConfig.getBoolean(NAMESPACE_LAUNCHER, key, defaultValueInCode);
+        } catch (Throwable e) {
+            Log.w(TAG, "DeviceConfig.getBoolean not available, using code default: " + e.getMessage());
+            defaultValue = defaultValueInCode;
+        }
         if (IS_DEBUG_DEVICE) {
             boolean currentValue = getSharedPreferences().getBoolean(key, defaultValue);
             DebugFlag flag = new DeviceFlag(key, description,
@@ -152,7 +162,13 @@ public class FlagsFactory {
             int bugId, String key, int defaultValueInCode, String description,
             @Nullable ConstantItem<Integer> launcherPrefFlag) {
         INSTANCE.mKeySet.add(key);
-        int defaultValue = DeviceConfig.getInt(NAMESPACE_LAUNCHER, key, defaultValueInCode);
+        int defaultValue;
+        try {
+            defaultValue = DeviceConfig.getInt(NAMESPACE_LAUNCHER, key, defaultValueInCode);
+        } catch (Throwable e) {
+            Log.w(TAG, "DeviceConfig.getInt not available, using code default: " + e.getMessage());
+            defaultValue = defaultValueInCode;
+        }
         if (IS_DEBUG_DEVICE) {
             int currentValue;
             if (launcherPrefFlag == null) {

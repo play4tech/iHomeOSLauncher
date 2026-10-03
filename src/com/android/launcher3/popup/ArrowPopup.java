@@ -676,18 +676,27 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
         Animator scaleX;
         
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-            scaleValues = isOpening ? new float[] {0.92f, 1f} : new float[] {1f, 0.92f};
-            float damping = 0.86f;
-            float stiffness = 304.6f;
-            scaleX = new com.android.launcher3.anim.SpringAnimationBuilder(getContext())
-                    .setStartValue(scaleValues[0]).setEndValue(scaleValues[1])
-                    .setDampingRatio(damping).setStiffness(stiffness).build(this, com.android.launcher3.LauncherAnimUtils.SCALE_PROPERTY);
-            scaleY = ObjectAnimator.ofFloat(this, View.SCALE_Y, scaleValues[1], scaleValues[1]).setDuration(0); // dummy, scale handled by SCALE_PROPERTY
-            
-            // Single layer mode overrides durations
-            fadeDuration = isOpening ? 140 : 130;
-            childFadeStartDelay = isOpening ? 0 : 0;
-            childFadeDuration = isOpening ? 90 : 90;
+            if (isOpening) {
+                scaleValues = new float[] {0.72f, 1f};
+                float damping = 0.82f;
+                float stiffness = 160f;
+                scaleX = new com.android.launcher3.anim.SpringAnimationBuilder(getContext())
+                        .setStartValue(scaleValues[0]).setEndValue(scaleValues[1])
+                        .setMinimumVisibleChange(0.001f)
+                        .setDampingRatio(damping).setStiffness(stiffness).build(this, com.android.launcher3.LauncherAnimUtils.SCALE_PROPERTY);
+                scaleY = ObjectAnimator.ofFloat(this, View.SCALE_Y, scaleValues[1], scaleValues[1]).setDuration(0); // dummy, scale handled by SCALE_PROPERTY
+                fadeDuration = 260;
+                childFadeStartDelay = 30;
+                childFadeDuration = 200;
+            } else {
+                scaleValues = new float[] {1f, 0.78f};
+                int closeDuration = 180;
+                scaleX = getAnimatorOfFloat(this, View.SCALE_X, closeDuration, 0, EMPHASIZED_ACCELERATE, scaleValues);
+                scaleY = getAnimatorOfFloat(this, View.SCALE_Y, closeDuration, 0, EMPHASIZED_ACCELERATE, scaleValues);
+                fadeDuration = 180;
+                childFadeStartDelay = 0;
+                childFadeDuration = 150;
+            }
         } else {
             scaleY = getAnimatorOfFloat(this, View.SCALE_Y, scaleDuration, 0, interpolator,
                     scaleValues);

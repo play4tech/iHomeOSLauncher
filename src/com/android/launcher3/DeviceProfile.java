@@ -2054,10 +2054,10 @@ public class DeviceProfile {
                 bounds.bottom - dockPaddingVertical
         );
 
-        int indicatorMargin = pxFromDp(16, mMetrics);
+        int indicatorMargin = pxFromDp(12, mMetrics);
         int indicatorY = bounds.top - indicatorMargin - workspacePageIndicatorHeight;
 
-        hotseatGeometry = new HotseatGeometry(bounds, contentBounds, dockHeight, cornerRadius, indicatorY);
+        hotseatGeometry = new HotseatGeometry(bounds, contentBounds, dockHeight, cornerRadius, indicatorY, indicatorMargin);
     }
 
     /**

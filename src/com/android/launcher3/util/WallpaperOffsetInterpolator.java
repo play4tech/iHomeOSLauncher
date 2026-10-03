@@ -164,6 +164,9 @@ public class WallpaperOffsetInterpolator {
     }
 
     public void syncWithScroll() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            return;
+        }
         int numScreens = getNumScrollableScreensExcludingEmpty();
         wallpaperOffsetForScroll(mWorkspace.getScrollX(), numScreens, sTempInt);
         Message msg = Message.obtain(mHandler, MSG_UPDATE_OFFSET, sTempInt[0], sTempInt[1],
@@ -313,10 +316,12 @@ public class WallpaperOffsetInterpolator {
 
         private void setOffsetSafely(IBinder token) {
             try {
-                mWM.setWallpaperOffsets(token, mCurrentOffset, 0.5f);
+                float offset = foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()
+                        ? 0.5f : mCurrentOffset;
+                mWM.setWallpaperOffsets(token, offset, 0.5f);
                 setIsLiveWallpaper();
                 WallpaperEnvironmentBuilder.Companion.getInstanceNoCreate()
-                        .setParallaxOffset(mCurrentOffset);
+                        .setParallaxOffset(offset);
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "Error updating wallpaper offset: " + e);
             }

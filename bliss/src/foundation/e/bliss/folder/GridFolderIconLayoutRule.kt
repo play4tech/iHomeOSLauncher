@@ -53,20 +53,24 @@ class GridFolderIconLayoutRule(context: Context) : ClippedFolderIconLayoutRule()
             if (mIsRtl) {
                 baseX = (mGridCountX - 1) - baseX
             }
-            var paddingX = (mAvailableSpace - (iconSize * scale) * mGridCountX) / (mGridCountX + 1)
-            if (paddingX < 0) {
-                paddingX = 0f
-            }
-            var paddingY = (mAvailableSpace - (iconSize * scale) * mGridCountY) / (mGridCountY + 1)
-            if (paddingY < 0) {
-                paddingY = 0f
-            }
-            point[0] = (baseX + 1) * paddingX + baseX * (iconSize * scale)
-            point[1] = (baseY + 1) * paddingY + baseY * (iconSize * scale)
+            val itemSize = iconSize * scale
+            val remainingSpaceX = (mAvailableSpace - itemSize * mGridCountX).coerceAtLeast(0f)
+            val remainingSpaceY = (mAvailableSpace - itemSize * mGridCountY).coerceAtLeast(0f)
+
+            // Inner gap between icons inside the 3x3 grid (tighter spacing)
+            val innerGapX = remainingSpaceX * 0.16f
+            val innerGapY = remainingSpaceY * 0.16f
+
+            // Outer padding between squircle edge and 3x3 grid (generous iOS margin)
+            val outerPadX = (remainingSpaceX - (mGridCountX - 1) * innerGapX) / 2f
+            val outerPadY = (remainingSpaceY - (mGridCountY - 1) * innerGapY) / 2f
+
+            point[0] = outerPadX + baseX * (itemSize + innerGapX)
+            point[1] = outerPadY + baseY * (itemSize + innerGapY)
 
             android.util.Log.d(
                 "FolderLayout",
-                "index=$index, avail=$mAvailableSpace, iconSize=$iconSize, scale=$scale, padX=$paddingX, padY=$paddingY, x=${point[0]}, y=${point[1]}"
+                "index=$index, avail=$mAvailableSpace, iconSize=$iconSize, scale=$scale, outerX=$outerPadX, outerY=$outerPadY, innerGapX=$innerGapX, x=${point[0]}, y=${point[1]}"
             )
         } else {
             point[1] = mAvailableSpace / 2 - (iconSize * scale) / 2

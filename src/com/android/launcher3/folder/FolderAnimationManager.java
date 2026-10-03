@@ -317,6 +317,9 @@ public class FolderAnimationManager {
                 play(a, getAnimator(dockGlass, View.ALPHA, 1f, 0f));
             }
             if (hotseat != null) {
+                if (hotseat instanceof com.android.launcher3.Hotseat) {
+                    ((com.android.launcher3.Hotseat) hotseat).setIconsAlpha(1f);
+                }
                 play(a, getAnimator(hotseat, View.ALPHA, 1f, 0f));
             }
             if (pageIndicator != null) {

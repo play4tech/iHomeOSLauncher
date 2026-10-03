@@ -43,6 +43,7 @@ import com.android.launcher3.util.ComponentKey
 import com.android.launcher3.util.PackageManagerHelper
 import com.android.launcher3.util.PackageUserKey
 import com.android.launcher3.widget.LauncherAppWidgetProviderInfo
+import foundation.e.bliss.multimode.MultiModeController
 import com.android.launcher3.widget.WidgetInflater
 import com.android.launcher3.widget.util.WidgetSizes
 
@@ -428,6 +429,31 @@ class WorkspaceItemProcessor(
         val inflationResult = widgetInflater.inflateAppWidget(appWidgetInfo)
         var shouldUpdate = inflationResult.isUpdate
         val lapi = inflationResult.widgetInfo
+
+        if (MultiModeController.isSingleLayerMode) {
+            val oldSpanX = appWidgetInfo.spanX
+            val oldSpanY = appWidgetInfo.spanY
+            if (appWidgetInfo.spanX == 3) {
+                val isSquare = lapi != null && lapi.minWidth > 0 && lapi.minHeight > 0
+                        && (Math.abs(lapi.minWidth - lapi.minHeight) / Math.max(lapi.minWidth, lapi.minHeight).toFloat() < 0.35f)
+                if (isSquare || (appWidgetInfo.spanY <= 2 && (component.className.contains("Analog") || component.className.contains("Clock")))) {
+                    appWidgetInfo.spanX = 2
+                    appWidgetInfo.spanY = 2
+                } else {
+                    appWidgetInfo.spanX = 4
+                    appWidgetInfo.spanY = 2
+                }
+            }
+            if (appWidgetInfo.spanX == 1) {
+                appWidgetInfo.spanX = 2
+            }
+            if (appWidgetInfo.spanY == 1) {
+                appWidgetInfo.spanY = 2
+            }
+            if (oldSpanX != appWidgetInfo.spanX || oldSpanY != appWidgetInfo.spanY) {
+                shouldUpdate = true
+            }
+        }
 
         when (inflationResult.type) {
             WidgetInflater.TYPE_DELETE -> {

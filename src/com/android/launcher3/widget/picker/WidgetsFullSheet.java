@@ -62,15 +62,23 @@ import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.launcher3.BaseActivity;
+import com.android.launcher3.CellLayout;
 import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherAppState;
 import com.android.launcher3.LauncherPrefs;
+import com.android.launcher3.LauncherSettings;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.Workspace;
 import com.android.launcher3.anim.PendingAnimation;
 import com.android.launcher3.compat.AccessibilityManagerCompat;
+import com.android.launcher3.PendingAddItemInfo;
+import com.android.launcher3.util.IntSet;
+import com.android.launcher3.widget.PendingAddWidgetInfo;
+import com.android.launcher3.widget.WidgetCell;
 import com.android.launcher3.model.UserManagerState;
+import com.android.launcher3.model.WidgetItem;
 import com.android.launcher3.pm.UserCache;
 import com.android.launcher3.views.ArrowTipView;
 import com.android.launcher3.views.RecyclerViewFastScroller;
@@ -996,12 +1004,73 @@ public class WidgetsFullSheet extends BaseWidgetSheet
                     context,
                     LayoutInflater.from(context),
                     this::getEmptySpaceHeight,
-                    /* iconClickListener= */ !isEditMode ? WidgetsFullSheet.this :
-                    v -> WidgetFragment.onWidgetClick(context, v, close -> {
-                        handleClose(false);
-                        return null;
-                    }),
-                    /* iconLongClickListener= */ !isEditMode ? WidgetsFullSheet.this : null,
+                    /* iconClickListener= */ v -> {
+                        android.util.Log.d("WidgetsFullSheet", "iconClickListener called with view: " + v);
+                        View cell = v;
+                        while (cell != null && !(cell instanceof WidgetCell)) {
+                            android.view.ViewParent parent = cell.getParent();
+                            cell = (parent instanceof View) ? (View) parent : null;
+                        }
+                        android.util.Log.d("WidgetsFullSheet", "resolved cell: " + cell + " tag: " + (cell != null ? cell.getTag() : "null"));
+                        PendingAddItemInfo info = null;
+                        if (v != null && v.getTag() instanceof PendingAddItemInfo) {
+                            info = (PendingAddItemInfo) v.getTag();
+                        } else if (cell != null && cell.getTag() instanceof PendingAddItemInfo) {
+                            info = (PendingAddItemInfo) cell.getTag();
+                        }
+                        if (info != null) {
+                            if (cell instanceof WidgetCell && ((WidgetCell) cell).getWidgetItem() != null) {
+                                WidgetItem wi = ((WidgetCell) cell).getWidgetItem();
+                                info.spanX = wi.spanX;
+                                info.spanY = wi.spanY;
+                            }
+                            Launcher launcher = Launcher.getLauncher(context);
+                            Workspace<?> workspace = launcher.getWorkspace();
+                            if (workspace != null) {
+                                int screenId = workspace.getScreenIdForPageIndex(workspace.getCurrentPage());
+                                if (screenId == com.android.launcher3.WorkspaceLayoutManager.APP_LIBRARY_SCREEN_ID) {
+                                    screenId = workspace.getScreenOrder().get(0);
+                                }
+                                CellLayout currentLayout = workspace.getScreenWithId(screenId);
+                                int[] targetCell = new int[2];
+                                int targetScreenId = screenId;
+                                boolean found = (currentLayout != null && currentLayout.findCellForSpan(targetCell, info.spanX, info.spanY));
+                                if (!found) {
+                                    int[] screenIds = workspace.getScreenOrder().toArray();
+                                    for (int sId : screenIds) {
+                                        if (sId == com.android.launcher3.WorkspaceLayoutManager.APP_LIBRARY_SCREEN_ID
+                                                || (sId == Workspace.FIRST_SCREEN_ID && com.android.launcher3.config.FeatureFlags.QSB_ON_FIRST_SCREEN.get())) {
+                                            continue;
+                                        }
+                                        CellLayout cl = workspace.getScreenWithId(sId);
+                                        if (cl != null && cl.findCellForSpan(targetCell, info.spanX, info.spanY)) {
+                                            targetScreenId = sId;
+                                            found = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!found) {
+                                    workspace.addExtraEmptyScreens();
+                                    IntSet emptyScreenIds = workspace.commitExtraEmptyScreens();
+                                    if (!emptyScreenIds.isEmpty()) {
+                                        targetScreenId = emptyScreenIds.getArray().get(0);
+                                        CellLayout cl = workspace.getScreenWithId(targetScreenId);
+                                        if (cl != null) {
+                                            found = cl.findCellForSpan(targetCell, info.spanX, info.spanY);
+                                        }
+                                    }
+                                }
+                                android.util.Log.d("WidgetsFullSheet", "Adding pending item: " + info + " at screen: " + targetScreenId + " cell: " + targetCell[0] + "," + targetCell[1] + " span: " + info.spanX + "x" + info.spanY);
+                                handleClose(false);
+                                launcher.addPendingItem(info, LauncherSettings.Favorites.CONTAINER_DESKTOP,
+                                        targetScreenId, targetCell, info.spanX, info.spanY);
+                                return;
+                            }
+                        }
+                        WidgetsFullSheet.this.onClick(v);
+                    },
+                    /* iconLongClickListener= */ WidgetsFullSheet.this,
                     isTwoPane());
             mWidgetsListAdapter.setHasStableIds(true);
             switch (mAdapterType) {

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.android.launcher3.applibrary.view.SpotlightSearchOverlay
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/spotlight_search_overlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:clipChildren="false"
+    android:clipToPadding="false">
+
+    <!-- FrameLayout container so backdrop glass and search content stack properly -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- Search Backdrop Layer (frosted glass + dark scrim) -->
+        <com.android.launcher3.applibrary.view.AppLibraryOverlayGlassView
+            android:id="@+id/spotlight_search_backdrop_glass"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Content Container (Search Bar + Search Results) -->
+        <LinearLayout
+            android:id="@+id/spotlight_search_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:clipChildren="true"
+            android:clipToPadding="false"
+            android:paddingTop="54dp">
+
+            <!-- Search Bar Row (Search Bar + Cancel Button) -->
+            <LinearLayout
+                android:id="@+id/spotlight_search_row"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="12dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:elevation="4dp"
+                android:translationZ="4dp">
+
+                <FrameLayout
+                    android:id="@+id/spotlight_search_container"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1">
+
+                    <com.android.launcher3.applibrary.view.AppLibrarySearchGlassView
+                        android:id="@+id/spotlight_search_glass"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:paddingHorizontal="12dp">
+
+                        <ImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_allapps_search"
+                            android:tint="#FFFFFF" />
+
+                        <EditText
+                            android:id="@+id/spotlight_search_input"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="@android:color/transparent"
+                            android:hint="Search"
+                            android:textColor="#FFFFFF"
+                            android:textColorHint="#99FFFFFF"
+                            android:textSize="17sp"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="4dp"
+                            android:gravity="center_vertical"
+                            android:imeOptions="actionSearch|flagNoExtractUi"
+                            android:inputType="text|textNoSuggestions"
+                            android:singleLine="true" />
+
+                        <ImageView
+                            android:id="@+id/spotlight_search_clear"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:src="@drawable/ic_remove_icon"
+                            android:tint="#99FFFFFF"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/spotlight_search_cancel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="4dp"
+                    android:text="Cancel"
+                    android:textColor="#FFFFFF"
+                    android:textSize="17sp"
+                    android:fontFamily="sans-serif" />
+            </LinearLayout>
+
+            <!-- Search Results Container (A-Z List + Alphabet Scroller) -->
+            <FrameLayout
+                android:id="@+id/spotlight_search_results_container"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/spotlight_search_results"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="48dp"
+                    android:scrollbars="none" />
+
+                <com.android.launcher3.applibrary.view.AppLibraryIndexScrollerView
+                    android:id="@+id/spotlight_index_scroller"
+                    android:layout_width="18dp"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
+                    android:layout_marginEnd="2dp" />
+            </FrameLayout>
+
+        </LinearLayout>
+    </FrameLayout>
+
+</com.android.launcher3.applibrary.view.SpotlightSearchOverlay>

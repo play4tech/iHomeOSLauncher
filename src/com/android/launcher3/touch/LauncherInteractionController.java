@@ -82,13 +82,6 @@ public class LauncherInteractionController {
 
         mActiveDragSession = new DragSession(draggedView, info, System.currentTimeMillis());
         Log.d(TAG, "DragSession started for: " + (info != null ? info.title : "unknown"));
-
-        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-            com.android.launcher3.Launcher launcher = com.android.launcher3.Launcher.getLauncher(draggedView.getContext());
-            if (launcher != null && launcher.getWorkspace() != null && !launcher.getWorkspace().isWobbling()) {
-                launcher.getWorkspace().wobbleLayouts(true);
-            }
-        }
     }
 
     public synchronized void endDrag() {

@@ -182,7 +182,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
         for (Callbacks cb : getCallbacks()) {
             cb.preAddApps();
         }
-        enqueueModelUpdateTask(new AddWorkspaceItemsTask(itemList));
+        enqueueModelUpdateTask(new AddWorkspaceItemsTask(itemList, true));
     }
 
     /**
@@ -199,7 +199,6 @@ public class LauncherModel implements InstallSessionTracker.Callback {
                 return item.first.title.toString().toLowerCase();
             }));
         }
-        enqueueModelUpdateTask(new AddWorkspaceItemsTask(itemList));
         AddWorkspaceItemsTask addWorkspaceItemsTask =
                 new AddWorkspaceItemsTask(itemList, ignoreLoaded);
         addWorkspaceItemsTask.setEnableAnimated(animated);

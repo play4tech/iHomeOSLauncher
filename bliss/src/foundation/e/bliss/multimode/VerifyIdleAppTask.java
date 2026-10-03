@@ -133,6 +133,12 @@ public class VerifyIdleAppTask implements Runnable {
                 }
 
                 if (!found) {
+                    if (componentKey.componentName != null
+                            && com.android.launcher3.util.RemovedAppStore.isRemoved(context, componentKey.componentName.flattenToString())) {
+                        Logger.d("ICON_TRACE",
+                                "Skipping " + componentKey.componentName + " — user explicitly removed from home screen");
+                        continue;
+                    }
                     Object obj = entry.getValue();
                     if (obj instanceof AppInfo) {
                         verifyShortcutHighRes(context, (AppInfo) obj);

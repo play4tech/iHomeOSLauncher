@@ -113,7 +113,14 @@ public abstract class StatefulActivity<STATE_TYPE extends BaseState<STATE_TYPE>>
         }
 
         if (state.hasFlag(FLAG_CLOSE_POPUPS)) {
-            AbstractFloatingView.closeAllOpenViews(this, !state.hasFlag(FLAG_NON_INTERACTIVE));
+            com.android.launcher3.folder.Folder openFolder =
+                    com.android.launcher3.folder.Folder.getOpen(this);
+            if (openFolder != null && openFolder.isOpen()) {
+                AbstractFloatingView.closeAllOpenViewsExcept(this, !state.hasFlag(FLAG_NON_INTERACTIVE),
+                        AbstractFloatingView.TYPE_FOLDER);
+            } else {
+                AbstractFloatingView.closeAllOpenViews(this, !state.hasFlag(FLAG_NON_INTERACTIVE));
+            }
         }
     }
 

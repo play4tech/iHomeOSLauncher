@@ -260,6 +260,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
     @Override
     protected void onFolderCloseComplete() {
         showOrHideDesktop(mLauncher, false);
+        if (mLauncher.mBlurLayer != null) {
+            mLauncher.mBlurLayer.setAlpha(0f);
+        }
         android.util.Log.d("GRID_FOLDER_TRACE", "onFolderCloseComplete restored desktop workspaceAlpha="
                 + (mLauncher.getWorkspace() != null ? mLauncher.getWorkspace().getAlpha() : "null"));
     }
@@ -343,7 +346,11 @@ public class GridFolder extends Folder implements OnAlarmListener {
         }
 
         if (hotseat != null) {
-            hotseat.setIconsAlpha(hide ? 0f : 1f);
+            if (!isSingleLayer) {
+                hotseat.setIconsAlpha(hide ? 0f : 1f);
+            } else {
+                hotseat.setIconsAlpha(1f);
+            }
             play(set, getAnimator(hotseat, 1f, 0f, hide));
             View qsb = hotseat.getQsb();
             if (qsb != null) {

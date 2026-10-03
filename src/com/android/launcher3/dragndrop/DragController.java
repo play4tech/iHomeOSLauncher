@@ -270,6 +270,9 @@ public abstract class DragController<T extends ActivityContext>
             mDragObject.deferDragViewCleanupPostAnimation = false;
             mDragObject.cancelled = true;
             mDragObject.dragComplete = true;
+            if (mDragObject.dragView != null && mDragObject.dragView.getContentViewParent() != null) {
+                mDragObject.dragView.detachContentView(/* reattachToPreviousParent= */ true);
+            }
             if (!mIsInPreDrag) {
                 dispatchDropComplete(null, false);
             } else if (mDragObject != null && mDragObject.dragSource != null) {
@@ -307,10 +310,19 @@ public abstract class DragController<T extends ActivityContext>
             mDragDriver = null;
             boolean isDeferred = false;
             if (mDragObject.dragView != null) {
+                if (mIsInPreDrag) {
+                    mDragObject.deferDragViewCleanupPostAnimation = false;
+                }
                 isDeferred = mDragObject.deferDragViewCleanupPostAnimation;
                 if (!isDeferred) {
+                    if (mDragObject.dragView.getContentViewParent() != null) {
+                        mDragObject.dragView.detachContentView(/* reattachToPreviousParent= */ true);
+                    }
                     mDragObject.dragView.remove();
                 } else if (mIsInPreDrag) {
+                    if (mDragObject.dragView.getContentViewParent() != null) {
+                        mDragObject.dragView.detachContentView(/* reattachToPreviousParent= */ true);
+                    }
                     animateDragViewToOriginalPosition(null, null, -1);
                 }
                 mDragObject.dragView.clearAnimation();
@@ -531,6 +543,10 @@ public abstract class DragController<T extends ActivityContext>
 
         mDragObject.dragComplete = true;
         if (mIsInPreDrag) {
+            mDragObject.deferDragViewCleanupPostAnimation = false;
+            if (mDragObject.dragView != null && mDragObject.dragView.getContentViewParent() != null) {
+                mDragObject.dragView.detachContentView(/* reattachToPreviousParent= */ true);
+            }
             if (dropTarget != null) {
                 dropTarget.onDragExit(mDragObject);
             }

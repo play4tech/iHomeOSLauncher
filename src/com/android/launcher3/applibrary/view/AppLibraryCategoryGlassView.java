@@ -5,11 +5,13 @@ import android.graphics.Canvas;
 import android.graphics.Outline;
 import android.graphics.Path;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 
 import com.android.launcher3.graphics.IconShape;
-import com.qmdeve.liquidglass.widget.LiquidGlassView;
+import com.example.liquidglass.LiquidGlassView;
+import foundation.e.bliss.glass.GlassConfig;
 
 public class AppLibraryCategoryGlassView extends LiquidGlassView {
 
@@ -22,8 +24,25 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView {
     }
 
     public AppLibraryCategoryGlassView(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
+        super(context, attrs);
         init();
+    }
+
+    private final Path mClipPath = new Path();
+    private float mCachedW = -1;
+    private float mCachedH = -1;
+
+    private Path updatePath(float w, float h) {
+        if (w == mCachedW && h == mCachedH && !mClipPath.isEmpty()) {
+            return mClipPath;
+        }
+        mCachedW = w;
+        mCachedH = h;
+        mClipPath.rewind();
+        if (w <= 0 || h <= 0) return mClipPath;
+        float radius = Math.min(w, h) / 2f;
+        IconShape.getShape().addToPath(mClipPath, 0f, 0f, radius);
+        return mClipPath;
     }
 
     private void init() {
@@ -35,42 +54,54 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView {
                 float w = view.getWidth();
                 float h = view.getHeight();
                 if (w <= 0 || h <= 0) return;
-                float radius = Math.min(w, h) / 2f;
-                Path path = new Path();
-                IconShape.getShape().addToPath(path, 0f, 0f, radius);
+                Path path = updatePath(w, h);
                 outline.setConvexPath(path);
             }
         });
 
         // Standard master glass parameters from GlassConfig
-        foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this);
+        GlassConfig.applyDefaultConfig(this);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // Never consume touches so category icons and touch events pass through
+        return false;
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        // Bind to wallpaper proxy for glass effect
-        View target = getRootView().findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
-        if (target instanceof android.view.ViewGroup) {
-            bind((android.view.ViewGroup) target);
+        View root = getRootView();
+        if (root != null) {
+            View target = root.findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
+            if (target == null) {
+                target = root.findViewById(com.android.launcher3.R.id.glass_source);
+            }
+            if (target != null) {
+                setBackdropSource(target);
+            }
         }
     }
 
     @Override
-    protected void dispatchDraw(Canvas canvas) {
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        setBackdropSource(null);
+    }
+
+    @Override
+    public void draw(Canvas canvas) {
         float w = getWidth();
         float h = getHeight();
         if (w <= 0 || h <= 0) {
-            super.dispatchDraw(canvas);
+            super.draw(canvas);
             return;
         }
-        Path path = new Path();
-        float radius = Math.min(w, h) / 2f;
-        IconShape.getShape().addToPath(path, 0f, 0f, radius);
-        
+        Path path = updatePath(w, h);
         canvas.save();
         canvas.clipPath(path);
-        super.dispatchDraw(canvas);
+        super.draw(canvas);
         canvas.restore();
     }
 }

@@ -131,6 +131,14 @@ public class ItemClickHandler {
                 startAppShortcutOrInfoActivity(v, (AppInfo) tag, launcher);
             }
         } else if (tag instanceof LauncherAppWidgetInfo) {
+            if (workspace.isWobbling() && v instanceof com.android.launcher3.widget.LauncherAppWidgetHostView) {
+                com.android.launcher3.CellLayout cellLayout = (v.getParent() instanceof com.android.launcher3.ShortcutAndWidgetContainer)
+                        ? (com.android.launcher3.CellLayout) v.getParent().getParent() : null;
+                if (cellLayout != null) {
+                    com.android.launcher3.AppWidgetResizeFrame.showForWidget((com.android.launcher3.widget.LauncherAppWidgetHostView) v, cellLayout);
+                    return;
+                }
+            }
             if (v instanceof PendingAppWidgetHostView) {
                 onClickPendingWidget((PendingAppWidgetHostView) v, launcher);
             }

@@ -19,21 +19,25 @@ package foundation.e.bliss.glass
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewOutlineProvider
-import com.qmdeve.liquidglass.widget.LiquidGlassView
+import com.android.launcher3.R
+import com.example.liquidglass.GlassMaterial
+import com.example.liquidglass.LiquidGlassView
 
 /**
  * A [LiquidGlassView] for individual folder icon preview backgrounds.
  *
- * Mirrors the dock glass effect ([DockGlassView]) but sized to a single icon's preview area. Added
- * as the first child of [com.android.launcher3.folder.FolderIcon] (which is a FrameLayout), and
- * bound to the launcher's glass_source ViewGroup so it samples the wallpaper + workspace content
- * beneath it, frame-by-frame — exactly like the dock does.
+ * Sized to a single icon's preview area. Added as the first child of
+ * [com.android.launcher3.folder.FolderIcon] (which is a FrameLayout), and bound to the launcher's
+ * glass_wallpaper_proxy or glass_source View so it samples the wallpaper.
  *
- * Corner radius uses the iOS-matched ratio: minOf(w, h) * 0.45f (= ~22.5% of icon size), matching
- * the system squircle for app icons.
+ * Corner radius uses the iOS-matched ratio: minOf(w, h) * 0.225f, matching the system squircle
+ * for app icons.
  */
 class FolderGlassView(context: Context) : LiquidGlassView(context) {
 
@@ -68,26 +72,75 @@ class FolderGlassView(context: Context) : LiquidGlassView(context) {
                 }
             }
 
-        // Standard master glass parameters from GlassConfig
+        // Standard master glass parameters from GlassConfig (matches App Library category effect)
         GlassConfig.applyDefaultConfig(this)
+        enableDynamicBackground = true
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (backdropSource == null) {
+            val proxy = findWallpaperProxy()
+            if (proxy != null) {
+                backdropSource = proxy
+            } else {
+                post {
+                    if (backdropSource == null) {
+                        backdropSource = findWallpaperProxy()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        backdropSource = null
+    }
+
+    private fun findWallpaperProxy(): View? {
+        val root = rootView
+        if (root != null) {
+            val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
+            val source = root.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
+        }
+        var p = parent
+        while (p is ViewGroup) {
+            val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
+            val source = p.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
+            p = p.parent
+        }
+        return null
+    }
+
+    fun bind(source: View?) {
+        backdropSource = source
     }
 
     fun unbind() {
-        bind(null)
+        backdropSource = null
     }
 
-    override fun dispatchDraw(canvas: Canvas) {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Never consume touches so folder tap/long-press/drag passes to FolderIcon
+        return false
+    }
+
+    override fun draw(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
         if (w <= 0 || h <= 0) {
-            super.dispatchDraw(canvas)
+            super.draw(canvas)
             return
         }
         val path = updatePath(w, h)
-
         canvas.save()
         canvas.clipPath(path)
-        super.dispatchDraw(canvas)
+        super.draw(canvas)
         canvas.restore()
     }
 }

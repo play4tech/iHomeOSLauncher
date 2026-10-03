@@ -9,37 +9,34 @@
         android:layout_height="match_parent"
         android:fitsSystemWindows="false">
 
-        <!-- Heavy blur full screen background — covers entire window -->
+        <!-- Full screen dark frosted scrim + glass background -->
         <com.android.launcher3.applibrary.view.AppLibraryOverlayGlassView
             android:id="@+id/app_library_overlay_glass"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:background="#D9000000"
             android:fitsSystemWindows="false" />
 
-        <!-- Content overlay — centred vertically like iOS reference -->
+        <!-- Content overlay — centered on screen like iOS folder/overlay -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
-            android:paddingTop="120dp"
-            android:paddingBottom="80dp"
+            android:gravity="center"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="60dp"
+            android:paddingBottom="60dp"
             android:fitsSystemWindows="false">
-
-            <!-- Spacer to push content to bottom -->
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
 
             <!-- Category Title -->
             <TextView
                 android:id="@+id/expanded_category_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="24dp"
-                android:paddingBottom="16dp"
+                android:paddingHorizontal="12dp"
+                android:paddingBottom="24dp"
                 android:textColor="#FFFFFF"
-                android:textSize="34sp"
+                android:textSize="32sp"
                 android:textStyle="bold"
                 android:fontFamily="sans-serif-medium" />
 
@@ -48,7 +45,6 @@
                 android:id="@+id/expanded_category_grid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="16dp"
                 android:clipToPadding="false" />
 
         </LinearLayout>

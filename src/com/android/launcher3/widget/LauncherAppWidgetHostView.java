@@ -16,9 +16,15 @@
 
 package com.android.launcher3.widget;
 
+import android.app.AlertDialog;
 import android.appwidget.AppWidgetProviderInfo;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
+import androidx.core.content.res.ResourcesCompat;
 import android.os.Handler;
 import android.os.Parcelable;
 import android.os.SystemClock;
@@ -35,19 +41,25 @@ import android.widget.AdapterView;
 import android.widget.Advanceable;
 import android.widget.RemoteViews;
 
+import com.android.launcher3.CellLayout;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.android.launcher3.CheckLongPressHelper;
 import com.android.launcher3.Flags;
+import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
+import com.android.launcher3.touch.ItemLongClickListener;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
 import com.android.launcher3.views.BaseDragLayer;
 import com.android.launcher3.views.BaseDragLayer.TouchCompleteListener;
+import com.android.launcher3.widget.util.WidgetSizes;
+
+import foundation.e.bliss.multimode.MultiModeController;
 
 /**
  * {@inheritDoc}
@@ -93,6 +105,68 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
 
     private boolean mTrackingWidgetUpdate = false;
 
+    private boolean mIsUninstallVisible = false;
+    private boolean mDownOnMinusBadge = false;
+    private foundation.e.bliss.glass.LiquidGlassMinusDrawable mMinusBadgeDrawable;
+
+    public void applyUninstallIconState(boolean showUninstallIcon) {
+        boolean wasVisible = mIsUninstallVisible;
+        mIsUninstallVisible = showUninstallIcon;
+        if (wasVisible != mIsUninstallVisible) {
+            invalidate();
+        }
+    }
+
+    public boolean isUninstallVisible() {
+        return mIsUninstallVisible;
+    }
+
+    public boolean isTouchOnMinusBadge(float x, float y) {
+        float density = getResources().getDisplayMetrics().density;
+        int touchTarget = (int) (52 * density);
+        return x >= -16 * density && x <= touchTarget && y >= -16 * density && y <= touchTarget;
+    }
+
+    public boolean isOnUninstallIcon(float x, float y) {
+        return isTouchOnMinusBadge(x, y);
+    }
+
+    public void showRemoveWidgetDialog() {
+        Context context = getContext();
+        if (context == null) return;
+        Launcher launcher = Launcher.getLauncher(context);
+        AppWidgetProviderInfo pInfo = getAppWidgetInfo();
+        CharSequence label = "Widget";
+        if (pInfo != null) {
+            CharSequence l = pInfo.loadLabel(context.getPackageManager());
+            if (l != null && l.length() > 0) {
+                label = l;
+            }
+        }
+        if (launcher.getWorkspace() != null) {
+            launcher.getWorkspace().pauseWobbleAlarm();
+        }
+        foundation.e.bliss.glass.LiquidGlassAlertView.showRemoveWidgetAlert(
+                launcher,
+                label,
+                () -> {
+                    Object tag = getTag();
+                    if (tag instanceof ItemInfo) {
+                        launcher.removeItem(this, (ItemInfo) tag, true, "User removed widget");
+                    }
+                },
+                () -> {
+                    if (launcher.getWorkspace() != null) {
+                        launcher.getWorkspace().resetWobbleAlarm();
+                    }
+                }
+        );
+    }
+
+    private void showWidgetOptionsPopup() {
+        com.android.launcher3.popup.PopupContainerWithArrow.showForWidget(this);
+    }
+
     public LauncherAppWidgetHostView(Context context) {
         super(context);
         mActivityContext = ActivityContext.lookupContext(context);
@@ -118,14 +192,25 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
         }
     }
 
+    public com.android.launcher3.dragndrop.DragOptions.PreDragCondition startLongPressAction() {
+        if (MultiModeController.isSingleLayerMode()) {
+            Launcher launcher = Launcher.getLauncher(getContext());
+            if (launcher != null && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+                return null;
+            }
+        }
+        com.android.launcher3.popup.PopupContainerWithArrow popup =
+                com.android.launcher3.popup.PopupContainerWithArrow.showForWidget(this);
+        return popup != null ? popup.createPreDragCondition(true) : null;
+    }
+
     @Override
     public boolean onLongClick(View view) {
         if (!Utilities.isWorkspaceEditAllowed((Context) mActivityContext)) return true;
         if (mIsScrollable) {
             mActivityContext.getDragLayer().requestDisallowInterceptTouchEvent(false);
         }
-        view.performLongClick();
-        return true;
+        return com.android.launcher3.touch.ItemLongClickListener.onWorkspaceItemLongClick(this);
     }
 
     @Override
@@ -217,7 +302,29 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
         }
     }
 
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+        if (mIsUninstallVisible) {
+            float density = getResources().getDisplayMetrics().density;
+            int badgeSize = (int) (26 * density);
+            int margin = (int) (8 * density);
+            if (mMinusBadgeDrawable == null) {
+                mMinusBadgeDrawable = new foundation.e.bliss.glass.LiquidGlassMinusDrawable(getContext());
+            }
+            mMinusBadgeDrawable.setBounds(margin, margin, margin + badgeSize, margin + badgeSize);
+            mMinusBadgeDrawable.draw(canvas);
+        }
+    }
+
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (mIsUninstallVisible) {
+            if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+                mDownOnMinusBadge = isTouchOnMinusBadge(ev.getX(), ev.getY());
+            }
+            // Intercept all touches in wobble mode to prevent child views from firing clicks
+            return true;
+        }
         if (ev.getAction() == MotionEvent.ACTION_DOWN) {
             BaseDragLayer dragLayer = mActivityContext.getDragLayer();
             if (mIsScrollable) {
@@ -230,8 +337,29 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
     }
 
     public boolean onTouchEvent(MotionEvent ev) {
+        if (mIsUninstallVisible) {
+            if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+                mDownOnMinusBadge = isTouchOnMinusBadge(ev.getX(), ev.getY());
+                return true;
+            } else if (ev.getAction() == MotionEvent.ACTION_UP) {
+                if (mDownOnMinusBadge || isTouchOnMinusBadge(ev.getX(), ev.getY())) {
+                    showRemoveWidgetDialog();
+                    mDownOnMinusBadge = false;
+                    return true;
+                }
+                mDownOnMinusBadge = false;
+                return true;
+            } else if (ev.getAction() == MotionEvent.ACTION_CANCEL) {
+                mDownOnMinusBadge = false;
+                return true;
+            }
+            if (!mDownOnMinusBadge) {
+                return ItemLongClickListener.onTouchTest(this, ev);
+            }
+            return true;
+        }
         mLongPressHelper.onTouchEvent(ev);
-        // We want to keep receiving though events to be able to cancel long press on ACTION_UP
+        // We want to keep receiving touch events to be able to cancel long press on ACTION_UP
         return true;
     }
 
@@ -241,6 +369,11 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
         mIsAttachedToWindow = true;
         checkIfAutoAdvance();
         mColorExtractor.setListener(this);
+        Object tag = getTag();
+        if (tag instanceof LauncherAppWidgetInfo) {
+            LauncherAppWidgetInfo info = (LauncherAppWidgetInfo) tag;
+            WidgetSizes.updateWidgetSizeRanges(this, getContext(), info.spanX, info.spanY);
+        }
     }
 
     @Override

@@ -15,6 +15,10 @@
  */
 package com.android.launcher3.widget.dragndrop;
 
+import android.view.View;
+
+import androidx.annotation.Nullable;
+
 import com.android.launcher3.DropTarget;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.dragndrop.DragController;
@@ -24,16 +28,27 @@ import com.android.launcher3.widget.LauncherAppWidgetHostView;
 /** A drag listener of {@link LauncherAppWidgetHostView}. */
 public final class AppWidgetHostViewDragListener implements DragController.DragListener {
     private final Launcher mLauncher;
+    @Nullable
     private LauncherAppWidgetHostView mAppWidgetHostView;
 
     public AppWidgetHostViewDragListener(Launcher launcher) {
+        this(launcher, null);
+    }
+
+    public AppWidgetHostViewDragListener(Launcher launcher, @Nullable LauncherAppWidgetHostView appWidgetHostView) {
         mLauncher = launcher;
+        mAppWidgetHostView = appWidgetHostView;
     }
 
     @Override
     public void onDragStart(DropTarget.DragObject dragObject, DragOptions unused) {
-        if (dragObject.dragView.getContentView() instanceof LauncherAppWidgetHostView) {
+        if (dragObject != null && dragObject.dragView != null
+                && dragObject.dragView.getContentView() instanceof LauncherAppWidgetHostView) {
             mAppWidgetHostView = (LauncherAppWidgetHostView) dragObject.dragView.getContentView();
+            mAppWidgetHostView.setVisibility(View.VISIBLE);
+            mAppWidgetHostView.startDrag();
+        } else if (mAppWidgetHostView != null) {
+            mAppWidgetHostView.setVisibility(View.VISIBLE);
             mAppWidgetHostView.startDrag();
         } else {
             mLauncher.getDragController().removeDragListener(this);
@@ -42,7 +57,9 @@ public final class AppWidgetHostViewDragListener implements DragController.DragL
 
     @Override
     public void onDragEnd() {
-        mAppWidgetHostView.endDrag();
+        if (mAppWidgetHostView != null) {
+            mAppWidgetHostView.endDrag();
+        }
         mLauncher.getDragController().removeDragListener(this);
     }
 }

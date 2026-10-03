@@ -222,4 +222,16 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
             }
         }
     }
+
+    @Override
+    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        if (e1 != null && e2 != null && velocityY > 600 && Math.abs(velocityY) > Math.abs(velocityX) * 1.3f) {
+            float deltaY = e2.getY() - e1.getY();
+            if (deltaY > 120 && !mWorkspace.isWobbling() && mLauncher.isInState(NORMAL)) {
+                Launcher.expandNotificationShade(mLauncher);
+                return true;
+            }
+        }
+        return super.onFling(e1, e2, velocityX, velocityY);
+    }
 }

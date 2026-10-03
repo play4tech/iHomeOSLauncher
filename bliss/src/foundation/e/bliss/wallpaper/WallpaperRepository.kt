@@ -18,17 +18,28 @@
 package foundation.e.bliss.wallpaper
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.app.AlertDialog
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
+import android.app.WallpaperColors
+import android.os.Build
+import android.os.Environment
 import android.os.ParcelFileDescriptor
+import android.provider.Settings
 import androidx.core.graphics.drawable.toBitmap
+import com.android.launcher3.LauncherFiles
 import com.android.launcher3.util.Executors
 import com.android.launcher3.util.MainThreadInitializedObject
 import com.android.launcher3.util.SimpleBroadcastReceiver
 import foundation.e.bliss.utils.runOnMainThread
+import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.CopyOnWriteArrayList
 
 @SuppressLint("NewApi")
@@ -42,11 +53,33 @@ class WallpaperRepository(val context: Context) {
     var currentWallpaper: Bitmap? = null
         private set
 
+    var currentColors: WallpaperColors? = null
+        private set
+
     var isLiveWallpaper = false
+        private set
+
+    var isFallbackWallpaper = false
         private set
 
     init {
         wallpaperChangeReceiver.register(context, Intent.ACTION_WALLPAPER_CHANGED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            try {
+                currentColors = mWallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+                mWallpaperManager.addOnColorsChangedListener(
+                    { colors, which ->
+                        if ((which and WallpaperManager.FLAG_SYSTEM) != 0) {
+                            currentColors = colors
+                            runOnMainThread { mListeners.forEach { it.onWallpaperColorsChanged(colors) } }
+                        }
+                    },
+                    android.os.Handler(android.os.Looper.getMainLooper())
+                )
+            } catch (t: Throwable) {
+                android.util.Log.w("WallpaperRepository", "Failed to register OnColorsChangedListener", t)
+            }
+        }
         updateAsync()
     }
 
@@ -65,30 +98,103 @@ class WallpaperRepository(val context: Context) {
     @SuppressLint("MissingPermission")
     private fun updateWallpaper(requestId: Long) {
         var wallpaper: Bitmap? = null
+        var fallback = false
         val isLive = mWallpaperManager.wallpaperInfo != null
 
-        if (!isLive) {
+        // -------------------------------------------------------------
+        // Tier 0: Check Internal FilesDir Cache with Wallpaper-ID check
+        // -------------------------------------------------------------
+        val prefs = context.getSharedPreferences(LauncherFiles.SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val cachedId = prefs.getInt(PREF_CACHED_WALLPAPER_ID, -1)
+        val currentWallpaperId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mWallpaperManager.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+        } else {
+            -1
+        }
+        val cacheFile = File(context.filesDir, CACHED_WALLPAPER_FILE)
+
+        if (cacheFile.exists()) {
+            if (currentWallpaperId != -1 && cachedId == currentWallpaperId) {
+                try {
+                    wallpaper = BitmapFactory.decodeFile(cacheFile.absolutePath)
+                    android.util.Log.d(
+                        "WallpaperRepository",
+                        "Tier 0 hit: loaded cached wallpaper (id=$cachedId) ${wallpaper?.width}x${wallpaper?.height}"
+                    )
+                } catch (t: Throwable) {
+                    android.util.Log.e("WallpaperRepository", "Error decoding cached wallpaper", t)
+                }
+            } else {
+                android.util.Log.d(
+                    "WallpaperRepository",
+                    "Tier 0 stale cache detected (cachedId=$cachedId, currentId=$currentWallpaperId). Deleting cache."
+                )
+                cacheFile.delete()
+                prefs.edit().remove(PREF_CACHED_WALLPAPER_ID).apply()
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Tier 1: Decode System Wallpaper from ParcelFileDescriptor
+        // -------------------------------------------------------------
+        if (wallpaper == null && !isLive) {
             try {
                 wallpaper = decodeSystemWallpaper()
                 android.util.Log.d(
                     "WallpaperRepository",
-                    "decodeSystemWallpaper result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
+                    "Tier 1 result: decodeSystemWallpaper ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
                 )
             } catch (t: Throwable) {
                 android.util.Log.e("WallpaperRepository", "Error in decodeSystemWallpaper", t)
             }
         }
 
+        // -------------------------------------------------------------
+        // Tier 2: Fetch via WallpaperManager.drawable
+        // -------------------------------------------------------------
         if (wallpaper == null) {
             try {
                 val drawable = mWallpaperManager.drawable
                 wallpaper = drawable?.toBitmap()
                 android.util.Log.d(
                     "WallpaperRepository",
-                    "mWallpaperManager.drawable result: ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
+                    "Tier 2 result: mWallpaperManager.drawable ${if (wallpaper != null) "${wallpaper.width}x${wallpaper.height}" else "null"}"
                 )
             } catch (t: Throwable) {
                 android.util.Log.e("WallpaperRepository", "Error fetching wallpaper drawable", t)
+            }
+        }
+
+        // -------------------------------------------------------------
+        // Tier 3: Fetch Built-In ROM Fallback Drawable
+        // -------------------------------------------------------------
+        if (wallpaper == null) {
+            if (currentWallpaper != null) {
+                android.util.Log.d("WallpaperRepository", "Wallpaper file not ready yet, keeping current wallpaper and retrying in 300ms")
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ updateAsync() }, 300)
+                return
+            }
+            try {
+                val builtIn = mWallpaperManager.getBuiltInDrawable()
+                wallpaper = builtIn?.toBitmap()
+                if (wallpaper != null) {
+                    fallback = true
+                    android.util.Log.d(
+                        "WallpaperRepository",
+                        "Tier 3 result: built-in wallpaper fallback ${wallpaper.width}x${wallpaper.height}"
+                    )
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("WallpaperRepository", "Error fetching built-in wallpaper drawable", t)
+            }
+        }
+
+        // Update WallpaperColors cache if available
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            try {
+                currentColors = mWallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+            } catch (t: Throwable) {
+                android.util.Log.w("WallpaperRepository", "Error fetching WallpaperColors", t)
             }
         }
 
@@ -96,36 +202,112 @@ class WallpaperRepository(val context: Context) {
         // newer system wallpaper after the wallpaper-change broadcast has already arrived.
         if (synchronized(this) { requestId != latestRequestId }) return
 
+        isFallbackWallpaper = fallback
         currentWallpaper = wallpaper
-        runOnMainThread { mListeners.forEach { it.onWallpaperChanged(wallpaper) } }
+        val colors = currentColors
+        runOnMainThread {
+            mListeners.forEach {
+                it.onWallpaperChanged(wallpaper)
+                it.onWallpaperColorsChanged(colors)
+            }
+        }
+    }
+
+    fun saveWallpaperToCache(bitmap: Bitmap, wallpaperId: Int) {
+        Executors.THREAD_POOL_EXECUTOR.execute {
+            try {
+                val cacheFile = File(context.filesDir, CACHED_WALLPAPER_FILE)
+                val tempFile = File(context.filesDir, "${CACHED_WALLPAPER_FILE}.tmp")
+                FileOutputStream(tempFile).use { out ->
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        bitmap.compress(Bitmap.CompressFormat.WEBP_LOSSY, 90, out)
+                    } else {
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+                    }
+                }
+                if (tempFile.renameTo(cacheFile)) {
+                    val prefs = context.getSharedPreferences(LauncherFiles.SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE)
+                    prefs.edit().putInt(PREF_CACHED_WALLPAPER_ID, wallpaperId).apply()
+                    android.util.Log.d("WallpaperRepository", "Saved wallpaper cache (id=$wallpaperId)")
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("WallpaperRepository", "Failed to save wallpaper cache", t)
+            }
+        }
     }
 
     fun updateDirectly(bitmap: Bitmap) {
+        isFallbackWallpaper = false
         currentWallpaper = bitmap
         runOnMainThread { mListeners.forEach { it.onWallpaperChanged(bitmap) } }
     }
 
     private fun decodeSystemWallpaper(): Bitmap? {
-        // The drawable fallback below is cached by WallpaperManager on some OEM builds.
-        // Clear that cache before reading so a newly-applied wallpaper is never replaced by
-        // the previous bitmap if the file descriptor is unavailable.
-        mWallpaperManager.forgetLoadedWallpaper()
-        val wallpaperFile: ParcelFileDescriptor =
-            mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
+        // Isolate hidden API in its own try-catch so failure does not block getWallpaperFile
+        try {
+            mWallpaperManager.forgetLoadedWallpaper()
+        } catch (t: Throwable) {
+            android.util.Log.w("WallpaperRepository", "forgetLoadedWallpaper failed", t)
+        }
 
-        return wallpaperFile.use {
-            try {
-                BitmapFactory.decodeFileDescriptor(it.fileDescriptor)
-            } catch (t: Throwable) {
-                android.util.Log.e("WallpaperRepository", "Failed to decode wallpaper fd", t)
-                null
+        val dm = context.resources.displayMetrics
+        val maxDim = maxOf(dm.widthPixels, dm.heightPixels) * 2
+
+        var pfd = mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
+        return try {
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor, null, options)
+
+            if (options.outWidth <= 0 || options.outHeight <= 0) {
+                return null
             }
+
+            var canRewind = false
+            try {
+                android.system.Os.lseek(pfd.fileDescriptor, 0, android.system.OsConstants.SEEK_SET)
+                canRewind = true
+            } catch (e: Exception) {
+                android.util.Log.w("WallpaperRepository", "lseek failed, reopening pfd", e)
+            }
+
+            if (!canRewind) {
+                try {
+                    pfd.close()
+                } catch (_: Exception) {}
+                pfd = mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
+            }
+
+            var sampleSize = 1
+            while ((options.outWidth / sampleSize) > maxDim ||
+                (options.outHeight / sampleSize) > maxDim
+            ) {
+                sampleSize *= 2
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            val bitmap = BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor, null, decodeOptions)
+            android.util.Log.d(
+                "WallpaperRepository",
+                "Decoded system wallpaper (sampleSize=$sampleSize): ${bitmap?.width}x${bitmap?.height}"
+            )
+            bitmap
+        } catch (t: Throwable) {
+            android.util.Log.e("WallpaperRepository", "Failed to decode wallpaper fd", t)
+            null
+        } finally {
+            try {
+                pfd.close()
+            } catch (_: Exception) {}
         }
     }
 
     fun addListener(listener: Listener) {
         mListeners.add(listener)
         listener.onWallpaperChanged(currentWallpaper)
+        listener.onWallpaperColorsChanged(currentColors)
     }
 
     fun removeListener(listener: Listener) {
@@ -134,17 +316,23 @@ class WallpaperRepository(val context: Context) {
 
     interface Listener {
         fun onWallpaperChanged(bitmap: Bitmap?)
+        fun onWallpaperColorsChanged(colors: WallpaperColors?) {}
     }
 
     companion object {
+        const val CACHED_WALLPAPER_FILE = "cached_wallpaper.webp"
+        const val PREF_CACHED_WALLPAPER_ID = "cached_wallpaper_id"
+
         val INSTANCE = MainThreadInitializedObject { context: Context ->
             WallpaperRepository(context)
         }
 
-        fun getInstanceNoCreate(): WallpaperRepository {
+        @JvmStatic
+        fun getInstanceNoCreate(): WallpaperRepository? {
             return INSTANCE.getNoCreate()
         }
 
+        @JvmStatic
         fun getInstance(context: Context): WallpaperRepository {
             return INSTANCE.get(context)
         }

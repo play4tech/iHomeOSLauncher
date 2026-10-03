@@ -120,6 +120,14 @@ public final class WidgetsListTableViewHolderBinder
                 WidgetItem widgetItem = widgetItemsPerRow.get(j);
                 widget.setVisibility(View.VISIBLE);
 
+                View preview = widget.findViewById(R.id.widget_preview_container);
+                if (preview != null) {
+                    preview.setOnClickListener(mIconClickListener);
+                    preview.setOnLongClickListener(mIconLongClickListener);
+                }
+                widget.setOnClickListener(mIconClickListener);
+                widget.setOnLongClickListener(mIconLongClickListener);
+
                 // When preview loads, notify adapter to rebind the item and possibly animate
                 widget.applyFromCellItem(widgetItem, 1f,
                         bitmap -> holder.onPreviewLoaded(Pair.create(widgetItem, bitmap)),
@@ -171,6 +179,8 @@ public final class WidgetsListTableViewHolderBinder
                     View preview = widget.findViewById(R.id.widget_preview_container);
                     preview.setOnClickListener(mIconClickListener);
                     preview.setOnLongClickListener(mIconLongClickListener);
+                    widget.setOnClickListener(mIconClickListener);
+                    widget.setOnLongClickListener(mIconLongClickListener);
                     widget.setAnimatePreview(false);
                     tableRow.addView(widget);
                 }

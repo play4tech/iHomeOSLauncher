@@ -15,6 +15,7 @@
  */
 package com.android.launcher3.model;
 
+import android.content.ComponentName;
 import android.content.Intent;
 import android.content.pm.LauncherActivityInfo;
 import android.content.pm.LauncherApps;
@@ -110,7 +111,8 @@ public class AddWorkspaceItemsTask extends BaseModelUpdateTask {
                     }
 
                     // b/139663018 Short-circuit this logic if the icon is a system app
-                    if (PackageManagerHelper.isSystemApp(app.getContext(),
+                    if (!foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()
+                            && PackageManagerHelper.isSystemApp(app.getContext(),
                             Objects.requireNonNull(item.getIntent())) && !mIgnoreLoaded) {
                         continue;
                     }
@@ -269,26 +271,40 @@ public class AddWorkspaceItemsTask extends BaseModelUpdateTask {
             intentWithoutPkg = intent.toUri(0);
         }
 
+        ComponentName targetComponent = intent.getComponent();
         boolean isLauncherAppTarget = PackageManagerHelper.isLauncherAppTarget(intent);
         synchronized (dataModel) {
             for (ItemInfo item : dataModel.itemsIdMap) {
                 if (item instanceof WorkspaceItemInfo) {
                     WorkspaceItemInfo info = (WorkspaceItemInfo) item;
-                    if (item.getIntent() != null && info.user.equals(user)) {
-                        Intent copyIntent = new Intent(item.getIntent());
-                        copyIntent.setSourceBounds(intent.getSourceBounds());
-                        String s = copyIntent.toUri(0);
-                        if (intentWithPkg.equals(s) || intentWithoutPkg.equals(s)) {
+                    if (info.user.equals(user)) {
+                        if (targetComponent != null && targetComponent.equals(info.getTargetComponent())) {
                             return true;
                         }
+                        if (item.getIntent() != null) {
+                            Intent copyIntent = new Intent(item.getIntent());
+                            copyIntent.setSourceBounds(intent.getSourceBounds());
+                            String s = copyIntent.toUri(0);
+                            if (intentWithPkg.equals(s) || intentWithoutPkg.equals(s)) {
+                                return true;
+                            }
 
-                        // checking for existing promise icon with same package name
-                        if (isLauncherAppTarget
-                                && info.isPromise()
-                                && info.hasStatusFlag(WorkspaceItemInfo.FLAG_AUTOINSTALL_ICON)
-                                && info.getTargetComponent() != null
-                                && compPkgName != null
-                                && compPkgName.equals(info.getTargetComponent().getPackageName())) {
+                            // checking for existing promise icon with same package name
+                            if (isLauncherAppTarget
+                                    && info.isPromise()
+                                    && info.hasStatusFlag(WorkspaceItemInfo.FLAG_AUTOINSTALL_ICON)
+                                    && info.getTargetComponent() != null
+                                    && compPkgName != null
+                                    && compPkgName.equals(info.getTargetComponent().getPackageName())) {
+                                return true;
+                            }
+                        }
+                    }
+                } else if (item instanceof com.android.launcher3.model.data.FolderInfo) {
+                    com.android.launcher3.model.data.FolderInfo folder = (com.android.launcher3.model.data.FolderInfo) item;
+                    for (WorkspaceItemInfo member : folder.contents) {
+                        if (member.user.equals(user) && targetComponent != null
+                                && targetComponent.equals(member.getTargetComponent())) {
                             return true;
                         }
                     }

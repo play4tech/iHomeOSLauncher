@@ -45,6 +45,7 @@ import static com.android.launcher3.model.data.ItemInfo.NO_MATCHING_ID;
 import static com.android.launcher3.popup.QuickstepSystemShortcut.getSplitSelectShortcutByPosition;
 import static com.android.launcher3.popup.SystemShortcut.APP_INFO;
 import static com.android.launcher3.popup.SystemShortcut.DONT_SUGGEST_APP;
+import static com.android.launcher3.popup.SystemShortcut.EDIT_HOME_SCREEN;
 import static com.android.launcher3.popup.SystemShortcut.INSTALL;
 import static com.android.launcher3.popup.SystemShortcut.PRIVATE_PROFILE_INSTALL;
 import static com.android.launcher3.popup.SystemShortcut.UNINSTALL_APP;
@@ -446,7 +447,10 @@ public class QuickstepLauncher extends Launcher {
         if (Flags.enableShortcutDontSuggestApp()) {
             shortcuts.add(DONT_SUGGEST_APP);
         }
-        if (Flags.enablePrivateSpace() || foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            shortcuts.add(EDIT_HOME_SCREEN);
+            shortcuts.add(UNINSTALL_APP);
+        } else if (Flags.enablePrivateSpace()) {
             shortcuts.add(UNINSTALL_APP);
         }
         return shortcuts.stream();
@@ -486,12 +490,6 @@ public class QuickstepLauncher extends Launcher {
         }
         if (state == NORMAL && !inTransition) {
             ((RecentsView) getOverviewPanel()).setSwipeDownShouldLaunchApp(false);
-
-            // Close any opened folder
-            Folder folder = Folder.getOpen(this);
-            if (folder != null && folder.isOpen() && !folder.isFolderWobbling()) {
-                folder.close(false);
-            }
         }
     }
 

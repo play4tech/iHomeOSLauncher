@@ -38,7 +38,6 @@ public class AppLibraryDashboardAdapter extends RecyclerView.Adapter<AppLibraryD
                 mCategories.add(new CategoryData(entry.getKey(), entry.getValue()));
             }
         }
-        android.widget.Toast.makeText(mContext, "DashboardAdapter updated with " + mCategories.size() + " categories", android.widget.Toast.LENGTH_LONG).show();
         android.util.Log.d("AppLibraryDashboardAdapter", "updated with " + mCategories.size() + " categories");
         notifyDataSetChanged();
     }

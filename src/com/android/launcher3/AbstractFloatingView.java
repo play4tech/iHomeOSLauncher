@@ -34,9 +34,11 @@ import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.animation.Interpolator;
 import android.widget.LinearLayout;
+import android.window.BackEvent;
 import android.window.OnBackAnimationCallback;
 
 import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
 
 import com.android.launcher3.anim.PendingAnimation;
 import com.android.launcher3.util.TouchController;
@@ -75,7 +77,8 @@ public abstract class AbstractFloatingView extends LinearLayout implements Touch
             TYPE_TASKBAR_ALL_APPS,
             TYPE_ADD_TO_HOME_CONFIRMATION,
             TYPE_TASKBAR_OVERLAY_PROXY,
-            TYPE_TASKBAR_PINNING_POPUP
+            TYPE_TASKBAR_PINNING_POPUP,
+            TYPE_SPOTLIGHT_SEARCH
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface FloatingViewType {}
@@ -105,6 +108,7 @@ public abstract class AbstractFloatingView extends LinearLayout implements Touch
     public static final int TYPE_TASKBAR_OVERLAY_PROXY = 1 << 20;
     public static final int TYPE_TASKBAR_PINNING_POPUP = 1 << 21;
     public static final int TYPE_PIN_IME_POPUP = 1 << 22;
+    public static final int TYPE_SPOTLIGHT_SEARCH = 1 << 23;
 
     public static final int TYPE_ALL = TYPE_FOLDER | TYPE_ACTION_POPUP
             | TYPE_WIDGETS_BOTTOM_SHEET | TYPE_WIDGET_RESIZE_FRAME | TYPE_WIDGETS_FULL_SHEET
@@ -113,7 +117,8 @@ public abstract class AbstractFloatingView extends LinearLayout implements Touch
             | TYPE_ICON_SURFACE | TYPE_DRAG_DROP_POPUP | TYPE_PIN_WIDGET_FROM_EXTERNAL_POPUP
             | TYPE_WIDGETS_EDUCATION_DIALOG | TYPE_TASKBAR_EDUCATION_DIALOG | TYPE_TASKBAR_ALL_APPS
             | TYPE_OPTIONS_POPUP_DIALOG | TYPE_ADD_TO_HOME_CONFIRMATION
-            | TYPE_TASKBAR_OVERLAY_PROXY | TYPE_TASKBAR_PINNING_POPUP | TYPE_PIN_IME_POPUP;
+            | TYPE_TASKBAR_OVERLAY_PROXY | TYPE_TASKBAR_PINNING_POPUP | TYPE_PIN_IME_POPUP
+            | TYPE_SPOTLIGHT_SEARCH;
 
     // Type of popups which should be kept open during launcher rebind
     public static final int TYPE_REBIND_SAFE = TYPE_WIDGETS_FULL_SHEET
@@ -192,7 +197,28 @@ public abstract class AbstractFloatingView extends LinearLayout implements Touch
     }
 
     @Override
+    public void onBackStarted(@NonNull BackEvent backEvent) {
+    }
+
+    @Override
+    public void onBackProgressed(@NonNull BackEvent backEvent) {
+        float progress = backEvent.getProgress();
+        float scale = 1f - 0.06f * progress;
+        setScaleX(scale);
+        setScaleY(scale);
+        setAlpha(1f - 0.2f * progress);
+    }
+
+    @Override
+    public void onBackCancelled() {
+        animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(150).start();
+    }
+
+    @Override
     public void onBackInvoked() {
+        setScaleX(1f);
+        setScaleY(1f);
+        setAlpha(1f);
         close(true);
     }
 

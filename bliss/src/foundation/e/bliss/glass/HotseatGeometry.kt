@@ -29,5 +29,6 @@ data class HotseatGeometry(
     val contentBounds: Rect, // Exact placement of the icons/content within the dock
     val height: Int, // Convenience property for bounds height
     val cornerRadius: Float, // Dynamic corner radius
-    val pageIndicatorY: Int // Pre-calculated Y coordinate for the WorkspacePageIndicator
+    val pageIndicatorY: Int, // Pre-calculated Y coordinate for the WorkspacePageIndicator
+    val indicatorMargin: Int = 0 // Margin between dock top and workspace page indicator
 )

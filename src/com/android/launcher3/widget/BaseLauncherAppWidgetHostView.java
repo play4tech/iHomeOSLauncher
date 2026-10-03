@@ -52,10 +52,13 @@ public abstract class BaseLauncherAppWidgetHostView extends NavigableAppWidgetHo
     private final ViewOutlineProvider mCornerRadiusEnforcementOutline = new ViewOutlineProvider() {
         @Override
         public void getOutline(View view, Outline outline) {
-            if (mEnforcedRectangle.isEmpty() || mEnforcedCornerRadius <= 0) {
+            float radius = foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()
+                    ? (22f * view.getResources().getDisplayMetrics().density)
+                    : mEnforcedCornerRadius;
+            if (mEnforcedRectangle.isEmpty() || radius <= 0) {
                 outline.setEmpty();
             } else {
-                outline.setRoundRect(mEnforcedRectangle, mEnforcedCornerRadius);
+                outline.setRoundRect(mEnforcedRectangle, radius);
             }
         }
     };
@@ -104,6 +107,14 @@ public abstract class BaseLauncherAppWidgetHostView extends NavigableAppWidgetHo
 
     @UiThread
     private void enforceRoundedCorners() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            mEnforcedRectangle.set(0, 0, getWidth(), getHeight());
+            setOutlineProvider(mCornerRadiusEnforcementOutline);
+            setClipToOutline(true);
+            mIsCornerRadiusEnforced = true;
+            invalidateOutline();
+            return;
+        }
         if (mEnforcedCornerRadius <= 0 || !RoundedCornerEnforcement.isRoundedCornerEnabled()) {
             resetRoundedCorners();
             return;

@@ -159,6 +159,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
         }
 
         addView(content, new LayoutParams(width, height));
+        content.setVisibility(VISIBLE);
 
         // If there is already a scale set on the content, we don't want to clip the children.
         if (content.getScaleX() != 1 || content.getScaleY() != 1) {
@@ -323,6 +324,9 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
      * Called when pre-drag finishes for an icon
      */
     public void onDragStart() {
+        if (mContent != null) {
+            mContent.setVisibility(VISIBLE);
+        }
         mOnDragStartCallback.executeAllAndDestroy();
     }
 
@@ -411,15 +415,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
         setLayoutParams(lp);
 
         if (mContent != null) {
-            // At the drag start, the source view visibility is set to invisible.
-            if (getHasDragOffset()) {
-                // If there is any dragOffset, this means the content will show away of the original
-                // icon location, otherwise it's fine since original content would just show at the
-                // same spot.
-                mContent.setVisibility(INVISIBLE);
-            } else {
-                mContent.setVisibility(VISIBLE);
-            }
+            mContent.setVisibility(VISIBLE);
         }
 
         move(touchX, touchY);
@@ -500,6 +496,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
      */
     public void detachContentView(boolean reattachToPreviousParent) {
         if (mContent != null && mContentViewParent != null && mContentViewInParentViewIndex >= 0) {
+            mContent.setVisibility(VISIBLE);
             Picture picture = new Picture();
             mContent.draw(picture.beginRecording(mWidth, mHeight));
             picture.endRecording();
@@ -513,10 +510,14 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
             addViewInLayout(view, indexOfChild(mContent), mContent.getLayoutParams(), true);
 
             removeViewInLayout(mContent);
-            mContent.setVisibility(INVISIBLE);
+            mContent.setVisibility(reattachToPreviousParent ? VISIBLE : INVISIBLE);
             mContent.setLayoutParams(mContentViewLayoutParams);
             if (reattachToPreviousParent) {
-                mContentViewParent.addView(mContent, mContentViewInParentViewIndex);
+                if (mContent.getParent() instanceof ViewGroup) {
+                    ((ViewGroup) mContent.getParent()).removeView(mContent);
+                }
+                int index = Math.min(mContentViewInParentViewIndex, mContentViewParent.getChildCount());
+                mContentViewParent.addView(mContent, index);
             }
             mContentViewParent = null;
             mContentViewInParentViewIndex = -1;
@@ -532,6 +533,9 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
      * before this call.
      */
     public void remove() {
+        if (mContentViewParent != null) {
+            detachContentView(/* reattachToPreviousParent= */ true);
+        }
         if (getParent() != null) {
             mDragLayer.removeView(DragView.this);
         }

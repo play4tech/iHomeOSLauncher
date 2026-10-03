@@ -72,13 +72,32 @@ public class WorkspaceItemSpaceFinder {
             screensToExclude.add(FIRST_SCREEN_ID);
         }
 
-        for (int screen = 0; screen < screenCount; screen++) {
-            screenId = workspaceScreens.get(screen);
-            if (!screensToExclude.contains(screenId) && findNextAvailableIconSpaceInScreen(
-                    app, screenItems.get(screenId), coordinates, spanX, spanY)) {
-                // We found a space for it
-                found = true;
-                break;
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            int lastScreenIndex = -1;
+            for (int i = screenCount - 1; i >= 0; i--) {
+                int sId = workspaceScreens.get(i);
+                if (sId != com.android.launcher3.WorkspaceLayoutManager.APP_LIBRARY_SCREEN_ID
+                        && !screensToExclude.contains(sId)) {
+                    lastScreenIndex = i;
+                    break;
+                }
+            }
+            if (lastScreenIndex != -1) {
+                screenId = workspaceScreens.get(lastScreenIndex);
+                if (findNextAvailableIconSpaceInScreen(
+                        app, screenItems.get(screenId), coordinates, spanX, spanY)) {
+                    found = true;
+                }
+            }
+        } else {
+            for (int screen = 0; screen < screenCount; screen++) {
+                screenId = workspaceScreens.get(screen);
+                if (!screensToExclude.contains(screenId) && findNextAvailableIconSpaceInScreen(
+                        app, screenItems.get(screenId), coordinates, spanX, spanY)) {
+                    // We found a space for it
+                    found = true;
+                    break;
+                }
             }
         }
 
@@ -87,7 +106,12 @@ public class WorkspaceItemSpaceFinder {
             screenId = app.getModel().getModelDbController().getNewScreenId();
 
             // Save the screen id for binding in the workspace
-            workspaceScreens.add(screenId);
+            int insertIndex = workspaceScreens.indexOf(com.android.launcher3.WorkspaceLayoutManager.APP_LIBRARY_SCREEN_ID);
+            if (insertIndex >= 0) {
+                workspaceScreens.add(insertIndex, screenId);
+            } else {
+                workspaceScreens.add(screenId);
+            }
             addedWorkspaceScreensFinal.add(screenId);
 
             // If we still can't find an empty space, then God help us all!!!

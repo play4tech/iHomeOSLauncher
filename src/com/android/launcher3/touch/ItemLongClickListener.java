@@ -65,6 +65,12 @@ public class ItemLongClickListener {
             ItemLongClickListener::onTouchTest;
 
     public static boolean onTouchTest(View v, MotionEvent ev) {
+        if (v instanceof BubbleTextView && ((BubbleTextView) v).isOnUninstallIcon(ev.getX(), ev.getY())) {
+            return false;
+        }
+        if (v instanceof LauncherAppWidgetHostView && ((LauncherAppWidgetHostView) v).isTouchOnMinusBadge(ev.getX(), ev.getY())) {
+            return false;
+        }
         long dt = ev.getEventTime() - ev.getDownTime();
         if (dt < 150) {
             return false;

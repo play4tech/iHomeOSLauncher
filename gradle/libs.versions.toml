@@ -35,7 +35,7 @@ elib = "foundation.e:elib:0.0.1-alpha11"
 google-material = "com.google.android.material:material:1.6.1"
 google-protobuf-javalite = "com.google.protobuf:protobuf-javalite:3.21.1"
 hoko-blur = "io.github.hokofly:hoko-blur:1.4.0"
-qmdeve-liquidglass = "com.qmdeve.liquidglass:core:1.0.0"
+qwea0-liquidglass = "com.github.QWEA0:liquidglass:v2.0.11"
 reactivex-rxkotlin3 = "io.reactivex.rxjava3:rxkotlin:3.0.1"
 
 square-retrofit = "com.squareup.retrofit2:retrofit:2.9.0"

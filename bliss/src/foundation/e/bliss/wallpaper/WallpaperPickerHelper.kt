@@ -27,6 +27,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import android.os.Build
 import com.android.launcher3.util.Executors
 import foundation.e.bliss.utils.runOnMainThread
 
@@ -38,6 +39,19 @@ object WallpaperPickerHelper {
     /** Launches the system gallery or photo picker to let the user select a wallpaper. */
     @JvmStatic
     fun launchGalleryPicker(activity: Activity) {
+        // Prefer modern API 33+ Android Photo Picker (zero storage permissions required)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                val intent = Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+                    type = "image/*"
+                }
+                activity.startActivityForResult(intent, REQUEST_PICK_WALLPAPER)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "ACTION_PICK_IMAGES failed, falling back to ACTION_GET_CONTENT", e)
+            }
+        }
+
         try {
             val intent =
                 Intent(Intent.ACTION_GET_CONTENT).apply {
@@ -113,7 +127,13 @@ object WallpaperPickerHelper {
                         true,
                         WallpaperManager.FLAG_SYSTEM or WallpaperManager.FLAG_LOCK
                     )
+                    val newId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        wm.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+                    } else {
+                        -1
+                    }
                     val repo = WallpaperRepository.getInstance(context)
+                    repo.saveWallpaperToCache(bitmap, newId)
                     repo.updateDirectly(bitmap)
                     WallpaperLoadingOverlay.dismiss()
                     success = true

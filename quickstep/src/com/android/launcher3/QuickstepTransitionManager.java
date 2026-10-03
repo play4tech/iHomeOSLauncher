@@ -1310,6 +1310,18 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
                 surfaceApplier.scheduleApply(transaction);
             }
         });
+        unlockAnimator.addUpdateListener(anim -> {
+            float progress = anim.getAnimatedFraction();
+            SurfaceTransaction transaction = new SurfaceTransaction();
+            for (int i = appTargets.length - 1; i >= 0; i--) {
+                RemoteAnimationTarget target = appTargets[i];
+                transaction.forSurface(target.leash)
+                        .setAlpha(1f - progress)
+                        .setWindowCrop(target.screenSpaceBounds)
+                        .setCornerRadius(cornerRadius);
+            }
+            surfaceApplier.scheduleApply(transaction);
+        });
         return unlockAnimator;
     }
 

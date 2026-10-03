@@ -16,7 +16,7 @@
 
 package com.android.launcher3.model;
 
-import static com.android.launcher3.LauncherSettings.Favorites.TABLE_NAME;
+import static com.android.launcher3.LauncherSettings.Favorites.getFavoritesTableName;
 import static com.android.launcher3.config.FeatureFlags.shouldShowFirstPageWidget;
 
 import android.content.ComponentName;
@@ -79,6 +79,7 @@ public class LoaderCursor extends CursorWrapper {
     private final IntArray mItemsToRemove = new IntArray();
     private final IntArray mRestoredRows = new IntArray();
     private final IntSparseArrayMap<GridOccupancy> mOccupied = new IntSparseArrayMap<>();
+    private final java.util.Set<com.android.launcher3.util.ComponentKey> mLoadedDesktopComponents = new java.util.HashSet<>();
 
     private final int mIconIndex;
     public final int mTitleIndex;
@@ -414,7 +415,7 @@ public class LoaderCursor extends CursorWrapper {
     public boolean commitDeleted() {
         if (mItemsToRemove.size() > 0) {
             // Remove dead items
-            mApp.getModel().getModelDbController().delete(TABLE_NAME,
+            mApp.getModel().getModelDbController().delete(getFavoritesTableName(),
                     Utilities.createDbSelectionQuery(Favorites._ID, mItemsToRemove), null);
             return true;
         }
@@ -440,7 +441,7 @@ public class LoaderCursor extends CursorWrapper {
             // Update restored items that no longer require special handling
             ContentValues values = new ContentValues();
             values.put(Favorites.RESTORED, 0);
-            mApp.getModel().getModelDbController().update(TABLE_NAME, values,
+            mApp.getModel().getModelDbController().update(getFavoritesTableName(), values,
                     Utilities.createDbSelectionQuery(Favorites._ID, mRestoredRows), null);
         }
         if (mRestoreEventLogger != null) {
@@ -485,6 +486,29 @@ public class LoaderCursor extends CursorWrapper {
             // Ensure that it is a valid intent. An exception here will
             // cause the item loading to get skipped
             ShortcutKey.fromItemInfo(info);
+        }
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            ComponentName targetCn = info.getTargetComponent();
+            if (targetCn != null && info.user != null) {
+                com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(targetCn, info.user);
+                if (mLoadedDesktopComponents.contains(key)) {
+                    Log.w(TAG, "Duplicate app found in single-layer mode: " + targetCn + ", marking deleted id=" + id);
+                    markDeleted("Duplicate item: " + targetCn, RestoreError.INVALID_LOCATION);
+                    return;
+                }
+                mLoadedDesktopComponents.add(key);
+            }
+        } else if (info.container == Favorites.CONTAINER_DESKTOP || info.container == Favorites.CONTAINER_HOTSEAT) {
+            ComponentName targetCn = info.getTargetComponent();
+            if (targetCn != null && info.user != null) {
+                com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(targetCn, info.user);
+                if (mLoadedDesktopComponents.contains(key)) {
+                    Log.w(TAG, "Duplicate desktop/hotseat item found: " + targetCn + ", marking deleted id=" + id);
+                    markDeleted("Duplicate desktop item: " + targetCn, RestoreError.INVALID_LOCATION);
+                    return;
+                }
+                mLoadedDesktopComponents.add(key);
+            }
         }
         if (checkItemPlacement(info, dataModel.isFirstPagePinnedItemEnabled)) {
             dataModel.addItem(mContext, info, false, logger);
@@ -536,17 +560,11 @@ public class LoaderCursor extends CursorWrapper {
 
         final int countX = mIDP.numColumns;
         final int countY = mIDP.numRows;
-        if (item.container == Favorites.CONTAINER_DESKTOP && item.cellX < 0 || item.cellY < 0
-                || item.cellX + item.spanX > countX || item.cellY + item.spanY > countY) {
-            Log.e(TAG, "Error loading shortcut " + item
-                    + " into cell (" + containerIndex + "-" + item.screenId + ":"
-                    + item.cellX + "," + item.cellY
-                    + ") out of screen bounds ( " + countX + "x" + countY + ")");
-            return false;
-        }
+        boolean isOutOfBounds = item.container == Favorites.CONTAINER_DESKTOP && (item.cellX < 0 || item.cellY < 0
+                || item.cellX + item.spanX > countX || item.cellY + item.spanY > countY);
 
         if (!mOccupied.containsKey(item.screenId)) {
-            GridOccupancy screen = new GridOccupancy(countX + 1, countY + 1);
+            GridOccupancy screen = new GridOccupancy(countX, countY);
             if (item.screenId == Workspace.FIRST_SCREEN_ID && (FeatureFlags.QSB_ON_FIRST_SCREEN.get()
                     && !shouldShowFirstPageWidget() && isFirstPagePinnedItemEnabled)) {
                 // Mark the first X columns (X is width of the search container) in the first row as
@@ -560,15 +578,62 @@ public class LoaderCursor extends CursorWrapper {
         }
         final GridOccupancy occupancy = mOccupied.get(item.screenId);
 
-        // Check if any workspace icons overlap with each other
-        if (occupancy.isRegionVacant(item.cellX, item.cellY, item.spanX, item.spanY)) {
+        // Check if any workspace icons overlap with each other or are out of bounds
+        if (!isOutOfBounds && occupancy.isRegionVacant(item.cellX, item.cellY, item.spanX, item.spanY)) {
             occupancy.markCells(item, true);
             return true;
         } else {
+            // Attempt automatic relocation to a vacant cell instead of discarding
+            int[] vacantCell = new int[2];
+            if (occupancy.findVacantCell(vacantCell, item.spanX, item.spanY)) {
+                item.cellX = vacantCell[0];
+                item.cellY = vacantCell[1];
+                occupancy.markCells(item, true);
+                try {
+                    updater()
+                            .put(Favorites.CELLX, item.cellX)
+                            .put(Favorites.CELLY, item.cellY)
+                            .commit();
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to persist relocated item cell to DB", e);
+                }
+                Log.w(TAG, "Auto-relocated overlapping item " + item
+                        + " to vacant cell on screen " + item.screenId + " ("
+                        + item.cellX + "," + item.cellY + ")");
+                return true;
+            } else {
+                for (int nextScreen = item.screenId + 1; nextScreen <= item.screenId + 5; nextScreen++) {
+                    GridOccupancy nextOccupancy = mOccupied.get(nextScreen);
+                    if (nextOccupancy == null) {
+                        nextOccupancy = new GridOccupancy(countX, countY);
+                        mOccupied.put(nextScreen, nextOccupancy);
+                    }
+                    if (nextOccupancy.findVacantCell(vacantCell, item.spanX, item.spanY)) {
+                        item.screenId = nextScreen;
+                        item.cellX = vacantCell[0];
+                        item.cellY = vacantCell[1];
+                        nextOccupancy.markCells(item, true);
+                        try {
+                            updater()
+                                    .put(Favorites.SCREEN, item.screenId)
+                                    .put(Favorites.CELLX, item.cellX)
+                                    .put(Favorites.CELLY, item.cellY)
+                                    .commit();
+                        } catch (Exception e) {
+                            Log.e(TAG, "Failed to persist relocated item screen/cell to DB", e);
+                        }
+                        Log.w(TAG, "Auto-relocated overlapping item " + item
+                                + " to new screen " + item.screenId + " ("
+                                + item.cellX + "," + item.cellY + ")");
+                        return true;
+                    }
+                }
+            }
+
             Log.e(TAG, "Error loading shortcut " + item
                     + " into cell (" + containerIndex + "-" + item.screenId + ":"
-                    + item.cellX + "," + item.cellX + "," + item.spanX + "," + item.spanY
-                    + ") already occupied");
+                    + item.cellX + "," + item.cellY + "," + item.spanX + "," + item.spanY
+                    + ") already occupied and no vacant cell found");
             return false;
         }
     }

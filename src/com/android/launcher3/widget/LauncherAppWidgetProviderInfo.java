@@ -149,6 +149,30 @@ public class LauncherAppWidgetProviderInfo extends AppWidgetProviderInfo
             }
         }
 
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            // iOS Standard Widget Sizing on 4-column grid:
+            // Small: 2x2, Medium: 4x2, Large: 4x4
+            boolean isSquare = minWidth > 0 && minHeight > 0
+                    && (Math.abs(minWidth - minHeight) / (float) Math.max(minWidth, minHeight) < 0.35f);
+            if (isSquare || (spanX <= 2 && spanY <= 2)) {
+                if (spanY <= 2) {
+                    spanX = 2;
+                    spanY = 2;
+                } else {
+                    spanX = 4;
+                    spanY = Math.min(4, idp.numRows);
+                }
+            } else if (spanY <= 2) {
+                spanX = 4;
+                spanY = 2;
+            } else {
+                spanX = 4;
+                spanY = Math.min(4, idp.numRows);
+            }
+            minSpanX = Math.min(spanX, minSpanX);
+            minSpanY = Math.min(spanY, minSpanY);
+        }
+
         // If minSpanX/Y > spanX/Y, ignore the minSpanX/Y to match the behavior described in
         // minResizeWidth & minResizeHeight Android documentation. See
         // https://developer.android.com/reference/android/appwidget/AppWidgetProviderInfo

@@ -107,6 +107,10 @@ public class StatusBarTouchController implements TouchController {
             return false;
         }
         if (action == ACTION_MOVE && mDownEvents.contains(pid)) {
+            if (mLauncher.getDragController() != null && mLauncher.getDragController().isDragging()) {
+                mCanIntercept = false;
+                return false;
+            }
             float dy = ev.getY(idx) - mDownEvents.get(pid).y;
             float dx = ev.getX(idx) - mDownEvents.get(pid).x;
             if (mIsTrackpadReverseScroll) {
@@ -116,9 +120,11 @@ public class StatusBarTouchController implements TouchController {
             // one touch pointer. Hence, even if slope passed, only set the slippery flag
             // when there is single touch event. (context: InputDispatcher.cpp line 1445)
             if (dy > mTouchSlop && dy > Math.abs(dx) && ev.getPointerCount() == 1) {
-                ev.setAction(ACTION_DOWN);
-                dispatchTouchEvent(ev);
-                setWindowSlippery(true);
+                if (mSystemUiProxy.isActive()) {
+                    ev.setAction(ACTION_DOWN);
+                    dispatchTouchEvent(ev);
+                    setWindowSlippery(true);
+                }
                 return true;
             }
             if (Math.abs(dx) > mTouchSlop) {
@@ -132,10 +138,14 @@ public class StatusBarTouchController implements TouchController {
     public final boolean onControllerTouchEvent(MotionEvent ev) {
         int action = ev.getAction();
         if (action == ACTION_UP || action == ACTION_CANCEL) {
-            dispatchTouchEvent(ev);
+            if (mSystemUiProxy.isActive()) {
+                dispatchTouchEvent(ev);
+                setWindowSlippery(false);
+            } else {
+                Launcher.expandNotificationShade(mLauncher);
+            }
             mLauncher.getStatsLogManager().logger()
                     .log(LAUNCHER_SWIPE_DOWN_WORKSPACE_NOTISHADE_OPEN);
-            setWindowSlippery(false);
             mIsTrackpadReverseScroll = false;
             return true;
         }
@@ -167,17 +177,18 @@ public class StatusBarTouchController implements TouchController {
                 AbstractFloatingView.getTopOpenViewWithType(mLauncher,
                         AbstractFloatingView.TYPE_STATUS_BAR_SWIPE_DOWN_DISALLOW) != null) {
             return false;
-        } else {
-            // For NORMAL state, only listen if the event originated above the navbar height
-            DeviceProfile dp = mLauncher.getDeviceProfile();
-            if (ev.getY() > (mLauncher.getDragLayer().getHeight() - dp.getInsets().bottom)) {
-                return false;
-            }
         }
-        if (MultiModeController.isSingleLayerMode()
-                && mLauncher.getWorkspace().getCurrentPage() == 0) {
+        if (mLauncher.getWorkspace() != null && mLauncher.getWorkspace().isWobbling()) {
             return false;
         }
-        return SystemUiProxy.INSTANCE.get(mLauncher).isActive();
+        if (mLauncher.getDragController() != null && mLauncher.getDragController().isDragging()) {
+            return false;
+        }
+        // For NORMAL state, only listen if the event originated above the navbar height
+        DeviceProfile dp = mLauncher.getDeviceProfile();
+        if (ev.getY() > (mLauncher.getDragLayer().getHeight() - dp.getInsets().bottom)) {
+            return false;
+        }
+        return true;
     }
 }

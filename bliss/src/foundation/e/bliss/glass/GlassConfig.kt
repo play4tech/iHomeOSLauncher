@@ -17,7 +17,10 @@
  */
 package foundation.e.bliss.glass
 
-import com.qmdeve.liquidglass.widget.LiquidGlassView
+import android.graphics.Color
+import com.example.liquidglass.GlassAccessibilityMode
+import com.example.liquidglass.GlassMaterial
+import com.example.liquidglass.LiquidGlassView
 
 /**
  * Master configuration object defining single source of truth for all Liquid Glass surfaces across
@@ -40,20 +43,26 @@ object GlassConfig {
     const val DEFAULT_TINT_BLUE: Float = 1.0f
 
     /**
-     * Applies standard master glass parameters to any [LiquidGlassView]. Enforces uniform optical
-     * blur, dispersion, tint, and disables drag/elastic/touch physics.
+     * Applies standard master glass parameters to QWEA0 [LiquidGlassView].
      */
     @JvmStatic
     fun applyDefaultConfig(glassView: LiquidGlassView) {
-        glassView.setBlurRadius(DEFAULT_BLUR_RADIUS)
-        glassView.setDispersion(DEFAULT_DISPERSION)
-        glassView.setTintAlpha(DEFAULT_TINT_ALPHA)
-        glassView.setTintColorRed(DEFAULT_TINT_RED)
-        glassView.setTintColorGreen(DEFAULT_TINT_GREEN)
-        glassView.setTintColorBlue(DEFAULT_TINT_BLUE)
-        glassView.setDraggableEnabled(false)
-        glassView.setElasticEnabled(false)
-        glassView.setTouchEffectEnabled(false)
-        glassView.setCornerRadius(0f)
+        // --- Liquid Glass 2.0 lens pipeline (API 33+, silently no-ops below) ---
+        glassView.material = GlassMaterial.REGULAR      // REGULAR (readability) | CLEAR (over media)
+        glassView.refractionHeight = 160f               // edge displacement at the rim. px
+        glassView.bevelWidth = 48f                      // glass "thickness" band. px, 2-200
+        glassView.refractionFalloff = 2f                // inverse-power falloff: >0 = bending piles up at the rim, 0 = square bevel
+        glassView.dispersionStrength = 0.10f            // rim spectral fringe, 0-1. >0.25 reads as rainbow
+        glassView.enableEdgeHighlight = false           // remove artificial border lines
+        glassView.enableSensorHighlight = false         // disable tilt-induced highlight discrepancies
+        glassView.enableAdaptiveTint = true             // tint follows backdrop luminance
+
+        glassView.blurAmount = 0.12f
+        glassView.setGlassTint(Color.WHITE, DEFAULT_TINT_ALPHA)
+        glassView.enablePressEffect = false
+        glassView.enableDynamicBackground = false
+        glassView.collectFrameStats = false
+        glassView.accessibilityMode = GlassAccessibilityMode.AUTO
+        glassView.cornerRadius = 0f
     }
 }

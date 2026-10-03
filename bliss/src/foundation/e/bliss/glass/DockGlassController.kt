@@ -87,17 +87,17 @@ class DockGlassController(
         hotseat.drawBlur = !active
 
         if (active) {
-            // bind() attaches an OnPreDrawListener to glassSource that re-records
-            // the subtree on every frame — no manual re-bind needed after scroll/layout.
-            dockGlass.bind(glassSource)
-
-            // Standard master glass parameters from GlassConfig
+            val wallpaperProxy = glassSource.findViewById<View>(com.android.launcher3.R.id.glass_wallpaper_proxy)
+            dockGlass.backdropSource = wallpaperProxy ?: glassSource
             GlassConfig.applyDefaultConfig(dockGlass)
+        } else {
+            dockGlass.backdropSource = null
         }
     }
 
     /** Call from [Launcher.onDestroy] to avoid a listener leak. */
     fun destroy() {
+        dockGlass.backdropSource = null
         envBuilder.removeListener(this)
         sharedPrefs.unregisterOnSharedPreferenceChangeListener(this)
     }

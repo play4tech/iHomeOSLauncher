@@ -19,6 +19,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.PatternMatcher;
 import android.text.TextUtils;
 
@@ -43,14 +44,22 @@ public class SimpleBroadcastReceiver extends BroadcastReceiver {
      * Helper method to register multiple actions
      */
     public void register(Context context, String... actions) {
-        context.registerReceiver(this, getFilter(actions));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            context.registerReceiver(this, getFilter(actions), Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            context.registerReceiver(this, getFilter(actions));
+        }
     }
 
     /**
      * Helper method to register multiple actions associated with a paction
      */
     public void registerPkgActions(Context context, @Nullable String pkg, String... actions) {
-        context.registerReceiver(this, getPackageFilter(pkg, actions));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            context.registerReceiver(this, getPackageFilter(pkg, actions), Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            context.registerReceiver(this, getPackageFilter(pkg, actions));
+        }
     }
 
     /**

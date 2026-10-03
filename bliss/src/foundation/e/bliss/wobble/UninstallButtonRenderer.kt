@@ -29,47 +29,48 @@ class UninstallButtonRenderer(private val mContext: Context, iconSizePx: Int) {
     private val mPaint =
         Paint(Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG or Paint.FILTER_BITMAP_FLAG)
 
+    private val mBadgeDrawable: foundation.e.bliss.glass.LiquidGlassMinusDrawable
+
     init {
-        mSize = (SIZE_PERCENTAGE * iconSizePx).toInt()
+        val density = mContext.resources.displayMetrics.density
+        mSize = (SIZE_PERCENTAGE * iconSizePx).toInt().coerceAtLeast((22 * density).toInt())
+        mBadgeDrawable = foundation.e.bliss.glass.LiquidGlassMinusDrawable(mContext)
     }
 
     fun draw(canvas: Canvas, iconBounds: Rect) {
-        val uninstallDrawable =
-            ResourcesCompat.getDrawable(
-                mContext.resources,
-                R.drawable.ic_remove_icon,
-                mContext.theme
-            )
-
-        uninstallDrawable?.let {
-            val halfSize = mSize / 2
-            it.setBounds(
-                iconBounds.right - halfSize,
-                iconBounds.top - halfSize,
-                iconBounds.right + halfSize,
-                iconBounds.top + halfSize
-            )
-
-            it.draw(canvas)
-        }
+        val halfSize = mSize / 2
+        val badgeCenterX = (iconBounds.left + halfSize * 0.4f).toInt().coerceAtLeast(halfSize + 2)
+        val badgeCenterY = (iconBounds.top + halfSize * 0.4f).toInt().coerceAtLeast(halfSize + 2)
+        mBadgeDrawable.setBounds(
+            badgeCenterX - halfSize,
+            badgeCenterY - halfSize,
+            badgeCenterX + halfSize,
+            badgeCenterY + halfSize
+        )
+        mBadgeDrawable.draw(canvas)
     }
 
     /**
-     * We double the icons bounds here to increase the touch area of uninstall icon size.
+     * Provide a comfortable hit target centered at the badge center.
      *
-     * @param iconBounds
-     * @return Doubled bounds for uninstall icon click.
+     * @param iconBounds Bounds of the icon drawable
+     * @return Scaled touch bounds for the minus button
      */
     fun getBoundsScaled(iconBounds: Rect): Rect {
-        val uninstallIconBounds = Rect()
-        uninstallIconBounds.left = iconBounds.right - mSize
-        uninstallIconBounds.top = iconBounds.top - mSize
-        uninstallIconBounds.right = uninstallIconBounds.left + (3 * mSize)
-        uninstallIconBounds.bottom = uninstallIconBounds.top + (3 * mSize)
-        return uninstallIconBounds
+        val halfSize = mSize / 2
+        val badgeCenterX = (iconBounds.left + halfSize * 0.4f).toInt().coerceAtLeast(halfSize + 2)
+        val badgeCenterY = (iconBounds.top + halfSize * 0.4f).toInt().coerceAtLeast(halfSize + 2)
+        val density = mContext.resources.displayMetrics.density
+        val touchRadius = ((24 * density).toInt()).coerceAtLeast(mSize)
+        return Rect(
+            badgeCenterX - touchRadius,
+            badgeCenterY - touchRadius,
+            badgeCenterX + touchRadius,
+            badgeCenterY + touchRadius
+        )
     }
 
     companion object {
-        private const val SIZE_PERCENTAGE = 0.28f
+        private const val SIZE_PERCENTAGE = 0.32f
     }
 }

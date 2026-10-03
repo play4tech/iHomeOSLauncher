@@ -96,6 +96,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     private final float mShortcutHeight;
 
     private BubbleTextView mOriginalIcon;
+    private View mTargetView;
     private int mContainerWidth;
 
     private ViewGroup mWidgetContainer;
@@ -172,7 +173,8 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
                 // We let touches on the original icon go through so that users can launch
                 // the app with one tap if they don't find a shortcut they want.
-                return mOriginalIcon == null || !dl.isEventOverView(mOriginalIcon, ev);
+                return (mOriginalIcon != null ? !dl.isEventOverView(mOriginalIcon, ev)
+                        : (mTargetView == null || !dl.isEventOverView(mTargetView, ev)));
             }
         }
         return false;
@@ -229,6 +231,134 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         return container;
     }
 
+    public void populateAndShowRowsForView(final View targetView, List<SystemShortcut> systemShortcuts) {
+        mTargetView = targetView;
+        if (targetView instanceof BubbleTextView) {
+            mOriginalIcon = (BubbleTextView) targetView;
+        } else {
+            mOriginalIcon = null;
+        }
+        mContainerWidth = getResources().getDimensionPixelSize(R.dimen.bg_popup_item_width);
+        if (!systemShortcuts.isEmpty()) {
+            addSystemShortcuts(systemShortcuts,
+                    R.layout.system_shortcut_rows_container,
+                    R.layout.system_shortcut);
+        }
+        show();
+    }
+
+    public static PopupContainerWithArrow<Launcher> showForFolder(com.android.launcher3.folder.FolderIcon folderIcon) {
+        Launcher launcher = Launcher.getLauncher(folderIcon.getContext());
+        if (getOpen(launcher) != null) {
+            return null;
+        }
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+            return null;
+        }
+
+        ItemInfo item = (ItemInfo) folderIcon.getTag();
+        List<SystemShortcut> shortcuts = new ArrayList<>();
+
+        shortcuts.add(new SystemShortcut.CustomShortcut(launcher, item, folderIcon,
+                R.drawable.ic_setting, "Edit Home Screen", false, v -> {
+                    if (launcher.getWorkspace() != null) {
+                        launcher.getWorkspace().wobbleLayouts(true);
+                    }
+                }));
+
+        shortcuts.add(new SystemShortcut.CustomShortcut(launcher, item, folderIcon,
+                R.drawable.gm_edit_24, "Rename", false, v -> {
+                    com.android.launcher3.folder.Folder folder = folderIcon.getFolder();
+                    if (folder != null) {
+                        if (!folder.isOpen() && !folder.isDestroyed()) {
+                            folder.animateOpen();
+                        }
+                        folderIcon.postDelayed(() -> {
+                            folder.startEditingFolderName();
+                        }, 300);
+                    }
+                }));
+
+        shortcuts.add(new SystemShortcut.CustomShortcut(launcher, item, folderIcon,
+                R.drawable.ic_uninstall_no_shadow, "Remove Folder", true, v -> {
+                    CharSequence folderTitle = (item instanceof com.android.launcher3.model.data.FolderInfo)
+                            ? ((com.android.launcher3.model.data.FolderInfo) item).title : "Folder";
+                    foundation.e.bliss.glass.LiquidGlassAlertView.showRemoveFolderAlert(
+                            launcher,
+                            folderTitle,
+                            () -> {
+                                if (item instanceof com.android.launcher3.model.data.FolderInfo) {
+                                    com.android.launcher3.model.data.FolderInfo fi =
+                                            (com.android.launcher3.model.data.FolderInfo) item;
+                                    for (WorkspaceItemInfo info : fi.contents) {
+                                        android.content.ComponentName cn = info.getTargetComponent();
+                                        if (cn != null) {
+                                            com.android.launcher3.util.RemovedAppStore.markRemoved(
+                                                    launcher, cn.flattenToString());
+                                        }
+                                    }
+                                }
+                                launcher.removeItem(folderIcon, item, true /* animate */, "User removed folder");
+                            },
+                            () -> {
+                                if (launcher.getWorkspace() != null) {
+                                    launcher.getWorkspace().resetWobbleAlarm();
+                                }
+                            }
+                    );
+                }));
+
+        PopupContainerWithArrow<Launcher> container = (PopupContainerWithArrow) launcher.getLayoutInflater().inflate(
+                R.layout.popup_container, launcher.getDragLayer(), false);
+        container.configureForLauncher(launcher, item);
+        container.populateAndShowRowsForView(folderIcon, shortcuts);
+        launcher.getInteractionController().beginPopup(container, folderIcon, item);
+        container.requestFocus();
+        return container;
+    }
+
+    public static PopupContainerWithArrow<Launcher> showForWidget(com.android.launcher3.widget.LauncherAppWidgetHostView widgetView) {
+        Launcher launcher = Launcher.getLauncher(widgetView.getContext());
+        if (getOpen(launcher) != null) {
+            return null;
+        }
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+            return null;
+        }
+
+        ItemInfo item = (ItemInfo) widgetView.getTag();
+        List<SystemShortcut> shortcuts = new ArrayList<>();
+
+        shortcuts.add(new SystemShortcut.CustomShortcut(launcher, item, widgetView,
+                R.drawable.ic_setting, "Edit Home Screen", false, v -> {
+                    if (launcher.getWorkspace() != null) {
+                        launcher.getWorkspace().wobbleLayouts(true);
+                    }
+                }));
+
+        shortcuts.add(new SystemShortcut.CustomShortcut(launcher, item, widgetView,
+                R.drawable.ic_widget, "Resize Widget", false, v -> {
+                    com.android.launcher3.CellLayout cellLayout = (widgetView.getParent() instanceof com.android.launcher3.ShortcutAndWidgetContainer)
+                            ? (com.android.launcher3.CellLayout) widgetView.getParent().getParent() : null;
+                    if (cellLayout != null) {
+                        com.android.launcher3.AppWidgetResizeFrame.showForWidget(widgetView, cellLayout);
+                    }
+                }));
+
+        shortcuts.add(new SystemShortcut.CustomShortcut(launcher, item, widgetView,
+                R.drawable.ic_uninstall_no_shadow, "Remove Widget", true, v -> {
+                    widgetView.showRemoveWidgetDialog();
+                }));
+
+        PopupContainerWithArrow<Launcher> container = (PopupContainerWithArrow) launcher.getLayoutInflater().inflate(
+                R.layout.popup_container, launcher.getDragLayer(), false);
+        container.configureForLauncher(launcher, item);
+        container.populateAndShowRowsForView(widgetView, shortcuts);
+        launcher.getInteractionController().beginPopup(container, widgetView, item);
+        container.requestFocus();
+        return container;
+    }
+
     private void configureForLauncher(Launcher launcher, ItemInfo itemInfo) {
         addOnAttachStateChangeListener(new LauncherPopupLiveUpdateHandler(
                 launcher, (PopupContainerWithArrow<Launcher>) this));
@@ -252,6 +382,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             int deepShortcutCount, List<SystemShortcut> systemShortcuts) {
 
         mOriginalIcon = originalIcon;
+        mTargetView = originalIcon;
         mContainerWidth = getResources().getDimensionPixelSize(R.dimen.bg_popup_item_width);
 
         if (deepShortcutCount > 0) {
@@ -458,13 +589,19 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
     @Override
     protected void getTargetObjectLocation(Rect outPos) {
-        getPopupContainer().getDescendantRectRelativeToSelf(mOriginalIcon, outPos);
-        outPos.top += mOriginalIcon.getPaddingTop();
-        outPos.left += mOriginalIcon.getPaddingLeft();
-        outPos.right -= mOriginalIcon.getPaddingRight();
-        outPos.bottom = outPos.top + (mOriginalIcon.getIcon() != null
-                ? mOriginalIcon.getIcon().getBounds().height()
-                : mOriginalIcon.getHeight());
+        if (mTargetView != null && !(mTargetView instanceof BubbleTextView)) {
+            getPopupContainer().getDescendantRectRelativeToSelf(mTargetView, outPos);
+            return;
+        }
+        if (mOriginalIcon != null) {
+            getPopupContainer().getDescendantRectRelativeToSelf(mOriginalIcon, outPos);
+            outPos.top += mOriginalIcon.getPaddingTop();
+            outPos.left += mOriginalIcon.getPaddingLeft();
+            outPos.right -= mOriginalIcon.getPaddingRight();
+            outPos.bottom = outPos.top + (mOriginalIcon.getIcon() != null
+                    ? mOriginalIcon.getIcon().getBounds().height()
+                    : mOriginalIcon.getHeight());
+        }
     }
 
     protected void updateHiddenShortcuts() {
@@ -628,6 +765,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setScaleX(scaleX);
         if (mPopupGlassView != null) {
             mPopupGlassView.setScaleX(scaleX);
+            mPopupGlassView.invalidate();
         }
     }
 
@@ -636,6 +774,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setScaleY(scaleY);
         if (mPopupGlassView != null) {
             mPopupGlassView.setScaleY(scaleY);
+            mPopupGlassView.invalidate();
         }
     }
 
@@ -660,6 +799,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setTranslationX(translationX);
         if (mPopupGlassView != null) {
             mPopupGlassView.setTranslationX(translationX);
+            mPopupGlassView.invalidate();
         }
     }
 
@@ -668,6 +808,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setTranslationY(translationY);
         if (mPopupGlassView != null) {
             mPopupGlassView.setTranslationY(translationY);
+            mPopupGlassView.invalidate();
         }
     }
 
@@ -676,6 +817,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setX(x);
         if (mPopupGlassView != null) {
             mPopupGlassView.setX(x);
+            mPopupGlassView.invalidate();
         }
     }
 
@@ -684,6 +826,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setY(y);
         if (mPopupGlassView != null) {
             mPopupGlassView.setY(y);
+            mPopupGlassView.invalidate();
         }
     }
 
@@ -739,17 +882,23 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 if (!updateIconUi) {
                     return;
                 }
-                if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-                    mOriginalIcon.setVisibility(INVISIBLE);
-                    return;
-                }
-                if (mIsAboveIcon) {
-                    // Hide only the icon, keep the text visible.
-                    mOriginalIcon.setIconVisible(false);
-                    mOriginalIcon.setVisibility(VISIBLE);
-                } else {
-                    // Hide both the icon and text.
-                    mOriginalIcon.setVisibility(INVISIBLE);
+                if (mOriginalIcon != null) {
+                    if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                        mOriginalIcon.setVisibility(INVISIBLE);
+                        return;
+                    }
+                    if (mIsAboveIcon) {
+                        // Hide only the icon, keep the text visible.
+                        mOriginalIcon.setIconVisible(false);
+                        mOriginalIcon.setVisibility(VISIBLE);
+                    } else {
+                        // Hide both the icon and text.
+                        mOriginalIcon.setVisibility(INVISIBLE);
+                    }
+                } else if (mTargetView != null) {
+                    if (!(mTargetView instanceof com.android.launcher3.widget.LauncherAppWidgetHostView)) {
+                        mTargetView.setVisibility(INVISIBLE);
+                    }
                 }
             }
 
@@ -758,22 +907,43 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 if (!updateIconUi) {
                     return;
                 }
-                mOriginalIcon.setIconVisible(true);
-                if (dragStarted) {
-                    // Make sure we keep the original icon hidden while it is being dragged.
-                    mOriginalIcon.setVisibility(INVISIBLE);
-                } else {
-                    if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-                        mOriginalIcon.setVisibility(VISIBLE);
-                        return;
+                if (mOriginalIcon != null) {
+                    mOriginalIcon.setIconVisible(true);
+                    if (dragStarted) {
+                        // Make sure we keep the original icon hidden while it is being dragged.
+                        mOriginalIcon.setVisibility(INVISIBLE);
+                    } else {
+                        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                            if (mIconProxyView != null) {
+                                mOriginalIcon.setVisibility(INVISIBLE);
+                            } else {
+                                mOriginalIcon.setVisibility(VISIBLE);
+                            }
+                            return;
+                        }
+                        // TODO: add WW logging if want to add logging for long press on popup
+                        //  container.
+                        //  mLauncher.getUserEventDispatcher().logDeepShortcutsOpen(mOriginalIcon);
+                        if (!mIsAboveIcon) {
+                            // Show the icon but keep the text hidden.
+                            mOriginalIcon.setVisibility(VISIBLE);
+                            mOriginalIcon.setTextVisibility(false);
+                        }
                     }
-                    // TODO: add WW logging if want to add logging for long press on popup
-                    //  container.
-                    //  mLauncher.getUserEventDispatcher().logDeepShortcutsOpen(mOriginalIcon);
-                    if (!mIsAboveIcon) {
-                        // Show the icon but keep the text hidden.
-                        mOriginalIcon.setVisibility(VISIBLE);
-                        mOriginalIcon.setTextVisibility(false);
+                } else if (mTargetView != null) {
+                    if (dragStarted) {
+                        if (dragObject != null && dragObject.dragView != null
+                                && dragObject.dragView.getContentView() == mTargetView) {
+                            mTargetView.setVisibility(VISIBLE);
+                        } else {
+                            mTargetView.setVisibility(INVISIBLE);
+                        }
+                    } else {
+                        if (dragObject != null && dragObject.dragView != null
+                                && dragObject.dragView.getContentViewParent() != null) {
+                            dragObject.dragView.detachContentView(/* reattachToPreviousParent= */ true);
+                        }
+                        mTargetView.setVisibility(VISIBLE);
                     }
                 }
             }
@@ -825,8 +995,8 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, 0f, 0.4f));
             }
             if (mIconProxyView != null) {
-                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_X, 1f, 1.03f));
-                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_Y, 1f, 1.03f));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_X, 1f, 1.10f).setDuration(260));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_Y, 1f, 1.10f).setDuration(260));
             }
         }
     }
@@ -839,16 +1009,33 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mActivityContext;
                 if (launcher.mBlurLayer != null) {
                     float targetAlpha = launcher.getStateManager().getState().getWorkspaceBackgroundAlpha(launcher);
-                    anim.play(android.animation.ObjectAnimator.ofFloat(launcher.mBlurLayer, View.ALPHA, launcher.mBlurLayer.getAlpha(), targetAlpha));
+                    anim.play(android.animation.ObjectAnimator.ofFloat(launcher.mBlurLayer, View.ALPHA, launcher.mBlurLayer.getAlpha(), targetAlpha).setDuration(180));
                 }
             }
             if (mDarkOverlayView != null) {
-                anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, mDarkOverlayView.getAlpha(), 0f));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mDarkOverlayView, View.ALPHA, mDarkOverlayView.getAlpha(), 0f).setDuration(180));
             }
             if (mIconProxyView != null) {
-                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_X, mIconProxyView.getScaleX(), 1f));
-                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_Y, mIconProxyView.getScaleY(), 1f));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_X, mIconProxyView.getScaleX(), 1f).setDuration(180));
+                anim.play(android.animation.ObjectAnimator.ofFloat(mIconProxyView, View.SCALE_Y, mIconProxyView.getScaleY(), 1f).setDuration(180));
             }
+        }
+    }
+
+    @Override
+    public void onBackProgressed(@androidx.annotation.NonNull android.window.BackEvent backEvent) {
+        super.onBackProgressed(backEvent);
+        if (mDarkOverlayView != null) {
+            float progress = backEvent.getProgress();
+            mDarkOverlayView.setAlpha(0.4f * (1f - 0.4f * progress));
+        }
+    }
+
+    @Override
+    public void onBackCancelled() {
+        super.onBackCancelled();
+        if (mDarkOverlayView != null) {
+            mDarkOverlayView.animate().alpha(0.4f).setDuration(150).start();
         }
     }
 
@@ -907,9 +1094,18 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         }
 
         boolean isDragging = mActivityContext.getDragController() != null && mActivityContext.getDragController().isDragging();
-        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && mOriginalIcon != null && !isDragging) {
-            mOriginalIcon.setVisibility(android.view.View.VISIBLE);
-            mOriginalIcon.setAlpha(1f);
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode() && !isDragging) {
+            if (mOriginalIcon != null) {
+                mOriginalIcon.setVisibility(android.view.View.VISIBLE);
+                mOriginalIcon.setAlpha(1f);
+            }
+            if (mTargetView != null) {
+                if (mTargetView.getParent() instanceof com.android.launcher3.dragndrop.DragView) {
+                    ((com.android.launcher3.dragndrop.DragView<?>) mTargetView.getParent()).detachContentView(/* reattachToPreviousParent= */ true);
+                }
+                mTargetView.setVisibility(android.view.View.VISIBLE);
+                mTargetView.setAlpha(1f);
+            }
         }
 
         super.closeComplete();

@@ -44,9 +44,16 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
     }
 
     fun setParallaxOffset(offset: Float) {
-        if (this.parallaxOffset == offset) return
-        this.parallaxOffset = offset
-        rebuildEnvironment(repository.currentWallpaper, offset)
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode) {
+            if (this.parallaxOffset == 0.5f) return
+            this.parallaxOffset = 0.5f
+            rebuildEnvironment(repository.currentWallpaper, 0.5f)
+            return
+        }
+        val safeOffset = if (offset.isNaN()) 0.5f else offset.coerceIn(0f, 1f)
+        if (this.parallaxOffset == safeOffset) return
+        this.parallaxOffset = safeOffset
+        rebuildEnvironment(repository.currentWallpaper, safeOffset)
     }
 
     fun onConfigurationChanged() {
@@ -63,11 +70,13 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         val displaySize = DisplayController.INSTANCE.get(context).info.currentSize
         val wallpaperSize = Point(bitmap.width, bitmap.height)
 
-        val scale =
+        val baseScale =
             Math.max(
                 displaySize.x.toFloat() / wallpaperSize.x,
                 displaySize.y.toFloat() / wallpaperSize.y
             )
+        val minParallaxScale = (displaySize.x * 1.15f) / wallpaperSize.x
+        val scale = Math.max(baseScale, minParallaxScale)
 
         val scaledWidth = wallpaperSize.x * scale
         val scaledHeight = wallpaperSize.y * scale
@@ -76,11 +85,16 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         val dy = (displaySize.y - scaledHeight) / 2f
 
         // Parallax horizontally
+        val safeOffset = if (offset.isNaN()) 0.5f else offset.coerceIn(0f, 1f)
         val availableWidth = displaySize.x - scaledWidth
         var dx = availableWidth / 2f
         if (availableWidth < 0) {
             // Offset goes 0 to 1. 0.5 is centered.
-            dx += (availableWidth * (offset - 0.5f) + 0.5f)
+            dx += (availableWidth * (safeOffset - 0.5f) + 0.5f)
+        }
+        // Strict boundary clamp: bitmap must cover [0, displaySize.x] horizontally
+        if (scaledWidth >= displaySize.x) {
+            dx = dx.coerceIn(displaySize.x - scaledWidth, 0f)
         }
 
         val transform =
@@ -134,10 +148,12 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
             WallpaperEnvironmentBuilder(context)
         }
 
-        fun getInstanceNoCreate(): WallpaperEnvironmentBuilder {
-            return INSTANCE.getNoCreate()
+        @JvmStatic
+        fun getInstanceNoCreate(): WallpaperEnvironmentBuilder? {
+            return INSTANCE.noCreate
         }
 
+        @JvmStatic
         fun getInstance(context: Context): WallpaperEnvironmentBuilder {
             return INSTANCE.get(context)
         }

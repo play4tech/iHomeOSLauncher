@@ -26,6 +26,17 @@ class NotificationService : NotificationListener() {
         sNotificationServiceInstance = this
     }
 
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        sIsConnected = true
+        sNotificationServiceInstance = this
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        sIsConnected = false
+    }
+
     companion object {
         private var sIsConnected = false
 

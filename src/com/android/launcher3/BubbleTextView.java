@@ -42,6 +42,7 @@ import android.animation.ObjectAnimator;
 import android.app.AlertDialog;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
@@ -151,6 +152,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     private int touchY = 0;
 
     public boolean isUninstallVisible = false;
+    private boolean mDownOnMinusBadge = false;
 
     private static final Property<BubbleTextView, Float> DOT_SCALE_PROPERTY
             = new Property<BubbleTextView, Float>(Float.TYPE, "dotScale") {
@@ -548,6 +550,33 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     }
 
     @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (isUninstallVisible) {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                mDownOnMinusBadge = isOnUninstallIcon(event.getX(), event.getY());
+                if (mDownOnMinusBadge && getParent() != null) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
+            }
+            if (mDownOnMinusBadge) {
+                if (event.getAction() == MotionEvent.ACTION_UP) {
+                    mDownOnMinusBadge = false;
+                    Launcher launcher = Launcher.getLauncher(getContext());
+                    if (launcher != null) {
+                        showRemoveAppDialog(launcher);
+                    }
+                    return true;
+                } else if (event.getAction() == MotionEvent.ACTION_CANCEL) {
+                    mDownOnMinusBadge = false;
+                    return true;
+                }
+                return true;
+            }
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
+    @Override
     public boolean onTouchEvent(MotionEvent event) {
         // ignore events if they happen in padding area
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -575,6 +604,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * Returns true if the touch down at the provided position be ignored
      */
     public boolean shouldIgnoreTouchDown(float x, float y) {
+        if (isUninstallVisible && isOnUninstallIcon(x, y)) {
+            return false;
+        }
         if (mDisplay == DISPLAY_TASKBAR) {
             // Allow touching within padding on taskbar, given icon sizes are smaller.
             return false;
@@ -722,7 +754,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             final int scrollX = getScrollX();
             final int scrollY = getScrollY();
             canvas.translate(scrollX, scrollY);
-            mDotParams.leftAlign = true;
+            mDotParams.leftAlign = false;
             mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
             canvas.translate(-scrollX, -scrollY);
         }
@@ -730,24 +762,18 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
     private void drawUninstallIcon(Canvas canvas) {
         ItemInfo tag = (ItemInfo) this.getTag();
-
-        if (tag == null || tag.getIntent() == null || tag.itemType == ITEM_TYPE_FOLDER ||
-                !isDeepShortcut(tag)) {
-            if (isSystemApp(getContext(), tag.getIntent())) {
-                return;
-            }
+        if (tag == null || tag.itemType == ITEM_TYPE_FOLDER || mUninstallButtonRenderer == null) {
+            return;
         }
 
-        Rect tempBounds = mDotParams.iconBounds;
-
-        getIconBounds(tempBounds);
-        Utilities.scaleRectAboutCenter(tempBounds, 0.75f);
+        Rect iconBounds = new Rect();
+        getIconBounds(iconBounds);
 
         final int scrollX = getScrollX();
         final int scrollY = getScrollY();
 
         canvas.translate(scrollX, scrollY);
-        mUninstallButtonRenderer.draw(canvas, tempBounds);
+        mUninstallButtonRenderer.draw(canvas, iconBounds);
         canvas.translate(-scrollX, -scrollY);
     }
 
@@ -761,62 +787,70 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     }
 
     public boolean isOnUninstallIcon(float x, float y) {
-        if (!isUninstallVisible) return false;
-        Rect iconBounds = mDotParams.iconBounds;
+        if (!isUninstallVisible || mUninstallButtonRenderer == null) return false;
+        ItemInfo tag = (ItemInfo) this.getTag();
+        if (tag == null || tag.itemType == ITEM_TYPE_FOLDER) return false;
+        Rect iconBounds = new Rect();
         getIconBounds(iconBounds);
         Rect uninstallIconBounds = mUninstallButtonRenderer.getBoundsScaled(iconBounds);
         return uninstallIconBounds.contains((int) x, (int) y);
     }
 
+    public void showRemoveAppDialog(Launcher launcher) {
+        ItemInfo tag = (ItemInfo) this.getTag();
+        if (tag == null) return;
+
+        Context context = getContext();
+        CharSequence title = tag.title != null ? tag.title : "App";
+
+        ComponentName cn = getUninstallTarget(launcher, tag);
+        boolean canUninstall = (cn != null);
+
+        if (launcher.getWorkspace() != null) {
+            launcher.getWorkspace().pauseWobbleAlarm();
+        }
+
+        foundation.e.bliss.glass.LiquidGlassAlertView.showRemoveAppAlert(
+                launcher,
+                title,
+                canUninstall,
+                () -> {
+                    try {
+                        SecondaryDropTarget.performUninstall(context, cn, tag);
+                    } catch (Exception e) {
+                        android.util.Log.e("BubbleTextView", "Error deleting app", e);
+                    }
+                },
+                () -> {
+                    try {
+                        clearAnimation();
+                        if (tag instanceof ItemInfo) {
+                            ComponentName targetCn = ((ItemInfo) tag).getTargetComponent();
+                            if (targetCn != null) {
+                                com.android.launcher3.util.RemovedAppStore.markRemoved(context, targetCn.flattenToString());
+                            }
+                        }
+                        launcher.removeItem(this, tag, true /* deleteFromDb */, "User removed from home screen");
+                    } catch (Exception e) {
+                        android.util.Log.e("BubbleTextView", "Error removing item from home screen", e);
+                    }
+                },
+                () -> {
+                    if (launcher.getWorkspace() != null) {
+                        launcher.getWorkspace().resetWobbleAlarm();
+                    }
+                }
+        );
+    }
+
     public boolean tryToHandleUninstallClick(Launcher launcher) {
         if (!isUninstallVisible) return false;
-        Rect iconBounds = mDotParams.iconBounds;
-        getIconBounds(iconBounds);
-
-        Rect uninstallIconBounds = mUninstallButtonRenderer.getBoundsScaled(iconBounds);
-
-        if (uninstallIconBounds.contains(touchX, touchY)) {
-            ItemInfo tag = (ItemInfo) this.getTag();
-            ComponentName cn = getUninstallTarget(launcher, tag);
-
-            if (!isDeepShortcut(tag) && isSystemApp(getContext(), tag.getIntent())) {
-                return false;
-            }
-
-            if (cn != null) {
-                try {
-                    Intent i = Intent.parseUri(launcher.getString(R.string.delete_package_intent), 0)
-                            .setData(Uri.fromParts("package", cn.getPackageName(), cn.getClassName()))
-                            .putExtra(Intent.EXTRA_USER, tag.user);
-                    launcher.startActivity(i);
-                } catch (URISyntaxException e) {
-                    Log.e(this.getClass().getSimpleName(), "Failed to parse intent to start uninstall activity for item=" + tag);
-                }
-            } else {
-                if (tag.id != ItemInfo.NO_ID) {
-                    new AlertDialog.Builder(launcher)
-                            .setTitle(tag.title)
-                            .setMessage(getContext().getString(R.string.uninstall_app))
-                            .setPositiveButton(getContext().getString(R.string.ok), (dialog, which) -> {
-                                clearAnimation();
-                                final String shortcutId = getShortcutIdIfPinnedShortcut(tag);
-                                launcher.getContentResolver().delete(Uri.parse("content://foundation.e.pwaplayer.provider/pwa"),
-                                        null, new String[]{shortcutId});
-                                launcher.removeItem(this, tag, true /* deleteFromDb */, "removed shortcut by user click");
-                                launcher.getDragLayer()
-                                        .announceForAccessibility(getContext().getString(R.string.item_removed));
-                            })
-                            .setNegativeButton(getContext().getString(R.string.cancel), null)
-                            .show();
-                }
-            }
-
-            // Reset touch coordinates
+        if (isOnUninstallIcon(touchX, touchY)) {
+            showRemoveAppDialog(launcher);
             touchX = 0;
             touchY = 0;
             return true;
         }
-
         return false;
     }
 

@@ -261,6 +261,22 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         return icon;
     }
 
+    public void showFolderOptionsPopup() {
+        com.android.launcher3.popup.PopupContainerWithArrow.showForFolder(this);
+    }
+
+    public com.android.launcher3.dragndrop.DragOptions.PreDragCondition startLongPressAction() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            Launcher launcher = Launcher.getLauncher(getContext());
+            if (launcher != null && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+                return null;
+            }
+        }
+        com.android.launcher3.popup.PopupContainerWithArrow popup =
+                com.android.launcher3.popup.PopupContainerWithArrow.showForFolder(this);
+        return popup != null ? popup.createPreDragCondition(true) : null;
+    }
+
     public void animateBgShadowAndStroke() {
         mBackground.fadeInBackgroundShadow();
         mBackground.animateBackgroundStroke();
@@ -804,7 +820,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
             mDotParams.scale = Math.max(0, mDotScale - mBackground.getAcceptScaleProgress());
             mDotParams.dotColor = getContext().getResources()
                     .getColor(R.color.notification_dot_bg, getContext().getTheme());
-            mDotParams.leftAlign = true;
+            mDotParams.leftAlign = false;
             mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
         }
     }

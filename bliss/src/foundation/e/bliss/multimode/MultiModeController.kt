@@ -58,7 +58,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
             }
 
             override fun onLauncherOrientationChanged() {
-                WallpaperEnvironmentBuilder.getInstanceNoCreate().onConfigurationChanged()
+                WallpaperEnvironmentBuilder.getInstanceNoCreate()?.onConfigurationChanged()
             }
 
             override fun dump(

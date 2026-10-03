@@ -1,10 +1,15 @@
 package com.android.launcher3.applibrary.view;
 
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 
-import com.qmdeve.liquidglass.widget.LiquidGlassView;
+import com.example.liquidglass.GlassMaterial;
+import com.example.liquidglass.LiquidGlassView;
 
 public class AppLibraryOverlayGlassView extends LiquidGlassView {
 
@@ -17,33 +22,72 @@ public class AppLibraryOverlayGlassView extends LiquidGlassView {
     }
 
     public AppLibraryOverlayGlassView(Context context, AttributeSet attrs, int defStyleAttr) {
-        super(context, attrs, defStyleAttr);
+        super(context, attrs);
         init();
     }
 
     private void init() {
-        // iOS App Library full-screen overlay glass properties
-        // Heavy blur, dark tint (based on iOS screenshots where it goes dark, or we can use a transparent dark tint)
-        setBlurRadius(45f);
-        setDispersion(0.05f);
-        setTintAlpha(0.6f);
-        setTintColorRed(0.1f);
-        setTintColorGreen(0.1f);
-        setTintColorBlue(0.1f);
-
-        setDraggableEnabled(false);
-        setElasticEnabled(false);
-        setTouchEffectEnabled(false);
+        // iOS App Library full-screen overlay glass properties:
+        // Frosted blur with translucent dark tint allowing wallpaper depth to shine through
+        setMaterial(GlassMaterial.REGULAR);
+        setRefractionHeight(0f);
+        setBevelWidth(0f);
+        setRefractionFalloff(0f);
+        setDispersionStrength(0f);
+        setEnableSensorHighlight(false);
+        setEnableAdaptiveTint(false);
+        setBlurAmount(0.28f);
+        setGlassTint(Color.BLACK, 0.38f);
+        setEnablePressEffect(false);
+        setEnableDynamicBackground(false);
+        setCollectFrameStats(false);
         setCornerRadius(0f);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // Never consume touches so App Library scrolling, search, and gestures work unimpeded
+        return false;
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        // Bind to wallpaper proxy for glass effect
-        View target = getRootView().findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
-        if (target instanceof android.view.ViewGroup) {
-            bind((android.view.ViewGroup) target);
+        ensureBound();
+        post(this::ensureBound);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        setBackdropSource(null);
+    }
+
+    public void ensureBound() {
+        View root = getRootView();
+        if (root == null) return;
+        View target = root.findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
+        if (target == null) {
+            target = root.findViewById(com.android.launcher3.R.id.glass_source);
         }
+        if (target != null && target != getBackdropSource()) {
+            try {
+                setBackdropSource(target);
+                Log.d("AppLibraryOverlayGlass", "ensureBound: bound to " + target);
+            } catch (Exception e) {
+                Log.w("AppLibraryOverlayGlass", "Failed to set backdropSource", e);
+            }
+        }
+    }
+
+    @Override
+    public void draw(Canvas canvas) {
+        if (getBackdropSource() == null) {
+            ensureBound();
+        }
+        int[] loc = new int[2];
+        getLocationOnScreen(loc);
+        Log.d("AppLibraryOverlayGlass", "draw: loc=[" + loc[0] + "," + loc[1] + "] size=" + getWidth() + "x" + getHeight() + " backdrop=" + getBackdropSource());
+        super.draw(canvas);
     }
 }

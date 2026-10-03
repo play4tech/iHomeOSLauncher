@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="58dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/app_search_item_icon"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="16dp"
+        android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/app_search_item_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_toEndOf="@id/app_search_item_icon"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="36dp"
+        android:textColor="#FFFFFF"
+        android:textSize="17sp"
+        android:fontFamily="sans-serif"
+        android:singleLine="true"
+        android:ellipsize="end" />
+
+    <!-- iOS style indented row separator line -->
+    <View
+        android:id="@+id/app_search_item_divider"
+        android:layout_width="match_parent"
+        android:layout_height="0.6dp"
+        android:layout_alignParentBottom="true"
+        android:layout_marginStart="76dp"
+        android:layout_marginEnd="32dp"
+        android:background="#22FFFFFF" />
+
+</RelativeLayout>

@@ -376,8 +376,12 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
     @Override
     public void setAlpha(float alpha) {
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            if (mWorkspace != null && mWorkspace.isAppLibraryCurrentPage() && !mWorkspace.isPageInTransition()) {
+                super.setAlpha(0f);
+                return;
+            }
             Folder folder = Folder.getOpen(mActivity);
-            if (folder == null && alpha < 1.0f) {
+            if (folder == null && alpha < 1.0f && alpha > 0f) {
                 super.setAlpha(1f);
                 return;
             }

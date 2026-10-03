@@ -15,7 +15,6 @@ import android.os.Looper;
 import android.util.AttributeSet;
 import android.util.Property;
 import android.view.View;
-import android.view.ViewConfiguration;
 
 import com.android.launcher3.Insettable;
 import com.android.launcher3.Launcher;
@@ -30,8 +29,8 @@ import com.android.launcher3.util.Themes;
  */
 public class WorkspacePageIndicator extends View implements Insettable, PageIndicator {
 
-    private static final int LINE_ANIMATE_DURATION = ViewConfiguration.getScrollBarFadeDuration();
-    private static final int LINE_FADE_DELAY = ViewConfiguration.getScrollDefaultDelay();
+    private static final int LINE_ANIMATE_DURATION = 400; // fade-out duration in ms
+    private static final int LINE_FADE_DELAY = 1500;      // stay visible 1.5s then fade away
     public static final int WHITE_ALPHA = (int) (0.70f * 255);
     public static final int BLACK_ALPHA = (int) (0.65f * 255);
 
@@ -261,12 +260,23 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
      */
     @Override
     public void setInsets(Rect insets) {
-        com.android.launcher3.DeviceProfile grid = com.android.launcher3.views.ActivityContext.lookupContext(getContext()).getDeviceProfile();
+        com.android.launcher3.DeviceProfile grid =
+                com.android.launcher3.views.ActivityContext.lookupContext(getContext())
+                        .getDeviceProfile();
+        android.widget.FrameLayout.LayoutParams lp =
+                (android.widget.FrameLayout.LayoutParams) getLayoutParams();
         if (grid.isFloatingDockEnabled() && grid.hotseatGeometry != null) {
-            android.widget.FrameLayout.LayoutParams lp = (android.widget.FrameLayout.LayoutParams) getLayoutParams();
-            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
-            lp.topMargin = grid.hotseatGeometry.getPageIndicatorY();
-            setLayoutParams(lp);
+            lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
+            int realDockTop = insets.top + grid.hotseatGeometry.getBounds().top;
+            int dockTopFromBottom = grid.heightPx - realDockTop;
+            lp.bottomMargin = dockTopFromBottom + grid.hotseatGeometry.getIndicatorMargin();
+            lp.topMargin = 0;
+        } else {
+            // Position indicator just above the dock: hotseatBarSizePx + small 8dp gap
+            lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
+            int gapPx = (int) (8 * getResources().getDisplayMetrics().density);
+            lp.bottomMargin = grid.hotseatBarSizePx + gapPx;
         }
+        setLayoutParams(lp);
     }
 }

@@ -26,10 +26,11 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import android.view.MotionEvent
 import android.widget.FrameLayout
 import com.android.launcher3.Insettable
 import com.android.launcher3.views.ActivityContext
-import com.qmdeve.liquidglass.widget.LiquidGlassView
+import com.example.liquidglass.LiquidGlassView
 import foundation.e.bliss.graphics.ContinuousCornerGeometry
 
 /**
@@ -94,7 +95,7 @@ constructor(
             lp.width = grid.hotseatGeometry.bounds.width()
             lp.height = grid.hotseatGeometry.bounds.height()
             lp.bottomMargin = insets.bottom + grid.hotseatBarBottomSpacePx
-            setCornerRadius(0f)
+            cornerRadius = 0f
         } else {
             lp.gravity = Gravity.BOTTOM
             lp.width = ViewGroup.LayoutParams.MATCH_PARENT
@@ -104,7 +105,7 @@ constructor(
         layoutParams = lp
     }
 
-    override fun dispatchDraw(canvas: Canvas) {
+    override fun draw(canvas: Canvas) {
         val grid =
             ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
         if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
@@ -116,10 +117,15 @@ constructor(
                 )
             canvas.save()
             canvas.clipPath(path)
-            super.dispatchDraw(canvas)
+            super.draw(canvas)
             canvas.restore()
         } else {
-            super.dispatchDraw(canvas)
+            super.draw(canvas)
         }
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Never consume touches so hotseat icons and workspace gestures operate without interference
+        return false
     }
 }

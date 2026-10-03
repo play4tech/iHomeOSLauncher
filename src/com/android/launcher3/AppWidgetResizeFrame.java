@@ -47,6 +47,8 @@ import com.android.launcher3.widget.LauncherAppWidgetHostView;
 import com.android.launcher3.widget.LauncherAppWidgetProviderInfo;
 import com.android.launcher3.widget.util.WidgetSizes;
 
+import foundation.e.bliss.multimode.MultiModeController;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -436,6 +438,27 @@ public class AppWidgetResizeFrame extends AbstractFloatingView implements View.O
         spanY = mTempRange2.size();
         if (vSpanDelta != 0) {
             mDirectionVector[1] = mTopBorderActive ? -1 : 1;
+        }
+
+        if (MultiModeController.isSingleLayerMode()) {
+            if (spanX == 3) {
+                spanX = hSpanInc > 0 ? 4 : 2;
+            } else if (spanX < 2) {
+                spanX = 2;
+            }
+            if (spanY == 3) {
+                spanY = vSpanInc > 0 ? Math.min(4, mCellLayout.getCountY()) : 2;
+            } else if (spanY < 2) {
+                spanY = 2;
+            }
+            if (mLeftBorderActive && spanX != mTempRange2.size()) {
+                cellX = mTempRange2.start - (spanX - mTempRange2.size());
+            }
+            if (mTopBorderActive && spanY != mTempRange2.size()) {
+                cellY = mTempRange2.start - (spanY - mTempRange2.size());
+            }
+            cellX = Math.max(0, Math.min(mCellLayout.getCountX() - spanX, cellX));
+            cellY = Math.max(0, Math.min(mCellLayout.getCountY() - spanY, cellY));
         }
 
         if (!onDismiss && vSpanDelta == 0 && hSpanDelta == 0) return;

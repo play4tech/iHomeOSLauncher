@@ -19,20 +19,26 @@ package foundation.e.bliss.glass
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
 import com.android.launcher3.R
-import com.qmdeve.liquidglass.widget.LiquidGlassView
+import com.example.liquidglass.GlassAccessibilityMode
+import com.example.liquidglass.GlassMaterial
+import com.example.liquidglass.LiquidGlassView
 import foundation.e.bliss.graphics.ContinuousCornerGeometry
 import foundation.e.bliss.graphics.GlassShapeSpec
 
 class PopupGlassView
 @JvmOverloads
-constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0) :
-    LiquidGlassView(context, attrs, defStyleAttr) {
+constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : LiquidGlassView(context, attrs) {
 
     private val geometry = ContinuousCornerGeometry()
 
@@ -55,15 +61,29 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 }
             }
         clipToOutline = true
-        setCornerRadius(0f)
 
-        // Glass visual parameters for the popup
-        setBlurRadius(15f)
-        setDispersion(0.2f)
-        setTintAlpha(0.6f)
-        setTintColorRed(1.0f)
-        setTintColorGreen(1.0f)
-        setTintColorBlue(1.0f)
+        // Glass visual parameters for the popup - Frosted Liquid Glass with white tint
+        material = GlassMaterial.REGULAR
+        refractionHeight = 160f
+        bevelWidth = 48f
+        refractionFalloff = 2f
+        dispersionStrength = 0.10f
+        enableEdgeHighlight = true
+        edgeHighlightBorderWidth = 1.0f * context.resources.displayMetrics.density
+        edgeHighlightOpacity = 80f
+        enableSensorHighlight = true
+        enableAdaptiveTint = false
+
+        blurAmount = 0.12f
+        saturation = 140f
+        aberrationIntensity = 2f
+        blurMethod = com.example.liquidglass.BlurMethod.SMART
+        setGlassTint(Color.WHITE, 0.42f)
+        enablePressEffect = false
+        enableDynamicBackground = true
+        collectFrameStats = false
+        accessibilityMode = GlassAccessibilityMode.AUTO
+        cornerRadius = cornerRadiusPx
     }
 
     override fun onAttachedToWindow() {
@@ -71,12 +91,40 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         isClickable = false
         isFocusable = false
         isEnabled = false
-        bind(findWallpaperProxy())
+        val proxy = findWallpaperProxy()
+        if (proxy != null) {
+            backdropSource = proxy
+        } else {
+            post {
+                if (backdropSource == null) {
+                    backdropSource = findWallpaperProxy()
+                }
+            }
+        }
+        refreshAccessibilityState()
     }
 
-    override fun dispatchDraw(canvas: Canvas) {
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        backdropSource = null
+    }
+
+    private val whiteTintPaint =
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.FILL
+            color = Color.argb(82, 255, 255, 255)
+        }
+
+    private val rimPaint =
+        android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = 1.0f * context.resources.displayMetrics.density
+            color = Color.argb(65, 255, 255, 255)
+        }
+
+    override fun draw(canvas: Canvas) {
         if (width <= 0 || height <= 0) {
-            super.dispatchDraw(canvas)
+            super.draw(canvas)
             return
         }
         val path =
@@ -88,24 +136,31 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             )
         canvas.save()
         canvas.clipPath(path)
-        super.dispatchDraw(canvas)
+        super.draw(canvas)
+        canvas.drawPath(path, whiteTintPaint)
+        canvas.drawPath(path, rimPaint)
         canvas.restore()
     }
 
-    private fun findWallpaperProxy(): ViewGroup? {
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        // Never consume touches so popup menu items, jiggle edit buttons, and dialogs are interactive
+        return false
+    }
+
+    private fun findWallpaperProxy(): View? {
         val root = rootView
         if (root != null) {
-            val proxy = root.findViewById<View>(R.id.glass_source)
-            if (proxy is ViewGroup) return proxy
-            val proxy2 = root.findViewById<View>(R.id.glass_wallpaper_proxy)
-            if (proxy2 is ViewGroup) return proxy2
+            val source = root.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
+            val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
         }
         var p = parent
         while (p is ViewGroup) {
-            val proxy = p.findViewById<View>(R.id.glass_source)
-            if (proxy is ViewGroup) {
-                return proxy
-            }
+            val source = p.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
+            val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
             p = p.parent
         }
         return null
@@ -114,13 +169,22 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     fun bindToWallpaper() {
         val proxy = findWallpaperProxy()
         if (proxy != null) {
-            bind(proxy)
+            backdropSource = proxy
         }
     }
 
     fun setPopupRadius(radius: Float) {
         cornerRadiusPx = radius
+        cornerRadius = radius
         invalidateOutline()
         invalidate()
+    }
+
+    fun setBlurRadius(radius: Float) {
+        blurAmount = (radius / 100f).coerceIn(0.01f, 1.0f)
+    }
+
+    fun setTintAlpha(alpha: Float) {
+        setGlassTint(Color.WHITE, alpha)
     }
 }

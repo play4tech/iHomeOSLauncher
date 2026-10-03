@@ -39,11 +39,11 @@ class GridFolderPage(context: Context, attrs: AttributeSet?) :
         if (clipPath != null) {
             val count: Int = canvas.save()
             canvas.clipPath(clipPath)
-            background.draw(canvas)
+            background?.draw(canvas)
             super.draw(canvas)
             canvas.restoreToCount(count)
         } else {
-            background.draw(canvas)
+            background?.draw(canvas)
             super.draw(canvas)
         }
     }

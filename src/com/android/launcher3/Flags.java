@@ -11,7 +11,7 @@ public class Flags {
     }
 
     public static boolean enablePredictiveBackGesture() {
-        return false;
+        return true;
     }
 
     public static boolean enableUnfoldStateAnimation() {

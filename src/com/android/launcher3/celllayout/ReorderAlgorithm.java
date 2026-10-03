@@ -124,7 +124,7 @@ public class ReorderAlgorithm {
                 }
             }
             mCellLayout.markCellsAsUnoccupiedForView(dragView);
-            if ((result[0] >= 0 && result[1] >= 0) && solution.map.containsKey(dragView)) {
+            if (result[0] >= 0 && result[1] >= 0) {
                 intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution);
             } else {
                 mCellLayout.findCellForSpan(nearestResult, spanX, spanY);
@@ -210,7 +210,7 @@ public class ReorderAlgorithm {
         // First we try to find a solution which respects the push mechanic. That is,
         // we try to find a solution such that no displaced item travels through another item
         // without also displacing that item.
-        if (mIntersectingViews.size() == 1  || mIntersectingViews.isEmpty()) {
+        if (mIntersectingViews.size() == 1 || mIntersectingViews.isEmpty() || isWidget()) {
             if (attemptPushInDirection(mIntersectingViews, mOccupiedRect, direction, ignoreView,
                     solution)) {
                 return true;
@@ -218,10 +218,10 @@ public class ReorderAlgorithm {
         }
 
         // Next we try moving the views as a block, but without requiring the push mechanic.
-        //if (addViewsToTempLocation(mIntersectingViews, mOccupiedRect, direction, ignoreView,
-        //       solution)) {
-        //   return true;
-        // }
+        if (addViewsToTempLocation(mIntersectingViews, mOccupiedRect, direction, ignoreView,
+               solution)) {
+           return true;
+        }
 
         // Ok, they couldn't move as a block, let's move them individually
         boolean success = false;
@@ -248,10 +248,10 @@ public class ReorderAlgorithm {
 
         int[] vacantCell = new int[2];
         mCellLayout.mTmpOccupied.findVacantCell(vacantCell, c.spanX, c.spanY);
-        if (vacantCell[0] >= 0 && vacantCell[1] >= 0) {
-            if (!mCellLayout.mTmpOccupied.cells[vacantCell[0]][vacantCell[1]]) {
-                mCellLayout.mTempLocation[0] = vacantCell[0];
-                mCellLayout.mTempLocation[1] = vacantCell[1];
+        if (tmpLocation[0] < 0 || tmpLocation[1] < 0) {
+            if (vacantCell[0] >= 0 && vacantCell[1] >= 0) {
+                tmpLocation[0] = vacantCell[0];
+                tmpLocation[1] = vacantCell[1];
             }
         }
 
@@ -660,7 +660,7 @@ public class ReorderAlgorithm {
             return solution;
         }
 
-        if (true || !isWidget()) {
+        if (!isWidget()) {
             mCellLayout.mDirectionVector[0] = -1;
             mCellLayout.mDirectionVector[1] = 0;
         }
@@ -847,7 +847,7 @@ public class ReorderAlgorithm {
     }
 
     public boolean isWidget() {
-        return Workspace.isWidget;
+        return Workspace.isWidget || (mOccupiedRect != null && (mOccupiedRect.width() > 1 || mOccupiedRect.height() > 1));
     }
 
 
