@@ -1654,7 +1654,10 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
                 && launcherIsForceInvisibleOrOpening)
                 || mLauncher.getWorkspace().isOverlayShown()
                 || shouldPlayFallbackClosingAnimation(appTargets)
-                || mLauncher.getWorkspace().getDestinationPage() == 0;
+                // Only force fallback animation when page 0 actually hosts a pinned search/widget container
+                // without app icons (e.g. system ROMs with QSB_ON_FIRST_SCREEN, protecting hotseat from StaggeredWorkspaceAnim).
+                || (mLauncher.getWorkspace().getFirstPagePinnedItem() != null
+                    && mLauncher.getWorkspace().getDestinationPage() == 0);
 
         boolean playWorkspaceReveal = !fromPredictiveBack;
         boolean skipAllAppsScale = false;

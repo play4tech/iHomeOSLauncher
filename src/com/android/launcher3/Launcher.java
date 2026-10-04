@@ -2864,7 +2864,10 @@ public class Launcher extends StatefulActivity<LauncherState>
                         && TextUtils.equals(info.getTargetComponent().getPackageName(),
                         packageName);
 
-        if (mWorkspace.getDestinationPage() == 0) {
+        // Only trigger fallback animation when page 0 actually hosts a pinned search/widget container
+        // without app icons (e.g. system ROMs with QSB_ON_FIRST_SCREEN). In normal single-layer mode,
+        // page 0 is an ordinary home screen with app icons, which should animate normally.
+        if (mWorkspace.getFirstPagePinnedItem() != null && mWorkspace.getDestinationPage() == 0) {
             return null;
         }
 
