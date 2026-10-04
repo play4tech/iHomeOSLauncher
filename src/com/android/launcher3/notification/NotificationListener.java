@@ -301,8 +301,9 @@ public class NotificationListener extends NotificationListenerService {
                 if (backup.exists()) backup.delete();
                 logFile.renameTo(backup);
             }
-            String line = String.format(Locale.US, "%s [%d] %s\n",
+            String line = String.format(Locale.US, "%s [pid=%d, uptime=%d] %s\n",
                     DateFormat.format("yyyy-MM-dd HH:mm:ss", System.currentTimeMillis()),
+                    android.os.Process.myPid(),
                     SystemClock.elapsedRealtime(),
                     event);
             try (FileOutputStream fos = new FileOutputStream(logFile, true)) {

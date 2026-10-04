@@ -93,6 +93,7 @@ class NotificationListenerWatchdog(
                         PackageManager.COMPONENT_ENABLED_STATE_DEFAULT,
                         PackageManager.DONT_KILL_APP
                     )
+                    NotificationListenerService.requestRebind(cn)
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to re-enable component $cn", e)
                 }
@@ -107,8 +108,12 @@ class NotificationListenerWatchdog(
     }
 
     private fun resolveListener(): ComponentName? {
-        component?.let { return it }
         val nm = appContext.getSystemService(NotificationManager::class.java)
+        val cached = component
+        if (cached != null && nm?.isNotificationListenerAccessGranted(cached) == true) {
+            return cached
+        }
+
         val intent = Intent(NotificationListenerService.SERVICE_INTERFACE)
             .setPackage(appContext.packageName)
         val candidates = appContext.packageManager
@@ -119,18 +124,15 @@ class NotificationListenerWatchdog(
         Log.d(TAG, "resolveListener candidates: $candidates")
 
         val granted = if (nm != null) candidates.firstOrNull { nm.isNotificationListenerAccessGranted(it) } else null
-        val resolved = granted ?: candidates.firstOrNull()
-        if (granted != null) {
-            component = granted
-        }
-        return resolved
+        component = granted
+        return granted ?: candidates.firstOrNull()
     }
 
     private companion object {
         const val TAG = "NLWatchdog"
         const val COLD_START_GRACE_MS = 10_000L
         const val VERIFY_DELAY_MS = 3_000L
-        const val TOGGLE_SETTLE_DELAY_MS = 500L
+        const val TOGGLE_SETTLE_DELAY_MS = 2_000L
         const val COOLDOWN_MS = 60_000L
         const val MAX_ATTEMPTS = 3
     }
