@@ -296,6 +296,11 @@ public class NotificationListener extends NotificationListenerService {
     private void recordLifecycleEvent(String event) {
         try {
             File logFile = new File(getFilesDir(), "notification_listener_events.log");
+            if (logFile.exists() && logFile.length() > 64 * 1024) {
+                File backup = new File(getFilesDir(), "notification_listener_events.log.old");
+                if (backup.exists()) backup.delete();
+                logFile.renameTo(backup);
+            }
             String line = String.format(Locale.US, "%s [%d] %s\n",
                     DateFormat.format("yyyy-MM-dd HH:mm:ss", System.currentTimeMillis()),
                     SystemClock.elapsedRealtime(),
