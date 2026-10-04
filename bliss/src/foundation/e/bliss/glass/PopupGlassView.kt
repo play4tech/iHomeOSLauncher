@@ -152,17 +152,17 @@ constructor(
     private fun findWallpaperProxy(): View? {
         val root = rootView
         if (root != null) {
-            val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
-            if (proxy != null) return proxy
             val source = root.findViewById<View>(R.id.glass_source)
             if (source != null) return source
+            val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
         }
         var p = parent
         while (p is ViewGroup) {
-            val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
-            if (proxy != null) return proxy
             val source = p.findViewById<View>(R.id.glass_source)
             if (source != null) return source
+            val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
             p = p.parent
         }
         return null

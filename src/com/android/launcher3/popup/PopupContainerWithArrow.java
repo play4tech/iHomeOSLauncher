@@ -710,6 +710,20 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             // Add glass view
             mPopupGlassView = new foundation.e.bliss.glass.PopupGlassView(getContext());
             mPopupGlassView.setPopupRadius(mOutlineRadius);
+
+            // If the icon is inside an expanded App Library category overlay,
+            // we should not sample glass_source (which contains the stale unexpanded category cards).
+            // Instead, sample the wallpaper proxy so no ghost icons from the previous screen appear.
+            if (isInsideAppLibraryExpandedCategory(mOriginalIcon)) {
+                View root = getRootView();
+                if (root != null) {
+                    View proxy = root.findViewById(R.id.glass_wallpaper_proxy);
+                    if (proxy != null) {
+                        mPopupGlassView.setBackdropSource(proxy);
+                    }
+                }
+            }
+
             // Insert it just below this popup in the drag layer
             getPopupContainer().addView(mPopupGlassView, getPopupContainer().indexOfChild(this));
             
@@ -721,6 +735,18 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             mPopupGlassView.setPivotX(getPivotX());
             mPopupGlassView.setPivotY(getPivotY());
         }
+    }
+
+    private boolean isInsideAppLibraryExpandedCategory(View icon) {
+        if (icon == null) return false;
+        android.view.ViewParent p = icon.getParent();
+        while (p != null) {
+            if (p instanceof com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView) {
+                return true;
+            }
+            p = p.getParent();
+        }
+        return false;
     }
 
     private void syncGlassBounds() {
