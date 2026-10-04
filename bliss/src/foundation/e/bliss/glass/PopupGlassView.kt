@@ -91,13 +91,15 @@ constructor(
         isClickable = false
         isFocusable = false
         isEnabled = false
-        val proxy = findWallpaperProxy()
-        if (proxy != null) {
-            backdropSource = proxy
-        } else {
-            post {
-                if (backdropSource == null) {
-                    backdropSource = findWallpaperProxy()
+        if (backdropSource == null) {
+            val proxy = findWallpaperProxy()
+            if (proxy != null) {
+                backdropSource = proxy
+            } else {
+                post {
+                    if (backdropSource == null) {
+                        backdropSource = findWallpaperProxy()
+                    }
                 }
             }
         }
@@ -150,17 +152,17 @@ constructor(
     private fun findWallpaperProxy(): View? {
         val root = rootView
         if (root != null) {
-            val source = root.findViewById<View>(R.id.glass_source)
-            if (source != null) return source
             val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
             if (proxy != null) return proxy
+            val source = root.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
         }
         var p = parent
         while (p is ViewGroup) {
-            val source = p.findViewById<View>(R.id.glass_source)
-            if (source != null) return source
             val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
             if (proxy != null) return proxy
+            val source = p.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
             p = p.parent
         }
         return null
