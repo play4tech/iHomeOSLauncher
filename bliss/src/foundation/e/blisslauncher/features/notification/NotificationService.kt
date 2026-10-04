@@ -22,7 +22,6 @@ import com.android.launcher3.notification.NotificationListener
 class NotificationService : NotificationListener() {
 
     init {
-        sIsConnected = true
         sNotificationServiceInstance = this
     }
 

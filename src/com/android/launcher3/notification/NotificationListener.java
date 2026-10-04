@@ -38,8 +38,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 
+import android.os.SystemClock;
+import android.text.format.DateFormat;
 import com.android.launcher3.util.PackageUserKey;
 import com.android.launcher3.util.SettingsCache;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,10 +97,50 @@ public class NotificationListener extends NotificationListenerService {
         sNotificationListenerInstance = this;
     }
 
+    private static volatile long sLastLivenessCheckTime = 0L;
+    private static final long LIVENESS_CHECK_INTERVAL_MS = 15_000L;
+
+    public static boolean isConnected() {
+        NotificationListener notificationListener = NotificationService.getInstanceIfConnected();
+        if (notificationListener != null) {
+            return isServiceBound(notificationListener);
+        }
+        if (!sIsConnected || sNotificationListenerInstance == null) {
+            return false;
+        }
+        long now = SystemClock.elapsedRealtime();
+        if (now - sLastLivenessCheckTime < LIVENESS_CHECK_INTERVAL_MS) {
+            return true;
+        }
+        return isServiceBound(sNotificationListenerInstance);
+    }
+
+    private static boolean isServiceBound(@NonNull NotificationListener listener) {
+        long startNs = SystemClock.elapsedRealtimeNanos();
+        try {
+            StatusBarNotification[] active = listener.getActiveNotifications(new String[0]);
+            long tookUs = (SystemClock.elapsedRealtimeNanos() - startNs) / 1000L;
+            Log.d(TAG, "isServiceBound IPC check completed in " + tookUs + " µs");
+            if (active == null) {
+                sIsConnected = false;
+                return false;
+            }
+            sLastLivenessCheckTime = SystemClock.elapsedRealtime();
+            return true;
+        } catch (SecurityException | IllegalStateException e) {
+            Log.w(TAG, "Notification listener binder is dead; marking disconnected: " + e.getMessage());
+            sIsConnected = false;
+            return false;
+        } catch (Throwable t) {
+            Log.w(TAG, "Unexpected error checking notification listener binder", t);
+            return false;
+        }
+    }
+
     private static @Nullable NotificationListener getInstanceIfConnected() {
         NotificationListener notificationListener = NotificationService.getInstanceIfConnected();
         if (notificationListener == null) {
-            notificationListener = sNotificationListenerInstance;
+            notificationListener = sIsConnected ? sNotificationListenerInstance : null;
         }
         return notificationListener;
     }
@@ -211,7 +258,10 @@ public class NotificationListener extends NotificationListenerService {
     @Override
     public void onListenerConnected() {
         super.onListenerConnected();
+        Log.i(TAG, "onListenerConnected: listener connected, sIsConnected set to true");
         sIsConnected = true;
+        sLastLivenessCheckTime = SystemClock.elapsedRealtime();
+        recordLifecycleEvent("CONNECTED");
 
         // Register an observer to rebind the notification listener when dots are re-enabled.
         mSettingsCache = SettingsCache.INSTANCE.get(this);
@@ -236,9 +286,26 @@ public class NotificationListener extends NotificationListenerService {
     @Override
     public void onListenerDisconnected() {
         super.onListenerDisconnected();
+        Log.i(TAG, "onListenerDisconnected: listener disconnected, sIsConnected set to false");
         sIsConnected = false;
+        recordLifecycleEvent("DISCONNECTED");
         mSettingsCache.unregister(NOTIFICATION_BADGING_URI, mNotificationSettingsChangedListener);
         onNotificationFullRefresh();
+    }
+
+    private void recordLifecycleEvent(String event) {
+        try {
+            File logFile = new File(getFilesDir(), "notification_listener_events.log");
+            String line = String.format(Locale.US, "%s [%d] %s\n",
+                    DateFormat.format("yyyy-MM-dd HH:mm:ss", System.currentTimeMillis()),
+                    SystemClock.elapsedRealtime(),
+                    event);
+            try (FileOutputStream fos = new FileOutputStream(logFile, true)) {
+                fos.write(line.getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to record event: " + event, e);
+        }
     }
 
     @Override

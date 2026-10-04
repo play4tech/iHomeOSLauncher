@@ -221,6 +221,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.notification.NotificationListener;
+import com.android.launcher3.notification.NotificationListenerWatchdog;
 import com.android.launcher3.pageindicators.WorkspacePageIndicator;
 import com.android.launcher3.pm.PinRequestHelper;
 import com.android.launcher3.popup.ArrowPopup;
@@ -383,6 +384,7 @@ public class Launcher extends StatefulActivity<LauncherState>
      */
     @Nullable
     private DockGlassController mDockGlassController;
+    private NotificationListenerWatchdog mNotificationWatchdog;
 
     private DropTargetBar mDropTargetBar;
 
@@ -602,6 +604,7 @@ public class Launcher extends StatefulActivity<LauncherState>
                 mFocusHandler, new CellLayout(mWorkspace.getContext(), mWorkspace));
 
         mPopupDataProvider = new PopupDataProvider(this::updateNotificationDots);
+        mNotificationWatchdog = new NotificationListenerWatchdog(this, NotificationListener::isConnected);
 
         boolean internalStateHandled = ACTIVITY_TRACKER.handleCreate(this);
         if (internalStateHandled) {
@@ -1469,10 +1472,9 @@ public class Launcher extends StatefulActivity<LauncherState>
             repo.updateAsync();
         }
 
-        try {
-            com.android.launcher3.notification.NotificationListener.requestRebind(new android.content.ComponentName(
-                    this, foundation.e.blisslauncher.features.notification.NotificationService.class));
-        } catch (Throwable ignored) {}
+        if (mNotificationWatchdog != null) {
+            mNotificationWatchdog.check();
+        }
 
         KeyguardManager km = getSystemService(KeyguardManager.class);
         boolean isLocked = km != null && km.isKeyguardLocked();
@@ -1998,6 +2000,9 @@ public class Launcher extends StatefulActivity<LauncherState>
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (mNotificationWatchdog != null) {
+            mNotificationWatchdog.cancel();
+        }
         ACTIVITY_TRACKER.onActivityDestroyed(this);
 
         SettingsCache.INSTANCE.get(this).unregister(TOUCHPAD_NATURAL_SCROLLING,
