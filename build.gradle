@@ -271,7 +271,7 @@ android {
         }
 
         blissWithoutQuickstep {
-            manifest.srcFile "AndroidManifest.xml"
+            manifest.srcFile "bliss/AndroidManifest-withoutQuickstep.xml"
         }
 
         blissWithQuickstep {

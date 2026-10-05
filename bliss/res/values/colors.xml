@@ -8,4 +8,18 @@
     <color name="gridFolderBackground">#20202040</color>
     <color name="white">#FFFFFF</color>
     <color name="notification_dot_shadow">#26000000</color>
+
+    <!-- Onboarding Colors -->
+    <color name="onboarding_bg">#FFFFFF</color>
+    <color name="onboarding_text_primary">#000000</color>
+    <color name="onboarding_text_secondary">#8E8E93</color>
+    <color name="onboarding_step_pill_bg">#EBF3FE</color>
+    <color name="onboarding_step_pill_text">#007AFF</color>
+    <color name="onboarding_btn_primary_bg">#007AFF</color>
+    <color name="onboarding_btn_primary_text">#FFFFFF</color>
+    <color name="onboarding_btn_secondary_bg">#F2F2F7</color>
+    <color name="onboarding_btn_secondary_text">#007AFF</color>
+    <color name="onboarding_info_card_bg">#F2F5FA</color>
+    <color name="onboarding_info_card_icon_bg">#DCE9FE</color>
+    <color name="onboarding_restricted_hint">#8E8E93</color>
 </resources>

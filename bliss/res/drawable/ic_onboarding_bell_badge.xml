@@ -1,0 +1,41 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="180dp"
+    android:height="180dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Blue rounded background card -->
+    <path
+        android:pathData="M 40,24 L 140,24 A 36,36 0 0 1 176,60 L 176,140 A 36,36 0 0 1 140,176 L 60,176 A 36,36 0 0 1 24,140 L 24,60 A 36,36 0 0 1 60,24 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:angle="270"
+                android:endColor="#0062E3"
+                android:startColor="#2997FF"
+                android:type="linear" />
+        </aapt:attr>
+    </path>
+
+    <!-- White Bell Clapper/Bottom -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 100,146 C 105,146 109,142 109,137 L 91,137 C 91,142 95,146 100,146 Z" />
+
+    <!-- White Bell Body -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 100,60 C 97.8,60 96,61.8 96,64 C 96,64.8 96.2,65.5 96.6,66.1 C 86.8,68.4 80,77 80,88 L 80,115 L 73,122 L 73,127 L 127,127 L 127,122 L 120,115 L 120,88 C 120,77 113.2,68.4 103.4,66.1 C 103.8,65.5 104,64.8 104,64 C 104,61.8 102.2,60 100,60 Z" />
+
+    <!-- Red Notification Badge Circle -->
+    <path
+        android:fillColor="#FF3B30"
+        android:pathData="M 166,42 A 28,28 0 1 1 110,42 A 28,28 0 1 1 166,42 Z" />
+
+    <!-- White number 3 in the badge -->
+    <!-- Draw crisp '3' geometry -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 130,29 L 146,29 C 146,29 140,37 138,40 C 140,39.5 142.5,39.5 144.5,40.5 C 147,42 148,45 148,48 C 148,52.5 144,56 138,56 C 133,56 130,53 129,51 L 133.5,47.5 C 134.5,48.5 136,50.5 138.5,50.5 C 140.5,50.5 142.5,49 142.5,47 C 142.5,45 140.5,44 138,44 L 135,44 L 138,34.5 L 130,34.5 Z" />
+
+</vector>

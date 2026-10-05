@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="onboarding_bg">#000000</color>
+    <color name="onboarding_text_primary">#FFFFFF</color>
+    <color name="onboarding_text_secondary">#98989D</color>
+    <color name="onboarding_step_pill_bg">#182B49</color>
+    <color name="onboarding_step_pill_text">#409CFF</color>
+    <color name="onboarding_btn_primary_bg">#0A84FF</color>
+    <color name="onboarding_btn_primary_text">#FFFFFF</color>
+    <color name="onboarding_btn_secondary_bg">#1C1C1E</color>
+    <color name="onboarding_btn_secondary_text">#0A84FF</color>
+    <color name="onboarding_info_card_bg">#1C1C1E</color>
+    <color name="onboarding_info_card_icon_bg">#2C3E5A</color>
+    <color name="onboarding_restricted_hint">#98989D</color>
+</resources>

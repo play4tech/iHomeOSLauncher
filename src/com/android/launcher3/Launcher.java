@@ -1493,6 +1493,17 @@ public class Launcher extends StatefulActivity<LauncherState>
             });
         }
 
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(onboardingIntent);
+            } catch (Exception e) {
+                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+            }
+        }
+
         TraceHelper.INSTANCE.endSection();
     }
 

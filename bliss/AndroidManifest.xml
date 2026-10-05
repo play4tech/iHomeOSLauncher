@@ -17,6 +17,14 @@
             android:label="@string/remove_widgets"
             android:theme="@style/HomeSettings.Theme" />
 
+        <activity
+            android:name="foundation.e.blisslauncher.features.onboarding.OnboardingActivity"
+            android:autoRemoveFromRecents="true"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@style/Theme.Bliss.Onboarding" />
+
         <!-- Dummy receiver for the migration of weather app -->
         <receiver
             android:name="foundation.e.blisslauncher.features.weather.WeatherAppWidgetProvider"

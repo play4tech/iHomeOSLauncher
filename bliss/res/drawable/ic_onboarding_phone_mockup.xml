@@ -1,0 +1,91 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="160dp"
+    android:height="200dp"
+    android:viewportWidth="160"
+    android:viewportHeight="200">
+
+    <!-- Phone Screen with Wallpaper Gradient -->
+    <path
+        android:pathData="M 40,8 L 120,8 A 28,28 0 0 1 148,36 L 148,164 A 28,28 0 0 1 120,192 L 40,192 A 28,28 0 0 1 12,164 L 12,36 A 28,28 0 0 1 40,8 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:angle="315"
+                android:endColor="#D980F0"
+                android:centerColor="#70A6FF"
+                android:startColor="#60C5FF"
+                android:type="linear" />
+        </aapt:attr>
+    </path>
+
+    <!-- App Grid Row 1 (4 apps) -->
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 28,26 H 46 A 4,4 0 0 1 50,30 V 48 A 4,4 0 0 1 46,52 H 28 A 4,4 0 0 1 24,48 V 30 A 4,4 0 0 1 28,26 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 60,26 H 78 A 4,4 0 0 1 82,30 V 48 A 4,4 0 0 1 78,52 H 60 A 4,4 0 0 1 56,48 V 30 A 4,4 0 0 1 60,26 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 92,26 H 110 A 4,4 0 0 1 114,30 V 48 A 4,4 0 0 1 110,52 H 92 A 4,4 0 0 1 88,48 V 30 A 4,4 0 0 1 92,26 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 124,26 H 132 A 4,4 0 0 1 136,30 V 48 A 4,4 0 0 1 132,52 H 124 A 4,4 0 0 1 120,48 V 30 A 4,4 0 0 1 124,26 Z" />
+
+    <!-- App Grid Row 2 (4 apps) -->
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 28,60 H 46 A 4,4 0 0 1 50,64 V 82 A 4,4 0 0 1 46,86 H 28 A 4,4 0 0 1 24,82 V 64 A 4,4 0 0 1 28,60 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 60,60 H 78 A 4,4 0 0 1 82,64 V 82 A 4,4 0 0 1 78,86 H 60 A 4,4 0 0 1 56,82 V 64 A 4,4 0 0 1 60,60 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 92,60 H 110 A 4,4 0 0 1 114,64 V 82 A 4,4 0 0 1 110,86 H 92 A 4,4 0 0 1 88,82 V 64 A 4,4 0 0 1 92,60 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 124,60 H 132 A 4,4 0 0 1 136,64 V 82 A 4,4 0 0 1 132,86 H 124 A 4,4 0 0 1 120,82 V 64 A 4,4 0 0 1 124,60 Z" />
+
+    <!-- App Grid Row 3 (4 apps) -->
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 28,94 H 46 A 4,4 0 0 1 50,98 V 116 A 4,4 0 0 1 46,120 H 28 A 4,4 0 0 1 24,116 V 98 A 4,4 0 0 1 28,94 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 60,94 H 78 A 4,4 0 0 1 82,98 V 116 A 4,4 0 0 1 78,120 H 60 A 4,4 0 0 1 56,116 V 98 A 4,4 0 0 1 60,94 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 92,94 H 110 A 4,4 0 0 1 114,98 V 116 A 4,4 0 0 1 110,120 H 92 A 4,4 0 0 1 88,116 V 98 A 4,4 0 0 1 92,94 Z" />
+    <path
+        android:fillColor="#70FFFFFF"
+        android:pathData="M 124,94 H 132 A 4,4 0 0 1 136,98 V 116 A 4,4 0 0 1 132,120 H 124 A 4,4 0 0 1 120,116 V 98 A 4,4 0 0 1 124,94 Z" />
+
+    <!-- Frosted Dock Background -->
+    <path
+        android:fillColor="#60FFFFFF"
+        android:pathData="M 32,142 H 128 A 14,14 0 0 1 142,156 V 162 A 14,14 0 0 1 128,176 H 32 A 14,14 0 0 1 18,162 V 156 A 14,14 0 0 1 32,142 Z" />
+
+    <!-- Dock Apps: Phone (Green), Safari (Blue), Messages (Green), Music (Red) -->
+    <!-- Phone -->
+    <path
+        android:fillColor="#34C759"
+        android:pathData="M 28,148 H 42 A 4,4 0 0 1 46,152 V 166 A 4,4 0 0 1 42,170 H 28 A 4,4 0 0 1 24,166 V 152 A 4,4 0 0 1 28,148 Z" />
+    <!-- Safari / Browser -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M 58,148 H 72 A 4,4 0 0 1 76,152 V 166 A 4,4 0 0 1 72,170 H 58 A 4,4 0 0 1 54,166 V 152 A 4,4 0 0 1 58,148 Z" />
+    <!-- Messages -->
+    <path
+        android:fillColor="#34C759"
+        android:pathData="M 88,148 H 102 A 4,4 0 0 1 106,152 V 166 A 4,4 0 0 1 102,170 H 88 A 4,4 0 0 1 84,166 V 152 A 4,4 0 0 1 88,148 Z" />
+    <!-- Music -->
+    <path
+        android:fillColor="#FF2D55"
+        android:pathData="M 118,148 H 132 A 4,4 0 0 1 136,152 V 166 A 4,4 0 0 1 132,170 H 118 A 4,4 0 0 1 114,166 V 152 A 4,4 0 0 1 118,148 Z" />
+
+    <!-- Home Indicator -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 64,184 H 96 A 2,2 0 0 1 98,186 A 2,2 0 0 1 96,188 H 64 A 2,2 0 0 1 62,186 A 2,2 0 0 1 64,184 Z" />
+
+</vector>

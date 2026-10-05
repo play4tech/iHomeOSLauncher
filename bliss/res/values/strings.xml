@@ -33,4 +33,20 @@
     <string name="add_to_widget_Screen">Add to -1 screen</string>
     <string name="pref_glass_dock_title">Liquid glass dock</string>
     <string name="pref_glass_dock_summary">Use advanced refraction effect for the dock background</string>
+
+    <!-- First-run Onboarding Strings -->
+    <string name="onboarding_step_1_of_2">Step 1 of 2</string>
+    <string name="onboarding_step_2_of_2">Step 2 of 2</string>
+    <string name="onboarding_step_1_of_1">Step 1 of 1</string>
+    <string name="onboarding_default_title">Make this your\nhome screen.</string>
+    <string name="onboarding_default_body">Set it as default so the Home button and gestures bring you here.</string>
+    <string name="onboarding_default_action">Set as default</string>
+    <string name="onboarding_default_skip">Later</string>
+    <string name="onboarding_notification_title">Show notification\ndots.</string>
+    <string name="onboarding_notification_body">Allow notification access so app icons can show badges.</string>
+    <string name="onboarding_notification_info_title">Also used for</string>
+    <string name="onboarding_notification_info_body">Only used to show badges on app icons.</string>
+    <string name="onboarding_notification_restricted_hint">If the switch is disabled in Settings, tap ⋮ in the top right corner and choose \'Allow restricted settings\'.</string>
+    <string name="onboarding_notification_action">Allow</string>
+    <string name="onboarding_notification_skip">Not now</string>
 </resources>

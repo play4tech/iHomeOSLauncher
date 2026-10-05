@@ -461,6 +461,10 @@ public class ModelDbController {
                     mOpenHelper.loadFavorites(mOpenHelper.getWritableDatabase(),
                             getDefaultLayoutParser(widgetHolder));
                 }
+
+                foundation.e.blisslauncher.features.onboarding.DefaultHomeLayoutResolver.populateCuratedPage0(
+                        mContext, mOpenHelper);
+
                 copyTable(mOpenHelper.getReadableDatabase(), Favorites.TABLE_NAME_ALL,
                         mOpenHelper.getWritableDatabase(),Favorites.TABLE_NAME, mContext);
                 clearFlagEmptyDbCreated();
