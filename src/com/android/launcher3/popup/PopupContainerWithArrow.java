@@ -666,6 +666,13 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
             // Remove popup background so we only see the glass
             setBackground(null);
+            setClipToOutline(true);
+            setOutlineProvider(new android.view.ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, android.graphics.Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), mOutlineRadius);
+                }
+            });
             
             // Create and add dark overlay
             mDarkOverlayView = new android.view.View(getContext());
@@ -751,11 +758,22 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
     private void syncGlassBounds() {
         if (mPopupGlassView != null) {
+            ViewGroup.LayoutParams thisLp = getLayoutParams();
             com.android.launcher3.views.BaseDragLayer.LayoutParams lp =
                     new com.android.launcher3.views.BaseDragLayer.LayoutParams(getWidth(), getHeight());
             lp.customPosition = true;
             lp.x = getLeft();
             lp.y = getTop();
+            if (thisLp instanceof ViewGroup.MarginLayoutParams) {
+                ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) thisLp;
+                lp.leftMargin = mlp.leftMargin;
+                lp.topMargin = mlp.topMargin;
+                lp.rightMargin = mlp.rightMargin;
+                lp.bottomMargin = mlp.bottomMargin;
+            }
+            if (thisLp instanceof android.widget.FrameLayout.LayoutParams) {
+                lp.gravity = ((android.widget.FrameLayout.LayoutParams) thisLp).gravity;
+            }
             mPopupGlassView.setLayoutParams(lp);
             // Force immediate layout since we might be inside a layout pass
             mPopupGlassView.measure(
@@ -773,9 +791,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        if (changed) {
-            syncGlassBounds();
-        }
+        syncGlassBounds();
     }
 
     @Override
@@ -834,24 +850,6 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         super.setTranslationY(translationY);
         if (mPopupGlassView != null) {
             mPopupGlassView.setTranslationY(translationY);
-            mPopupGlassView.invalidate();
-        }
-    }
-
-    @Override
-    public void setX(float x) {
-        super.setX(x);
-        if (mPopupGlassView != null) {
-            mPopupGlassView.setX(x);
-            mPopupGlassView.invalidate();
-        }
-    }
-
-    @Override
-    public void setY(float y) {
-        super.setY(y);
-        if (mPopupGlassView != null) {
-            mPopupGlassView.setY(y);
             mPopupGlassView.invalidate();
         }
     }
