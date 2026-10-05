@@ -58,21 +58,6 @@ constructor(
         clipToOutline = true
 
         GlassConfig.applyDefaultConfig(this)
-        material = GlassMaterial.REGULAR
-        refractionHeight = 160f
-        bevelWidth = 36f
-        refractionFalloff = 2f
-        dispersionStrength = 0.12f
-        enableEdgeHighlight = false
-        enableSensorHighlight = false
-        enableAdaptiveTint = true
-
-        blurAmount = 0.12f
-        setGlassTint(Color.WHITE, 0.22f)
-        enablePressEffect = false
-        enableDynamicBackground = true
-        collectFrameStats = false
-        accessibilityMode = GlassAccessibilityMode.AUTO
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {

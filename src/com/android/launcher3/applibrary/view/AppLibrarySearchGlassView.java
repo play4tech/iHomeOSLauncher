@@ -44,11 +44,6 @@ public class AppLibrarySearchGlassView extends LiquidGlassView {
 
         // Standard master glass parameters from GlassConfig
         GlassConfig.applyDefaultConfig(this);
-        setRefractionHeight(40f);
-        setBevelWidth(16f);
-        setDispersionStrength(0.04f);
-        setEnableAdaptiveTint(false);
-        setGlassTint(android.graphics.Color.WHITE, 0.18f);
     }
 
     @Override

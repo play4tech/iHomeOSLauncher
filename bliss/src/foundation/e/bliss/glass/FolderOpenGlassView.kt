@@ -58,17 +58,6 @@ constructor(
         clipToOutline = true
         // Standard master glass parameters from GlassConfig
         GlassConfig.applyDefaultConfig(this)
-        material = com.example.liquidglass.GlassMaterial.REGULAR
-        refractionHeight = 160f
-        bevelWidth = 48f
-        refractionFalloff = 2f
-        dispersionStrength = 0.12f
-        enableEdgeHighlight = false
-        enableSensorHighlight = false
-        enableAdaptiveTint = true
-        blurAmount = 0.12f
-        setGlassTint(android.graphics.Color.WHITE, 0.22f)
-        enableDynamicBackground = true
         cornerRadius = cornerRadiusPx
     }
 

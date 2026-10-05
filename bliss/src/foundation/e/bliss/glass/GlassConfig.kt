@@ -25,42 +25,49 @@ import com.example.liquidglass.LiquidGlassView
 /**
  * Master configuration object defining single source of truth for all Liquid Glass surfaces across
  * the launcher (Dock, Closed Folder, Opened Folder, App Library, Search Bar).
+ *
+ * Configured with the official default liquid glass values from QWEA0/Liquid-Glass-Android (iOS 26 Liquid Glass).
  */
 object GlassConfig {
 
-    /** Default blur radius for standard liquid glass surfaces. */
-    const val DEFAULT_BLUR_RADIUS: Float = 4f
+    /** Default blur amount (1/16th) matching QWEA0 LiquidGlassView default. */
+    const val DEFAULT_BLUR_AMOUNT: Float = 0.0625f
 
-    /** Default chromatic dispersion factor. */
-    const val DEFAULT_DISPERSION: Float = 0.2f
-
-    /** Default tint alpha for iOS frosted aesthetic. */
-    const val DEFAULT_TINT_ALPHA: Float = 0.25f
-
-    /** Default tint color RGB (pure white overlay). */
-    const val DEFAULT_TINT_RED: Float = 1.0f
-    const val DEFAULT_TINT_GREEN: Float = 1.0f
-    const val DEFAULT_TINT_BLUE: Float = 1.0f
+    /** Default chromatic dispersion factor matching QWEA0 LiquidGlassView default. */
+    const val DEFAULT_DISPERSION: Float = 0.10f
 
     /**
-     * Applies standard master glass parameters to QWEA0 [LiquidGlassView].
+     * Applies standard master glass parameters from QWEA0 [LiquidGlassView].
      */
     @JvmStatic
     fun applyDefaultConfig(glassView: LiquidGlassView) {
         // --- Liquid Glass 2.0 lens pipeline (API 33+, silently no-ops below) ---
         glassView.material = GlassMaterial.REGULAR      // REGULAR (readability) | CLEAR (over media)
-        glassView.refractionHeight = 160f               // edge displacement at the rim. px
-        glassView.bevelWidth = 48f                      // glass "thickness" band. px, 2-200
-        glassView.refractionFalloff = 2f                // inverse-power falloff: >0 = bending piles up at the rim, 0 = square bevel
-        glassView.dispersionStrength = 0.10f            // rim spectral fringe, 0-1. >0.25 reads as rainbow
-        glassView.enableEdgeHighlight = false           // remove artificial border lines
-        glassView.enableSensorHighlight = false         // disable tilt-induced highlight discrepancies
-        glassView.enableAdaptiveTint = true             // tint follows backdrop luminance
+        glassView.refractionHeight = 160f               // edge displacement at the rim. px (default: 160f)
+        glassView.bevelWidth = 48f                      // glass "thickness" band. px, 2-200 (default: 48f)
+        glassView.refractionFalloff = 2f                // inverse-power falloff: >0 = bending piles up at the rim (default: 2f)
+        glassView.dispersionStrength = 0.10f            // rim spectral fringe, 0-1 (default: 0.10f)
+        glassView.enableEdgeHighlight = true            // signature iOS specular edge highlight (default: true)
+        glassView.edgeHighlightBorderWidth = 1.5f       // border highlight width in px (default: 1.5f)
+        glassView.edgeHighlightOpacity = 100f           // specular highlight opacity (default: 100f)
+        glassView.enableSensorHighlight = true          // specular highlight tracks device tilt via gravity sensor (default in iOS showcase)
+        glassView.enableAdaptiveTint = true             // tint follows backdrop luminance dynamically (default: true)
 
-        glassView.blurAmount = 0.12f
-        glassView.setGlassTint(Color.WHITE, DEFAULT_TINT_ALPHA)
-        glassView.enablePressEffect = false
-        glassView.enableDynamicBackground = false
+        // --- Optical blur, saturation, aberration & physics defaults ---
+        glassView.blurAmount = 0.0625f                  // QWEA0 library default (1/16 = 0.0625f)
+        glassView.saturation = 140f                     // QWEA0 library default (140% saturation boost)
+        glassView.aberrationIntensity = 2f              // QWEA0 library default (2f)
+        glassView.displacementScale = 70f               // QWEA0 library default (70f)
+        glassView.elasticity = 0.15f                    // QWEA0 library default (0.15f)
+        glassView.glassTint = Color.TRANSPARENT         // QWEA0 library default (TRANSPARENT, no milky wash)
+        glassView.useShaderPipeline = true              // AGSL lens pipeline on API 33+
+        glassView.adaptiveLensScale = true              // adaptive lens scale for smaller components (default: true)
+        glassView.refractionNoFold = false              // fold-back lens profile creates edge compression ring (default: false)
+        glassView.refractionOutward = false             // inward sampling matches iOS optics (default: false)
+        glassView.edgeSoftness = 0f                     // edge softness (default: 0f)
+
+        glassView.enablePressEffect = false             // disable press scaling on structural launcher panels
+        glassView.enableDynamicBackground = true        // required so glass captures backdrop dynamically
         glassView.collectFrameStats = false
         glassView.accessibilityMode = GlassAccessibilityMode.AUTO
         glassView.cornerRadius = 0f
