@@ -58,22 +58,25 @@ class CategoryProvider(private val context: Context) {
             "com.google.android.apps.tachyon", "us.zoom.videomeetings",
             "com.zhiliaoapp.musically", "com.ss.android.ugc.trill" -> AppLibraryCategory.SOCIAL
 
-            // Utilities: System essentials, App Store, Settings, Clock, Calculator, Files, Browsers
+            // Utilities: System essentials, App Store, Settings, Clock, Calculator, Weather, Browsers
             "com.android.vending", "com.android.settings", "com.google.android.settings",
             "com.coloros.settings", "com.oplus.settings", "com.samsung.android.settings",
             "com.google.android.deskclock", "com.android.deskclock", "com.sec.android.app.clockpackage",
             "com.coloros.alarmclock", "com.oplus.alarmclock",
             "com.google.android.calculator", "com.android.calculator2", "com.sec.android.app.popupcalculator",
             "com.coloros.calculator", "com.oplus.calculator",
-            "com.google.android.documentsui", "com.android.documentsui", "com.google.android.apps.nbu.files",
-            "com.sec.android.app.myfiles", "com.coloros.filemanager", "com.oplus.filemanager",
             "com.google.android.apps.weather", "com.sec.android.daemonapp", "com.coloros.weather2",
             "com.oplus.weather",
             "com.android.chrome", "org.mozilla.firefox", "com.microsoft.emmx",
             "com.opera.browser", "com.brave.browser", "com.duckduckgo.mobile.android",
-            "com.sec.android.app.sbrowser",
+            "com.sec.android.app.sbrowser", "com.android.stk" -> AppLibraryCategory.UTILITIES
+
+            // Tools: File managers, hardware tools, voice recorders, terminals, diagnostics
+            "com.google.android.documentsui", "com.android.documentsui", "com.google.android.apps.nbu.files",
+            "com.sec.android.app.myfiles", "com.coloros.filemanager", "com.oplus.filemanager",
             "com.google.android.soundpicker", "com.android.soundrecorder", "com.coloros.soundrecorder",
-            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk" -> AppLibraryCategory.UTILITIES
+            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.termux",
+            "org.speedtest.android", "org.zwanoo.android.speedtest" -> AppLibraryCategory.TOOLS
 
             // Finance: Wallets, UPI, Payments, Banks, Crypto, Investing
             "com.google.android.apps.walletnf", "com.google.android.apps.nbu.paisa.user",
@@ -156,11 +159,18 @@ class CategoryProvider(private val context: Context) {
             appName.contains("alarm") || appName.contains("timer") ||
             appName.contains("stopwatch") || appName.contains("calc") ||
             appName.contains("weather") || appName.contains("forecast") ||
-            appName.contains("file") || appName.contains("tool") ||
-            appName.contains("util") || appName.contains("browser") ||
-            appName.contains("compass") || appName.contains("flashlight") ||
-            appName.contains("recorder")) {
+            appName.contains("browser") || appName.contains("util")) {
             return AppLibraryCategory.UTILITIES
+        }
+
+        // Tools: File managers, Cleaners, Scanners, Compass, Flashlight, Recorders, Terminals
+        if (appName.contains("file") || appName.contains("tool") ||
+            appName.contains("cleaner") || appName.contains("scanner") ||
+            appName.contains("compass") || appName.contains("flashlight") ||
+            appName.contains("recorder") || appName.contains("terminal") ||
+            appName.contains("speedtest") || appName.contains("meter") ||
+            appName.contains("benchmark") || appName.contains("backup")) {
+            return AppLibraryCategory.TOOLS
         }
 
         // Finance: Banking, Wallets, Payments, Crypto, Investments
