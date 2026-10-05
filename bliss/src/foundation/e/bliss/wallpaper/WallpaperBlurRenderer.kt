@@ -24,6 +24,7 @@ import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.widget.Toast
+import com.android.launcher3.util.Executors
 import com.android.launcher3.util.MainThreadInitializedObject
 import foundation.e.bliss.blur.BlurWallpaperFilter
 import foundation.e.bliss.blur.WallpaperFilter
@@ -61,27 +62,37 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
     }
 
     private fun regenerateBlur(wallpaper: Bitmap) {
-        val vibrantBitmap = applyVibrancy(wallpaper)
+        Executors.THREAD_POOL_EXECUTOR.execute {
+            try {
+                if (wallpaper.isRecycled) return@execute
+                val vibrantBitmap = applyVibrancy(wallpaper)
 
-        applyTask =
-            wallpaperFilter.apply(vibrantBitmap).setCallback { result: BlurSizes?, error: Throwable?
-                ->
-                vibrantBitmap.recycle()
-                applyTask = null
+                applyTask =
+                    wallpaperFilter.apply(vibrantBitmap).setCallback { result: BlurSizes?, error: Throwable? ->
+                        vibrantBitmap.recycle()
+                        applyTask = null
 
-                if (error == null) {
-                    blurSizes = result
-                    notifyListeners()
-                } else {
-                    if (error is OutOfMemoryError) {
                         runOnMainThread {
-                            Toast.makeText(context, "Blur Failed! (OOM)", Toast.LENGTH_LONG).show()
+                            if (error == null) {
+                                blurSizes = result
+                                notifyListeners()
+                            } else {
+                                if (error is OutOfMemoryError) {
+                                    Toast.makeText(context, "Blur Failed! (OOM)", Toast.LENGTH_LONG).show()
+                                }
+                                blurSizes = null
+                                notifyListeners()
+                            }
                         }
                     }
+            } catch (t: Throwable) {
+                applyTask = null
+                runOnMainThread {
                     blurSizes = null
                     notifyListeners()
                 }
             }
+        }
     }
 
     private val mVibrancyPaint =
@@ -92,6 +103,7 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
         }
 
     private fun applyVibrancy(wallpaper: Bitmap): Bitmap {
+        if (wallpaper.isRecycled) return wallpaper
         val bitmap = Bitmap.createBitmap(wallpaper.width, wallpaper.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawBitmap(wallpaper, 0f, 0f, mVibrancyPaint)

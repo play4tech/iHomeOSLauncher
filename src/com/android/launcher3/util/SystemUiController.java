@@ -81,6 +81,21 @@ public class SystemUiController {
         if (newFlags != oldFlags) {
             mWindow.getDecorView().setSystemUiVisibility(newFlags);
         }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.view.WindowInsetsController insetsController = mWindow.getInsetsController();
+            if (insetsController != null) {
+                int appearance = 0;
+                if ((newFlags & View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR) != 0) {
+                    appearance |= android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS;
+                }
+                if ((newFlags & View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR) != 0) {
+                    appearance |= android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                }
+                insetsController.setSystemBarsAppearance(appearance,
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                                | android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS);
+            }
+        }
     }
 
     /**

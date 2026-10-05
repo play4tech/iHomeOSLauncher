@@ -75,10 +75,7 @@ public class FloatingSurfaceView extends AbstractFloatingView implements
         mLauncher = Launcher.getLauncher(context);
 
         mSurfaceView = new SurfaceView(context);
-        mSurfaceView.setZOrderOnTop(true);
-
-        mSurfaceView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
-        mSurfaceView.getHolder().addCallback(this);
+        mSurfaceView.setVisibility(View.GONE);
         mIsOpen = true;
         addView(mSurfaceView);
     }
@@ -163,11 +160,8 @@ public class FloatingSurfaceView extends AbstractFloatingView implements
                 mContract.componentName.getPackageName(), mContract.user,
                 false /* supportsAllAppsState */);
 
-        boolean iconChanged = mIcon != icon;
-        if (iconChanged) {
-            setCurrentIconVisible(true);
+        if (mIcon != icon) {
             mIcon = icon;
-            setCurrentIconVisible(false);
         }
 
         if (icon != null && icon.isAttachedToWindow()) {
@@ -175,32 +169,15 @@ public class FloatingSurfaceView extends AbstractFloatingView implements
 
             if (!mTmpPosition.equals(mIconPosition)) {
                 mIconPosition.set(mTmpPosition);
-
-                LayoutParams lp = (LayoutParams) mSurfaceView.getLayoutParams();
-                lp.width = Math.round(mIconPosition.width());
-                lp.height = Math.round(mIconPosition.height());
-                lp.leftMargin = Math.round(mIconPosition.left);
-                lp.topMargin = Math.round(mIconPosition.top);
             }
         }
 
         sendIconInfo();
-
-        if (mIcon != null && iconChanged && !mIconBounds.isEmpty()) {
-            // Record the icon display
-            setCurrentIconVisible(true);
-            Canvas c = mPicture.beginRecording(mIconBounds.width(), mIconBounds.height());
-            c.translate(-mIconBounds.left, -mIconBounds.top);
-            mIcon.draw(c);
-            mPicture.endRecording();
-            setCurrentIconVisible(false);
-            drawOnSurface();
-        }
     }
 
     private void sendIconInfo() {
         if (mContract != null) {
-            mContract.sendEndPosition(mIconPosition, mLauncher, mSurfaceView.getSurfaceControl());
+            mContract.sendEndPosition(mIconPosition, mLauncher, null);
         }
     }
 

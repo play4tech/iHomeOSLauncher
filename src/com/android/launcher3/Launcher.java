@@ -465,6 +465,32 @@ public class Launcher extends StatefulActivity<LauncherState>
     private final SettingsCache.OnChangeListener mNaturalScrollingChangedListener =
             enabled -> mIsNaturalScrollingEnabled = enabled;
 
+    private final WallpaperRepository.Listener mWallpaperListener = new WallpaperRepository.Listener() {
+        @Override
+        public void onWallpaperChanged(Bitmap bitmap) {
+            updateStatusBarAppearance();
+        }
+
+        @Override
+        public void onTopLuminanceChanged(boolean isTopLight) {
+            updateStatusBarAppearance();
+        }
+    };
+
+    public void updateStatusBarAppearance() {
+        WallpaperRepository repo = WallpaperRepository.Companion.getInstance(this);
+        boolean isTopLight = repo != null && repo.isTopLight();
+        boolean isWorkspaceDarkText = Themes.getAttrBoolean(this, R.attr.isWorkspaceDarkText);
+        int statusFlag = (isTopLight || isWorkspaceDarkText)
+                ? SystemUiController.FLAG_LIGHT_STATUS
+                : SystemUiController.FLAG_DARK_STATUS;
+        int navFlag = isWorkspaceDarkText
+                ? SystemUiController.FLAG_LIGHT_NAV
+                : SystemUiController.FLAG_DARK_NAV;
+        getSystemUiController().updateUiState(SystemUiController.UI_STATE_BASE_WINDOW,
+                statusFlag | navFlag);
+    }
+
     public static Launcher getLauncher(Context context) {
         return fromContext(context);
     }
@@ -651,8 +677,8 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // Listen for screen turning off
         ScreenOnTracker.INSTANCE.get(this).addListener(mScreenOnListener);
-        getSystemUiController().updateUiState(SystemUiController.UI_STATE_BASE_WINDOW,
-                Themes.getAttrBoolean(this, R.attr.isWorkspaceDarkText));
+        updateStatusBarAppearance();
+        WallpaperRepository.Companion.getInstance(this).addListener(mWallpaperListener);
 
         mOverlayManager = getDefaultOverlay();
         PluginManagerWrapper.INSTANCE.get(this).addPluginListener(this,
@@ -1285,7 +1311,7 @@ public class Launcher extends StatefulActivity<LauncherState>
         // Set the notification listener and fetch updated notifications when we resume
         NotificationListener.addNotificationsChangedListener(mPopupDataProvider);
 
-        DiscoveryBounce.showForHomeIfNeeded(this);
+        // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
 
         // Listen for IME changes to keep state up to date.
@@ -1491,6 +1517,15 @@ public class Launcher extends StatefulActivity<LauncherState>
                     mWorkspace.hideDockForAppLibrary();
                 }
             });
+        }
+
+        Folder openFolder = Folder.getOpen(this);
+        if (openFolder != null) {
+            if (mWorkspace != null) mWorkspace.setAlpha(0f);
+            if (mHotseat != null) mHotseat.setAlpha(0f);
+            View dockGlass = findViewById(R.id.dock_glass);
+            if (dockGlass != null) dockGlass.setAlpha(0f);
+            if (mBlurLayer != null) mBlurLayer.setAlpha(1f);
         }
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
@@ -2019,6 +2054,7 @@ public class Launcher extends StatefulActivity<LauncherState>
         SettingsCache.INSTANCE.get(this).unregister(TOUCHPAD_NATURAL_SCROLLING,
                 mNaturalScrollingChangedListener);
         ScreenOnTracker.INSTANCE.get(this).removeListener(mScreenOnListener);
+        WallpaperRepository.Companion.getInstance(this).removeListener(mWallpaperListener);
         mWorkspace.removeFolderListeners();
         PluginManagerWrapper.INSTANCE.get(this).removePluginListener(this);
 
@@ -2460,6 +2496,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     public void playUnlockAnimation() {
         if (mWorkspace == null || mHotseat == null) return;
+        if (Folder.getOpen(this) != null) return;
         if (mUnlockAnimator != null) {
             mUnlockAnimator.cancel();
         }

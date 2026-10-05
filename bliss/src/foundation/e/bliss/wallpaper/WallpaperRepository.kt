@@ -62,16 +62,26 @@ class WallpaperRepository(val context: Context) {
     var isFallbackWallpaper = false
         private set
 
+    var isTopLight = false
+        private set
+
     init {
         wallpaperChangeReceiver.register(context, Intent.ACTION_WALLPAPER_CHANGED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
             try {
                 currentColors = mWallpaperManager.getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
+                isTopLight = computeIsTopLight(currentWallpaper, currentColors)
                 mWallpaperManager.addOnColorsChangedListener(
                     { colors, which ->
                         if ((which and WallpaperManager.FLAG_SYSTEM) != 0) {
                             currentColors = colors
-                            runOnMainThread { mListeners.forEach { it.onWallpaperColorsChanged(colors) } }
+                            isTopLight = computeIsTopLight(currentWallpaper, colors)
+                            runOnMainThread {
+                                mListeners.forEach {
+                                    it.onWallpaperColorsChanged(colors)
+                                    it.onTopLuminanceChanged(isTopLight)
+                                }
+                            }
                         }
                     },
                     android.os.Handler(android.os.Looper.getMainLooper())
@@ -170,22 +180,22 @@ class WallpaperRepository(val context: Context) {
         // -------------------------------------------------------------
         if (wallpaper == null) {
             if (currentWallpaper != null) {
-                android.util.Log.d("WallpaperRepository", "Wallpaper file not ready yet, keeping current wallpaper and retrying in 300ms")
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ updateAsync() }, 300)
-                return
-            }
-            try {
-                val builtIn = mWallpaperManager.getBuiltInDrawable()
-                wallpaper = builtIn?.toBitmap()
-                if (wallpaper != null) {
-                    fallback = true
-                    android.util.Log.d(
-                        "WallpaperRepository",
-                        "Tier 3 result: built-in wallpaper fallback ${wallpaper.width}x${wallpaper.height}"
-                    )
+                android.util.Log.d("WallpaperRepository", "Keeping current wallpaper as fallback")
+                wallpaper = currentWallpaper
+            } else {
+                try {
+                    val builtIn = mWallpaperManager.getBuiltInDrawable()
+                    wallpaper = builtIn?.toBitmap()
+                    if (wallpaper != null) {
+                        fallback = true
+                        android.util.Log.d(
+                            "WallpaperRepository",
+                            "Tier 3 result: built-in wallpaper fallback ${wallpaper.width}x${wallpaper.height}"
+                        )
+                    }
+                } catch (t: Throwable) {
+                    android.util.Log.e("WallpaperRepository", "Error fetching built-in wallpaper drawable", t)
                 }
-            } catch (t: Throwable) {
-                android.util.Log.e("WallpaperRepository", "Error fetching built-in wallpaper drawable", t)
             }
         }
 
@@ -205,10 +215,12 @@ class WallpaperRepository(val context: Context) {
         isFallbackWallpaper = fallback
         currentWallpaper = wallpaper
         val colors = currentColors
+        isTopLight = computeIsTopLight(wallpaper, colors)
         runOnMainThread {
             mListeners.forEach {
                 it.onWallpaperChanged(wallpaper)
                 it.onWallpaperColorsChanged(colors)
+                it.onTopLuminanceChanged(isTopLight)
             }
         }
     }
@@ -239,7 +251,47 @@ class WallpaperRepository(val context: Context) {
     fun updateDirectly(bitmap: Bitmap) {
         isFallbackWallpaper = false
         currentWallpaper = bitmap
-        runOnMainThread { mListeners.forEach { it.onWallpaperChanged(bitmap) } }
+        isTopLight = computeIsTopLight(bitmap, currentColors)
+        runOnMainThread {
+            mListeners.forEach {
+                it.onWallpaperChanged(bitmap)
+                it.onTopLuminanceChanged(isTopLight)
+            }
+        }
+    }
+
+    fun computeIsTopLight(bitmap: Bitmap?, colors: WallpaperColors?): Boolean {
+        if (bitmap != null) {
+            try {
+                val sampleHeight = (bitmap.height * 0.12f).toInt().coerceAtLeast(1)
+                val width = bitmap.width
+                val stepX = (width / 24).coerceAtLeast(1)
+                val stepY = (sampleHeight / 8).coerceAtLeast(1)
+                var totalLuminance = 0.0
+                var count = 0
+                for (y in 0 until sampleHeight step stepY) {
+                    for (x in 0 until width step stepX) {
+                        val pixel = bitmap.getPixel(x, y)
+                        val r = (pixel shr 16 and 0xFF) / 255.0
+                        val g = (pixel shr 8 and 0xFF) / 255.0
+                        val b = (pixel and 0xFF) / 255.0
+                        val lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                        totalLuminance += lum
+                        count++
+                    }
+                }
+                if (count > 0) {
+                    val avgLum = totalLuminance / count
+                    return avgLum > 0.55
+                }
+            } catch (t: Throwable) {
+                android.util.Log.w("WallpaperRepository", "Error calculating top luminance", t)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 && colors != null) {
+            return (colors.colorHints and WallpaperColors.HINT_SUPPORTS_DARK_TEXT) != 0
+        }
+        return false
     }
 
     private fun decodeSystemWallpaper(): Bitmap? {
@@ -253,7 +305,15 @@ class WallpaperRepository(val context: Context) {
         val dm = context.resources.displayMetrics
         val maxDim = maxOf(dm.widthPixels, dm.heightPixels) * 2
 
-        var pfd = mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
+        var pfd = try {
+            mWallpaperManager.getWallpaperFile(WallpaperManager.FLAG_SYSTEM) ?: return null
+        } catch (e: SecurityException) {
+            android.util.Log.w("WallpaperRepository", "Permission denied accessing wallpaper file: ${e.message}")
+            return null
+        } catch (t: Throwable) {
+            android.util.Log.w("WallpaperRepository", "Error getting wallpaper file", t)
+            return null
+        }
         return try {
             val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeFileDescriptor(pfd.fileDescriptor, null, options)
@@ -308,6 +368,7 @@ class WallpaperRepository(val context: Context) {
         mListeners.add(listener)
         listener.onWallpaperChanged(currentWallpaper)
         listener.onWallpaperColorsChanged(currentColors)
+        listener.onTopLuminanceChanged(isTopLight)
     }
 
     fun removeListener(listener: Listener) {
@@ -317,6 +378,7 @@ class WallpaperRepository(val context: Context) {
     interface Listener {
         fun onWallpaperChanged(bitmap: Bitmap?)
         fun onWallpaperColorsChanged(colors: WallpaperColors?) {}
+        fun onTopLuminanceChanged(isTopLight: Boolean) {}
     }
 
     companion object {

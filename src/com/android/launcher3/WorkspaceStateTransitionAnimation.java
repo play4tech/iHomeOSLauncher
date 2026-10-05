@@ -161,6 +161,9 @@ public class WorkspaceStateTransitionAnimation {
         Interpolator hotseatFadeInterpolator = config.getInterpolator(ANIM_HOTSEAT_FADE,
                 workspaceFadeInterpolator);
         float hotseatIconsAlpha = (elements & HOTSEAT_ICONS) != 0 ? 1 : 0;
+        if (com.android.launcher3.folder.Folder.getOpen(mLauncher) != null) {
+            hotseatIconsAlpha = 0;
+        }
         propertySetter.setViewAlpha(hotseat, hotseatIconsAlpha, hotseatFadeInterpolator);
 
         if (FeatureFlags.SHOW_HOME_GARDENING.get() && QSB_ON_FIRST_SCREEN) {
@@ -237,8 +240,10 @@ public class WorkspaceStateTransitionAnimation {
                 state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
 
         if (mLauncher.mBlurLayer != null) {
-            propertySetter.setViewAlpha(mLauncher.mBlurLayer,
-                    state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
+            if (com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) {
+                propertySetter.setViewAlpha(mLauncher.mBlurLayer,
+                        state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
+            }
         }
 
         SysUiScrim sysUiScrim = mLauncher.getRootView().getSysUiScrim();
@@ -259,6 +264,9 @@ public class WorkspaceStateTransitionAnimation {
             PageAlphaProvider pageAlphaProvider, PropertySetter propertySetter,
             StateAnimationConfig config) {
         float pageAlpha = pageAlphaProvider.getPageAlpha(childIndex);
+        if (com.android.launcher3.folder.Folder.getOpen(mLauncher) != null) {
+            pageAlpha = 0f;
+        }
         float springLoadedProgress =
                 (state instanceof  SpringLoadedState || state instanceof EditModeState) ? 1f : 0f;
         propertySetter.setFloat(cl,

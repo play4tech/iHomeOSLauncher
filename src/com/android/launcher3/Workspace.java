@@ -1587,10 +1587,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (mLauncher.mBlurLayer != null) {
             mLauncher.mBlurLayer.setAlpha(1f);
         }
-        if (mLauncher.getSystemUiController() != null) {
-            mLauncher.getSystemUiController().updateUiState(
-                    SystemUiController.UI_STATE_ALL_APPS, SystemUiController.FLAG_DARK_STATUS);
-        }
     }
 
     private void restoreDockForHomeScreen() {
@@ -1783,7 +1779,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             }
             View dockGlass = mLauncher.findViewById(R.id.dock_glass);
             if (dockGlass != null) dockGlass.setTranslationY(0);
-            if (mLauncher.mBlurLayer != null) mLauncher.mBlurLayer.setAlpha(0);
+            if (mLauncher.mBlurLayer != null && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) mLauncher.mBlurLayer.setAlpha(0);
             return;
         }
 
@@ -1850,7 +1846,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     dockGlass.setAlpha(1f);
                 }
             }
-            if (mLauncher.mBlurLayer != null) mLauncher.mBlurLayer.setAlpha(0);
+            if (mLauncher.mBlurLayer != null && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) mLauncher.mBlurLayer.setAlpha(0);
             return;
         }
 
@@ -1888,7 +1884,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (mPageIndicator != null) {
             mPageIndicator.setScroll(getScrollX(), computeMaxScroll());
         }
-        if (mCurrentPage != 0) {
+        if (mCurrentPage != 0 && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) {
             mLauncher.mBlurLayer.setAlpha(0f);
         }
     }

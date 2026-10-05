@@ -128,7 +128,7 @@ constructor(
         val cardWidth = (270 * density).toInt()
         val cornerRadiusPx = 20f * density
         val isDark = isDarkTheme()
-        val dividerColor = if (isDark) Color.parseColor("#33FFFFFF") else Color.parseColor("#2E000000")
+        val dividerColor = Color.parseColor("#2E000000")
         val hairlineThickness = maxOf(1, (0.55f * density).toInt())
 
         val geometry = ContinuousCornerGeometry()
@@ -194,7 +194,7 @@ constructor(
                 text = titleText
                 textSize = 17f
                 typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-                setTextColor(if (isDark) Color.WHITE else Color.parseColor("#000000"))
+                setTextColor(Color.parseColor("#000000"))
                 setLineSpacing(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2f, resources.displayMetrics), 1.0f)
             }
             headerLayout.addView(titleView)
@@ -215,7 +215,7 @@ constructor(
                 text = messageText
                 textSize = 13f
                 typeface = Typeface.create("sans-serif", Typeface.NORMAL)
-                setTextColor(if (isDark) Color.parseColor("#A6FFFFFF") else Color.parseColor("#7A000000"))
+                setTextColor(Color.parseColor("#7A000000"))
                 setLineSpacing(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 2f, resources.displayMetrics), 1.0f)
             }
             headerLayout.addView(messageView)
@@ -344,20 +344,20 @@ constructor(
 
             when (action.style) {
                 ActionStyle.DESTRUCTIVE -> {
-                    setTextColor(if (isDark) Color.parseColor("#FF453A") else Color.parseColor("#FF3B30"))
+                    setTextColor(Color.parseColor("#FF3B30"))
                     typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                 }
                 ActionStyle.ACTION -> {
-                    setTextColor(if (isDark) Color.parseColor("#0A84FF") else Color.parseColor("#007AFF"))
+                    setTextColor(Color.parseColor("#007AFF"))
                     typeface = Typeface.create("sans-serif", Typeface.NORMAL)
                 }
                 ActionStyle.CANCEL -> {
-                    setTextColor(if (isDark) Color.parseColor("#0A84FF") else Color.parseColor("#007AFF"))
+                    setTextColor(Color.parseColor("#007AFF"))
                     typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
                 }
             }
 
-            val rippleColor = if (isDark) Color.argb(40, 255, 255, 255) else Color.argb(25, 0, 0, 0)
+            val rippleColor = Color.argb(25, 0, 0, 0)
             background = RippleDrawable(ColorStateList.valueOf(rippleColor), null, ColorDrawable(Color.WHITE))
 
             setOnClickListener {
