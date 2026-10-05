@@ -2,11 +2,10 @@ package com.android.launcher3.applibrary.model
 
 enum class AppLibraryCategory(val title: String) {
     SUGGESTIONS("Suggestions"),
-    RECENTLY_ADDED("Recently Added"),
     SOCIAL("Social"),
-    UTILITIES("Utilities"),
     PRODUCTIVITY("Productivity"),
     FINANCE("Finance"),
+    UTILITIES("Utilities"),
     CREATIVITY("Creativity"),
     ENTERTAINMENT("Entertainment"),
     GAMES("Games"),
@@ -15,6 +14,5 @@ enum class AppLibraryCategory(val title: String) {
     HEALTH_FITNESS("Health & Fitness"),
     INFORMATION_READING("Information & Reading"),
     EDUCATION("Education"),
-    TOOLS("Tools"),
     OTHER("Other")
 }

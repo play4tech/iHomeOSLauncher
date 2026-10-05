@@ -46,12 +46,11 @@ class AppLibraryModel(private val context: Context) {
 
         // Sort categories by predefined order, skipping empty ones
         val ordered = mutableListOf<AppLibraryCategory>()
-        // Suggestions and Recently Added are special and always first if they have content
+        // Suggestions is special and always first if it has content
         ordered.add(AppLibraryCategory.SUGGESTIONS)
-        ordered.add(AppLibraryCategory.RECENTLY_ADDED)
 
         AppLibraryCategory.values().forEach { cat ->
-            if (cat != AppLibraryCategory.SUGGESTIONS && cat != AppLibraryCategory.RECENTLY_ADDED) {
+            if (cat != AppLibraryCategory.SUGGESTIONS) {
                 if (categorizedApps.containsKey(cat) && categorizedApps[cat]!!.isNotEmpty()) {
                     ordered.add(cat)
                     // Sort apps alphabetically within category
@@ -71,7 +70,6 @@ class AppLibraryModel(private val context: Context) {
     fun getAppsForCategory(category: AppLibraryCategory): List<AppInfo> {
         return when (category) {
             AppLibraryCategory.SUGGESTIONS -> suggestionsProvider.getSuggestions(allApps)
-            AppLibraryCategory.RECENTLY_ADDED -> recentProvider.getRecentlyAdded(allApps)
             else -> categorizedApps[category] ?: emptyList()
         }
     }
