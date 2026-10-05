@@ -12,4 +12,20 @@
     <color name="onboarding_info_card_bg">#1C1C1E</color>
     <color name="onboarding_info_card_icon_bg">#2C3E5A</color>
     <color name="onboarding_restricted_hint">#98989D</color>
+
+    <!-- iOS Settings Colors -->
+    <color name="ios_settings_bg">#000000</color>
+    <color name="ios_settings_card_bg">#1C1C1E</color>
+    <color name="ios_settings_card_divider">#38383A</color>
+    <color name="ios_settings_section_title">#8E8E93</color>
+    <color name="ios_settings_chevron">#545458</color>
+    <color name="ios_settings_switch_track_off">#39393D</color>
+    <color name="ios_settings_switch_track_on">#34C759</color>
+    <color name="ios_icon_blue">#0A84FF</color>
+    <color name="ios_icon_red">#FF453A</color>
+    <color name="ios_icon_orange">#FF9F0A</color>
+    <color name="ios_icon_indigo">#5E5CE6</color>
+    <color name="ios_icon_yellow">#FFD60A</color>
+    <color name="ios_icon_teal">#40C8E0</color>
+    <color name="ios_icon_green">#32D74B</color>
 </resources>
