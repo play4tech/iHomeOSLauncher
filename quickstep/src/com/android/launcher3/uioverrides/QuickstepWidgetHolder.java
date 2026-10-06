@@ -348,6 +348,22 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
             return newInstance(context, appWidgetRemovedCallback, null);
         }
 
+        private static Boolean sSupportsWidgetHostListener = null;
+
+        private static boolean supportsWidgetHostListener() {
+            if (sSupportsWidgetHostListener != null) {
+                return sSupportsWidgetHostListener;
+            }
+            try {
+                Class<?> listenerClass = Class.forName("android.appwidget.AppWidgetHost$AppWidgetHostListener");
+                AppWidgetHost.class.getMethod("setListener", int.class, listenerClass);
+                sSupportsWidgetHostListener = true;
+            } catch (Throwable t) {
+                sSupportsWidgetHostListener = false;
+            }
+            return sSupportsWidgetHostListener;
+        }
+
         /**
          * @param context The context of the caller
          * @param appWidgetRemovedCallback The callback that is called when widgets are removed
@@ -358,7 +374,7 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
                 @Nullable IntConsumer appWidgetRemovedCallback,
                 @Nullable RemoteViews.InteractionHandler interactionHandler) {
 
-            if (!FeatureFlags.ENABLE_WIDGET_HOST_IN_BACKGROUND.get()) {
+            if (!FeatureFlags.ENABLE_WIDGET_HOST_IN_BACKGROUND.get() || !supportsWidgetHostListener()) {
                 return new LauncherWidgetHolder(context, appWidgetRemovedCallback) {
                     @Override
                     protected AppWidgetHost createHost(Context context,
@@ -370,6 +386,18 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
                             Log.w(TAG, "host.setInteractionHandler failed", t);
                         }
                         return host;
+                    }
+
+                    @NonNull
+                    @Override
+                    protected LauncherAppWidgetHostView createViewInternal(
+                            int appWidgetId, @NonNull LauncherAppWidgetProviderInfo appWidget) {
+                        LauncherAppWidgetHostView view = super.createViewInternal(appWidgetId, appWidget);
+                        try {
+                            view.setInteractionHandler(interactionHandler);
+                        } catch (Throwable ignored) {
+                        }
+                        return view;
                     }
                 };
             }
