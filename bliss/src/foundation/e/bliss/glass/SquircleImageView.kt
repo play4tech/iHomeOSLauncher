@@ -31,7 +31,7 @@ import kotlin.math.sin
 
 /**
  * An [AppCompatImageView] that clips its canvas to the authentic homescreen squircle shape
- * (superellipse n = 4.0), matching [com.android.launcher3.icons.BaseIconFactory] and iOS geometry.
+ * (superellipse n = 5.0, x^5 + y^5 = r^5), matching [com.android.launcher3.icons.BaseIconFactory] and iOS geometry.
  */
 class SquircleImageView @JvmOverloads constructor(
     context: Context,
@@ -67,7 +67,7 @@ class SquircleImageView @JvmOverloads constructor(
         clipPath.reset()
         val rx = w / 2f
         val ry = h / 2f
-        val n = 4.0f
+        val n = 5.0f
         for (i in 0..360) {
             val t = (i / 180f * Math.PI).toFloat()
             val cosT = cos(t.toDouble())
