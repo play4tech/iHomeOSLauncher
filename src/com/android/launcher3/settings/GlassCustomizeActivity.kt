@@ -22,6 +22,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -40,7 +41,12 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
+import com.android.launcher3.LauncherAppState
+import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
+import com.android.launcher3.model.data.FolderInfo
+import com.android.launcher3.icons.LauncherIcons
+import com.android.launcher3.model.data.ItemInfoWithIcon
 import foundation.e.bliss.glass.GlassConfig
 import foundation.e.bliss.glass.PreviewDockGlassView
 import foundation.e.bliss.wallpaper.WallpaperRepository
@@ -140,35 +146,79 @@ class GlassCustomizeActivity : FragmentActivity() {
     }
 
     private fun setupPreviewIcons() {
-        findViewById<ImageView>(R.id.icon_phone)?.setImageDrawable(
-            resolveIcon(Intent(Intent.ACTION_DIAL), R.drawable.ic_preview_phone)
+        val iconViews = listOf(
+            findViewById<ImageView>(R.id.icon_phone),
+            findViewById<ImageView>(R.id.icon_messages),
+            findViewById<ImageView>(R.id.icon_browser),
+            findViewById<ImageView>(R.id.icon_camera)
         )
 
-        val smsIntent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("smsto:")
+        // 1. Try to load the user's actual homescreen dock items from LauncherModel
+        val realDockDrawables = mutableListOf<Drawable>()
+        try {
+            val appState = LauncherAppState.getInstance(this)
+            val bgDataModel = appState.model.mBgDataModel
+            val hotseatItems = synchronized(bgDataModel) {
+                bgDataModel.workspaceItems
+                    .filter { it.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT }
+                    .sortedBy { it.screenId }
+            }
+            for (item in hotseatItems) {
+                if (realDockDrawables.size >= 4) break
+                val d = when (item) {
+                    is ItemInfoWithIcon -> item.newIcon(this)
+                    is FolderInfo -> item.contents.firstOrNull()?.newIcon(this)
+                    else -> null
+                }
+                if (d != null) {
+                    realDockDrawables.add(d)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Could not load hotseat items from model", e)
         }
-        findViewById<ImageView>(R.id.icon_messages)?.setImageDrawable(
-            resolveIcon(smsIntent, R.drawable.ic_preview_messages)
+
+        // 2. Default fallback intents & drawables for empty or unfilled slots
+        val defaultApps = listOf(
+            Pair(Intent(Intent.ACTION_DIAL), R.drawable.ic_preview_phone),
+            Pair(Intent(Intent.ACTION_SENDTO).apply { data = Uri.parse("smsto:") }, R.drawable.ic_preview_messages),
+            Pair(Intent(Intent.ACTION_VIEW, Uri.parse("https://google.com")), R.drawable.ic_preview_browser),
+            Pair(Intent(MediaStore.ACTION_IMAGE_CAPTURE), R.drawable.ic_preview_camera)
         )
 
-        val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://google.com"))
-        findViewById<ImageView>(R.id.icon_browser)?.setImageDrawable(
-            resolveIcon(webIntent, R.drawable.ic_preview_browser)
-        )
-
-        val camIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        findViewById<ImageView>(R.id.icon_camera)?.setImageDrawable(
-            resolveIcon(camIntent, R.drawable.ic_preview_camera)
-        )
+        for (i in 0 until 4) {
+            val iconView = iconViews[i] ?: continue
+            if (i < realDockDrawables.size) {
+                iconView.setImageDrawable(realDockDrawables[i])
+            } else {
+                val fallbackIndex = (i - realDockDrawables.size).coerceAtMost(defaultApps.lastIndex)
+                val (intent, fallbackRes) = defaultApps[fallbackIndex]
+                iconView.setImageDrawable(resolveIcon(intent, fallbackRes))
+            }
+        }
     }
 
     private fun resolveIcon(intent: Intent, fallbackRes: Int): Drawable {
-        return try {
+        val rawDrawable = try {
             val info = packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
                 ?: packageManager.resolveActivity(intent, 0)
             info?.loadIcon(packageManager) ?: ContextCompat.getDrawable(this, fallbackRes)!!
         } catch (e: Exception) {
             ContextCompat.getDrawable(this, fallbackRes) ?: ColorDrawable(Color.GRAY)
+        }
+
+        return try {
+            LauncherIcons.obtain(this).use { li ->
+                val aid = if (rawDrawable is AdaptiveIconDrawable) {
+                    rawDrawable
+                } else {
+                    li.wrapToAdaptiveIcon(rawDrawable)
+                }
+                li.createBadgedIconBitmap(aid).newIcon(this)
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed shaping icon with LauncherIcons", e)
+            rawDrawable
         }
     }
 
