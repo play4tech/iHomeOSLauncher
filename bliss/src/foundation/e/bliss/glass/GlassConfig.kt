@@ -57,7 +57,7 @@ object GlassConfig {
     const val DEFAULT_REFRACTION_NO_FOLD: Boolean = false
     const val DEFAULT_REFRACTION_OUTWARD: Boolean = false
     const val DEFAULT_BORDER_ENABLED: Boolean = true
-    const val DEFAULT_BORDER_WIDTH: Float = 0.5f         // in dp (thin, delicate hairline)
+    const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
     const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity at sides
     const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at top and bottom
 
@@ -138,7 +138,9 @@ object GlassConfig {
             refractionNoFold = prefs.getBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD),
             refractionOutward = prefs.getBoolean(PREF_KEY_REFRACTION_OUTWARD, DEFAULT_REFRACTION_OUTWARD),
             borderEnabled = prefs.getBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED),
-            borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH),
+            borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH).let {
+                if (it == 1.0f || it == 0.5f) DEFAULT_BORDER_WIDTH else it
+            },
             borderOpacity = prefs.getFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY),
             borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE)
         )

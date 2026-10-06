@@ -386,12 +386,12 @@ class GlassCustomizeActivity : FragmentActivity() {
             containerId = R.id.slider_border_width,
             title = "Border Width",
             subtitle = "Outline thickness (default ${GlassConfig.DEFAULT_BORDER_WIDTH} dp)",
-            min = 0.1f,
-            max = 2.5f,
-            steps = 48,
+            min = 0.05f,
+            max = 1.50f,
+            steps = 29,
             getter = { it.borderWidth },
             setter = { s, v -> s.borderWidth = v },
-            formatter = { String.format(Locale.US, "%.1f dp", it) }
+            formatter = { String.format(Locale.US, "%.2f dp", it) }
         )
 
         // 14. Top & Bottom Fade
