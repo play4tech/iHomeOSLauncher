@@ -127,56 +127,64 @@ public class BaseDepthController {
 
     protected void applyDepthAndBlur() {
         float depth = mDepth;
-        IBinder windowToken = mLauncher.getRootView().getWindowToken();
-        if (windowToken != null) {
-            // The API's full zoom-out is three times larger than the zoom-out we apply to the
-            // icons. To keep the two consistent throughout the animation while keeping Launcher's
-            // concept of full depth unchanged, we divide the depth by 3 here.
-            if (MultiModeController.isSingleLayerMode()) {
-                mWallpaperManager.setWallpaperZoomOut(windowToken, 1);
-            } else {
-                mWallpaperManager.setWallpaperZoomOut(windowToken, depth / 3);
+        try {
+            IBinder windowToken = mLauncher.getRootView().getWindowToken();
+            if (windowToken != null && mWallpaperManager != null) {
+                // The API's full zoom-out is three times larger than the zoom-out we apply to the
+                // icons. To keep the two consistent throughout the animation while keeping Launcher's
+                // concept of full depth unchanged, we divide the depth by 3 here.
+                if (MultiModeController.isSingleLayerMode()) {
+                    mWallpaperManager.setWallpaperZoomOut(windowToken, 1);
+                } else {
+                    mWallpaperManager.setWallpaperZoomOut(windowToken, depth / 3);
+                }
             }
+        } catch (Throwable t) {
+            // Ignore wallpaper zoom out failure on OEM devices
         }
 
-        if (!BlurUtils.supportsBlursOnWindows()) {
-            return;
-        }
-        if (mSurface == null) {
-            Log.d(TAG, "mSurface is null and mCurrentBlur is: " + mCurrentBlur);
-            return;
-        }
-        if (!mSurface.isValid()) {
-            Log.d(TAG, "mSurface is not valid");
-            mWaitingOnSurfaceValidity = true;
-            onInvalidSurface();
-            return;
-        }
-        mWaitingOnSurfaceValidity = false;
-        boolean hasOpaqueBg = mLauncher.getScrimView().isFullyOpaque();
-        boolean isSurfaceOpaque = !mHasContentBehindLauncher && hasOpaqueBg && !mPauseBlurs;
+        try {
+            if (!BlurUtils.supportsBlursOnWindows()) {
+                return;
+            }
+            if (mSurface == null) {
+                Log.d(TAG, "mSurface is null and mCurrentBlur is: " + mCurrentBlur);
+                return;
+            }
+            if (!mSurface.isValid()) {
+                Log.d(TAG, "mSurface is not valid");
+                mWaitingOnSurfaceValidity = true;
+                onInvalidSurface();
+                return;
+            }
+            mWaitingOnSurfaceValidity = false;
+            boolean hasOpaqueBg = mLauncher.getScrimView().isFullyOpaque();
+            boolean isSurfaceOpaque = !mHasContentBehindLauncher && hasOpaqueBg && !mPauseBlurs;
 
-        mCurrentBlur = !mCrossWindowBlursEnabled || hasOpaqueBg || mPauseBlurs
-                ? 0 : (int) (depth * mMaxBlurRadius);
-        SurfaceControl.Transaction transaction = new SurfaceControl.Transaction()
-                .setBackgroundBlurRadius(mSurface, mCurrentBlur)
-                .setOpaque(mSurface, isSurfaceOpaque);
+            mCurrentBlur = !mCrossWindowBlursEnabled || hasOpaqueBg || mPauseBlurs
+                    ? 0 : (int) (depth * mMaxBlurRadius);
+            SurfaceControl.Transaction transaction = new SurfaceControl.Transaction()
+                    .setBackgroundBlurRadius(mSurface, mCurrentBlur)
+                    .setOpaque(mSurface, isSurfaceOpaque);
 
-        // Set early wake-up flags when we know we're executing an expensive operation, this way
-        // SurfaceFlinger will adjust its internal offsets to avoid jank.
-        boolean wantsEarlyWakeUp = depth > 0 && depth < 1;
-        if (wantsEarlyWakeUp && !mInEarlyWakeUp) {
-            transaction.setEarlyWakeupStart();
-            mInEarlyWakeUp = true;
-        } else if (!wantsEarlyWakeUp && mInEarlyWakeUp) {
-            transaction.setEarlyWakeupEnd();
-            mInEarlyWakeUp = false;
-        }
+            // Set early wake-up flags when we know we're executing an expensive operation, this way
+            // SurfaceFlinger will adjust its internal offsets to avoid jank.
+            boolean wantsEarlyWakeUp = depth > 0 && depth < 1;
+            if (wantsEarlyWakeUp && !mInEarlyWakeUp) {
+                transaction.setEarlyWakeupStart();
+                mInEarlyWakeUp = true;
+            } else if (!wantsEarlyWakeUp && mInEarlyWakeUp) {
+                transaction.setEarlyWakeupEnd();
+                mInEarlyWakeUp = false;
+            }
 
-        AttachedSurfaceControl rootSurfaceControl =
-                mLauncher.getRootView().getRootSurfaceControl();
-        if (rootSurfaceControl != null) {
-            rootSurfaceControl.applyTransactionOnDraw(transaction);
+            AttachedSurfaceControl rootSurfaceControl =
+                    mLauncher.getRootView().getRootSurfaceControl();
+            if (rootSurfaceControl != null) {
+                rootSurfaceControl.applyTransactionOnDraw(transaction);
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "Error applying depth and blur", t);
         }
     }
 

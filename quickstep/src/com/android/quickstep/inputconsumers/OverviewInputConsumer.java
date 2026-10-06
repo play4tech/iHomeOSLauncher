@@ -161,7 +161,12 @@ public class OverviewInputConsumer<S extends BaseState<S>, T extends StatefulAct
         // {@link View#requestFocusNoSearch(int, Rect)} when touch mode is false. To
         // note, here we launch overview with live tile.
         mHasSetTouchModeForFirstDPadEvent = true;
-        viewRoot.getViewRootImpl().touchModeChanged(false);
+        try {
+            if (viewRoot.getViewRootImpl() != null) {
+                viewRoot.getViewRootImpl().touchModeChanged(false);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 }
 

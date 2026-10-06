@@ -378,9 +378,12 @@ public class OverviewCommandHelper {
         // the touch mode somehow is not change to false by the Android framework.
         // The subsequent tab to go through tasks in overview can only be dispatched to
         // focuses views, while focus can only be requested in
-        // {@link View#requestFocusNoSearch(int, Rect)} when touch mode is false. To note,
-        // here we launch overview with live tile.
-        recentsView.getViewRootImpl().touchModeChanged(false);
+        try {
+            if (recentsView.getViewRootImpl() != null) {
+                recentsView.getViewRootImpl().touchModeChanged(false);
+            }
+        } catch (Throwable ignored) {
+        }
         // Ensure that recents view has focus so that it receives the followup key inputs
         if (requestFocus(recentsView.getTaskViewAt(mKeyboardTaskFocusIndex))) {
             return;

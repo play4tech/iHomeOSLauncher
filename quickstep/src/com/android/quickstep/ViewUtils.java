@@ -43,7 +43,12 @@ public class ViewUtils {
      */
     public static boolean postFrameDrawn(
             View view, Runnable onFinishRunnable, BooleanSupplier canceled) {
-        return new FrameHandler(view, onFinishRunnable, canceled).schedule();
+        FrameHandler handler = new FrameHandler(view, onFinishRunnable, canceled);
+        boolean scheduled = handler.schedule();
+        if (!scheduled && onFinishRunnable != null && view != null) {
+            view.post(onFinishRunnable);
+        }
+        return scheduled;
     }
 
     private static class FrameHandler implements HardwareRenderer.FrameDrawingCallback,
@@ -102,14 +107,27 @@ public class ViewUtils {
         }
 
         private boolean schedule() {
-            if (mViewRoot != null && mViewRoot.getView() != null) {
-                if (!mSurfaceCallbackRegistered) {
-                    mSurfaceCallbackRegistered = true;
-                    mViewRoot.addSurfaceChangedCallback(this);
+            try {
+                if (mViewRoot != null && mViewRoot.getView() != null) {
+                    if (!mSurfaceCallbackRegistered) {
+                        mSurfaceCallbackRegistered = true;
+                        try {
+                            mViewRoot.addSurfaceChangedCallback(this);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                    try {
+                        mViewRoot.registerRtFrameCallback(this);
+                    } catch (Throwable t) {
+                        finish();
+                        return false;
+                    }
+                    mViewRoot.getView().invalidate();
+                    return true;
                 }
-                mViewRoot.registerRtFrameCallback(this);
-                mViewRoot.getView().invalidate();
-                return true;
+            } catch (Throwable t) {
+                finish();
+                return false;
             }
             return false;
         }
@@ -124,7 +142,10 @@ public class ViewUtils {
                 mFinishCallback.run();
             }
             if (mViewRoot != null) {
-                mViewRoot.removeSurfaceChangedCallback(this);
+                try {
+                    mViewRoot.removeSurfaceChangedCallback(this);
+                } catch (Throwable ignored) {
+                }
                 mSurfaceCallbackRegistered = false;
             }
         }

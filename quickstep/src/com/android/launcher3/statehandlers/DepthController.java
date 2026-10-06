@@ -25,6 +25,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ObjectAnimator;
 import android.view.CrossWindowBlurListeners;
+import android.view.SurfaceControl;
 import android.view.View;
 import android.view.ViewRootImpl;
 import android.view.ViewTreeObserver;
@@ -64,7 +65,15 @@ public class DepthController extends BaseDepthController implements StateHandler
     private void onLauncherDraw() {
         View view = mLauncher.getDragLayer();
         ViewRootImpl viewRootImpl = view.getViewRootImpl();
-        setSurface(viewRootImpl != null ? viewRootImpl.getSurfaceControl() : null);
+        SurfaceControl surfaceControl = null;
+        try {
+            if (viewRootImpl != null) {
+                surfaceControl = viewRootImpl.getSurfaceControl();
+            }
+        } catch (Throwable t) {
+            // viewRootImpl.getSurfaceControl() is not available on some OEM devices (e.g. ColorOS / Realme UI)
+        }
+        setSurface(surfaceControl);
         view.post(() -> view.getViewTreeObserver().removeOnDrawListener(mOnDrawListener));
     }
 
@@ -74,8 +83,12 @@ public class DepthController extends BaseDepthController implements StateHandler
             mOnAttachListener = new View.OnAttachStateChangeListener() {
                 @Override
                 public void onViewAttachedToWindow(View view) {
-                    CrossWindowBlurListeners.getInstance().addListener(mLauncher.getMainExecutor(),
-                            mCrossWindowBlurListener);
+                    try {
+                        CrossWindowBlurListeners.getInstance().addListener(mLauncher.getMainExecutor(),
+                                mCrossWindowBlurListener);
+                    } catch (Throwable t) {
+                        // Ignore if CrossWindowBlurListeners is unsupported on OEM device
+                    }
                     mLauncher.getScrimView().addOpaquenessListener(mOpaquenessListener);
 
                     // To handle the case where window token is invalid during last setDepth call.
@@ -108,7 +121,10 @@ public class DepthController extends BaseDepthController implements StateHandler
 
     private void removeSecondaryListeners() {
         if (mCrossWindowBlurListener != null) {
-            CrossWindowBlurListeners.getInstance().removeListener(mCrossWindowBlurListener);
+            try {
+                CrossWindowBlurListeners.getInstance().removeListener(mCrossWindowBlurListener);
+            } catch (Throwable ignored) {
+            }
         }
         if (mOpaquenessListener != null) {
             mLauncher.getScrimView().removeOpaquenessListener(mOpaquenessListener);

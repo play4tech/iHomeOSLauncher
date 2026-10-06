@@ -250,7 +250,11 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
     protected LauncherAppWidgetHostView createViewInternal(
             int appWidgetId, @NonNull LauncherAppWidgetProviderInfo appWidget) {
         LauncherAppWidgetHostView widgetView = new LauncherAppWidgetHostView(mContext);
-        widgetView.setInteractionHandler(mInteractionHandler);
+        try {
+            widgetView.setInteractionHandler(mInteractionHandler);
+        } catch (Throwable t) {
+            Log.w(TAG, "setInteractionHandler failed on widgetView", t);
+        }
         widgetView.setAppWidget(appWidgetId, appWidget);
         widgetView.updateAppWidget(getHolderListener(appWidgetId).addHolder(mUpdateHandler));
         return widgetView;
@@ -360,7 +364,11 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
                     protected AppWidgetHost createHost(Context context,
                             @Nullable IntConsumer appWidgetRemovedCallback) {
                         AppWidgetHost host = super.createHost(context, appWidgetRemovedCallback);
-                        host.setInteractionHandler(interactionHandler);
+                        try {
+                            host.setInteractionHandler(interactionHandler);
+                        } catch (Throwable t) {
+                            Log.w(TAG, "host.setInteractionHandler failed", t);
+                        }
                         return host;
                     }
                 };

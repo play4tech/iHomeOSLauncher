@@ -1114,20 +1114,33 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
             // - Results would be able to be cached as a texture
             // - There won't be texture allocation overhead, because EffectLayers don't have
             //   buffers
-            ViewRootImpl viewRootImpl = mLauncher.getDragLayer().getViewRootImpl();
-            SurfaceControl parent = viewRootImpl != null
-                    ? viewRootImpl.getSurfaceControl()
-                    : null;
-            SurfaceControl dimLayer = new SurfaceControl.Builder()
-                    .setName("Blur layer")
-                    .setParent(parent)
-                    .setOpaque(false)
-                    .setHidden(false)
-                    .setEffectLayer()
-                    .build();
+            try {
+                ViewRootImpl viewRootImpl = mLauncher.getDragLayer().getViewRootImpl();
+                SurfaceControl parent = null;
+                if (viewRootImpl != null) {
+                    try {
+                        parent = viewRootImpl.getSurfaceControl();
+                    } catch (Throwable ignored) {
+                    }
+                }
+                if (parent != null) {
+                    SurfaceControl dimLayer = new SurfaceControl.Builder()
+                            .setName("Blur layer")
+                            .setParent(parent)
+                            .setOpaque(false)
+                            .setHidden(false)
+                            .setEffectLayer()
+                            .build();
 
-            backgroundRadiusAnim.addListener(AnimatorListeners.forEndCallback(() ->
-                    new SurfaceControl.Transaction().remove(dimLayer).apply()));
+                    backgroundRadiusAnim.addListener(AnimatorListeners.forEndCallback(() -> {
+                        try {
+                            new SurfaceControl.Transaction().remove(dimLayer).apply();
+                        } catch (Throwable ignored) {
+                        }
+                    }));
+                }
+            } catch (Throwable ignored) {
+            }
         }
 
         backgroundRadiusAnim.addListener(
@@ -2253,11 +2266,18 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
     private static class LaunchDepthController extends DepthController {
         LaunchDepthController(QuickstepLauncher launcher) {
             super(launcher);
-            setCrossWindowBlursEnabled(
-                    CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled());
+            boolean isCrossWindowBlurEnabled = false;
+            try {
+                isCrossWindowBlurEnabled = CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled();
+            } catch (Throwable ignored) {
+            }
+            setCrossWindowBlursEnabled(isCrossWindowBlurEnabled);
             // Make sure that the starting value matches the current depth set by the main
             // controller.
-            stateDepth.setValue(launcher.getDepthController().stateDepth.getValue());
+            try {
+                stateDepth.setValue(launcher.getDepthController().stateDepth.getValue());
+            } catch (Throwable ignored) {
+            }
         }
     }
 }
