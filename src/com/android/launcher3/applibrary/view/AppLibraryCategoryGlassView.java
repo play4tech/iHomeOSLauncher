@@ -2,7 +2,9 @@ package com.android.launcher3.applibrary.view;
 
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Outline;
+import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
@@ -11,9 +13,16 @@ import android.view.ViewOutlineProvider;
 
 import com.android.launcher3.graphics.IconShape;
 import com.example.liquidglass.LiquidGlassView;
+import foundation.e.bliss.glass.BorderedGlassView;
 import foundation.e.bliss.glass.GlassConfig;
 
-public class AppLibraryCategoryGlassView extends LiquidGlassView {
+public class AppLibraryCategoryGlassView extends LiquidGlassView implements BorderedGlassView {
+
+    private final Paint mBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private boolean mBorderEnabled = GlassConfig.DEFAULT_BORDER_ENABLED;
+    private float mBorderWidthPx;
+    private float mBorderOpacity = GlassConfig.DEFAULT_BORDER_OPACITY;
+    private float mBorderFade = GlassConfig.DEFAULT_BORDER_FADE;
 
     public AppLibraryCategoryGlassView(Context context) {
         this(context, null);
@@ -25,7 +34,49 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView {
 
     public AppLibraryCategoryGlassView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs);
+        mBorderWidthPx = GlassConfig.DEFAULT_BORDER_WIDTH * getResources().getDisplayMetrics().density;
+        mBorderPaint.setStyle(Paint.Style.STROKE);
         init();
+    }
+
+    @Override
+    public boolean getBorderEnabled() {
+        return mBorderEnabled;
+    }
+
+    @Override
+    public void setBorderEnabled(boolean borderEnabled) {
+        mBorderEnabled = borderEnabled;
+    }
+
+    @Override
+    public float getBorderWidthPx() {
+        return mBorderWidthPx;
+    }
+
+    @Override
+    public void setBorderWidthPx(float borderWidthPx) {
+        mBorderWidthPx = borderWidthPx;
+    }
+
+    @Override
+    public float getBorderOpacity() {
+        return mBorderOpacity;
+    }
+
+    @Override
+    public void setBorderOpacity(float borderOpacity) {
+        mBorderOpacity = borderOpacity;
+    }
+
+    @Override
+    public float getBorderFade() {
+        return mBorderFade;
+    }
+
+    @Override
+    public void setBorderFade(float borderFade) {
+        mBorderFade = borderFade;
     }
 
     private final Path mClipPath = new Path();
@@ -102,6 +153,15 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView {
         canvas.save();
         canvas.clipPath(path);
         super.draw(canvas);
+
+        if (mBorderEnabled && mBorderWidthPx > 0f && mBorderOpacity > 0f) {
+            GlassConfig.drawBorder(
+                canvas, path, mBorderPaint,
+                mBorderWidthPx, mBorderOpacity, mBorderFade,
+                h
+            );
+        }
+
         canvas.restore();
     }
 }

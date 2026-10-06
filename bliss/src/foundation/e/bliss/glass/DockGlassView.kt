@@ -19,7 +19,9 @@ package foundation.e.bliss.glass
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
+import android.graphics.Paint
 import android.graphics.Rect
 import android.util.AttributeSet
 import android.view.Gravity
@@ -49,9 +51,17 @@ class DockGlassView
 constructor(
     context: Context,
     attrs: AttributeSet? = null,
-) : LiquidGlassView(context, attrs), Insettable {
+) : LiquidGlassView(context, attrs), Insettable, BorderedGlassView {
 
     private val continuousGeometry = ContinuousCornerGeometry()
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
+    override var borderEnabled: Boolean = GlassConfig.DEFAULT_BORDER_ENABLED
+    override var borderWidthPx: Float = GlassConfig.DEFAULT_BORDER_WIDTH * context.resources.displayMetrics.density
+    override var borderOpacity: Float = GlassConfig.DEFAULT_BORDER_OPACITY
+    override var borderFade: Float = GlassConfig.DEFAULT_BORDER_FADE
 
     init {
         outlineProvider =
@@ -118,6 +128,15 @@ constructor(
             canvas.save()
             canvas.clipPath(path)
             super.draw(canvas)
+
+            if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+                GlassConfig.drawBorder(
+                    canvas, path, borderPaint,
+                    borderWidthPx, borderOpacity, borderFade,
+                    height.toFloat()
+                )
+            }
+
             canvas.restore()
         } else {
             super.draw(canvas)

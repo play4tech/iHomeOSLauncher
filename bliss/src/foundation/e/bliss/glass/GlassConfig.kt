@@ -18,7 +18,12 @@
 package foundation.e.bliss.glass
 
 import android.content.Context
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.Shader
 import com.android.launcher3.LauncherPrefs
 import com.example.liquidglass.GlassAccessibilityMode
 import com.example.liquidglass.GlassMaterial
@@ -51,6 +56,10 @@ object GlassConfig {
     const val DEFAULT_ENABLE_ADAPTIVE_TINT: Boolean = true
     const val DEFAULT_REFRACTION_NO_FOLD: Boolean = false
     const val DEFAULT_REFRACTION_OUTWARD: Boolean = false
+    const val DEFAULT_BORDER_ENABLED: Boolean = true
+    const val DEFAULT_BORDER_WIDTH: Float = 0.5f         // in dp (thin, delicate hairline)
+    const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity at sides
+    const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at top and bottom
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
@@ -73,6 +82,10 @@ object GlassConfig {
     const val PREF_KEY_ENABLE_ADAPTIVE_TINT = "pref_glass_enable_adaptive_tint"
     const val PREF_KEY_REFRACTION_NO_FOLD = "pref_glass_refraction_no_fold"
     const val PREF_KEY_REFRACTION_OUTWARD = "pref_glass_refraction_outward"
+    const val PREF_KEY_BORDER_ENABLED = "pref_glass_border_enabled"
+    const val PREF_KEY_BORDER_WIDTH = "pref_glass_border_width"
+    const val PREF_KEY_BORDER_OPACITY = "pref_glass_border_opacity"
+    const val PREF_KEY_BORDER_FADE = "pref_glass_border_fade"
 
     /** Data holder for all Liquid Glass optical parameters. */
     data class GlassSettings(
@@ -93,6 +106,10 @@ object GlassConfig {
         var enableAdaptiveTint: Boolean = DEFAULT_ENABLE_ADAPTIVE_TINT,
         var refractionNoFold: Boolean = DEFAULT_REFRACTION_NO_FOLD,
         var refractionOutward: Boolean = DEFAULT_REFRACTION_OUTWARD,
+        var borderEnabled: Boolean = DEFAULT_BORDER_ENABLED,
+        var borderWidth: Float = DEFAULT_BORDER_WIDTH,
+        var borderOpacity: Float = DEFAULT_BORDER_OPACITY,
+        var borderFade: Float = DEFAULT_BORDER_FADE,
     )
 
     @Volatile
@@ -119,7 +136,11 @@ object GlassConfig {
             enableSensorHighlight = prefs.getBoolean(PREF_KEY_ENABLE_SENSOR_HIGHLIGHT, DEFAULT_ENABLE_SENSOR_HIGHLIGHT),
             enableAdaptiveTint = prefs.getBoolean(PREF_KEY_ENABLE_ADAPTIVE_TINT, DEFAULT_ENABLE_ADAPTIVE_TINT),
             refractionNoFold = prefs.getBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD),
-            refractionOutward = prefs.getBoolean(PREF_KEY_REFRACTION_OUTWARD, DEFAULT_REFRACTION_OUTWARD)
+            refractionOutward = prefs.getBoolean(PREF_KEY_REFRACTION_OUTWARD, DEFAULT_REFRACTION_OUTWARD),
+            borderEnabled = prefs.getBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED),
+            borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH),
+            borderOpacity = prefs.getFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY),
+            borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE)
         )
         cachedSettings = settings
         return settings.copy()
@@ -147,6 +168,10 @@ object GlassConfig {
             .putBoolean(PREF_KEY_ENABLE_ADAPTIVE_TINT, settings.enableAdaptiveTint)
             .putBoolean(PREF_KEY_REFRACTION_NO_FOLD, settings.refractionNoFold)
             .putBoolean(PREF_KEY_REFRACTION_OUTWARD, settings.refractionOutward)
+            .putBoolean(PREF_KEY_BORDER_ENABLED, settings.borderEnabled)
+            .putFloat(PREF_KEY_BORDER_WIDTH, settings.borderWidth)
+            .putFloat(PREF_KEY_BORDER_OPACITY, settings.borderOpacity)
+            .putFloat(PREF_KEY_BORDER_FADE, settings.borderFade)
             .apply()
     }
 
@@ -191,6 +216,55 @@ object GlassConfig {
         glassView.enableDynamicBackground = true
         glassView.collectFrameStats = false
         glassView.accessibilityMode = GlassAccessibilityMode.AUTO
+
+        if (glassView is BorderedGlassView) {
+            glassView.borderEnabled = settings.borderEnabled
+            glassView.borderWidthPx = settings.borderWidth * glassView.resources.displayMetrics.density
+            glassView.borderOpacity = settings.borderOpacity
+            glassView.borderFade = settings.borderFade
+            glassView.invalidate()
+        }
+    }
+
+    /**
+     * Renders a thin, elegant outline border on [path] with a vertical linear gradient that fades
+     * at the top and bottom edges according to [borderFade].
+     */
+    @JvmStatic
+    fun drawBorder(
+        canvas: Canvas,
+        path: Path,
+        paint: Paint,
+        borderWidthPx: Float,
+        borderOpacity: Float,
+        borderFade: Float,
+        viewHeight: Float
+    ) {
+        if (borderWidthPx <= 0f || borderOpacity <= 0f || viewHeight <= 0f) return
+        val peakAlpha = (255 * (borderOpacity / 100f).coerceIn(0f, 1f)).toInt()
+        val fadeFactor = (borderFade / 100f).coerceIn(0f, 1f)
+        val edgeAlpha = (peakAlpha * (1f - fadeFactor)).toInt()
+
+        if (edgeAlpha >= peakAlpha) {
+            paint.shader = null
+            paint.color = Color.argb(peakAlpha, 0, 0, 0)
+        } else {
+            val colors = intArrayOf(
+                Color.argb(edgeAlpha, 0, 0, 0),
+                Color.argb(peakAlpha, 0, 0, 0),
+                Color.argb(peakAlpha, 0, 0, 0),
+                Color.argb(edgeAlpha, 0, 0, 0)
+            )
+            val positions = floatArrayOf(0f, 0.35f, 0.65f, 1.0f)
+            paint.shader = LinearGradient(
+                0f, 0f, 0f, viewHeight,
+                colors, positions,
+                Shader.TileMode.CLAMP
+            )
+        }
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = borderWidthPx * 2f
+        canvas.drawPath(path, paint)
     }
 
     /**

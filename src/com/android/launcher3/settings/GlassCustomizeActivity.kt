@@ -380,6 +380,45 @@ class GlassCustomizeActivity : FragmentActivity() {
             setter = { s, v -> s.elasticity = v },
             formatter = { String.format(Locale.US, "%.2f", it) }
         )
+
+        // 13. Border Width
+        bindSlider(
+            containerId = R.id.slider_border_width,
+            title = "Border Width",
+            subtitle = "Outline thickness (default ${GlassConfig.DEFAULT_BORDER_WIDTH} dp)",
+            min = 0.1f,
+            max = 2.5f,
+            steps = 48,
+            getter = { it.borderWidth },
+            setter = { s, v -> s.borderWidth = v },
+            formatter = { String.format(Locale.US, "%.1f dp", it) }
+        )
+
+        // 14. Top & Bottom Fade
+        bindSlider(
+            containerId = R.id.slider_border_fade,
+            title = "Top & Bottom Fade",
+            subtitle = "Fades border along top and bottom edges (default ${GlassConfig.DEFAULT_BORDER_FADE.toInt()}%)",
+            min = 0f,
+            max = 100f,
+            steps = 100,
+            getter = { it.borderFade },
+            setter = { s, v -> s.borderFade = v },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
+
+        // 15. Border Opacity
+        bindSlider(
+            containerId = R.id.slider_border_opacity,
+            title = "Border Opacity",
+            subtitle = "Peak border opacity at sides (default ${GlassConfig.DEFAULT_BORDER_OPACITY.toInt()}%)",
+            min = 10f,
+            max = 100f,
+            steps = 90,
+            getter = { it.borderOpacity },
+            setter = { s, v -> s.borderOpacity = v },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
     }
 
     private fun bindSlider(
@@ -401,6 +440,15 @@ class GlassCustomizeActivity : FragmentActivity() {
 
     private fun initSwitches() {
         switchBindings.clear()
+
+        // Border Toggle
+        bindSwitch(
+            containerId = R.id.switch_border_enabled,
+            title = "Outline Border",
+            subtitle = "Thin black border around liquid glass edges",
+            getter = { it.borderEnabled },
+            setter = { s, v -> s.borderEnabled = v }
+        )
 
         // 1. Specular Edge Highlight
         bindSwitch(

@@ -21,6 +21,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
+import android.graphics.Paint
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -39,11 +40,20 @@ import com.example.liquidglass.LiquidGlassView
  * Corner radius uses the iOS-matched ratio: minOf(w, h) * 0.225f, matching the system squircle
  * for app icons.
  */
-class FolderGlassView(context: Context) : LiquidGlassView(context) {
+class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlassView {
 
     private val cachedPath = android.graphics.Path()
     private var cachedW = 0f
     private var cachedH = 0f
+
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+
+    override var borderEnabled: Boolean = GlassConfig.DEFAULT_BORDER_ENABLED
+    override var borderWidthPx: Float = GlassConfig.DEFAULT_BORDER_WIDTH * context.resources.displayMetrics.density
+    override var borderOpacity: Float = GlassConfig.DEFAULT_BORDER_OPACITY
+    override var borderFade: Float = GlassConfig.DEFAULT_BORDER_FADE
 
     private fun updatePath(w: Float, h: Float): android.graphics.Path {
         if (w == cachedW && h == cachedH && !cachedPath.isEmpty) {
@@ -141,6 +151,15 @@ class FolderGlassView(context: Context) : LiquidGlassView(context) {
         canvas.save()
         canvas.clipPath(path)
         super.draw(canvas)
+
+        if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+            GlassConfig.drawBorder(
+                canvas, path, borderPaint,
+                borderWidthPx, borderOpacity, borderFade,
+                h
+            )
+        }
+
         canvas.restore()
     }
 }
