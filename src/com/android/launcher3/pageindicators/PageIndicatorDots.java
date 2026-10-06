@@ -522,11 +522,17 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     private void detachPillGlass() {
         if (mPillGlassView != null) {
-            ViewGroup parent = (ViewGroup) mPillGlassView.getParent();
-            if (parent != null) {
-                parent.removeView(mPillGlassView);
-            }
+            final SearchPillGlassView glassView = mPillGlassView;
             mPillGlassView = null;
+            // Never mutate the parent's children array synchronously during dispatchDetachedFromWindow.
+            // Removing a sibling during parent's detachment loop corrupts the array and causes an NPE
+            // in ViewGroup.dispatchDetachedFromWindow. Post the removal instead.
+            post(() -> {
+                ViewGroup parent = (ViewGroup) glassView.getParent();
+                if (parent != null) {
+                    parent.removeView(glassView);
+                }
+            });
         }
     }
 
