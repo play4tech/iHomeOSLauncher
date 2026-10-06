@@ -49,11 +49,23 @@ constructor(
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
     }
+    private val whiteBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
     override var borderEnabled: Boolean = GlassConfig.DEFAULT_BORDER_ENABLED
     override var borderWidthPx: Float = GlassConfig.DEFAULT_BORDER_WIDTH * context.resources.displayMetrics.density
     override var borderOpacity: Float = GlassConfig.DEFAULT_BORDER_OPACITY
     override var borderFade: Float = GlassConfig.DEFAULT_BORDER_FADE
+    override var borderPosition: Int = GlassConfig.DEFAULT_BORDER_POSITION
+    override var borderFadeSpread: Float = GlassConfig.DEFAULT_BORDER_FADE_SPREAD
+
+    override var whiteBorderEnabled: Boolean = GlassConfig.DEFAULT_WHITE_BORDER_ENABLED
+    override var whiteBorderWidthPx: Float = GlassConfig.DEFAULT_WHITE_BORDER_WIDTH * context.resources.displayMetrics.density
+    override var whiteBorderOpacity: Float = GlassConfig.DEFAULT_WHITE_BORDER_OPACITY
+    override var whiteBorderFade: Float = GlassConfig.DEFAULT_WHITE_BORDER_FADE
+    override var whiteBorderPosition: Int = GlassConfig.DEFAULT_WHITE_BORDER_POSITION
+    override var whiteBorderFadeSpread: Float = GlassConfig.DEFAULT_WHITE_BORDER_FADE_SPREAD
 
     init {
         outlineProvider =
@@ -118,6 +130,16 @@ constructor(
             GlassConfig.drawBorder(
                 canvas, clipPath, borderPaint,
                 borderWidthPx, borderOpacity, borderFade,
+                borderPosition, borderFadeSpread, false,
+                height.toFloat()
+            )
+        }
+
+        if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
+            GlassConfig.drawBorder(
+                canvas, clipPath, whiteBorderPaint,
+                whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
+                whiteBorderPosition, whiteBorderFadeSpread, true,
                 height.toFloat()
             )
         }

@@ -19,10 +19,20 @@ import foundation.e.bliss.glass.GlassConfig;
 public class AppLibrarySearchGlassView extends LiquidGlassView implements BorderedGlassView {
 
     private final Paint mBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint mWhiteBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private boolean mBorderEnabled = GlassConfig.DEFAULT_BORDER_ENABLED;
     private float mBorderWidthPx;
     private float mBorderOpacity = GlassConfig.DEFAULT_BORDER_OPACITY;
     private float mBorderFade = GlassConfig.DEFAULT_BORDER_FADE;
+    private int mBorderPosition = GlassConfig.DEFAULT_BORDER_POSITION;
+    private float mBorderFadeSpread = GlassConfig.DEFAULT_BORDER_FADE_SPREAD;
+
+    private boolean mWhiteBorderEnabled = GlassConfig.DEFAULT_WHITE_BORDER_ENABLED;
+    private float mWhiteBorderWidthPx;
+    private float mWhiteBorderOpacity = GlassConfig.DEFAULT_WHITE_BORDER_OPACITY;
+    private float mWhiteBorderFade = GlassConfig.DEFAULT_WHITE_BORDER_FADE;
+    private int mWhiteBorderPosition = GlassConfig.DEFAULT_WHITE_BORDER_POSITION;
+    private float mWhiteBorderFadeSpread = GlassConfig.DEFAULT_WHITE_BORDER_FADE_SPREAD;
 
     public AppLibrarySearchGlassView(Context context) {
         this(context, null);
@@ -35,7 +45,9 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
     public AppLibrarySearchGlassView(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs);
         mBorderWidthPx = GlassConfig.DEFAULT_BORDER_WIDTH * getResources().getDisplayMetrics().density;
+        mWhiteBorderWidthPx = GlassConfig.DEFAULT_WHITE_BORDER_WIDTH * getResources().getDisplayMetrics().density;
         mBorderPaint.setStyle(Paint.Style.STROKE);
+        mWhiteBorderPaint.setStyle(Paint.Style.STROKE);
         init();
     }
 
@@ -77,6 +89,86 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
     @Override
     public void setBorderFade(float borderFade) {
         mBorderFade = borderFade;
+    }
+
+    @Override
+    public int getBorderPosition() {
+        return mBorderPosition;
+    }
+
+    @Override
+    public void setBorderPosition(int borderPosition) {
+        mBorderPosition = borderPosition;
+    }
+
+    @Override
+    public float getBorderFadeSpread() {
+        return mBorderFadeSpread;
+    }
+
+    @Override
+    public void setBorderFadeSpread(float borderFadeSpread) {
+        mBorderFadeSpread = borderFadeSpread;
+    }
+
+    @Override
+    public boolean getWhiteBorderEnabled() {
+        return mWhiteBorderEnabled;
+    }
+
+    @Override
+    public void setWhiteBorderEnabled(boolean whiteBorderEnabled) {
+        mWhiteBorderEnabled = whiteBorderEnabled;
+    }
+
+    @Override
+    public float getWhiteBorderWidthPx() {
+        return mWhiteBorderWidthPx;
+    }
+
+    @Override
+    public void setWhiteBorderWidthPx(float whiteBorderWidthPx) {
+        mWhiteBorderWidthPx = whiteBorderWidthPx;
+    }
+
+    @Override
+    public float getWhiteBorderOpacity() {
+        return mWhiteBorderOpacity;
+    }
+
+    @Override
+    public void setWhiteBorderOpacity(float whiteBorderOpacity) {
+        mWhiteBorderOpacity = whiteBorderOpacity;
+    }
+
+    @Override
+    public float getWhiteBorderFade() {
+        return mWhiteBorderFade;
+    }
+
+    @Override
+    public void setWhiteBorderFade(float borderFade) {
+        mWhiteBorderFade = borderFade;
+    }
+
+    @Override
+    public int getWhiteBorderPosition() {
+        return mWhiteBorderPosition;
+    }
+
+    @Override
+    public void setWhiteBorderPosition(int whiteBorderPosition) {
+        mWhiteBorderPosition = whiteBorderPosition;
+    }
+
+    @Override
+    public float getWhiteBorderFadeSpread() {
+        return mWhiteBorderFadeSpread;
+    }
+
+    @Override
+    public void setWhiteBorderFadeSpread(float whiteBorderFadeSpread) {
+        mWhiteBorderFadeSpread = whiteBorderFadeSpread;
     }
 
     private void init() {
@@ -154,6 +246,16 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
             GlassConfig.drawBorder(
                 canvas, mClipPath, mBorderPaint,
                 mBorderWidthPx, mBorderOpacity, mBorderFade,
+                mBorderPosition, mBorderFadeSpread, false,
+                h
+            );
+        }
+
+        if (mWhiteBorderEnabled && mWhiteBorderWidthPx > 0f && mWhiteBorderOpacity > 0f) {
+            GlassConfig.drawBorder(
+                canvas, mClipPath, mWhiteBorderPaint,
+                mWhiteBorderWidthPx, mWhiteBorderOpacity, mWhiteBorderFade,
+                mWhiteBorderPosition, mWhiteBorderFadeSpread, true,
                 h
             );
         }

@@ -56,10 +56,24 @@ object GlassConfig {
     const val DEFAULT_ENABLE_ADAPTIVE_TINT: Boolean = true
     const val DEFAULT_REFRACTION_NO_FOLD: Boolean = false
     const val DEFAULT_REFRACTION_OUTWARD: Boolean = false
+    const val POSITION_SIDES: Int = 0
+    const val POSITION_TOP: Int = 1
+    const val POSITION_BOTTOM: Int = 2
+    const val POSITION_ALL: Int = 3
+
     const val DEFAULT_BORDER_ENABLED: Boolean = true
     const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
-    const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity at sides
-    const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at top and bottom
+    const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity
+    const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at ends
+    const val DEFAULT_BORDER_POSITION: Int = POSITION_SIDES
+    const val DEFAULT_BORDER_FADE_SPREAD: Float = 35f    // 35% fade transition distance
+
+    const val DEFAULT_WHITE_BORDER_ENABLED: Boolean = false
+    const val DEFAULT_WHITE_BORDER_WIDTH: Float = 0.25f
+    const val DEFAULT_WHITE_BORDER_OPACITY: Float = 80f
+    const val DEFAULT_WHITE_BORDER_FADE: Float = 100f
+    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_TOP
+    const val DEFAULT_WHITE_BORDER_FADE_SPREAD: Float = 35f
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
@@ -82,10 +96,20 @@ object GlassConfig {
     const val PREF_KEY_ENABLE_ADAPTIVE_TINT = "pref_glass_enable_adaptive_tint"
     const val PREF_KEY_REFRACTION_NO_FOLD = "pref_glass_refraction_no_fold"
     const val PREF_KEY_REFRACTION_OUTWARD = "pref_glass_refraction_outward"
+
     const val PREF_KEY_BORDER_ENABLED = "pref_glass_border_enabled"
     const val PREF_KEY_BORDER_WIDTH = "pref_glass_border_width"
     const val PREF_KEY_BORDER_OPACITY = "pref_glass_border_opacity"
     const val PREF_KEY_BORDER_FADE = "pref_glass_border_fade"
+    const val PREF_KEY_BORDER_POSITION = "pref_glass_border_position"
+    const val PREF_KEY_BORDER_FADE_SPREAD = "pref_glass_border_fade_spread"
+
+    const val PREF_KEY_WHITE_BORDER_ENABLED = "pref_glass_white_border_enabled"
+    const val PREF_KEY_WHITE_BORDER_WIDTH = "pref_glass_white_border_width"
+    const val PREF_KEY_WHITE_BORDER_OPACITY = "pref_glass_white_border_opacity"
+    const val PREF_KEY_WHITE_BORDER_FADE = "pref_glass_white_border_fade"
+    const val PREF_KEY_WHITE_BORDER_POSITION = "pref_glass_white_border_position"
+    const val PREF_KEY_WHITE_BORDER_FADE_SPREAD = "pref_glass_white_border_fade_spread"
 
     /** Data holder for all Liquid Glass optical parameters. */
     data class GlassSettings(
@@ -110,6 +134,15 @@ object GlassConfig {
         var borderWidth: Float = DEFAULT_BORDER_WIDTH,
         var borderOpacity: Float = DEFAULT_BORDER_OPACITY,
         var borderFade: Float = DEFAULT_BORDER_FADE,
+        var borderPosition: Int = DEFAULT_BORDER_POSITION,
+        var borderFadeSpread: Float = DEFAULT_BORDER_FADE_SPREAD,
+
+        var whiteBorderEnabled: Boolean = DEFAULT_WHITE_BORDER_ENABLED,
+        var whiteBorderWidth: Float = DEFAULT_WHITE_BORDER_WIDTH,
+        var whiteBorderOpacity: Float = DEFAULT_WHITE_BORDER_OPACITY,
+        var whiteBorderFade: Float = DEFAULT_WHITE_BORDER_FADE,
+        var whiteBorderPosition: Int = DEFAULT_WHITE_BORDER_POSITION,
+        var whiteBorderFadeSpread: Float = DEFAULT_WHITE_BORDER_FADE_SPREAD,
     )
 
     @Volatile
@@ -142,7 +175,16 @@ object GlassConfig {
                 if (it == 1.0f || it == 0.5f) DEFAULT_BORDER_WIDTH else it
             },
             borderOpacity = prefs.getFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY),
-            borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE)
+            borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE),
+            borderPosition = prefs.getInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION),
+            borderFadeSpread = prefs.getFloat(PREF_KEY_BORDER_FADE_SPREAD, DEFAULT_BORDER_FADE_SPREAD),
+
+            whiteBorderEnabled = prefs.getBoolean(PREF_KEY_WHITE_BORDER_ENABLED, DEFAULT_WHITE_BORDER_ENABLED),
+            whiteBorderWidth = prefs.getFloat(PREF_KEY_WHITE_BORDER_WIDTH, DEFAULT_WHITE_BORDER_WIDTH),
+            whiteBorderOpacity = prefs.getFloat(PREF_KEY_WHITE_BORDER_OPACITY, DEFAULT_WHITE_BORDER_OPACITY),
+            whiteBorderFade = prefs.getFloat(PREF_KEY_WHITE_BORDER_FADE, DEFAULT_WHITE_BORDER_FADE),
+            whiteBorderPosition = prefs.getInt(PREF_KEY_WHITE_BORDER_POSITION, DEFAULT_WHITE_BORDER_POSITION),
+            whiteBorderFadeSpread = prefs.getFloat(PREF_KEY_WHITE_BORDER_FADE_SPREAD, DEFAULT_WHITE_BORDER_FADE_SPREAD)
         )
         cachedSettings = settings
         return settings.copy()
@@ -174,6 +216,14 @@ object GlassConfig {
             .putFloat(PREF_KEY_BORDER_WIDTH, settings.borderWidth)
             .putFloat(PREF_KEY_BORDER_OPACITY, settings.borderOpacity)
             .putFloat(PREF_KEY_BORDER_FADE, settings.borderFade)
+            .putInt(PREF_KEY_BORDER_POSITION, settings.borderPosition)
+            .putFloat(PREF_KEY_BORDER_FADE_SPREAD, settings.borderFadeSpread)
+            .putBoolean(PREF_KEY_WHITE_BORDER_ENABLED, settings.whiteBorderEnabled)
+            .putFloat(PREF_KEY_WHITE_BORDER_WIDTH, settings.whiteBorderWidth)
+            .putFloat(PREF_KEY_WHITE_BORDER_OPACITY, settings.whiteBorderOpacity)
+            .putFloat(PREF_KEY_WHITE_BORDER_FADE, settings.whiteBorderFade)
+            .putInt(PREF_KEY_WHITE_BORDER_POSITION, settings.whiteBorderPosition)
+            .putFloat(PREF_KEY_WHITE_BORDER_FADE_SPREAD, settings.whiteBorderFadeSpread)
             .apply()
     }
 
@@ -224,13 +274,23 @@ object GlassConfig {
             glassView.borderWidthPx = settings.borderWidth * glassView.resources.displayMetrics.density
             glassView.borderOpacity = settings.borderOpacity
             glassView.borderFade = settings.borderFade
+            glassView.borderPosition = settings.borderPosition
+            glassView.borderFadeSpread = settings.borderFadeSpread
+
+            glassView.whiteBorderEnabled = settings.whiteBorderEnabled
+            glassView.whiteBorderWidthPx = settings.whiteBorderWidth * glassView.resources.displayMetrics.density
+            glassView.whiteBorderOpacity = settings.whiteBorderOpacity
+            glassView.whiteBorderFade = settings.whiteBorderFade
+            glassView.whiteBorderPosition = settings.whiteBorderPosition
+            glassView.whiteBorderFadeSpread = settings.whiteBorderFadeSpread
+
             glassView.invalidate()
         }
     }
 
     /**
-     * Renders a thin, elegant outline border on [path] with a vertical linear gradient that fades
-     * at the top and bottom edges according to [borderFade].
+     * Renders a thin, elegant outline border on [path] with customizable placement (Sides, Top,
+     * Bottom, All Around), width, opacity, and fade transition spread.
      */
     @JvmStatic
     fun drawBorder(
@@ -240,29 +300,89 @@ object GlassConfig {
         borderWidthPx: Float,
         borderOpacity: Float,
         borderFade: Float,
+        borderPosition: Int = POSITION_SIDES,
+        borderFadeSpread: Float = DEFAULT_BORDER_FADE_SPREAD,
+        isWhite: Boolean = false,
         viewHeight: Float
     ) {
         if (borderWidthPx <= 0f || borderOpacity <= 0f || viewHeight <= 0f) return
         val peakAlpha = (255 * (borderOpacity / 100f).coerceIn(0f, 1f)).toInt()
         val fadeFactor = (borderFade / 100f).coerceIn(0f, 1f)
         val edgeAlpha = (peakAlpha * (1f - fadeFactor)).toInt()
+        val r = if (isWhite) 255 else 0
+        val g = if (isWhite) 255 else 0
+        val b = if (isWhite) 255 else 0
 
-        if (edgeAlpha >= peakAlpha) {
-            paint.shader = null
-            paint.color = Color.argb(peakAlpha, 0, 0, 0)
-        } else {
-            val colors = intArrayOf(
-                Color.argb(edgeAlpha, 0, 0, 0),
-                Color.argb(peakAlpha, 0, 0, 0),
-                Color.argb(peakAlpha, 0, 0, 0),
-                Color.argb(edgeAlpha, 0, 0, 0)
-            )
-            val positions = floatArrayOf(0f, 0.35f, 0.65f, 1.0f)
-            paint.shader = LinearGradient(
-                0f, 0f, 0f, viewHeight,
-                colors, positions,
-                Shader.TileMode.CLAMP
-            )
+        val spreadRatio = (borderFadeSpread / 100f).coerceIn(0.05f, 0.80f)
+
+        when (borderPosition) {
+            POSITION_ALL -> {
+                paint.shader = null
+                paint.color = Color.argb(peakAlpha, r, g, b)
+            }
+            POSITION_TOP -> {
+                if (edgeAlpha >= peakAlpha) {
+                    paint.shader = null
+                    paint.color = Color.argb(peakAlpha, r, g, b)
+                } else {
+                    val solidStop = (spreadRatio * 0.5f).coerceIn(0f, 0.98f)
+                    val fadeStop = spreadRatio.coerceIn(solidStop + 0.01f, 1.0f)
+                    val colors = intArrayOf(
+                        Color.argb(peakAlpha, r, g, b),
+                        Color.argb(peakAlpha, r, g, b),
+                        Color.argb(edgeAlpha, r, g, b),
+                        Color.argb(edgeAlpha, r, g, b)
+                    )
+                    val positions = floatArrayOf(0f, solidStop, fadeStop, 1.0f)
+                    paint.shader = LinearGradient(
+                        0f, 0f, 0f, viewHeight,
+                        colors, positions,
+                        Shader.TileMode.CLAMP
+                    )
+                }
+            }
+            POSITION_BOTTOM -> {
+                if (edgeAlpha >= peakAlpha) {
+                    paint.shader = null
+                    paint.color = Color.argb(peakAlpha, r, g, b)
+                } else {
+                    val fadeStart = (1.0f - spreadRatio).coerceIn(0f, 0.98f)
+                    val solidStart = (1.0f - spreadRatio * 0.5f).coerceIn(fadeStart + 0.01f, 1.0f)
+                    val colors = intArrayOf(
+                        Color.argb(edgeAlpha, r, g, b),
+                        Color.argb(edgeAlpha, r, g, b),
+                        Color.argb(peakAlpha, r, g, b),
+                        Color.argb(peakAlpha, r, g, b)
+                    )
+                    val positions = floatArrayOf(0f, fadeStart, solidStart, 1.0f)
+                    paint.shader = LinearGradient(
+                        0f, 0f, 0f, viewHeight,
+                        colors, positions,
+                        Shader.TileMode.CLAMP
+                    )
+                }
+            }
+            else -> {
+                // POSITION_SIDES: Top and bottom edges fade, sides (middle) solid
+                if (edgeAlpha >= peakAlpha) {
+                    paint.shader = null
+                    paint.color = Color.argb(peakAlpha, r, g, b)
+                } else {
+                    val clampedSpread = spreadRatio.coerceIn(0.05f, 0.48f)
+                    val colors = intArrayOf(
+                        Color.argb(edgeAlpha, r, g, b),
+                        Color.argb(peakAlpha, r, g, b),
+                        Color.argb(peakAlpha, r, g, b),
+                        Color.argb(edgeAlpha, r, g, b)
+                    )
+                    val positions = floatArrayOf(0f, clampedSpread, 1f - clampedSpread, 1.0f)
+                    paint.shader = LinearGradient(
+                        0f, 0f, 0f, viewHeight,
+                        colors, positions,
+                        Shader.TileMode.CLAMP
+                    )
+                }
+            }
         }
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = borderWidthPx * 2f

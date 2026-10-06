@@ -381,7 +381,20 @@ class GlassCustomizeActivity : FragmentActivity() {
             formatter = { String.format(Locale.US, "%.2f", it) }
         )
 
-        // 13. Border Width
+        // 13. Black Border Position
+        bindSlider(
+            containerId = R.id.slider_border_position,
+            title = "Border Position",
+            subtitle = "Rim placement: Sides, Top, Bottom, or All Around",
+            min = 0f,
+            max = 3f,
+            steps = 3,
+            getter = { it.borderPosition.toFloat() },
+            setter = { s, v -> s.borderPosition = v.toInt() },
+            formatter = { formatPosition(it.toInt()) }
+        )
+
+        // 14. Black Border Width
         bindSlider(
             containerId = R.id.slider_border_width,
             title = "Border Width",
@@ -394,11 +407,24 @@ class GlassCustomizeActivity : FragmentActivity() {
             formatter = { String.format(Locale.US, "%.2f dp", it) }
         )
 
-        // 14. Top & Bottom Fade
+        // 15. Black Fade Distance
+        bindSlider(
+            containerId = R.id.slider_border_fade_spread,
+            title = "Fade Distance",
+            subtitle = "How far before border begins fading (default ${GlassConfig.DEFAULT_BORDER_FADE_SPREAD.toInt()}%)",
+            min = 10f,
+            max = 80f,
+            steps = 70,
+            getter = { it.borderFadeSpread },
+            setter = { s, v -> s.borderFadeSpread = v },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
+
+        // 16. Black Fade Amount
         bindSlider(
             containerId = R.id.slider_border_fade,
-            title = "Top & Bottom Fade",
-            subtitle = "Fades border along top and bottom edges (default ${GlassConfig.DEFAULT_BORDER_FADE.toInt()}%)",
+            title = "Fade Amount",
+            subtitle = "Fades border along opposing edges (default ${GlassConfig.DEFAULT_BORDER_FADE.toInt()}%)",
             min = 0f,
             max = 100f,
             steps = 100,
@@ -407,11 +433,11 @@ class GlassCustomizeActivity : FragmentActivity() {
             formatter = { String.format(Locale.US, "%.0f%%", it) }
         )
 
-        // 15. Border Opacity
+        // 17. Black Border Opacity
         bindSlider(
             containerId = R.id.slider_border_opacity,
             title = "Border Opacity",
-            subtitle = "Peak border opacity at sides (default ${GlassConfig.DEFAULT_BORDER_OPACITY.toInt()}%)",
+            subtitle = "Peak border opacity (default ${GlassConfig.DEFAULT_BORDER_OPACITY.toInt()}%)",
             min = 10f,
             max = 100f,
             steps = 90,
@@ -419,6 +445,79 @@ class GlassCustomizeActivity : FragmentActivity() {
             setter = { s, v -> s.borderOpacity = v },
             formatter = { String.format(Locale.US, "%.0f%%", it) }
         )
+
+        // --- WHITE OUTLINE BORDER SLIDERS ---
+        // 18. White Border Position
+        bindSlider(
+            containerId = R.id.slider_white_border_position,
+            title = "White Border Position",
+            subtitle = "Rim placement: Sides, Top, Bottom, or All Around",
+            min = 0f,
+            max = 3f,
+            steps = 3,
+            getter = { it.whiteBorderPosition.toFloat() },
+            setter = { s, v -> s.whiteBorderPosition = v.toInt() },
+            formatter = { formatPosition(it.toInt()) }
+        )
+
+        // 19. White Border Width
+        bindSlider(
+            containerId = R.id.slider_white_border_width,
+            title = "White Border Width",
+            subtitle = "Outline thickness (default ${GlassConfig.DEFAULT_WHITE_BORDER_WIDTH} dp)",
+            min = 0.05f,
+            max = 1.50f,
+            steps = 29,
+            getter = { it.whiteBorderWidth },
+            setter = { s, v -> s.whiteBorderWidth = v },
+            formatter = { String.format(Locale.US, "%.2f dp", it) }
+        )
+
+        // 20. White Fade Distance
+        bindSlider(
+            containerId = R.id.slider_white_border_fade_spread,
+            title = "White Fade Distance",
+            subtitle = "How far before white border fades (default ${GlassConfig.DEFAULT_WHITE_BORDER_FADE_SPREAD.toInt()}%)",
+            min = 10f,
+            max = 80f,
+            steps = 70,
+            getter = { it.whiteBorderFadeSpread },
+            setter = { s, v -> s.whiteBorderFadeSpread = v },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
+
+        // 21. White Fade Amount
+        bindSlider(
+            containerId = R.id.slider_white_border_fade,
+            title = "White Fade Amount",
+            subtitle = "Fades border along opposing edges (default ${GlassConfig.DEFAULT_WHITE_BORDER_FADE.toInt()}%)",
+            min = 0f,
+            max = 100f,
+            steps = 100,
+            getter = { it.whiteBorderFade },
+            setter = { s, v -> s.whiteBorderFade = v },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
+
+        // 22. White Border Opacity
+        bindSlider(
+            containerId = R.id.slider_white_border_opacity,
+            title = "White Border Opacity",
+            subtitle = "Peak white rim opacity (default ${GlassConfig.DEFAULT_WHITE_BORDER_OPACITY.toInt()}%)",
+            min = 10f,
+            max = 100f,
+            steps = 90,
+            getter = { it.whiteBorderOpacity },
+            setter = { s, v -> s.whiteBorderOpacity = v },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
+    }
+
+    private fun formatPosition(pos: Int): String = when (pos) {
+        GlassConfig.POSITION_TOP -> "Top"
+        GlassConfig.POSITION_BOTTOM -> "Bottom"
+        GlassConfig.POSITION_ALL -> "All Around"
+        else -> "Sides"
     }
 
     private fun bindSlider(
@@ -441,13 +540,22 @@ class GlassCustomizeActivity : FragmentActivity() {
     private fun initSwitches() {
         switchBindings.clear()
 
-        // Border Toggle
+        // Black Border Toggle
         bindSwitch(
             containerId = R.id.switch_border_enabled,
-            title = "Outline Border",
+            title = "Black Outline Border",
             subtitle = "Thin black border around liquid glass edges",
             getter = { it.borderEnabled },
             setter = { s, v -> s.borderEnabled = v }
+        )
+
+        // White Border Toggle
+        bindSwitch(
+            containerId = R.id.switch_white_border_enabled,
+            title = "White Outline Border",
+            subtitle = "Luminous white highlight border around liquid glass",
+            getter = { it.whiteBorderEnabled },
+            setter = { s, v -> s.whiteBorderEnabled = v }
         )
 
         // 1. Specular Edge Highlight

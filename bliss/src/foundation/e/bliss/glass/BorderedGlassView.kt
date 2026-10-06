@@ -21,8 +21,19 @@ package foundation.e.bliss.glass
  * Common interface for Liquid Glass surfaces that support an outline border.
  */
 interface BorderedGlassView {
+    // Dark outline border properties
     var borderEnabled: Boolean
     var borderWidthPx: Float
     var borderOpacity: Float
     var borderFade: Float
+    var borderPosition: Int
+    var borderFadeSpread: Float
+
+    // White outline border properties
+    var whiteBorderEnabled: Boolean
+    var whiteBorderWidthPx: Float
+    var whiteBorderOpacity: Float
+    var whiteBorderFade: Float
+    var whiteBorderPosition: Int
+    var whiteBorderFadeSpread: Float
 }
