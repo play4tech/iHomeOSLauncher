@@ -272,6 +272,14 @@ public class SettingsActivity extends FragmentActivity
                         .putBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, isChecked).apply();
             });
         }
+
+        // Customize Glass Effect
+        View rowCustomizeGlass = findViewById(R.id.row_customize_glass);
+        if (rowCustomizeGlass != null) {
+            rowCustomizeGlass.setOnClickListener(v -> {
+                startActivity(new Intent(this, GlassCustomizeActivity.class));
+            });
+        }
     }
 
     private void initFooter() {

@@ -158,6 +158,13 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.android.launcher3.settings.GlassCustomizeActivity"
+            android:label="Customize Glass Effect"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="true"
+            android:autoRemoveFromRecents="true" />
+
         <provider
             android:name="com.android.launcher3.testing.TestInformationProvider"
             android:authorities="${packageName}.TestInfo"

@@ -69,6 +69,8 @@ class DockGlassController(
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         if (key == BlissPrefs.PREF_GLASS_DOCK_ENABLED) {
             enabled = sharedPrefs.getBoolean(key, true)
+        } else if (key?.startsWith("pref_glass_") == true) {
+            apply()
         }
     }
 
