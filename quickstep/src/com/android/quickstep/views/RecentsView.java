@@ -1091,7 +1091,11 @@ public abstract class RecentsView<ACTIVITY_TYPE extends StatefulActivity<STATE_T
         updateTaskStackListenerState();
         mModel.getThumbnailCache().getHighResLoadingState().addCallback(this);
         mActivity.addMultiWindowModeChangedListener(mMultiWindowModeChangedListener);
-        TaskStackChangeListeners.getInstance().registerTaskStackListener(mTaskStackListener);
+        try {
+            TaskStackChangeListeners.getInstance().registerTaskStackListener(mTaskStackListener);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to register TaskStackListener", t);
+        }
         mSyncTransactionApplier = new SurfaceTransactionApplier(this);
         runActionOnRemoteHandles(remoteTargetHandle -> remoteTargetHandle.getTransformParams()
                 .setSyncTransactionApplier(mSyncTransactionApplier));
@@ -1112,7 +1116,11 @@ public abstract class RecentsView<ACTIVITY_TYPE extends StatefulActivity<STATE_T
         updateTaskStackListenerState();
         mModel.getThumbnailCache().getHighResLoadingState().removeCallback(this);
         mActivity.removeMultiWindowModeChangedListener(mMultiWindowModeChangedListener);
-        TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mTaskStackListener);
+        try {
+            TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mTaskStackListener);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to unregister TaskStackListener", t);
+        }
         mSyncTransactionApplier = null;
         runActionOnRemoteHandles(remoteTargetHandle -> remoteTargetHandle.getTransformParams()
                 .setSyncTransactionApplier(null));

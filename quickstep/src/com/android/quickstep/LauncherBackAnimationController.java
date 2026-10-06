@@ -84,6 +84,7 @@ import java.lang.ref.WeakReference;
  *
  */
 public class LauncherBackAnimationController {
+    private static final String TAG = "LauncherBackAnim";
     private static final int CANCEL_TRANSITION_DURATION = 233;
     private static final int SCRIM_FADE_DURATION = 233;
     private static final float MIN_WINDOW_SCALE = 0.85f;
@@ -118,7 +119,7 @@ public class LauncherBackAnimationController {
     private boolean mBackInProgress = false;
     private OnBackInvokedCallbackStub mBackCallback;
     private IRemoteAnimationFinishedCallback mAnimationFinishedCallback;
-    private final BackProgressAnimator mProgressAnimator = new BackProgressAnimator();
+    private final BackProgressAnimator mProgressAnimator;
     private SurfaceControl mScrimLayer;
     private ValueAnimator mScrimAlphaAnimator;
     private float mScrimAlpha;
@@ -144,6 +145,13 @@ public class LauncherBackAnimationController {
                 R.dimen.swipe_back_window_scale_x_margin);
         mCancelInterpolator =
                 AnimationUtils.loadInterpolator(mLauncher, R.interpolator.standard_interpolator);
+        BackProgressAnimator animator = null;
+        try {
+            animator = new BackProgressAnimator();
+        } catch (Throwable t) {
+            Log.w(TAG, "BackProgressAnimator not available on OEM ROM", t);
+        }
+        mProgressAnimator = animator;
     }
 
     /**
@@ -151,10 +159,14 @@ public class LauncherBackAnimationController {
      * @param handler Handler to the thread to run the animations on.
      */
     public void registerBackCallbacks(Handler handler) {
-        mBackCallback = new OnBackInvokedCallbackStub(handler, mProgressAnimator,
-                mProgressInterpolator, this);
-        SystemUiProxy.INSTANCE.get(mLauncher).setBackToLauncherCallback(mBackCallback,
-                new RemoteAnimationRunnerStub(this));
+        try {
+            mBackCallback = new OnBackInvokedCallbackStub(handler, mProgressAnimator,
+                    mProgressInterpolator, this);
+            SystemUiProxy.INSTANCE.get(mLauncher).setBackToLauncherCallback(mBackCallback,
+                    new RemoteAnimationRunnerStub(this));
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to register back callbacks", t);
+        }
     }
 
     private static class OnBackInvokedCallbackStub extends IOnBackInvokedCallback.Stub {
@@ -181,8 +193,12 @@ public class LauncherBackAnimationController {
             mHandler.post(() -> {
                 LauncherBackAnimationController controller = mControllerRef.get();
                 if (controller != null) {
-                    mProgressAnimator.onBackCancelled(
-                            controller::resetPositionAnimated);
+                    if (mProgressAnimator != null) {
+                        mProgressAnimator.onBackCancelled(
+                                controller::resetPositionAnimated);
+                    } else {
+                        controller.resetPositionAnimated();
+                    }
                 }
             });
         }
@@ -194,7 +210,9 @@ public class LauncherBackAnimationController {
                 if (controller != null) {
                     controller.startTransition();
                 }
-                mProgressAnimator.reset();
+                if (mProgressAnimator != null) {
+                    mProgressAnimator.reset();
+                }
             });
         }
 
@@ -208,7 +226,9 @@ public class LauncherBackAnimationController {
                     // Skip animating back progress if Launcher isn't visible yet.
                     return;
                 }
-                mProgressAnimator.onBackProgressed(backMotionEvent);
+                if (mProgressAnimator != null) {
+                    mProgressAnimator.onBackProgressed(backMotionEvent);
+                }
             });
         }
 
@@ -218,12 +238,14 @@ public class LauncherBackAnimationController {
                 LauncherBackAnimationController controller = mControllerRef.get();
                 if (controller != null) {
                     controller.startBack(backEvent);
-                    mProgressAnimator.onBackStarted(backEvent, event -> {
-                        float backProgress = event.getProgress();
-                        controller.mBackProgress =
-                                mProgressInterpolator.getInterpolation(backProgress);
-                        controller.updateBackProgress(controller.mBackProgress, event);
-                    });
+                    if (mProgressAnimator != null) {
+                        mProgressAnimator.onBackStarted(backEvent, event -> {
+                            float backProgress = event.getProgress();
+                            controller.mBackProgress =
+                                    mProgressInterpolator.getInterpolation(backProgress);
+                            controller.updateBackProgress(controller.mBackProgress, event);
+                        });
+                    }
                 }
             });
         }
@@ -284,10 +306,20 @@ public class LauncherBackAnimationController {
 
     /** Unregisters the back to launcher callback in shell. */
     public void unregisterBackCallbacks() {
-        if (mBackCallback != null) {
-            SystemUiProxy.INSTANCE.get(mLauncher).clearBackToLauncherCallback(mBackCallback);
+        try {
+            if (mBackCallback != null) {
+                SystemUiProxy.INSTANCE.get(mLauncher).clearBackToLauncherCallback(mBackCallback);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to clear back callback", t);
         }
-        mProgressAnimator.reset();
+        if (mProgressAnimator != null) {
+            try {
+                mProgressAnimator.reset();
+            } catch (Throwable t) {
+                Log.w(TAG, "Failed to reset progress animator", t);
+            }
+        }
         mBackCallback = null;
     }
 
@@ -556,12 +588,21 @@ public class LauncherBackAnimationController {
     }
 
     private void loadCornerRadius() {
-        mWindowScaleEndCornerRadius = QuickStepContract.supportsRoundedCornersOnWindows(
-                mLauncher.getResources())
+        boolean supports = false;
+        try {
+            supports = QuickStepContract.supportsRoundedCornersOnWindows(mLauncher.getResources());
+        } catch (Throwable t) {
+            // Ignored on OEM ROMs
+        }
+        mWindowScaleEndCornerRadius = supports
                 ? mLauncher.getResources().getDimensionPixelSize(
                 R.dimen.swipe_back_window_corner_radius)
                 : 0;
-        mWindowScaleStartCornerRadius = QuickStepContract.getWindowCornerRadius(mLauncher);
+        try {
+            mWindowScaleStartCornerRadius = QuickStepContract.getWindowCornerRadius(mLauncher);
+        } catch (Throwable t) {
+            mWindowScaleStartCornerRadius = 0;
+        }
     }
 
     /**

@@ -252,8 +252,14 @@ public class NavbarButtonsViewController implements TaskbarControllers.LoggableT
                         mContext.isPhoneMode());
         mNavButtonsView.getLayoutParams().height = p.y;
 
+        boolean canImeRender = false;
+        try {
+            canImeRender = InputMethodService.canImeRenderGesturalNavButtons();
+        } catch (Throwable t) {
+            // Ignored on OEM ROMs
+        }
         mIsImeRenderingNavButtons =
-                InputMethodService.canImeRenderGesturalNavButtons() && mContext.imeDrawsImeNavBar();
+                canImeRender && mContext.imeDrawsImeNavBar();
         if (!mIsImeRenderingNavButtons) {
             // IME switcher
             mImeSwitcherButton = addButton(R.drawable.ic_ime_switcher, BUTTON_IME_SWITCH,

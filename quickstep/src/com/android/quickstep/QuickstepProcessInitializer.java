@@ -36,7 +36,11 @@ public class QuickstepProcessInitializer extends MainProcessInitializer {
     public QuickstepProcessInitializer(Context context) {
         // Fake call to create an instance of InteractionJankMonitor to avoid binder calls during
         // its initialization during transitions.
-        InteractionJankMonitorWrapper.cancel(-1);
+        try {
+            InteractionJankMonitorWrapper.cancel(-1);
+        } catch (Throwable t) {
+            Log.w(TAG, "InteractionJankMonitorWrapper not supported on this device", t);
+        }
     }
 
     @Override
@@ -57,12 +61,20 @@ public class QuickstepProcessInitializer extends MainProcessInitializer {
         super.init(context);
 
         // Elevate GPU priority for Quickstep and Remote animations.
-        ThreadedRenderer.setContextPriority(
-                ThreadedRenderer.EGL_CONTEXT_PRIORITY_HIGH_IMG);
+        try {
+            ThreadedRenderer.setContextPriority(
+                    ThreadedRenderer.EGL_CONTEXT_PRIORITY_HIGH_IMG);
+        } catch (Throwable t) {
+            Log.w(TAG, "ThreadedRenderer.setContextPriority not supported", t);
+        }
 
         // Enable Looper trace points.
         // This allows us to see Handler callbacks on traces.
-        Looper.getMainLooper().setTraceTag(Trace.TRACE_TAG_APP);
+        try {
+            Looper.getMainLooper().setTraceTag(Trace.TRACE_TAG_APP);
+        } catch (Throwable t) {
+            Log.w(TAG, "Looper.setTraceTag not supported", t);
+        }
 
         if (BuildConfig.IS_STUDIO_BUILD) {
             BinderTracker.startTracking(call ->  Log.e("BinderCall",

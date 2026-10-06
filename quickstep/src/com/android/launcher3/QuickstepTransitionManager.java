@@ -65,8 +65,7 @@ import static com.android.launcher3.views.FloatingIconView.getFloatingIconView;
 import static com.android.quickstep.TaskAnimationManager.ENABLE_SHELL_TRANSITIONS;
 import static com.android.quickstep.TaskViewUtils.findTaskViewToLaunch;
 import static com.android.quickstep.util.AnimUtils.completeRunnableListCallback;
-import static com.android.systemui.shared.system.QuickStepContract.getWindowCornerRadius;
-import static com.android.systemui.shared.system.QuickStepContract.supportsRoundedCornersOnWindows;
+import com.android.systemui.shared.system.QuickStepContract;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -230,6 +229,22 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
     // Cross-fade duration between App Widget and App
     private static final int WIDGET_CROSSFADE_DURATION_MILLIS = 125;
 
+    private static float getWindowCornerRadius(Context context) {
+        try {
+            return QuickStepContract.getWindowCornerRadius(context);
+        } catch (Throwable t) {
+            return 0f;
+        }
+    }
+
+    private static boolean supportsRoundedCornersOnWindows(Resources resources) {
+        try {
+            return QuickStepContract.supportsRoundedCornersOnWindows(resources);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
     protected final QuickstepLauncher mLauncher;
     protected final DragLayer mDragLayer;
 
@@ -289,7 +304,12 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
         mDragLayer = mLauncher.getDragLayer();
         mHandler = new Handler(Looper.getMainLooper());
         mDeviceProfile = mLauncher.getDeviceProfile();
-        mBackAnimationController = new LauncherBackAnimationController(mLauncher, this);
+        try {
+            mBackAnimationController = new LauncherBackAnimationController(mLauncher, this);
+        } catch (Throwable t) {
+            Log.w("QuickstepTransition", "LauncherBackAnimationController init failed", t);
+            mBackAnimationController = null;
+        }
         checkAndMonitorIfAnimationsAreEnabled();
 
         Resources res = mLauncher.getResources();
@@ -306,8 +326,12 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
                 }
             };
 
-            SystemUiProxy.INSTANCE.get(mLauncher).setStartingWindowListener(
-                    mStartingWindowListener);
+            try {
+                SystemUiProxy.INSTANCE.get(mLauncher).setStartingWindowListener(
+                        mStartingWindowListener);
+            } catch (Throwable t) {
+                Log.w("QuickstepTransition", "setStartingWindowListener failed", t);
+            }
         }
 
         // Use a softer, more iOS-like ease for app launches so the icon feels like it expands
@@ -1124,12 +1148,13 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
         if (SEPARATE_RECENTS_ACTIVITY.get()) {
             return;
         }
-        RemoteAnimationDefinition definition = new RemoteAnimationDefinition();
-        addRemoteAnimations(definition);
         try {
+            RemoteAnimationDefinition definition = new RemoteAnimationDefinition();
+            addRemoteAnimations(definition);
             mLauncher.registerRemoteAnimations(definition);
-        } catch (SecurityException e) {
-            // SecurityException: CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS required on non-system apps (API 36+)
+        } catch (Throwable e) {
+            // SecurityException or unsupported on non-system apps / OEM ROMs
+            Log.w("QuickstepTransition", "registerRemoteAnimations failed", e);
         }
     }
 
@@ -1162,46 +1187,62 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
      * Registers remote animations used when closing apps to home screen.
      */
     public void registerRemoteTransitions() {
-        if (ENABLE_SHELL_TRANSITIONS) {
-            SystemUiProxy.INSTANCE.get(mLauncher).shareTransactionQueue();
-        }
-        if (SEPARATE_RECENTS_ACTIVITY.get()) {
-            return;
-        }
+        try {
+            if (ENABLE_SHELL_TRANSITIONS) {
+                SystemUiProxy.INSTANCE.get(mLauncher).shareTransactionQueue();
+            }
+            if (SEPARATE_RECENTS_ACTIVITY.get()) {
+                return;
+            }
 
-        mWallpaperOpenTransitionRunner = createWallpaperOpenRunner(false /* fromUnlock */);
-        mLauncherOpenTransition = new RemoteTransition(
-                new LauncherAnimationRunner(mHandler, mWallpaperOpenTransitionRunner,
-                        false /* startAtFrontOfQueue */).toRemoteTransition(),
-                mLauncher.getIApplicationThread(), "QuickstepLaunchHome");
+            mWallpaperOpenTransitionRunner = createWallpaperOpenRunner(false /* fromUnlock */);
+            mLauncherOpenTransition = new RemoteTransition(
+                    new LauncherAnimationRunner(mHandler, mWallpaperOpenTransitionRunner,
+                            false /* startAtFrontOfQueue */).toRemoteTransition(),
+                    mLauncher.getIApplicationThread(), "QuickstepLaunchHome");
 
-        TransitionFilter homeCheck = new TransitionFilter();
-        // No need to handle the transition that also dismisses keyguard.
-        homeCheck.mNotFlags = TRANSIT_FLAG_KEYGUARD_GOING_AWAY;
-        homeCheck.mRequirements =
-                new TransitionFilter.Requirement[]{new TransitionFilter.Requirement(),
-                        new TransitionFilter.Requirement()};
-        homeCheck.mRequirements[0].mActivityType = ACTIVITY_TYPE_HOME;
-        homeCheck.mRequirements[0].mTopActivity = mLauncher.getComponentName();
-        homeCheck.mRequirements[0].mModes = new int[]{TRANSIT_OPEN, TRANSIT_TO_FRONT};
-        homeCheck.mRequirements[0].mOrder = CONTAINER_ORDER_TOP;
-        homeCheck.mRequirements[1].mActivityType = ACTIVITY_TYPE_STANDARD;
-        homeCheck.mRequirements[1].mModes = new int[]{TRANSIT_CLOSE, TRANSIT_TO_BACK};
-        SystemUiProxy.INSTANCE.get(mLauncher)
-                .registerRemoteTransition(mLauncherOpenTransition, homeCheck);
-        if (mBackAnimationController != null) {
-            mBackAnimationController.registerComponentCallbacks();
-            mBackAnimationController.registerBackCallbacks(mHandler);
+            TransitionFilter homeCheck = new TransitionFilter();
+            // No need to handle the transition that also dismisses keyguard.
+            homeCheck.mNotFlags = TRANSIT_FLAG_KEYGUARD_GOING_AWAY;
+            homeCheck.mRequirements =
+                    new TransitionFilter.Requirement[]{new TransitionFilter.Requirement(),
+                            new TransitionFilter.Requirement()};
+            homeCheck.mRequirements[0].mActivityType = ACTIVITY_TYPE_HOME;
+            homeCheck.mRequirements[0].mTopActivity = mLauncher.getComponentName();
+            homeCheck.mRequirements[0].mModes = new int[]{TRANSIT_OPEN, TRANSIT_TO_FRONT};
+            homeCheck.mRequirements[0].mOrder = CONTAINER_ORDER_TOP;
+            homeCheck.mRequirements[1].mActivityType = ACTIVITY_TYPE_STANDARD;
+            homeCheck.mRequirements[1].mModes = new int[]{TRANSIT_CLOSE, TRANSIT_TO_BACK};
+            SystemUiProxy.INSTANCE.get(mLauncher)
+                    .registerRemoteTransition(mLauncherOpenTransition, homeCheck);
+            if (mBackAnimationController != null) {
+                mBackAnimationController.registerComponentCallbacks();
+                mBackAnimationController.registerBackCallbacks(mHandler);
+            }
+        } catch (Throwable t) {
+            Log.w("QuickstepTransition", "registerRemoteTransitions failed", t);
         }
     }
 
     public void onActivityDestroyed() {
-        unregisterRemoteAnimations();
-        unregisterRemoteTransitions();
-        mLauncher.removeOnDeviceProfileChangeListener(this);
-        SystemUiProxy.INSTANCE.get(mLauncher).setStartingWindowListener(null);
-        ORDERED_BG_EXECUTOR.execute(() -> mLauncher.getContentResolver()
-                .unregisterContentObserver(mAnimationRemovalObserver));
+        try {
+            unregisterRemoteAnimations();
+        } catch (Throwable t) {
+            Log.w("QuickstepTransition", "unregisterRemoteAnimations failed", t);
+        }
+        try {
+            unregisterRemoteTransitions();
+        } catch (Throwable t) {
+            Log.w("QuickstepTransition", "unregisterRemoteTransitions failed", t);
+        }
+        try {
+            mLauncher.removeOnDeviceProfileChangeListener(this);
+            SystemUiProxy.INSTANCE.get(mLauncher).setStartingWindowListener(null);
+            ORDERED_BG_EXECUTOR.execute(() -> mLauncher.getContentResolver()
+                    .unregisterContentObserver(mAnimationRemovalObserver));
+        } catch (Throwable t) {
+            Log.w("QuickstepTransition", "onActivityDestroyed cleanup failed", t);
+        }
     }
 
     private void unregisterRemoteAnimations() {

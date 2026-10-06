@@ -102,7 +102,11 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
                                     ProviderChangedListener::notifyWidgetProvidersChanged))),
                     UI_HELPER_EXECUTOR.getLooper());
             if (!WidgetsModel.GO_DISABLE_WIDGETS) {
-                sWidgetHost.startListening();
+                try {
+                    sWidgetHost.startListening();
+                } catch (Throwable t) {
+                    Log.w(TAG, "sWidgetHost.startListening failed", t);
+                }
             }
         }
         return sWidgetHost;
@@ -199,7 +203,15 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
             return;
         }
 
-        sWidgetHost.setAppWidgetHidden();
+        try {
+            sWidgetHost.setAppWidgetHidden();
+        } catch (Throwable t) {
+            try {
+                sWidgetHost.stopListening();
+            } catch (Throwable t2) {
+                Log.w(TAG, "sWidgetHost stopListening failed", t2);
+            }
+        }
         setListeningFlag(false);
     }
 
@@ -248,7 +260,11 @@ public final class QuickstepWidgetHolder extends LauncherWidgetHolder {
         QuickstepWidgetHolderListener listener = sListeners.get(appWidgetId);
         if (listener == null) {
             listener = new QuickstepWidgetHolderListener(appWidgetId);
-            sWidgetHost.setListener(appWidgetId, listener);
+            try {
+                sWidgetHost.setListener(appWidgetId, listener);
+            } catch (Throwable t) {
+                Log.w(TAG, "sWidgetHost.setListener failed", t);
+            }
             sListeners.put(appWidgetId, listener);
         }
         return listener;

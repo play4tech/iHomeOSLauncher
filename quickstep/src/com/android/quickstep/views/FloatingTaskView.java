@@ -434,7 +434,13 @@ public class FloatingTaskView extends FrameLayout {
 
         public FullscreenDrawParams(Context context) {
             mCornerRadius = TaskCornerRadius.get(context);
-            mWindowCornerRadius = QuickStepContract.getWindowCornerRadius(context);
+            float winRadius = 0;
+            try {
+                winRadius = QuickStepContract.getWindowCornerRadius(context);
+            } catch (Throwable t) {
+                // OEM fallback
+            }
+            mWindowCornerRadius = winRadius;
 
             mCurrentDrawnCornerRadius = mCornerRadius;
         }

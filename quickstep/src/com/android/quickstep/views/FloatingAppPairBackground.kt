@@ -105,7 +105,11 @@ class FloatingAppPairBackground(
             )
 
         // Find device-specific measurements
-        deviceCornerRadius = QuickStepContract.getWindowCornerRadius(launcher)
+        deviceCornerRadius = try {
+            QuickStepContract.getWindowCornerRadius(launcher)
+        } catch (t: Throwable) {
+            0f
+        }
         deviceHalfDividerSize =
             launcher.resources.getDimensionPixelSize(R.dimen.multi_window_task_divider_size) / 2f
         val dividerCenterPos = dividerPos + deviceHalfDividerSize
@@ -338,8 +342,13 @@ class FloatingAppPairBackground(
             // Fallback rectangle with uniform rounded corners
             val scaleFactorX = floatingView.scaleX
             val scaleFactorY = floatingView.scaleY
-            val cornerRadiusX = QuickStepContract.getWindowCornerRadius(launcher) / scaleFactorX
-            val cornerRadiusY = QuickStepContract.getWindowCornerRadius(launcher) / scaleFactorY
+            val winRadius = try {
+                QuickStepContract.getWindowCornerRadius(launcher)
+            } catch (t: Throwable) {
+                0f
+            }
+            val cornerRadiusX = winRadius / scaleFactorX
+            val cornerRadiusY = winRadius / scaleFactorY
             c.drawRoundRect(rect, cornerRadiusX, cornerRadiusY, backgroundPaint)
         }
     }

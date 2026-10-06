@@ -48,7 +48,11 @@ public class TaskRestartedDuringLaunchListener implements TaskStackChangeListene
      * resulted in an already existing task to be "restarted".
      */
     public void register(@NonNull Runnable taskRestartedCallback) {
-        TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
+        try {
+            TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
+        } catch (Throwable t) {
+            android.util.Log.w(TAG, "Failed to register TaskStackListener", t);
+        }
         mTaskRestartedCallback = taskRestartedCallback;
     }
 
@@ -56,7 +60,11 @@ public class TaskRestartedDuringLaunchListener implements TaskStackChangeListene
      * Unregisters the failure listener.
      */
     public void unregister() {
-        TaskStackChangeListeners.getInstance().unregisterTaskStackListener(this);
+        try {
+            TaskStackChangeListeners.getInstance().unregisterTaskStackListener(this);
+        } catch (Throwable t) {
+            android.util.Log.w(TAG, "Failed to unregister TaskStackListener", t);
+        }
         mTaskRestartedCallback = null;
     }
 

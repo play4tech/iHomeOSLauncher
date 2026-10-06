@@ -49,33 +49,47 @@ public class SurfaceTransactionApplier extends ReleaseCheck {
      * @param targetView The view in the surface that acts as synchronization anchor.
      */
     public SurfaceTransactionApplier(@NonNull View targetView) {
-        if (targetView.isAttachedToWindow()) {
-            initialize(targetView);
-        } else {
-            mInitialized = false;
-            targetView.addOnAttachStateChangeListener(new OnAttachStateChangeListener() {
-                @Override
-                public void onViewAttachedToWindow(View v) {
-                    if (!mInitialized) {
-                        targetView.removeOnAttachStateChangeListener(this);
-                        initialize(targetView);
+        try {
+            if (targetView.isAttachedToWindow()) {
+                initialize(targetView);
+            } else {
+                mInitialized = false;
+                targetView.addOnAttachStateChangeListener(new OnAttachStateChangeListener() {
+                    @Override
+                    public void onViewAttachedToWindow(View v) {
+                        if (!mInitialized) {
+                            targetView.removeOnAttachStateChangeListener(this);
+                            initialize(targetView);
+                        }
                     }
-                }
 
-                @Override
-                public void onViewDetachedFromWindow(View v) {
-                    // Do nothing
-                }
-            });
+                    @Override
+                    public void onViewDetachedFromWindow(View v) {
+                        // Do nothing
+                    }
+                });
+            }
+        } catch (Throwable t) {
+            mInitialized = false;
         }
         mApplyHandler = new Handler(this::onApplyMessage);
         setCanRelease(true);
     }
 
     private void initialize(View view) {
-        mTargetViewRootImpl = view.getViewRootImpl();
-        mBarrierSurfaceControl = mTargetViewRootImpl.getSurfaceControl();
-        mInitialized = true;
+        try {
+            mTargetViewRootImpl = view.getViewRootImpl();
+            if (mTargetViewRootImpl != null) {
+                try {
+                    mBarrierSurfaceControl = mTargetViewRootImpl.getSurfaceControl();
+                } catch (Throwable t) {
+                    mBarrierSurfaceControl = null;
+                }
+            }
+            mInitialized = true;
+        } catch (Throwable t) {
+            mInitialized = false;
+        }
     }
 
     protected boolean onApplyMessage(Message msg) {
@@ -93,12 +107,13 @@ public class SurfaceTransactionApplier extends ReleaseCheck {
      *               this method to avoid synchronization issues.
      */
     public void scheduleApply(SurfaceTransaction params) {
-        if (!mInitialized) {
+        if (!mInitialized || mTargetViewRootImpl == null) {
             params.getTransaction().apply();
             return;
         }
         View view = mTargetViewRootImpl.getView();
         if (view == null) {
+            params.getTransaction().apply();
             return;
         }
         Transaction t = params.getTransaction();
@@ -106,20 +121,30 @@ public class SurfaceTransactionApplier extends ReleaseCheck {
         mLastSequenceNumber++;
         final int toApplySeqNo = mLastSequenceNumber;
         setCanRelease(false);
-        mTargetViewRootImpl.registerRtFrameCallback(new HardwareRenderer.FrameDrawingCallback() {
-            @Override
-            public void onFrameDraw(long frame) {
-            if (mBarrierSurfaceControl == null || !mBarrierSurfaceControl.isValid()) {
+        try {
+            mTargetViewRootImpl.registerRtFrameCallback(new HardwareRenderer.FrameDrawingCallback() {
+                @Override
+                public void onFrameDraw(long frame) {
+                if (mBarrierSurfaceControl == null || !mBarrierSurfaceControl.isValid()) {
+                    Message.obtain(mApplyHandler, MSG_UPDATE_SEQUENCE_NUMBER, toApplySeqNo, 0)
+                            .sendToTarget();
+                    return;
+                }
+                try {
+                    mTargetViewRootImpl.mergeWithNextTransaction(t, frame);
+                } catch (Throwable th) {
+                    t.apply();
+                }
                 Message.obtain(mApplyHandler, MSG_UPDATE_SEQUENCE_NUMBER, toApplySeqNo, 0)
                         .sendToTarget();
-                return;
-            }
-            mTargetViewRootImpl.mergeWithNextTransaction(t, frame);
+            }});
+
+            // Make sure a frame gets scheduled.
+            view.invalidate();
+        } catch (Throwable th) {
+            t.apply();
             Message.obtain(mApplyHandler, MSG_UPDATE_SEQUENCE_NUMBER, toApplySeqNo, 0)
                     .sendToTarget();
-        }});
-
-        // Make sure a frame gets scheduled.
-        view.invalidate();
+        }
     }
 }

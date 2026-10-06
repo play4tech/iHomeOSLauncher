@@ -27,7 +27,13 @@ public class TaskCornerRadius {
 
     public static float get(Context context) {
         Resources resources = context.getResources();
-        if (!supportsRoundedCornersOnWindows(resources)) {
+        boolean supports = false;
+        try {
+            supports = supportsRoundedCornersOnWindows(resources);
+        } catch (Throwable t) {
+            // ScreenDecorationsUtils hidden method unavailable on OEM ROMs
+        }
+        if (!supports) {
             return resources.getDimension(R.dimen.task_corner_radius_small);
         }
 

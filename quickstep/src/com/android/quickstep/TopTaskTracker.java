@@ -76,8 +76,16 @@ public class TopTaskTracker extends ISplitScreenListener.Stub implements TaskSta
         mMainStagePosition.stageType = SplitConfigurationOptions.STAGE_TYPE_MAIN;
         mSideStagePosition.stageType = SplitConfigurationOptions.STAGE_TYPE_SIDE;
 
-        TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
-        SystemUiProxy.INSTANCE.get(context).registerSplitScreenListener(this);
+        try {
+            TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
+        } catch (Throwable t) {
+            android.util.Log.w("TopTaskTracker", "Failed to register TaskStackListener", t);
+        }
+        try {
+            SystemUiProxy.INSTANCE.get(context).registerSplitScreenListener(this);
+        } catch (Throwable t) {
+            android.util.Log.w("TopTaskTracker", "Failed to register SplitScreenListener", t);
+        }
     }
 
     @Override

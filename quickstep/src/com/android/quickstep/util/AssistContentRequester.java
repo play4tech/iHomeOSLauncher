@@ -62,7 +62,13 @@ public class AssistContentRequester {
             Collections.synchronizedMap(new WeakHashMap<>());
 
     public AssistContentRequester(Context context) {
-        mActivityTaskManager = ActivityTaskManager.getService();
+        IActivityTaskManager atm = null;
+        try {
+            atm = ActivityTaskManager.getService();
+        } catch (Throwable t) {
+            Log.w(TAG, "ActivityTaskManager not available", t);
+        }
+        mActivityTaskManager = atm;
         mAttributionTag = context.getAttributionTag();
         mPackageName = context.getApplicationContext().getPackageName();
         mCallbackExecutor = Executors.MAIN_EXECUTOR;
@@ -76,13 +82,16 @@ public class AssistContentRequester {
      * @param callback to call when the content is available, called on the main thread.
      */
     public void requestAssistContent(final int taskId, final Callback callback) {
+        if (mActivityTaskManager == null) {
+            return;
+        }
         // ActivityTaskManager interaction here is synchronous, so call off the main thread.
         mSystemInteractionExecutor.execute(() -> {
             try {
                 mActivityTaskManager.requestAssistDataForTask(
                         new AssistDataReceiver(callback, this), taskId, mPackageName,
                         mAttributionTag);
-            } catch (RemoteException e) {
+            } catch (Throwable e) {
                 Log.e(TAG, "Requesting assist content failed for task: " + taskId, e);
             }
         });

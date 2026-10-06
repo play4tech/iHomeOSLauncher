@@ -107,12 +107,20 @@ public class DesktopTaskView extends TaskView {
         mSnapshotDrawParams = new FullscreenDrawParams(context) {
             @Override
             public float computeTaskCornerRadius(Context context) {
-                return QuickStepContract.getWindowCornerRadius(context);
+                try {
+                    return QuickStepContract.getWindowCornerRadius(context);
+                } catch (Throwable t) {
+                    return 0f;
+                }
             }
 
             @Override
             public float computeWindowCornerRadius(Context context) {
-                return QuickStepContract.getWindowCornerRadius(context);
+                try {
+                    return QuickStepContract.getWindowCornerRadius(context);
+                } catch (Throwable t) {
+                    return 0f;
+                }
             }
         };
     }

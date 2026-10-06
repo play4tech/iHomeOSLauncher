@@ -43,7 +43,7 @@ final class QuickstepAppWidgetHost extends AppWidgetHost {
     QuickstepAppWidgetHost(@NonNull Context context, @NonNull IntConsumer appWidgetRemovedCallback,
             @NonNull LauncherWidgetHolder.ProviderChangedListener listener,
             @NonNull Looper looper) {
-        super(context, APPWIDGET_HOST_ID, null, looper);
+        super(context, APPWIDGET_HOST_ID);
         mContext = context;
         mAppWidgetRemovedCallback = appWidgetRemovedCallback;
         mProvidersChangedListener = listener;

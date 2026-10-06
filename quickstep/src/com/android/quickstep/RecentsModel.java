@@ -121,7 +121,11 @@ public class RecentsModel implements IconChangeListener, TaskStackChangeListener
         }
 
         mTaskStackChangeListeners = taskStackChangeListeners;
-        mTaskStackChangeListeners.registerTaskStackListener(this);
+        try {
+            mTaskStackChangeListeners.registerTaskStackListener(this);
+        } catch (Throwable t) {
+            android.util.Log.w("RecentsModel", "Failed to register TaskStackListener", t);
+        }
         iconProvider.registerIconChangeListener(this, MAIN_EXECUTOR.getHandler());
     }
 
@@ -363,7 +367,11 @@ public class RecentsModel implements IconChangeListener, TaskStackChangeListener
             mContext.unregisterComponentCallbacks(mCallbacks);
         }
         mIconCache.removeTaskVisualsChangeListener();
-        mTaskStackChangeListeners.unregisterTaskStackListener(this);
+        try {
+            mTaskStackChangeListeners.unregisterTaskStackListener(this);
+        } catch (Throwable t) {
+            android.util.Log.w("RecentsModel", "Failed to unregister TaskStackListener", t);
+        }
     }
 
     /**

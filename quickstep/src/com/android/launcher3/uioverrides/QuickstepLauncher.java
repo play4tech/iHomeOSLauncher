@@ -279,12 +279,26 @@ public class QuickstepLauncher extends Launcher {
         mActionsView.updateVerticalMargin(DisplayController.getNavigationMode(this));
 
         mAppTransitionManager = buildAppTransitionManager();
-        mAppTransitionManager.registerRemoteAnimations();
-        mAppTransitionManager.registerRemoteTransitions();
+        if (mAppTransitionManager != null) {
+            try {
+                mAppTransitionManager.registerRemoteAnimations();
+            } catch (Throwable t) {
+                Log.w(TAG, "registerRemoteAnimations failed", t);
+            }
+            try {
+                mAppTransitionManager.registerRemoteTransitions();
+            } catch (Throwable t) {
+                Log.w(TAG, "registerRemoteTransitions failed", t);
+            }
+        }
 
         if (FeatureFlags.enableHomeTransitionListener()) {
-            mHomeTransitionController = new HomeTransitionController();
-            mHomeTransitionController.registerHomeTransitionListener(this);
+            try {
+                mHomeTransitionController = new HomeTransitionController();
+                mHomeTransitionController.registerHomeTransitionListener(this);
+            } catch (Throwable t) {
+                Log.w(TAG, "registerHomeTransitionListener failed", t);
+            }
         }
 
         mTISBindHelper = new TISBindHelper(this, this::onTISConnected);
@@ -669,10 +683,18 @@ public class QuickstepLauncher extends Launcher {
         if (FeatureFlags.CONTINUOUS_VIEW_TREE_CAPTURE.get()) {
             mViewCapture = SettingsAwareViewCapture.getInstance(this).startCapture(getWindow());
         }
-        getWindow().addPrivateFlags(PRIVATE_FLAG_OPTIMIZE_MEASURE);
+        try {
+            getWindow().addPrivateFlags(PRIVATE_FLAG_OPTIMIZE_MEASURE);
+        } catch (Throwable t) {
+            Log.w(TAG, "Window.addPrivateFlags not supported on OEM ROM", t);
+        }
         QuickstepOnboardingPrefs.setup(this);
-        View.setTraceLayoutSteps(TRACE_LAYOUTS);
-        View.setTracedRequestLayoutClassClass(TRACE_RELAYOUT_CLASS);
+        try {
+            View.setTraceLayoutSteps(TRACE_LAYOUTS);
+            View.setTracedRequestLayoutClassClass(TRACE_RELAYOUT_CLASS);
+        } catch (Throwable t) {
+            Log.w(TAG, "View tracing not supported on OEM ROM", t);
+        }
     }
 
     @Override
@@ -826,7 +848,13 @@ public class QuickstepLauncher extends Launcher {
     public void onUiChangedWhileSleeping() {
         // Remove the snapshot because the content view may have obvious changes.
         UI_HELPER_EXECUTOR.execute(
-                () -> ActivityManagerWrapper.getInstance().invalidateHomeTaskSnapshot(this));
+                () -> {
+                    try {
+                        ActivityManagerWrapper.getInstance().invalidateHomeTaskSnapshot(this);
+                    } catch (Throwable t) {
+                        Log.w(TAG, "invalidateHomeTaskSnapshot failed", t);
+                    }
+                });
     }
 
     @Override

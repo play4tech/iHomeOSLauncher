@@ -104,7 +104,15 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
     private final TaskStackChangeListener mPipListener;
     // Cache for better performance since it doesn't change at runtime.
     private final boolean mCanImeRenderGesturalNavButtons =
-            InputMethodService.canImeRenderGesturalNavButtons();
+            checkCanImeRenderGesturalNavButtons();
+
+    private static boolean checkCanImeRenderGesturalNavButtons() {
+        try {
+            return InputMethodService.canImeRenderGesturalNavButtons();
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 
     private final ArrayList<Runnable> mOnDestroyActions = new ArrayList<>();
 
@@ -203,8 +211,8 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
         try {
             mPipIsActive = ActivityTaskManager.getService().getRootTaskInfo(
                     WINDOWING_MODE_PINNED, ACTIVITY_TYPE_UNDEFINED) != null;
-        } catch (RemoteException | SecurityException e) {
-            // SecurityException: MANAGE_ACTIVITY_TASKS required on non-system apps (API 36+)
+        } catch (Throwable e) {
+            // SecurityException or NoSuchMethodError on non-system ROMs
         }
         mPipListener = new TaskStackChangeListener() {
             @Override
@@ -217,9 +225,18 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
                 mPipIsActive = false;
             }
         };
-        TaskStackChangeListeners.getInstance().registerTaskStackListener(mPipListener);
-        runOnDestroy(() ->
-                TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mPipListener));
+        try {
+            TaskStackChangeListeners.getInstance().registerTaskStackListener(mPipListener);
+            runOnDestroy(() -> {
+                try {
+                    TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mPipListener);
+                } catch (Throwable t) {
+                    android.util.Log.w("RecentsAnimDeviceState", "Failed to unregister TaskStackListener", t);
+                }
+            });
+        } catch (Throwable t) {
+            android.util.Log.w("RecentsAnimDeviceState", "Failed to register TaskStackListener", t);
+        }
     }
 
     private void runOnDestroy(Runnable action) {

@@ -82,8 +82,8 @@ class QuickstepInteractionHandler implements RemoteViews.InteractionHandler {
                                 pendingIntent.getCreatorPackage(),
                                 activityOptions.options.getRemoteAnimationAdapter(),
                                 launchCookie);
-            } catch (RemoteException e) {
-                // Do nothing.
+            } catch (Throwable e) {
+                // Do nothing if ActivityTaskManager is unavailable on OEM ROMs.
             }
         }
         activityOptions.options.setPendingIntentLaunchFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

@@ -30,6 +30,7 @@ import static com.android.launcher3.util.NavigationMode.THREE_BUTTONS;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.OrientationEventListener;
 
@@ -154,9 +155,8 @@ public class RotationTouchHelper implements DisplayInfoChangeListener {
                 () -> {
                     try {
                         return QuickStepContract.getWindowCornerRadius(mContext);
-                    } catch (UnsupportedOperationException e) {
-                        // Non-visual context (e.g. Application) on API 36+:
-                        // context.getDisplay() throws. Return 0 as a safe fallback.
+                    } catch (Throwable e) {
+                        // Non-visual context or unavailable on OEM ROMs: return 0 as fallback
                         return 0f;
                     }
                 });
@@ -190,14 +190,27 @@ public class RotationTouchHelper implements DisplayInfoChangeListener {
     }
 
     private void setupOrientationSwipeHandler() {
-        TaskStackChangeListeners.getInstance().registerTaskStackListener(mFrozenTaskListener);
-        mOnDestroyFrozenTaskRunnable = () -> TaskStackChangeListeners.getInstance()
-                .unregisterTaskStackListener(mFrozenTaskListener);
+        try {
+            TaskStackChangeListeners.getInstance().registerTaskStackListener(mFrozenTaskListener);
+        } catch (Throwable t) {
+            Log.w("RotationTouchHelper", "Failed to register TaskStackListener", t);
+        }
+        mOnDestroyFrozenTaskRunnable = () -> {
+            try {
+                TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mFrozenTaskListener);
+            } catch (Throwable t) {
+                Log.w("RotationTouchHelper", "Failed to unregister TaskStackListener", t);
+            }
+        };
         runOnDestroy(mOnDestroyFrozenTaskRunnable);
     }
 
     private void destroyOrientationSwipeHandlerCallback() {
-        TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mFrozenTaskListener);
+        try {
+            TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mFrozenTaskListener);
+        } catch (Throwable t) {
+            Log.w("RotationTouchHelper", "Failed to unregister TaskStackListener", t);
+        }
         mOnDestroyActions.remove(mOnDestroyFrozenTaskRunnable);
     }
 
