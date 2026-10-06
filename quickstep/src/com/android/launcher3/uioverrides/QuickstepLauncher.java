@@ -1155,23 +1155,40 @@ public class QuickstepLauncher extends Launcher {
 
     @Override
     public ActivityOptionsWrapper getActivityLaunchOptions(View v, @Nullable ItemInfo item) {
-        ActivityOptionsWrapper activityOptions = mAppTransitionManager.getActivityLaunchOptions(v);
+        ActivityOptionsWrapper activityOptions;
+        try {
+            activityOptions = mAppTransitionManager.getActivityLaunchOptions(v);
+        } catch (Throwable t) {
+            activityOptions = makeDefaultActivityOptions(-1);
+        }
         if (mLastTouchUpTime > 0) {
-            activityOptions.options.setSourceInfo(ActivityOptions.SourceInfo.TYPE_LAUNCHER,
-                    mLastTouchUpTime);
+            try {
+                activityOptions.options.setSourceInfo(ActivityOptions.SourceInfo.TYPE_LAUNCHER,
+                        mLastTouchUpTime);
+            } catch (Throwable ignored) {
+            }
         }
-        if (item != null && (item.animationType == DEFAULT_NO_ICON
-                || item.animationType == VIEW_BACKGROUND)) {
-            activityOptions.options.setSplashScreenStyle(
-                    SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR);
-        } else {
-            activityOptions.options.setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_ICON);
+        try {
+            if (item != null && (item.animationType == DEFAULT_NO_ICON
+                    || item.animationType == VIEW_BACKGROUND)) {
+                activityOptions.options.setSplashScreenStyle(
+                        SplashScreen.SPLASH_SCREEN_STYLE_SOLID_COLOR);
+            } else {
+                activityOptions.options.setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_ICON);
+            }
+        } catch (Throwable ignored) {
         }
-        activityOptions.options.setLaunchDisplayId(
-                (v != null && v.getDisplay() != null) ? v.getDisplay().getDisplayId()
-                        : Display.DEFAULT_DISPLAY);
-        activityOptions.options.setPendingIntentBackgroundActivityStartMode(
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+        try {
+            activityOptions.options.setLaunchDisplayId(
+                    (v != null && v.getDisplay() != null) ? v.getDisplay().getDisplayId()
+                            : Display.DEFAULT_DISPLAY);
+        } catch (Throwable ignored) {
+        }
+        try {
+            activityOptions.options.setPendingIntentBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+        } catch (Throwable ignored) {
+        }
         addLaunchCookie(item, activityOptions.options);
         return activityOptions;
     }
@@ -1179,14 +1196,31 @@ public class QuickstepLauncher extends Launcher {
     @Override
     public ActivityOptionsWrapper makeDefaultActivityOptions(int splashScreenStyle) {
         RunnableList callbacks = new RunnableList();
-        ActivityOptions options = ActivityOptions.makeCustomAnimation(this, 0, 0);
-        options.setSplashScreenStyle(splashScreenStyle);
-        options.setPendingIntentBackgroundActivityStartMode(
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+        ActivityOptions options;
+        try {
+            options = ActivityOptions.makeCustomAnimation(this, 0, 0);
+        } catch (Throwable t) {
+            options = ActivityOptions.makeBasic();
+        }
+        try {
+            options.setSplashScreenStyle(splashScreenStyle);
+        } catch (Throwable ignored) {
+        }
+        try {
+            options.setPendingIntentBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+        } catch (Throwable ignored) {
+        }
 
         IRemoteCallback endCallback = completeRunnableListCallback(callbacks);
-        options.setOnAnimationAbortListener(endCallback);
-        options.setOnAnimationFinishedListener(endCallback);
+        try {
+            options.setOnAnimationAbortListener(endCallback);
+        } catch (Throwable ignored) {
+        }
+        try {
+            options.setOnAnimationFinishedListener(endCallback);
+        } catch (Throwable ignored) {
+        }
         return new ActivityOptionsWrapper(options, callbacks);
     }
 
@@ -1203,9 +1237,12 @@ public class QuickstepLauncher extends Launcher {
      * @param opts the options to set the launchCookie on.
      */
     public void addLaunchCookie(ItemInfo info, ActivityOptions opts) {
-        IBinder launchCookie = getLaunchCookie(info);
-        if (launchCookie != null) {
-            opts.setLaunchCookie(launchCookie);
+        try {
+            IBinder launchCookie = getLaunchCookie(info);
+            if (launchCookie != null && opts != null) {
+                opts.setLaunchCookie(launchCookie);
+            }
+        } catch (Throwable ignored) {
         }
     }
 

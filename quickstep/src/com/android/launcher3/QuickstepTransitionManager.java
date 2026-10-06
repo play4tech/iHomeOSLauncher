@@ -380,19 +380,40 @@ public class QuickstepTransitionManager implements OnDeviceProfileChangeListener
 
         long statusBarTransitionDelay = duration - STATUS_BAR_TRANSITION_DURATION
                 - STATUS_BAR_TRANSITION_PRE_DELAY;
-        boolean hasPermission = mLauncher.checkSelfPermission(
-                "android.permission.CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS")
-                == android.content.pm.PackageManager.PERMISSION_GRANTED;
-        ActivityOptions options = hasPermission
-                ? ActivityOptions.makeRemoteAnimation(
+        boolean hasPermission = false;
+        try {
+            hasPermission = mLauncher.checkSelfPermission(
+                    "android.permission.CONTROL_REMOTE_APP_TRANSITION_ANIMATIONS")
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        } catch (Throwable ignored) {
+        }
+        ActivityOptions options = null;
+        try {
+            if (hasPermission) {
+                options = ActivityOptions.makeRemoteAnimation(
                         new RemoteAnimationAdapter(runner, duration, statusBarTransitionDelay),
                         new RemoteTransition(runner.toRemoteTransition(),
-                                mLauncher.getIApplicationThread(), "QuickstepLaunch"))
-                : ActivityOptions.makeClipRevealAnimation(v, 0, 0,
+                                mLauncher.getIApplicationThread(), "QuickstepLaunch"));
+            }
+        } catch (Throwable ignored) {
+        }
+        if (options == null) {
+            try {
+                options = ActivityOptions.makeClipRevealAnimation(v, 0, 0,
                         v.getMeasuredWidth(), v.getMeasuredHeight());
+            } catch (Throwable ignored) {
+                options = ActivityOptions.makeBasic();
+            }
+        }
         IRemoteCallback endCallback = completeRunnableListCallback(onEndCallback);
-        options.setOnAnimationAbortListener(endCallback);
-        options.setOnAnimationFinishedListener(endCallback);
+        try {
+            options.setOnAnimationAbortListener(endCallback);
+        } catch (Throwable ignored) {
+        }
+        try {
+            options.setOnAnimationFinishedListener(endCallback);
+        } catch (Throwable ignored) {
+        }
         return new ActivityOptionsWrapper(options, onEndCallback);
     }
 

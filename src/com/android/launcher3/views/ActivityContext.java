@@ -392,11 +392,16 @@ public interface ActivityContext {
         if (isShortcut && GO_DISABLE_WIDGETS) {
             return null;
         }
-        ActivityOptionsWrapper options = v != null ? getActivityLaunchOptions(v, item)
-                : makeDefaultActivityOptions(item != null && item.animationType == DEFAULT_NO_ICON
-                        ? SPLASH_SCREEN_STYLE_SOLID_COLOR : -1 /* SPLASH_SCREEN_STYLE_UNDEFINED */);
+        ActivityOptionsWrapper options = null;
+        try {
+            options = v != null ? getActivityLaunchOptions(v, item)
+                    : makeDefaultActivityOptions(item != null && item.animationType == DEFAULT_NO_ICON
+                            ? SPLASH_SCREEN_STYLE_SOLID_COLOR : -1 /* SPLASH_SCREEN_STYLE_UNDEFINED */);
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to get activity launch options, using fallback", t);
+        }
         UserHandle user = item == null ? null : item.user;
-        Bundle optsBundle = options.toBundle();
+        Bundle optsBundle = options != null ? options.toBundle() : null;
         // Prepare intent
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         if (v != null) {
@@ -419,9 +424,20 @@ public interface ActivityContext {
                 InstanceId instanceId = new InstanceIdSequence().newInstanceId();
                 logAppLaunch(getStatsLogManager(), item, instanceId);
             }
-            return options.onEndCallback;
-        } catch (NullPointerException | ActivityNotFoundException | SecurityException e) {
-            Toast.makeText(context, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            return options != null ? options.onEndCallback : null;
+        } catch (Throwable e) {
+            if (optsBundle != null) {
+                try {
+                    if (user == null || user.equals(Process.myUserHandle())) {
+                        context.startActivity(intent);
+                        return null;
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+            if (e instanceof ActivityNotFoundException) {
+                Toast.makeText(context, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            }
             Log.e(TAG, "Unable to launch. tag=" + item + " intent=" + intent, e);
         }
         return null;

@@ -766,13 +766,30 @@ public class TaskbarActivityContext extends BaseTaskbarContext {
     @Override
     public ActivityOptionsWrapper makeDefaultActivityOptions(int splashScreenStyle) {
         RunnableList callbacks = new RunnableList();
-        ActivityOptions options = ActivityOptions.makeCustomAnimation(this, 0, 0);
-        options.setSplashScreenStyle(splashScreenStyle);
-        options.setPendingIntentBackgroundActivityStartMode(
-                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+        ActivityOptions options;
+        try {
+            options = ActivityOptions.makeCustomAnimation(this, 0, 0);
+        } catch (Throwable t) {
+            options = ActivityOptions.makeBasic();
+        }
+        try {
+            options.setSplashScreenStyle(splashScreenStyle);
+        } catch (Throwable ignored) {
+        }
+        try {
+            options.setPendingIntentBackgroundActivityStartMode(
+                    ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+        } catch (Throwable ignored) {
+        }
         IRemoteCallback endCallback = completeRunnableListCallback(callbacks);
-        options.setOnAnimationAbortListener(endCallback);
-        options.setOnAnimationFinishedListener(endCallback);
+        try {
+            options.setOnAnimationAbortListener(endCallback);
+        } catch (Throwable ignored) {
+        }
+        try {
+            options.setOnAnimationFinishedListener(endCallback);
+        } catch (Throwable ignored) {
+        }
 
         return new ActivityOptionsWrapper(options, callbacks);
     }
