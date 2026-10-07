@@ -39,7 +39,10 @@ class PreviewDockGlassView @JvmOverloads constructor(
 ) : LiquidGlassView(context, attrs), BorderedGlassView {
 
     private val continuousGeometry = ContinuousCornerGeometry()
-    private val cornerRadiusDp: Float = 30f
+
+    private fun getCornerRadius(h: Float): Float {
+        return if (h > 0f) h * 0.35f else 30f * resources.displayMetrics.density
+    }
 
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
@@ -66,7 +69,7 @@ class PreviewDockGlassView @JvmOverloads constructor(
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 if (view.width <= 0 || view.height <= 0) return
-                val radius = cornerRadiusDp * resources.displayMetrics.density
+                val radius = getCornerRadius(view.height.toFloat())
                 outline.setRoundRect(0, 0, view.width, view.height, radius)
             }
         }
@@ -75,8 +78,7 @@ class PreviewDockGlassView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        val radius = cornerRadiusDp * resources.displayMetrics.density
-        cornerRadius = radius
+        cornerRadius = getCornerRadius(h.toFloat())
     }
 
     override fun draw(canvas: Canvas) {
@@ -84,7 +86,7 @@ class PreviewDockGlassView @JvmOverloads constructor(
             super.draw(canvas)
             return
         }
-        val radius = cornerRadiusDp * resources.displayMetrics.density
+        val radius = getCornerRadius(height.toFloat())
         if (cornerRadius != radius) {
             cornerRadius = radius
         }

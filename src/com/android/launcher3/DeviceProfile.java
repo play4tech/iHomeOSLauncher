@@ -2038,7 +2038,7 @@ public class DeviceProfile {
         }
 
         int dockHeight = hotseatCellHeightPx + (2 * dockPaddingVertical);
-        float cornerRadius = dockHeight / 2f;
+        float cornerRadius = dockHeight * 0.35f;
 
         Rect bounds = new Rect(
                 dockSideMargin,
