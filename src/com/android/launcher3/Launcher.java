@@ -1528,6 +1528,10 @@ public class Launcher extends StatefulActivity<LauncherState>
             if (mBlurLayer != null) mBlurLayer.setAlpha(1f);
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            foundation.e.bliss.glass.PortraitSensorHighlightController.ensureStarted(this);
+        }
+
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
             try {
                 Intent onboardingIntent = new Intent(this,
@@ -1563,6 +1567,9 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
         mAppWidgetHolder.setActivityResumed(false);
         mAppMonitor.onLauncherPaused();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            foundation.e.bliss.glass.PortraitSensorHighlightController.stopIfNoViews();
+        }
         hideWidgetResizeContainer();
     }
 
@@ -1634,6 +1641,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             boolean glassEnabled = getSharedPrefs()
                 .getBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, true);
             mDockGlassController.setEnabled(glassEnabled);
+            foundation.e.bliss.glass.PortraitSensorHighlightController.ensureStarted(this);
         }
 
         // Setup the drag layer

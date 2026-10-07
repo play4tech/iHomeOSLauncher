@@ -198,6 +198,7 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        GlassConfig.registerView(this);
         View root = getRootView();
         if (root != null) {
             View target = root.findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
@@ -213,6 +214,7 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        GlassConfig.unregisterView(this);
         setBackdropSource(null);
     }
 
@@ -229,11 +231,14 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
             super.draw(canvas);
             return;
         }
+        float radius = h / 2f;
+        if (getCornerRadius() != radius) {
+            setCornerRadius(radius);
+        }
         if (w != mCachedW || h != mCachedH) {
             mCachedW = w;
             mCachedH = h;
             mClipPath.rewind();
-            float radius = h / 2f;
             mClipRect.set(0, 0, w, h);
             mClipPath.addRoundRect(mClipRect, radius, radius, Path.Direction.CW);
         }

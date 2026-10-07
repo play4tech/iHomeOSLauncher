@@ -11,10 +11,15 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewOutlineProvider;
 
-import com.android.launcher3.graphics.IconShape;
+import android.view.ViewGroup;
+import android.view.ViewParent;
+
+import com.android.launcher3.R;
 import com.example.liquidglass.LiquidGlassView;
 import foundation.e.bliss.glass.BorderedGlassView;
 import foundation.e.bliss.glass.GlassConfig;
+import foundation.e.bliss.graphics.ContinuousCornerGeometry;
+import foundation.e.bliss.graphics.GlassShapeSpec;
 
 public class AppLibraryCategoryGlassView extends LiquidGlassView implements BorderedGlassView {
 
@@ -171,25 +176,36 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         mWhiteBorderFadeSpread = whiteBorderFadeSpread;
     }
 
+    private final ContinuousCornerGeometry mGeometry = new ContinuousCornerGeometry();
     private final Path mClipPath = new Path();
     private float mCachedW = -1;
     private float mCachedH = -1;
+    private float mCachedRadius = -1;
+
+    public float getTargetRadius(float w, float h) {
+        if (w <= 0 || h <= 0) return 0f;
+        // iOS category pods (and widgets) use a 26dp continuous squircle radius
+        float baseRadius = 26f * getResources().getDisplayMetrics().density;
+        return Math.min(baseRadius, Math.min(w, h) * 0.22f);
+    }
 
     private Path updatePath(float w, float h) {
-        if (w == mCachedW && h == mCachedH && !mClipPath.isEmpty()) {
+        float radius = getTargetRadius(w, h);
+        if (w == mCachedW && h == mCachedH && radius == mCachedRadius && !mClipPath.isEmpty()) {
             return mClipPath;
         }
         mCachedW = w;
         mCachedH = h;
+        mCachedRadius = radius;
         mClipPath.rewind();
         if (w <= 0 || h <= 0) return mClipPath;
-        float radius = Math.min(w, h) / 2f;
-        IconShape.getShape().addToPath(mClipPath, 0f, 0f, radius);
+        Path path = mGeometry.getPath(w, h, radius, GlassShapeSpec.IOS_SMOOTHING);
+        mClipPath.set(path);
         return mClipPath;
     }
 
     private void init() {
-        setClipToOutline(true);
+        setClipToOutline(false);
 
         setOutlineProvider(new ViewOutlineProvider() {
             @Override
@@ -197,8 +213,8 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
                 float w = view.getWidth();
                 float h = view.getHeight();
                 if (w <= 0 || h <= 0) return;
-                Path path = updatePath(w, h);
-                outline.setConvexPath(path);
+                float radius = getTargetRadius(w, h);
+                outline.setRoundRect(0, 0, (int) w, (int) h, radius);
             }
         });
 
@@ -215,14 +231,17 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        View root = getRootView();
-        if (root != null) {
-            View target = root.findViewById(com.android.launcher3.R.id.glass_wallpaper_proxy);
-            if (target == null) {
-                target = root.findViewById(com.android.launcher3.R.id.glass_source);
-            }
-            if (target != null) {
-                setBackdropSource(target);
+        GlassConfig.registerView(this);
+        if (getBackdropSource() == null) {
+            View proxy = findWallpaperProxy();
+            if (proxy != null) {
+                setBackdropSource(proxy);
+            } else {
+                post(() -> {
+                    if (getBackdropSource() == null) {
+                        setBackdropSource(findWallpaperProxy());
+                    }
+                });
             }
         }
     }
@@ -230,7 +249,36 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        GlassConfig.unregisterView(this);
         setBackdropSource(null);
+    }
+
+    private View findWallpaperProxy() {
+        View root = getRootView();
+        if (root != null) {
+            View proxy = root.findViewById(R.id.glass_wallpaper_proxy);
+            if (proxy != null) return proxy;
+            View source = root.findViewById(R.id.glass_source);
+            if (source != null) return source;
+        }
+        ViewParent p = getParent();
+        while (p instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) p;
+            View proxy = vg.findViewById(R.id.glass_wallpaper_proxy);
+            if (proxy != null) return proxy;
+            View source = vg.findViewById(R.id.glass_source);
+            if (source != null) return source;
+            p = vg.getParent();
+        }
+        return null;
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+        if (w > 0 && h > 0) {
+            setCornerRadius(getTargetRadius(w, h));
+        }
     }
 
     @Override
@@ -241,12 +289,14 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
             super.draw(canvas);
             return;
         }
-        Path path = updatePath(w, h);
-        canvas.save();
-        canvas.clipPath(path);
+        float targetRadius = getTargetRadius(w, h);
+        if (getCornerRadius() != targetRadius) {
+            setCornerRadius(targetRadius);
+        }
         super.draw(canvas);
 
         if (mBorderEnabled && mBorderWidthPx > 0f && mBorderOpacity > 0f) {
+            Path path = updatePath(w, h);
             GlassConfig.drawBorder(
                 canvas, path, mBorderPaint,
                 mBorderWidthPx, mBorderOpacity, mBorderFade,
@@ -256,6 +306,7 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         }
 
         if (mWhiteBorderEnabled && mWhiteBorderWidthPx > 0f && mWhiteBorderOpacity > 0f) {
+            Path path = updatePath(w, h);
             GlassConfig.drawBorder(
                 canvas, path, mWhiteBorderPaint,
                 mWhiteBorderWidthPx, mWhiteBorderOpacity, mWhiteBorderFade,
@@ -263,7 +314,5 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
                 h
             );
         }
-
-        canvas.restore();
     }
 }

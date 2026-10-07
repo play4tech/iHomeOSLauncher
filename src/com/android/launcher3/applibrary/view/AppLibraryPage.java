@@ -103,6 +103,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 invalidateGlassSurfaces();
             }
         });
+        mDashboardView.setOnOverscrollListener(translationY -> {
+            invalidateGlassSurfaces();
+        });
 
         Launcher launcher = Launcher.getLauncher(getContext());
         mSearchAdapter = new AppLibrarySearchAdapter(launcher);
@@ -457,20 +460,23 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             mSearchBackdropGlass.invalidate();
         }
         if (mDashboardView != null) {
-            for (int i = 0; i < mDashboardView.getChildCount(); i++) {
-                View child = mDashboardView.getChildAt(i);
-                if (child instanceof ViewGroup) {
-                    ViewGroup group = (ViewGroup) child;
-                    for (int j = 0; j < group.getChildCount(); j++) {
-                        View sub = group.getChildAt(j);
-                        if (sub instanceof CategoryCardView) {
-                            AppLibraryCategoryGlassView gv = ((CategoryCardView) sub).getGlassView();
-                            if (gv != null) {
-                                gv.invalidate();
-                            }
-                        }
-                    }
-                }
+            invalidateGlassRecursively(mDashboardView);
+        }
+    }
+
+    private void invalidateGlassRecursively(View v) {
+        if (v == null) return;
+        if (v instanceof CategoryCardView) {
+            AppLibraryCategoryGlassView gv = ((CategoryCardView) v).getGlassView();
+            if (gv != null) {
+                gv.invalidate();
+            }
+        } else if (v instanceof com.example.liquidglass.LiquidGlassView) {
+            v.invalidate();
+        } else if (v instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) v;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                invalidateGlassRecursively(group.getChildAt(i));
             }
         }
     }

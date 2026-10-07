@@ -181,6 +181,9 @@ public class StatusBarTouchController implements TouchController {
         if (mLauncher.getWorkspace() != null && mLauncher.getWorkspace().isWobbling()) {
             return false;
         }
+        if (mLauncher.getWorkspace() != null && mLauncher.getWorkspace().isAppLibraryCurrentPage()) {
+            return false;
+        }
         if (mLauncher.getDragController() != null && mLauncher.getDragController().isDragging()) {
             return false;
         }

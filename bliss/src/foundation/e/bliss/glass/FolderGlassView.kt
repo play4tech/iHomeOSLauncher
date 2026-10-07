@@ -22,6 +22,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Paint
+import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -29,6 +30,9 @@ import android.view.ViewOutlineProvider
 import com.android.launcher3.R
 import com.example.liquidglass.GlassMaterial
 import com.example.liquidglass.LiquidGlassView
+
+import foundation.e.bliss.graphics.ContinuousCornerGeometry
+import foundation.e.bliss.graphics.GlassShapeSpec
 
 /**
  * A [LiquidGlassView] for individual folder icon preview backgrounds.
@@ -40,8 +44,14 @@ import com.example.liquidglass.LiquidGlassView
  * Corner radius uses the iOS-matched ratio: minOf(w, h) * 0.225f, matching the system squircle
  * for app icons.
  */
-class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlassView {
+class FolderGlassView
+@JvmOverloads
+constructor(
+    context: Context,
+    attrs: AttributeSet? = null,
+) : LiquidGlassView(context, attrs), BorderedGlassView {
 
+    private val geometry = ContinuousCornerGeometry()
     private val cachedPath = android.graphics.Path()
     private var cachedW = 0f
     private var cachedH = 0f
@@ -75,24 +85,24 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
         cachedH = h
         cachedPath.rewind()
         if (w <= 0f || h <= 0f) return cachedPath
-        val radius = minOf(w, h) / 2f
-        com.android.launcher3.graphics.IconShape.getShape().addToPath(cachedPath, 0f, 0f, radius)
+        val radius = minOf(w, h) * 0.225f
+        val path = geometry.getPath(w, h, radius, GlassShapeSpec.IOS_SMOOTHING)
+        cachedPath.set(path)
         return cachedPath
     }
 
     init {
-        clipToOutline = true
-
         outlineProvider =
             object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) {
                     val w = view.width.toFloat()
                     val h = view.height.toFloat()
                     if (w <= 0 || h <= 0) return
-                    val path = updatePath(w, h)
-                    outline.setConvexPath(path)
+                    val radius = minOf(w, h) * 0.225f
+                    outline.setRoundRect(0, 0, view.width, view.height, radius)
                 }
             }
+        clipToOutline = false
 
         // Standard master glass parameters from GlassConfig (matches App Library category effect)
         GlassConfig.applyDefaultConfig(this)
@@ -101,6 +111,7 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        GlassConfig.registerView(this)
         if (backdropSource == null) {
             val proxy = findWallpaperProxy()
             if (proxy != null) {
@@ -117,6 +128,7 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        GlassConfig.unregisterView(this)
         backdropSource = null
     }
 
@@ -147,6 +159,13 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
         backdropSource = null
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        if (w > 0 && h > 0) {
+            cornerRadius = minOf(w, h) * 0.225f
+        }
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         // Never consume touches so folder tap/long-press/drag passes to FolderIcon
         return false
@@ -159,12 +178,14 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
             super.draw(canvas)
             return
         }
-        val path = updatePath(w, h)
-        canvas.save()
-        canvas.clipPath(path)
+        val targetRadius = minOf(w, h) * 0.225f
+        if (cornerRadius != targetRadius) {
+            cornerRadius = targetRadius
+        }
         super.draw(canvas)
 
         if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+            val path = updatePath(w, h)
             GlassConfig.drawBorder(
                 canvas, path, borderPaint,
                 borderWidthPx, borderOpacity, borderFade,
@@ -174,6 +195,7 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
         }
 
         if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
+            val path = updatePath(w, h)
             GlassConfig.drawBorder(
                 canvas, path, whiteBorderPaint,
                 whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
@@ -181,7 +203,5 @@ class FolderGlassView(context: Context) : LiquidGlassView(context), BorderedGlas
                 h
             )
         }
-
-        canvas.restore()
     }
 }

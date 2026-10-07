@@ -45,10 +45,29 @@ class ContinuousCornerGeometry {
             cachedPath.rewind()
             return cachedPath
         }
+        val halfMin = minOf(width, height) / 2f
+        if (radius >= halfMin * 0.95f) {
+            if (
+                width == cachedWidth &&
+                height == cachedHeight &&
+                radius == cachedRadius &&
+                smoothing == cachedSmoothing
+            ) {
+                return cachedPath
+            }
+            cachedWidth = width
+            cachedHeight = height
+            cachedRadius = radius
+            cachedSmoothing = smoothing
+            cachedPath.rewind()
+            cachedPath.addRoundRect(0f, 0f, width, height, halfMin, halfMin, Path.Direction.CW)
+            return cachedPath
+        }
+
         // Clamp radius taking smoothing factor into account to prevent overlapping corner curves.
         // RoundedPolygon throws "Can't get the direction of a 0-length vector" when
         // corners overlap and collapse an edge to zero length.
-        val maxSafeRadius = (minOf(width, height) / 2f) / (1f + smoothing * 0.5f)
+        val maxSafeRadius = halfMin / (1f + smoothing * 0.5f)
         val safeRadius = radius.coerceIn(0f, maxSafeRadius)
 
         if (

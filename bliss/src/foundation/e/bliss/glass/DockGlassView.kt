@@ -83,19 +83,41 @@ constructor(
                         ActivityContext.lookupContext<com.android.launcher3.Launcher>(context)
                             .deviceProfile
                     if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
-                        val path =
-                            continuousGeometry.getPath(
-                                width = view.width.toFloat(),
-                                height = view.height.toFloat(),
-                                radius = grid.hotseatGeometry.cornerRadius
-                            )
-                        outline.setConvexPath(path)
+                        outline.setRoundRect(
+                            0,
+                            0,
+                            view.width,
+                            view.height,
+                            grid.hotseatGeometry.cornerRadius
+                        )
                     } else {
                         outline.setRect(0, 0, view.width, view.height)
                     }
                 }
             }
-        clipToOutline = true
+        // Do NOT clip to outline. The AGSL shader performs subpixel anti-aliasing
+        // (cov = clamp(0.5 - d / 1.5, 0.0, 1.0)) and renders specular caustics at the rim.
+        // Hardware outline clipping introduces jagged 1-bit edges and cuts off the specular glow.
+        clipToOutline = false
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        GlassConfig.registerView(this)
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        GlassConfig.unregisterView(this)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val grid =
+            ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
+        if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
+            cornerRadius = grid.hotseatGeometry.cornerRadius
+        }
     }
 
     override fun setInsets(insets: Rect) {
@@ -112,17 +134,19 @@ constructor(
                 lp.gravity = Gravity.RIGHT
                 lp.width = grid.hotseatBarSizePx + insets.right
             }
+            cornerRadius = 0f
         } else if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
             lp.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
             lp.width = grid.hotseatGeometry.bounds.width()
             lp.height = grid.hotseatGeometry.bounds.height()
             lp.bottomMargin = insets.bottom + grid.hotseatBarBottomSpacePx
-            cornerRadius = 0f
+            cornerRadius = grid.hotseatGeometry.cornerRadius
         } else {
             lp.gravity = Gravity.BOTTOM
             lp.width = ViewGroup.LayoutParams.MATCH_PARENT
             lp.height = grid.hotseatBarSizePx
             lp.bottomMargin = 0
+            cornerRadius = 0f
         }
         layoutParams = lp
     }
@@ -131,17 +155,24 @@ constructor(
         val grid =
             ActivityContext.lookupContext<com.android.launcher3.Launcher>(context).deviceProfile
         if (grid.isFloatingDockEnabled && grid.hotseatGeometry != null) {
-            val path =
-                continuousGeometry.getPath(
-                    width = width.toFloat(),
-                    height = height.toFloat(),
-                    radius = grid.hotseatGeometry.cornerRadius
-                )
-            canvas.save()
-            canvas.clipPath(path)
+            val targetRadius = grid.hotseatGeometry.cornerRadius
+            if (cornerRadius != targetRadius) {
+                cornerRadius = targetRadius
+            }
+
+            // LiquidGlassView's API 33+ AGSL shader computes the signed distance field (SDF)
+            // for the capsule shape, surface normal gradient, inverse-power refraction falloff,
+            // chromatic dispersion, and directional specular rim highlights with 1.5px subpixel
+            // anti-aliasing. We do NOT clip the canvas with clipPath() because that would slice
+            // off the optical rim and caustics.
             super.draw(canvas)
 
             if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+                val path = continuousGeometry.getPath(
+                    width = width.toFloat(),
+                    height = height.toFloat(),
+                    radius = targetRadius
+                )
                 GlassConfig.drawBorder(
                     canvas, path, borderPaint,
                     borderWidthPx, borderOpacity, borderFade,
@@ -151,6 +182,11 @@ constructor(
             }
 
             if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
+                val path = continuousGeometry.getPath(
+                    width = width.toFloat(),
+                    height = height.toFloat(),
+                    radius = targetRadius
+                )
                 GlassConfig.drawBorder(
                     canvas, path, whiteBorderPaint,
                     whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
@@ -158,8 +194,6 @@ constructor(
                     height.toFloat()
                 )
             }
-
-            canvas.restore()
         } else {
             super.draw(canvas)
         }

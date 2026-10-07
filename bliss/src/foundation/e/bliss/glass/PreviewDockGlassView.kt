@@ -67,15 +67,16 @@ class PreviewDockGlassView @JvmOverloads constructor(
             override fun getOutline(view: View, outline: Outline) {
                 if (view.width <= 0 || view.height <= 0) return
                 val radius = cornerRadiusDp * resources.displayMetrics.density
-                val path = continuousGeometry.getPath(
-                    width = view.width.toFloat(),
-                    height = view.height.toFloat(),
-                    radius = radius
-                )
-                outline.setConvexPath(path)
+                outline.setRoundRect(0, 0, view.width, view.height, radius)
             }
         }
-        clipToOutline = true
+        clipToOutline = false
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        val radius = cornerRadiusDp * resources.displayMetrics.density
+        cornerRadius = radius
     }
 
     override fun draw(canvas: Canvas) {
@@ -84,16 +85,17 @@ class PreviewDockGlassView @JvmOverloads constructor(
             return
         }
         val radius = cornerRadiusDp * resources.displayMetrics.density
-        val path = continuousGeometry.getPath(
-            width = width.toFloat(),
-            height = height.toFloat(),
-            radius = radius
-        )
-        canvas.save()
-        canvas.clipPath(path)
+        if (cornerRadius != radius) {
+            cornerRadius = radius
+        }
         super.draw(canvas)
 
         if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+            val path = continuousGeometry.getPath(
+                width = width.toFloat(),
+                height = height.toFloat(),
+                radius = radius
+            )
             GlassConfig.drawBorder(
                 canvas, path, borderPaint,
                 borderWidthPx, borderOpacity, borderFade,
@@ -103,6 +105,11 @@ class PreviewDockGlassView @JvmOverloads constructor(
         }
 
         if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
+            val path = continuousGeometry.getPath(
+                width = width.toFloat(),
+                height = height.toFloat(),
+                radius = radius
+            )
             GlassConfig.drawBorder(
                 canvas, path, whiteBorderPaint,
                 whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
@@ -110,8 +117,6 @@ class PreviewDockGlassView @JvmOverloads constructor(
                 height.toFloat()
             )
         }
-
-        canvas.restore()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {

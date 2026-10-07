@@ -38,30 +38,30 @@ import com.example.liquidglass.LiquidGlassView
  */
 object GlassConfig {
 
-    // --- Default Parameter Constants (iOS 26 Liquid Glass defaults from QWEA0) ---
-    const val DEFAULT_REFRACTION_HEIGHT: Float = 160f
-    const val DEFAULT_BEVEL_WIDTH: Float = 48f
+    // --- Default Parameter Constants (iOS 26 Liquid Glass tuned defaults) ---
+    const val DEFAULT_REFRACTION_HEIGHT: Float = 24f
+    const val DEFAULT_BEVEL_WIDTH: Float = 28f
     const val DEFAULT_REFRACTION_FALLOFF: Float = 2f
-    const val DEFAULT_DISPERSION_STRENGTH: Float = 0.10f
-    const val DEFAULT_BLUR_AMOUNT: Float = 0.0625f
+    const val DEFAULT_DISPERSION_STRENGTH: Float = 0.06f
+    const val DEFAULT_BLUR_AMOUNT: Float = 1.25f
     const val DEFAULT_SATURATION: Float = 140f
     const val DEFAULT_ABERRATION_INTENSITY: Float = 2f
     const val DEFAULT_DISPLACEMENT_SCALE: Float = 70f
     const val DEFAULT_ELASTICITY: Float = 0.15f
-    const val DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH: Float = 1.5f
+    const val DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH: Float = 1.2f
     const val DEFAULT_EDGE_HIGHLIGHT_OPACITY: Float = 100f
     const val DEFAULT_EDGE_SOFTNESS: Float = 0f
     const val DEFAULT_ENABLE_EDGE_HIGHLIGHT: Boolean = true
     const val DEFAULT_ENABLE_SENSOR_HIGHLIGHT: Boolean = true
     const val DEFAULT_ENABLE_ADAPTIVE_TINT: Boolean = true
-    const val DEFAULT_REFRACTION_NO_FOLD: Boolean = false
+    const val DEFAULT_REFRACTION_NO_FOLD: Boolean = true
     const val DEFAULT_REFRACTION_OUTWARD: Boolean = false
     const val POSITION_SIDES: Int = 0
     const val POSITION_TOP: Int = 1
     const val POSITION_BOTTOM: Int = 2
     const val POSITION_ALL: Int = 3
 
-    const val DEFAULT_BORDER_ENABLED: Boolean = true
+    const val DEFAULT_BORDER_ENABLED: Boolean = false
     const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
     const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity
     const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at ends
@@ -75,10 +75,16 @@ object GlassConfig {
     const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_TOP
     const val DEFAULT_WHITE_BORDER_FADE_SPREAD: Float = 35f
 
+    // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
+    const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
+    const val CURRENT_CONFIG_VERSION: Int = 3
+
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
 
     // --- SharedPreferences Keys ---
+    const val PREF_KEY_CONFIG_VERSION = "pref_glass_config_version"
+    const val PREF_KEY_GLASS_TINT = "pref_glass_tint"
     const val PREF_KEY_REFRACTION_HEIGHT = "pref_glass_refraction_height"
     const val PREF_KEY_BEVEL_WIDTH = "pref_glass_bevel_width"
     const val PREF_KEY_REFRACTION_FALLOFF = "pref_glass_refraction_falloff"
@@ -130,6 +136,7 @@ object GlassConfig {
         var enableAdaptiveTint: Boolean = DEFAULT_ENABLE_ADAPTIVE_TINT,
         var refractionNoFold: Boolean = DEFAULT_REFRACTION_NO_FOLD,
         var refractionOutward: Boolean = DEFAULT_REFRACTION_OUTWARD,
+        var glassTint: Int = DEFAULT_GLASS_TINT,
         var borderEnabled: Boolean = DEFAULT_BORDER_ENABLED,
         var borderWidth: Float = DEFAULT_BORDER_WIDTH,
         var borderOpacity: Float = DEFAULT_BORDER_OPACITY,
@@ -148,16 +155,139 @@ object GlassConfig {
     @Volatile
     private var cachedSettings: GlassSettings? = null
 
+    private val registeredViews = java.util.Collections.newSetFromMap(
+        java.util.WeakHashMap<LiquidGlassView, Boolean>()
+    )
+
+    private var prefsListenerRegistered = false
+
+    private fun ensurePrefsListener(context: Context) {
+        if (!prefsListenerRegistered) {
+            try {
+                val prefs = LauncherPrefs.getPrefs(context.applicationContext)
+                prefs.registerOnSharedPreferenceChangeListener { _, key ->
+                    if (key != null && key.startsWith("pref_glass_")) {
+                        cachedSettings = null
+                        val newSettings = loadSettings(context)
+                        notifyAllViews(context, newSettings)
+                    }
+                }
+                prefsListenerRegistered = true
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+    }
+
+    @JvmStatic
+    fun registerView(view: LiquidGlassView) {
+        val wasEmpty = synchronized(registeredViews) {
+            val empty = registeredViews.isEmpty()
+            registeredViews.add(view)
+            empty
+        }
+        val settings = loadSettings(view.context)
+        applyConfig(view, settings)
+        if (settings.enableSensorHighlight) {
+            PortraitSensorHighlightController.ensureStarted(view.context)
+        }
+    }
+
+    @JvmStatic
+    fun unregisterView(view: LiquidGlassView) {
+        val isEmpty = synchronized(registeredViews) {
+            registeredViews.remove(view)
+            registeredViews.isEmpty()
+        }
+        if (isEmpty) {
+            PortraitSensorHighlightController.stopIfNoViews()
+        }
+    }
+
+    @JvmStatic
+    fun notifyAllViews(context: Context, settings: GlassSettings) {
+        val viewsCopy = synchronized(registeredViews) {
+            registeredViews.toList()
+        }
+        for (v in viewsCopy) {
+            try {
+                applyConfig(v, settings)
+                v.invalidate()
+            } catch (e: Exception) {
+                // ignore recycled or detached views
+            }
+        }
+    }
+
     @JvmStatic
     fun loadSettings(context: Context): GlassSettings {
+        ensurePrefsListener(context)
         cachedSettings?.let { return it.copy() }
         val prefs = LauncherPrefs.getPrefs(context)
+        val configVersion = prefs.getInt(PREF_KEY_CONFIG_VERSION, 0)
+        val isMigrated = configVersion >= CURRENT_CONFIG_VERSION
+
+        val borderEnabledVal = if (isMigrated) {
+            prefs.getBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED)
+        } else {
+            DEFAULT_BORDER_ENABLED
+        }
+
+        val glassTintVal = if (isMigrated) {
+            prefs.getInt(PREF_KEY_GLASS_TINT, DEFAULT_GLASS_TINT)
+        } else {
+            DEFAULT_GLASS_TINT
+        }
+
+        val refractionHeightVal = if (isMigrated) {
+            prefs.getFloat(PREF_KEY_REFRACTION_HEIGHT, DEFAULT_REFRACTION_HEIGHT)
+        } else {
+            DEFAULT_REFRACTION_HEIGHT
+        }
+
+        val bevelWidthVal = if (isMigrated) {
+            prefs.getFloat(PREF_KEY_BEVEL_WIDTH, DEFAULT_BEVEL_WIDTH)
+        } else {
+            DEFAULT_BEVEL_WIDTH
+        }
+
+        val blurAmountVal = if (isMigrated) {
+            prefs.getFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT)
+        } else {
+            DEFAULT_BLUR_AMOUNT
+        }
+
+        val dispersionStrengthVal = if (isMigrated) {
+            prefs.getFloat(PREF_KEY_DISPERSION_STRENGTH, DEFAULT_DISPERSION_STRENGTH)
+        } else {
+            DEFAULT_DISPERSION_STRENGTH
+        }
+
+        val refractionNoFoldVal = if (isMigrated) {
+            prefs.getBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD)
+        } else {
+            DEFAULT_REFRACTION_NO_FOLD
+        }
+
+        if (!isMigrated) {
+            prefs.edit()
+                .putInt(PREF_KEY_CONFIG_VERSION, CURRENT_CONFIG_VERSION)
+                .putBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED)
+                .putInt(PREF_KEY_GLASS_TINT, DEFAULT_GLASS_TINT)
+                .putFloat(PREF_KEY_REFRACTION_HEIGHT, DEFAULT_REFRACTION_HEIGHT)
+                .putFloat(PREF_KEY_BEVEL_WIDTH, DEFAULT_BEVEL_WIDTH)
+                .putFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT)
+                .putFloat(PREF_KEY_DISPERSION_STRENGTH, DEFAULT_DISPERSION_STRENGTH)
+                .putBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD)
+                .apply()
+        }
+
         val settings = GlassSettings(
-            refractionHeight = prefs.getFloat(PREF_KEY_REFRACTION_HEIGHT, DEFAULT_REFRACTION_HEIGHT),
-            bevelWidth = prefs.getFloat(PREF_KEY_BEVEL_WIDTH, DEFAULT_BEVEL_WIDTH),
+            refractionHeight = refractionHeightVal,
+            bevelWidth = bevelWidthVal,
             refractionFalloff = prefs.getFloat(PREF_KEY_REFRACTION_FALLOFF, DEFAULT_REFRACTION_FALLOFF),
-            dispersionStrength = prefs.getFloat(PREF_KEY_DISPERSION_STRENGTH, DEFAULT_DISPERSION_STRENGTH),
-            blurAmount = prefs.getFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT),
+            dispersionStrength = dispersionStrengthVal,
+            blurAmount = blurAmountVal,
             saturation = prefs.getFloat(PREF_KEY_SATURATION, DEFAULT_SATURATION),
             aberrationIntensity = prefs.getFloat(PREF_KEY_ABERRATION_INTENSITY, DEFAULT_ABERRATION_INTENSITY),
             displacementScale = prefs.getFloat(PREF_KEY_DISPLACEMENT_SCALE, DEFAULT_DISPLACEMENT_SCALE),
@@ -168,9 +298,10 @@ object GlassConfig {
             enableEdgeHighlight = prefs.getBoolean(PREF_KEY_ENABLE_EDGE_HIGHLIGHT, DEFAULT_ENABLE_EDGE_HIGHLIGHT),
             enableSensorHighlight = prefs.getBoolean(PREF_KEY_ENABLE_SENSOR_HIGHLIGHT, DEFAULT_ENABLE_SENSOR_HIGHLIGHT),
             enableAdaptiveTint = prefs.getBoolean(PREF_KEY_ENABLE_ADAPTIVE_TINT, DEFAULT_ENABLE_ADAPTIVE_TINT),
-            refractionNoFold = prefs.getBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD),
+            refractionNoFold = refractionNoFoldVal,
             refractionOutward = prefs.getBoolean(PREF_KEY_REFRACTION_OUTWARD, DEFAULT_REFRACTION_OUTWARD),
-            borderEnabled = prefs.getBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED),
+            glassTint = glassTintVal,
+            borderEnabled = borderEnabledVal,
             borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH).let {
                 if (it == 1.0f || it == 0.5f) DEFAULT_BORDER_WIDTH else it
             },
@@ -195,6 +326,8 @@ object GlassConfig {
         cachedSettings = settings.copy()
         val prefs = LauncherPrefs.getPrefs(context)
         prefs.edit()
+            .putInt(PREF_KEY_CONFIG_VERSION, CURRENT_CONFIG_VERSION)
+            .putInt(PREF_KEY_GLASS_TINT, settings.glassTint)
             .putFloat(PREF_KEY_REFRACTION_HEIGHT, settings.refractionHeight)
             .putFloat(PREF_KEY_BEVEL_WIDTH, settings.bevelWidth)
             .putFloat(PREF_KEY_REFRACTION_FALLOFF, settings.refractionFalloff)
@@ -225,6 +358,7 @@ object GlassConfig {
             .putInt(PREF_KEY_WHITE_BORDER_POSITION, settings.whiteBorderPosition)
             .putFloat(PREF_KEY_WHITE_BORDER_FADE_SPREAD, settings.whiteBorderFadeSpread)
             .apply()
+        notifyAllViews(context, settings)
     }
 
     @JvmStatic
@@ -257,7 +391,7 @@ object GlassConfig {
         glassView.aberrationIntensity = settings.aberrationIntensity
         glassView.displacementScale = settings.displacementScale
         glassView.elasticity = settings.elasticity
-        glassView.glassTint = Color.TRANSPARENT
+        glassView.glassTint = settings.glassTint
         glassView.useShaderPipeline = true
         glassView.adaptiveLensScale = true
         glassView.refractionNoFold = settings.refractionNoFold
@@ -283,9 +417,8 @@ object GlassConfig {
             glassView.whiteBorderFade = settings.whiteBorderFade
             glassView.whiteBorderPosition = settings.whiteBorderPosition
             glassView.whiteBorderFadeSpread = settings.whiteBorderFadeSpread
-
-            glassView.invalidate()
         }
+        glassView.invalidate()
     }
 
     /**
@@ -396,6 +529,5 @@ object GlassConfig {
     fun applyDefaultConfig(glassView: LiquidGlassView) {
         val settings = loadSettings(glassView.context)
         applyConfig(glassView, settings)
-        glassView.cornerRadius = 0f
     }
 }

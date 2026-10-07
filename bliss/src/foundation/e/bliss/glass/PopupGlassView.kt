@@ -62,32 +62,14 @@ constructor(
             }
         clipToOutline = true
 
-        // Glass visual parameters for the popup - Frosted Liquid Glass with white tint
-        material = GlassMaterial.REGULAR
-        refractionHeight = 160f
-        bevelWidth = 48f
-        refractionFalloff = 2f
-        dispersionStrength = 0.10f
-        enableEdgeHighlight = true
-        edgeHighlightBorderWidth = 1.0f * context.resources.displayMetrics.density
-        edgeHighlightOpacity = 80f
-        enableSensorHighlight = true
-        enableAdaptiveTint = false
-
-        blurAmount = 0.12f
-        saturation = 140f
-        aberrationIntensity = 2f
-        blurMethod = com.example.liquidglass.BlurMethod.SMART
-        setGlassTint(Color.WHITE, 0.42f)
-        enablePressEffect = false
-        enableDynamicBackground = true
-        collectFrameStats = false
-        accessibilityMode = GlassAccessibilityMode.AUTO
+        // Glass visual parameters for the popup - Frosted Liquid Glass matching master GlassConfig
+        GlassConfig.applyDefaultConfig(this)
         cornerRadius = cornerRadiusPx
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        GlassConfig.registerView(this)
         isClickable = false
         isFocusable = false
         isEnabled = false
@@ -108,6 +90,7 @@ constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        GlassConfig.unregisterView(this)
         backdropSource = null
     }
 

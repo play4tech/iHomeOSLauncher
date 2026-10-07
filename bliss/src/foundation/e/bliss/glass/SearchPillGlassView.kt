@@ -90,6 +90,7 @@ constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        GlassConfig.registerView(this)
         isClickable = true
         isFocusable = false
         isEnabled = true
@@ -111,6 +112,7 @@ constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        GlassConfig.unregisterView(this)
         backdropSource = null
     }
 

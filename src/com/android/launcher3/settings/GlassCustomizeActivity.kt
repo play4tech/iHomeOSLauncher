@@ -47,18 +47,22 @@ import com.android.launcher3.R
 import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.icons.LauncherIcons
 import com.android.launcher3.model.data.ItemInfoWithIcon
+import foundation.e.bliss.glass.FolderGlassView
 import foundation.e.bliss.glass.GlassConfig
 import foundation.e.bliss.glass.PreviewDockGlassView
+import foundation.e.bliss.glass.SearchPillGlassView
 import foundation.e.bliss.wallpaper.WallpaperRepository
 import java.util.Locale
 
 /**
- * Interactive Liquid Glass effect customization screen with a real-time live dock preview.
+ * Interactive Liquid Glass effect customization screen with a real-time live preview.
  * Sliders adjust optics, blur, dispersion, and specular highlights in real time.
  */
 class GlassCustomizeActivity : FragmentActivity() {
 
     private lateinit var previewDockGlass: PreviewDockGlassView
+    private var previewFolderGlass: FolderGlassView? = null
+    private var previewSearchGlass: SearchPillGlassView? = null
     private lateinit var previewWallpaper: ImageView
     private var currentSettings: GlassConfig.GlassSettings = GlassConfig.GlassSettings()
 
@@ -102,15 +106,30 @@ class GlassCustomizeActivity : FragmentActivity() {
     private fun initPreview() {
         previewWallpaper = findViewById(R.id.preview_wallpaper)!!
         previewDockGlass = findViewById(R.id.preview_dock_glass)!!
+        previewFolderGlass = findViewById(R.id.preview_folder_glass)
+        previewSearchGlass = findViewById(R.id.preview_search_glass)
 
         loadWallpaperBackdrop()
         setupPreviewIcons()
 
-        // Configure live dock glass
+        // Configure live dock glass and preview elements
         previewWallpaper.post {
             previewDockGlass.backdropSource = previewWallpaper
             previewDockGlass.enableDynamicBackground = true
             previewDockGlass.useShaderPipeline = true
+
+            previewFolderGlass?.let {
+                it.backdropSource = previewWallpaper
+                it.enableDynamicBackground = true
+                it.useShaderPipeline = true
+            }
+
+            previewSearchGlass?.let {
+                it.backdropSource = previewWallpaper
+                it.enableDynamicBackground = true
+                it.useShaderPipeline = true
+            }
+
             applyToPreview()
         }
     }
@@ -231,8 +250,8 @@ class GlassCustomizeActivity : FragmentActivity() {
             title = "Refraction Height",
             subtitle = "Edge displacement at rim (${GlassConfig.DEFAULT_REFRACTION_HEIGHT.toInt()} px default)",
             min = 0f,
-            max = 300f,
-            steps = 300,
+            max = 150f,
+            steps = 150,
             getter = { it.refractionHeight },
             setter = { s, v -> s.refractionHeight = v },
             formatter = { String.format(Locale.US, "%.1f px", it) }
@@ -244,8 +263,8 @@ class GlassCustomizeActivity : FragmentActivity() {
             title = "Bevel Width",
             subtitle = "Glass thickness band (${GlassConfig.DEFAULT_BEVEL_WIDTH.toInt()} px default)",
             min = 2f,
-            max = 120f,
-            steps = 118,
+            max = 80f,
+            steps = 78,
             getter = { it.bevelWidth },
             setter = { s, v -> s.bevelWidth = v },
             formatter = { String.format(Locale.US, "%.1f px", it) }
@@ -294,13 +313,13 @@ class GlassCustomizeActivity : FragmentActivity() {
         bindSlider(
             containerId = R.id.slider_blur_amount,
             title = "Blur Amount",
-            subtitle = "Background frosted blur (default 0.063)",
+            subtitle = "Background frosted blur (${String.format(Locale.US, "%.2f", GlassConfig.DEFAULT_BLUR_AMOUNT)} default)",
             min = 0.0f,
-            max = 0.25f,
-            steps = 500,
+            max = 3.0f,
+            steps = 300,
             getter = { it.blurAmount },
             setter = { s, v -> s.blurAmount = v },
-            formatter = { String.format(Locale.US, "%.3f", it) }
+            formatter = { String.format(Locale.US, "%.2f", it) }
         )
 
         // 7. Saturation Boost
@@ -320,7 +339,7 @@ class GlassCustomizeActivity : FragmentActivity() {
         bindSlider(
             containerId = R.id.slider_dispersion_strength,
             title = "Chromatic Dispersion",
-            subtitle = "Spectral rainbow fringe at rim (default ${GlassConfig.DEFAULT_DISPERSION_STRENGTH})",
+            subtitle = "Spectral rainbow fringe at rim (${String.format(Locale.US, "%.2f", GlassConfig.DEFAULT_DISPERSION_STRENGTH)} default)",
             min = 0.0f,
             max = 0.40f,
             steps = 400,
@@ -630,6 +649,16 @@ class GlassCustomizeActivity : FragmentActivity() {
     private fun applyToPreview() {
         GlassConfig.applyConfig(previewDockGlass, currentSettings)
         previewDockGlass.invalidate()
+
+        previewFolderGlass?.let {
+            GlassConfig.applyConfig(it, currentSettings)
+            it.invalidate()
+        }
+
+        previewSearchGlass?.let {
+            GlassConfig.applyConfig(it, currentSettings)
+            it.invalidate()
+        }
     }
 
     private fun saveAndFinish() {
