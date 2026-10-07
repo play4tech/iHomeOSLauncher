@@ -38,9 +38,31 @@ class PopupGlassView
 constructor(
     context: Context,
     attrs: AttributeSet? = null,
-) : LiquidGlassView(context, attrs) {
+) : LiquidGlassView(context, attrs), BorderedGlassView {
 
     private val geometry = ContinuousCornerGeometry()
+    var hasWhiteOverlay: Boolean = true
+
+    private val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE
+    }
+    private val whiteBorderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        style = android.graphics.Paint.Style.STROKE
+    }
+
+    override var borderEnabled: Boolean = GlassConfig.DEFAULT_BORDER_ENABLED
+    override var borderWidthPx: Float = GlassConfig.DEFAULT_BORDER_WIDTH * context.resources.displayMetrics.density
+    override var borderOpacity: Float = GlassConfig.DEFAULT_BORDER_OPACITY
+    override var borderFade: Float = GlassConfig.DEFAULT_BORDER_FADE
+    override var borderPosition: Int = GlassConfig.DEFAULT_BORDER_POSITION
+    override var borderFadeSpread: Float = GlassConfig.DEFAULT_BORDER_FADE_SPREAD
+
+    override var whiteBorderEnabled: Boolean = GlassConfig.DEFAULT_WHITE_BORDER_ENABLED
+    override var whiteBorderWidthPx: Float = GlassConfig.DEFAULT_WHITE_BORDER_WIDTH * context.resources.displayMetrics.density
+    override var whiteBorderOpacity: Float = GlassConfig.DEFAULT_WHITE_BORDER_OPACITY
+    override var whiteBorderFade: Float = GlassConfig.DEFAULT_WHITE_BORDER_FADE
+    override var whiteBorderPosition: Int = GlassConfig.DEFAULT_WHITE_BORDER_POSITION
+    override var whiteBorderFadeSpread: Float = GlassConfig.DEFAULT_WHITE_BORDER_FADE_SPREAD
 
     // Popup container radius is typically smaller than folder, match it.
     private var cornerRadiusPx = 24f * context.resources.displayMetrics.density
@@ -122,8 +144,26 @@ constructor(
         canvas.save()
         canvas.clipPath(path)
         super.draw(canvas)
-        canvas.drawPath(path, whiteTintPaint)
-        canvas.drawPath(path, rimPaint)
+        if (hasWhiteOverlay) {
+            canvas.drawPath(path, whiteTintPaint)
+            canvas.drawPath(path, rimPaint)
+        }
+        if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+            GlassConfig.drawBorder(
+                canvas, path, borderPaint,
+                borderWidthPx, borderOpacity, borderFade,
+                borderPosition, borderFadeSpread, false,
+                height.toFloat()
+            )
+        }
+        if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
+            GlassConfig.drawBorder(
+                canvas, path, whiteBorderPaint,
+                whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
+                whiteBorderPosition, whiteBorderFadeSpread, true,
+                height.toFloat()
+            )
+        }
         canvas.restore()
     }
 
@@ -135,17 +175,17 @@ constructor(
     private fun findWallpaperProxy(): View? {
         val root = rootView
         if (root != null) {
-            val source = root.findViewById<View>(R.id.glass_source)
-            if (source != null) return source
             val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
             if (proxy != null) return proxy
+            val source = root.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
         }
         var p = parent
         while (p is ViewGroup) {
-            val source = p.findViewById<View>(R.id.glass_source)
-            if (source != null) return source
             val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
             if (proxy != null) return proxy
+            val source = p.findViewById<View>(R.id.glass_source)
+            if (source != null) return source
             p = p.parent
         }
         return null

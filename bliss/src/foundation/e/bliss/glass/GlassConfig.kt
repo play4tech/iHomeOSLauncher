@@ -38,30 +38,30 @@ import com.example.liquidglass.LiquidGlassView
  */
 object GlassConfig {
 
-    // --- Default Parameter Constants (iOS 26 Liquid Glass tuned defaults) ---
-    const val DEFAULT_REFRACTION_HEIGHT: Float = 24f
-    const val DEFAULT_BEVEL_WIDTH: Float = 28f
-    const val DEFAULT_REFRACTION_FALLOFF: Float = 2f
-    const val DEFAULT_DISPERSION_STRENGTH: Float = 0.06f
-    const val DEFAULT_BLUR_AMOUNT: Float = 1.25f
+    // --- Default Parameter Constants (User fine-tuned liquid glass defaults) ---
+    const val DEFAULT_REFRACTION_HEIGHT: Float = 143f
+    const val DEFAULT_BEVEL_WIDTH: Float = 49f
+    const val DEFAULT_REFRACTION_FALLOFF: Float = 2.94f
+    const val DEFAULT_DISPERSION_STRENGTH: Float = 0.0f
+    const val DEFAULT_BLUR_AMOUNT: Float = 0.14f
     const val DEFAULT_SATURATION: Float = 140f
     const val DEFAULT_ABERRATION_INTENSITY: Float = 2f
-    const val DEFAULT_DISPLACEMENT_SCALE: Float = 70f
+    const val DEFAULT_DISPLACEMENT_SCALE: Float = 43f
     const val DEFAULT_ELASTICITY: Float = 0.15f
-    const val DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH: Float = 1.2f
+    const val DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH: Float = 0.4f
     const val DEFAULT_EDGE_HIGHLIGHT_OPACITY: Float = 100f
-    const val DEFAULT_EDGE_SOFTNESS: Float = 0f
+    const val DEFAULT_EDGE_SOFTNESS: Float = 2f
     const val DEFAULT_ENABLE_EDGE_HIGHLIGHT: Boolean = true
     const val DEFAULT_ENABLE_SENSOR_HIGHLIGHT: Boolean = true
-    const val DEFAULT_ENABLE_ADAPTIVE_TINT: Boolean = true
-    const val DEFAULT_REFRACTION_NO_FOLD: Boolean = true
-    const val DEFAULT_REFRACTION_OUTWARD: Boolean = false
+    const val DEFAULT_ENABLE_ADAPTIVE_TINT: Boolean = false
+    const val DEFAULT_REFRACTION_NO_FOLD: Boolean = false
+    const val DEFAULT_REFRACTION_OUTWARD: Boolean = true
     const val POSITION_SIDES: Int = 0
     const val POSITION_TOP: Int = 1
     const val POSITION_BOTTOM: Int = 2
     const val POSITION_ALL: Int = 3
 
-    const val DEFAULT_BORDER_ENABLED: Boolean = false
+    const val DEFAULT_BORDER_ENABLED: Boolean = true
     const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
     const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity
     const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at ends
@@ -77,7 +77,7 @@ object GlassConfig {
 
     // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
     const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
-    const val CURRENT_CONFIG_VERSION: Int = 3
+    const val CURRENT_CONFIG_VERSION: Int = 4
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
@@ -227,67 +227,48 @@ object GlassConfig {
         val configVersion = prefs.getInt(PREF_KEY_CONFIG_VERSION, 0)
         val isMigrated = configVersion >= CURRENT_CONFIG_VERSION
 
-        val borderEnabledVal = if (isMigrated) {
-            prefs.getBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED)
-        } else {
-            DEFAULT_BORDER_ENABLED
-        }
-
-        val glassTintVal = if (isMigrated) {
-            prefs.getInt(PREF_KEY_GLASS_TINT, DEFAULT_GLASS_TINT)
-        } else {
-            DEFAULT_GLASS_TINT
-        }
-
-        val refractionHeightVal = if (isMigrated) {
-            prefs.getFloat(PREF_KEY_REFRACTION_HEIGHT, DEFAULT_REFRACTION_HEIGHT)
-        } else {
-            DEFAULT_REFRACTION_HEIGHT
-        }
-
-        val bevelWidthVal = if (isMigrated) {
-            prefs.getFloat(PREF_KEY_BEVEL_WIDTH, DEFAULT_BEVEL_WIDTH)
-        } else {
-            DEFAULT_BEVEL_WIDTH
-        }
-
-        val blurAmountVal = if (isMigrated) {
-            prefs.getFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT)
-        } else {
-            DEFAULT_BLUR_AMOUNT
-        }
-
-        val dispersionStrengthVal = if (isMigrated) {
-            prefs.getFloat(PREF_KEY_DISPERSION_STRENGTH, DEFAULT_DISPERSION_STRENGTH)
-        } else {
-            DEFAULT_DISPERSION_STRENGTH
-        }
-
-        val refractionNoFoldVal = if (isMigrated) {
-            prefs.getBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD)
-        } else {
-            DEFAULT_REFRACTION_NO_FOLD
-        }
-
         if (!isMigrated) {
             prefs.edit()
                 .putInt(PREF_KEY_CONFIG_VERSION, CURRENT_CONFIG_VERSION)
-                .putBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED)
                 .putInt(PREF_KEY_GLASS_TINT, DEFAULT_GLASS_TINT)
                 .putFloat(PREF_KEY_REFRACTION_HEIGHT, DEFAULT_REFRACTION_HEIGHT)
                 .putFloat(PREF_KEY_BEVEL_WIDTH, DEFAULT_BEVEL_WIDTH)
-                .putFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT)
+                .putFloat(PREF_KEY_REFRACTION_FALLOFF, DEFAULT_REFRACTION_FALLOFF)
                 .putFloat(PREF_KEY_DISPERSION_STRENGTH, DEFAULT_DISPERSION_STRENGTH)
+                .putFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT)
+                .putFloat(PREF_KEY_SATURATION, DEFAULT_SATURATION)
+                .putFloat(PREF_KEY_ABERRATION_INTENSITY, DEFAULT_ABERRATION_INTENSITY)
+                .putFloat(PREF_KEY_DISPLACEMENT_SCALE, DEFAULT_DISPLACEMENT_SCALE)
+                .putFloat(PREF_KEY_ELASTICITY, DEFAULT_ELASTICITY)
+                .putFloat(PREF_KEY_EDGE_HIGHLIGHT_BORDER_WIDTH, DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH)
+                .putFloat(PREF_KEY_EDGE_HIGHLIGHT_OPACITY, DEFAULT_EDGE_HIGHLIGHT_OPACITY)
+                .putFloat(PREF_KEY_EDGE_SOFTNESS, DEFAULT_EDGE_SOFTNESS)
+                .putBoolean(PREF_KEY_ENABLE_EDGE_HIGHLIGHT, DEFAULT_ENABLE_EDGE_HIGHLIGHT)
+                .putBoolean(PREF_KEY_ENABLE_SENSOR_HIGHLIGHT, DEFAULT_ENABLE_SENSOR_HIGHLIGHT)
+                .putBoolean(PREF_KEY_ENABLE_ADAPTIVE_TINT, DEFAULT_ENABLE_ADAPTIVE_TINT)
                 .putBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD)
+                .putBoolean(PREF_KEY_REFRACTION_OUTWARD, DEFAULT_REFRACTION_OUTWARD)
+                .putBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED)
+                .putFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH)
+                .putFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY)
+                .putFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE)
+                .putInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION)
+                .putFloat(PREF_KEY_BORDER_FADE_SPREAD, DEFAULT_BORDER_FADE_SPREAD)
+                .putBoolean(PREF_KEY_WHITE_BORDER_ENABLED, DEFAULT_WHITE_BORDER_ENABLED)
+                .putFloat(PREF_KEY_WHITE_BORDER_WIDTH, DEFAULT_WHITE_BORDER_WIDTH)
+                .putFloat(PREF_KEY_WHITE_BORDER_OPACITY, DEFAULT_WHITE_BORDER_OPACITY)
+                .putFloat(PREF_KEY_WHITE_BORDER_FADE, DEFAULT_WHITE_BORDER_FADE)
+                .putInt(PREF_KEY_WHITE_BORDER_POSITION, DEFAULT_WHITE_BORDER_POSITION)
+                .putFloat(PREF_KEY_WHITE_BORDER_FADE_SPREAD, DEFAULT_WHITE_BORDER_FADE_SPREAD)
                 .apply()
         }
 
         val settings = GlassSettings(
-            refractionHeight = refractionHeightVal,
-            bevelWidth = bevelWidthVal,
+            refractionHeight = prefs.getFloat(PREF_KEY_REFRACTION_HEIGHT, DEFAULT_REFRACTION_HEIGHT),
+            bevelWidth = prefs.getFloat(PREF_KEY_BEVEL_WIDTH, DEFAULT_BEVEL_WIDTH),
             refractionFalloff = prefs.getFloat(PREF_KEY_REFRACTION_FALLOFF, DEFAULT_REFRACTION_FALLOFF),
-            dispersionStrength = dispersionStrengthVal,
-            blurAmount = blurAmountVal,
+            dispersionStrength = prefs.getFloat(PREF_KEY_DISPERSION_STRENGTH, DEFAULT_DISPERSION_STRENGTH),
+            blurAmount = prefs.getFloat(PREF_KEY_BLUR_AMOUNT, DEFAULT_BLUR_AMOUNT),
             saturation = prefs.getFloat(PREF_KEY_SATURATION, DEFAULT_SATURATION),
             aberrationIntensity = prefs.getFloat(PREF_KEY_ABERRATION_INTENSITY, DEFAULT_ABERRATION_INTENSITY),
             displacementScale = prefs.getFloat(PREF_KEY_DISPLACEMENT_SCALE, DEFAULT_DISPLACEMENT_SCALE),
@@ -298,13 +279,11 @@ object GlassConfig {
             enableEdgeHighlight = prefs.getBoolean(PREF_KEY_ENABLE_EDGE_HIGHLIGHT, DEFAULT_ENABLE_EDGE_HIGHLIGHT),
             enableSensorHighlight = prefs.getBoolean(PREF_KEY_ENABLE_SENSOR_HIGHLIGHT, DEFAULT_ENABLE_SENSOR_HIGHLIGHT),
             enableAdaptiveTint = prefs.getBoolean(PREF_KEY_ENABLE_ADAPTIVE_TINT, DEFAULT_ENABLE_ADAPTIVE_TINT),
-            refractionNoFold = refractionNoFoldVal,
+            refractionNoFold = prefs.getBoolean(PREF_KEY_REFRACTION_NO_FOLD, DEFAULT_REFRACTION_NO_FOLD),
             refractionOutward = prefs.getBoolean(PREF_KEY_REFRACTION_OUTWARD, DEFAULT_REFRACTION_OUTWARD),
-            glassTint = glassTintVal,
-            borderEnabled = borderEnabledVal,
-            borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH).let {
-                if (it == 1.0f || it == 0.5f) DEFAULT_BORDER_WIDTH else it
-            },
+            glassTint = prefs.getInt(PREF_KEY_GLASS_TINT, DEFAULT_GLASS_TINT),
+            borderEnabled = prefs.getBoolean(PREF_KEY_BORDER_ENABLED, DEFAULT_BORDER_ENABLED),
+            borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH),
             borderOpacity = prefs.getFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY),
             borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE),
             borderPosition = prefs.getInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION),

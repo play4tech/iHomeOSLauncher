@@ -82,10 +82,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             foundation.e.bliss.glass.PopupGlassView(context).apply {
                 layoutParams = FrameLayout.LayoutParams(editWidth, buttonHeight)
                 setPopupRadius(16f * density)
-                setGlassTint(Color.TRANSPARENT, 0f)
-                refractionHeight = 120f
-                bevelWidth = 36f
-                enableSensorHighlight = true
+                hasWhiteOverlay = false
+                foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this)
             }
         editButtonContainer.addView(editGlassBg)
 
@@ -128,10 +126,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             foundation.e.bliss.glass.PopupGlassView(context).apply {
                 layoutParams = FrameLayout.LayoutParams(doneWidth, buttonHeight)
                 setPopupRadius(16f * density)
-                setGlassTint(Color.TRANSPARENT, 0f)
-                refractionHeight = 120f
-                bevelWidth = 36f
-                enableSensorHighlight = true
+                hasWhiteOverlay = false
+                foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this)
             }
         doneButtonContainer.addView(doneGlassBg)
 
