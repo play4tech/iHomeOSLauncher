@@ -41,7 +41,7 @@ class PreviewDockGlassView @JvmOverloads constructor(
     private val continuousGeometry = ContinuousCornerGeometry()
 
     private fun getCornerRadius(h: Float): Float {
-        return if (h > 0f) h * 0.30f else 30f * resources.displayMetrics.density
+        return if (h > 0f) h * 0.41f else 30f * resources.displayMetrics.density
     }
 
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
