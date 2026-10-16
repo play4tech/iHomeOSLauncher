@@ -109,27 +109,30 @@ public class ItemClickHandler {
             }
         }
 
+        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
+            if (!workspace.isWobbling()) {
+                onClickClockWidget(v.getContext());
+                return;
+            }
+        }
+
         Object tag = v.getTag();
         if (tag instanceof WorkspaceItemInfo) {
             Folder folder = Folder.getOpen(launcher);
-            if (folder instanceof GridFolder && ((GridFolder) folder).isFolderWobbling()) {
-                ((GridFolder) folder).wobbleFolder(false);
-                workspace.wobbleLayouts(false);
-            } else if (workspace.isWobbling()) {
-                workspace.wobbleLayouts(false);
-            } else {
-                onClickAppShortcut(v, (WorkspaceItemInfo) tag, launcher);
+            if ((folder instanceof GridFolder && ((GridFolder) folder).isFolderWobbling())
+                    || workspace.isWobbling()) {
+                return; // Do not exit wobble mode when tapping app icons
             }
+            onClickAppShortcut(v, (WorkspaceItemInfo) tag, launcher);
+        } else if (v instanceof AppPairIcon) {
+            onClickAppPairIcon(v);
         } else if (tag instanceof FolderInfo) {
-                onClickFolderIcon(v);
-        } else if(tag instanceof AppPairIcon) {
-                onClickAppPairIcon(v);
+            onClickFolderIcon(v);
         } else if (tag instanceof AppInfo) {
             if (workspace.isWobbling()) {
-                workspace.wobbleLayouts(false);
-            } else {
-                startAppShortcutOrInfoActivity(v, (AppInfo) tag, launcher);
+                return; // Do not exit wobble mode when tapping app icons
             }
+            startAppShortcutOrInfoActivity(v, (AppInfo) tag, launcher);
         } else if (tag instanceof LauncherAppWidgetInfo) {
             if (workspace.isWobbling() && v instanceof com.android.launcher3.widget.LauncherAppWidgetHostView) {
                 com.android.launcher3.CellLayout cellLayout = (v.getParent() instanceof com.android.launcher3.ShortcutAndWidgetContainer)
@@ -201,6 +204,41 @@ public class ItemClickHandler {
             }
         } else {
             launcher.launchAppPair(appPairIcon);
+        }
+    }
+
+    /**
+     * Event handler for the iOS Analog Clock widget click.
+     * Launches the user's default Clock app.
+     */
+    private static void onClickClockWidget(Context context) {
+        try {
+            Intent intent = new Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        String[] clockPackages = new String[] {
+            "com.google.android.deskclock",
+            "com.android.deskclock",
+            "com.coloros.alarmclock",
+            "com.oppo.alarmclock",
+            "com.sec.android.app.clockpackage",
+            "com.oneplus.deskclock",
+            "com.miui.clock"
+        };
+        for (String pkg : clockPackages) {
+            try {
+                Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(launchIntent);
+                    return;
+                }
+            } catch (Throwable ignored) {}
         }
     }
 

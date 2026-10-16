@@ -29,6 +29,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewOutlineProvider
+import com.android.launcher3.Insettable
 import com.android.launcher3.R
 import com.example.liquidglass.GlassAccessibilityMode
 import com.example.liquidglass.GlassMaterial
@@ -43,7 +44,12 @@ class SearchPillGlassView
 constructor(
     context: Context,
     attrs: AttributeSet? = null,
-) : LiquidGlassView(context, attrs), BorderedGlassView {
+) : LiquidGlassView(context, attrs), Insettable, BorderedGlassView {
+
+    override fun setInsets(insets: android.graphics.Rect) {
+        // Bounds and position are explicitly synchronized by PageIndicatorDots.
+        // No-op here prevents InsettableFrameLayout from altering margins.
+    }
 
     private val clipPath = Path()
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

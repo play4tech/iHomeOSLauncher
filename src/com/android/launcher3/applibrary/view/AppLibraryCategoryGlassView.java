@@ -184,9 +184,8 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     public float getTargetRadius(float w, float h) {
         if (w <= 0 || h <= 0) return 0f;
-        // iOS category pods (and widgets) use a 26dp continuous squircle radius
-        float baseRadius = 26f * getResources().getDisplayMetrics().density;
-        return Math.min(baseRadius, Math.min(w, h) * 0.22f);
+        // iOS category pods use a ~14% continuous squircle radius (~25-26dp on standard devices)
+        return Math.min(w, h) * 0.14f;
     }
 
     private Path updatePath(float w, float h) {
@@ -205,7 +204,8 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
     }
 
     private void init() {
-        setClipToOutline(false);
+        setEnableSensorHighlight(false);
+        setClipToOutline(true);
 
         setOutlineProvider(new ViewOutlineProvider() {
             @Override
@@ -293,10 +293,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         if (getCornerRadius() != targetRadius) {
             setCornerRadius(targetRadius);
         }
+
         super.draw(canvas);
 
+        Path path = updatePath(w, h);
         if (mBorderEnabled && mBorderWidthPx > 0f && mBorderOpacity > 0f) {
-            Path path = updatePath(w, h);
             GlassConfig.drawBorder(
                 canvas, path, mBorderPaint,
                 mBorderWidthPx, mBorderOpacity, mBorderFade,
@@ -306,7 +307,6 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         }
 
         if (mWhiteBorderEnabled && mWhiteBorderWidthPx > 0f && mWhiteBorderOpacity > 0f) {
-            Path path = updatePath(w, h);
             GlassConfig.drawBorder(
                 canvas, path, mWhiteBorderPaint,
                 mWhiteBorderWidthPx, mWhiteBorderOpacity, mWhiteBorderFade,

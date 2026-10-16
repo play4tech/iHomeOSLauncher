@@ -134,7 +134,7 @@ public class BaseDepthController {
                 // icons. To keep the two consistent throughout the animation while keeping Launcher's
                 // concept of full depth unchanged, we divide the depth by 3 here.
                 if (MultiModeController.isSingleLayerMode()) {
-                    mWallpaperManager.setWallpaperZoomOut(windowToken, 1);
+                    mWallpaperManager.setWallpaperZoomOut(windowToken, 0);
                 } else {
                     mWallpaperManager.setWallpaperZoomOut(windowToken, depth / 3);
                 }

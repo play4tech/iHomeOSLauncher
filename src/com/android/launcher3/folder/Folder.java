@@ -59,6 +59,8 @@ import android.view.animation.AnimationUtils;
 import android.view.inputmethod.EditorInfo;
 import android.widget.TextView;
 import android.window.BackEvent;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
@@ -97,6 +99,8 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.WorkspaceItemFactory;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.pageindicators.PageIndicatorDots;
+import com.android.launcher3.Hotseat;
+import com.android.launcher3.Workspace;
 import com.android.launcher3.util.Executors;
 import com.android.launcher3.util.LauncherBindableItemsContainer.ItemOperator;
 import com.android.launcher3.util.Thunk;
@@ -160,7 +164,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     /**
      * Fraction of icon width which behave as scroll region.
      */
-    private static final float ICON_OVERSCROLL_WIDTH_FACTOR = 0.45f;
+    private static final float ICON_OVERSCROLL_WIDTH_FACTOR = 0.70f;
 
     private static final int FOLDER_NAME_ANIMATION_DURATION = 633;
     private static final int FOLDER_COLOR_ANIMATION_DURATION = 200;
@@ -233,7 +237,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     private boolean mDestroyed;
 
     // Folder scrolling
-    private int mScrollAreaOffset;
+    protected int mScrollAreaOffset;
 
     @Thunk
     int mScrollHintDir = SCROLL_NONE;
@@ -314,7 +318,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public boolean isFolderWobbling() {
         Launcher launcher = mLauncherDelegate.getLauncher();
-        if (launcher != null) {
+        if (launcher != null && launcher.getWorkspace() != null) {
             return launcher.getWorkspace().isWobbling();
         } else return false;
     }
@@ -328,7 +332,15 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (tag instanceof WorkspaceItemInfo) {
             WorkspaceItemInfo item = (WorkspaceItemInfo) tag;
 
-            mEmptyCellRank = item.rank;
+            if (MultiModeController.isSingleLayerMode()) {
+                v.setOnTouchListener(null);
+                if (isFolderWobbling()) {
+                    v.setVisibility(INVISIBLE);
+                }
+            }
+
+            int index = getIconsInReadingOrder().indexOf(v);
+            mEmptyCellRank = (index >= 0) ? index : item.rank;
             mCurrentDragView = v;
 
             mDragController.addDragListener(this);
@@ -379,6 +391,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
         mDragInProgress = false;
         mDragController.removeDragListener(this);
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
     }
 
     public boolean isEditingName() {
@@ -387,9 +402,17 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public void startEditingFolderName() {
         post(() -> {
+            if (mIsEditingName && mFolderName.hasFocus()) {
+                return;
+            }
             showLabelSuggestions();
             mFolderName.setHint("");
             mIsEditingName = true;
+            if (!mFolderName.hasFocus()) {
+                mFolderName.requestFocus();
+                mFolderName.selectAll();
+            }
+            mFolderName.showKeyboard();
         });
     }
 
@@ -467,6 +490,49 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mLauncherDelegate.init(this, icon);
     }
 
+    private OnBackInvokedCallback mBackCallback;
+
+    private void registerBackCallback() {
+        if (!Utilities.ATLEAST_T) return;
+        try {
+            OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
+            if (dispatcher == null && mActivityContext instanceof Launcher) {
+                dispatcher = ((Launcher) mActivityContext).getOnBackInvokedDispatcher();
+            }
+            if (dispatcher != null && mBackCallback == null) {
+                mBackCallback = () -> {
+                    if (isEditingName()) {
+                        mFolderName.dispatchBackKey();
+                    } else {
+                        close(true);
+                    }
+                };
+                dispatcher.registerOnBackInvokedCallback(
+                        OnBackInvokedDispatcher.PRIORITY_OVERLAY, mBackCallback);
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to register back callback", t);
+        }
+    }
+
+    private void unregisterBackCallback() {
+        if (!Utilities.ATLEAST_T) return;
+        try {
+            if (mBackCallback != null) {
+                OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
+                if (dispatcher == null && mActivityContext instanceof Launcher) {
+                    dispatcher = ((Launcher) mActivityContext).getOnBackInvokedDispatcher();
+                }
+                if (dispatcher != null) {
+                    dispatcher.unregisterOnBackInvokedCallback(mBackCallback);
+                }
+                mBackCallback = null;
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "Failed to unregister back callback", t);
+        }
+    }
+
     @Override
     protected void onAttachedToWindow() {
         // requestFocus() causes the focus onto the folder itself, which doesn't cause visual
@@ -475,12 +541,16 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         requestFocus();
         super.onAttachedToWindow();
         mFolderName.addOnFocusChangeListener(this);
+        if (mIsOpen) {
+            registerBackCallback();
+        }
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         mFolderName.removeOnFocusChangeListener(this);
+        unregisterBackCallback();
     }
 
     @Override
@@ -528,7 +598,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
         // In case any children didn't come across during loading, clean up the folder accordingly
         mFolderIcon.post(() -> {
-            if (getItemCount() <= 1) {
+            if (!isDragActive() && getItemCount() <= 1) {
                 replaceFolderWithFinalItem();
             }
         });
@@ -679,6 +749,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         mIsOpen = true;
         onFolderOpenStart();
+        registerBackCallback();
 
         BaseDragLayer dragLayer = mActivityContext.getDragLayer();
         // Just verify that the folder hasn't already been added to the DragLayer.
@@ -718,7 +789,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 AccessibilityManagerCompat.sendTestProtocolEventToTest(getContext(),
                         FOLDER_OPENED_MESSAGE);
 
-                mContent.setFocusOnFirstChild();
+                if (!mIsEditingName) {
+                    mContent.setFocusOnFirstChild();
+                }
             }
         });
 
@@ -821,6 +894,12 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             return;
         }
 
+        setScaleX(1f);
+        setScaleY(1f);
+        setTranslationX(0f);
+        setTranslationY(0f);
+        setAlpha(1f);
+
         int size = getIconsInReadingOrder().size();
         if (size <= 1 && !MultiModeController.isSingleLayerMode()) {
             Log.d(TAG, "Couldn't animate folder closed because there's " + size + " icons");
@@ -869,6 +948,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     private void closeComplete(boolean wasAnimated) {
         Log.d("ICON_TRACE", "closeComplete folder=" + mInfo.id + " mDragInProgress=" + mDragInProgress + " itemCount=" + getItemCount());
+        unregisterBackCallback();
         // TODO: Clear all active animations.
         BaseDragLayer parent = (BaseDragLayer) getParent();
         if (parent != null) {
@@ -885,7 +965,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 mFolderIcon.animateBgShadowAndStroke();
                 mFolderIcon.onFolderClose(mContent.getCurrentPage());
                 if (mFolderIcon.hasDot()) {
-                    mFolderIcon.animateDotScale(0f, 1f);
+                    mFolderIcon.setDotScale(1f);
                 }
                 mFolderIcon.requestFocus();
             }
@@ -895,13 +975,14 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             rearrangeChildren();
             mRearrangeOnClose = false;
         }
+        boolean isDragging = isDragActive();
         if (getItemCount() <= 1) {
-            if (!mDragInProgress && !mSuppressFolderDeletion) {
+            if (!isDragging && !mSuppressFolderDeletion) {
                 replaceFolderWithFinalItem();
-            } else if (mDragInProgress) {
+            } else if (isDragging) {
                 mDeleteFolderOnDropCompleted = true;
             }
-        } else if (!mDragInProgress) {
+        } else if (!isDragging) {
             mContent.unbindItems();
         }
         mSuppressFolderDeletion = false;
@@ -998,6 +1079,12 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         } else if (currentPage < (mContent.getPageCount() - 1)
                 && (mContent.mIsRtl ? isOutsideLeftEdge : isOutsideRightEdge)) {
             showScrollHint(SCROLL_RIGHT, d);
+        } else if (currentPage == (mContent.getPageCount() - 1)
+                && (mContent.mIsRtl ? isOutsideLeftEdge : isOutsideRightEdge)) {
+            if (mScrollHintDir != SCROLL_RIGHT) {
+                mContent.createAndAddNewPage();
+            }
+            showScrollHint(SCROLL_RIGHT, d);
         } else {
             mOnScrollHintAlarm.cancelAlarm();
             if (mScrollHintDir != SCROLL_NONE) {
@@ -1042,6 +1129,61 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             rearrangeChildren();
             clearDragInfo();
         }
+
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            Launcher launcher = mLauncherDelegate.getLauncher();
+            if (launcher != null) {
+                Workspace<?> workspace = launcher.getWorkspace();
+                if (workspace != null) {
+                    workspace.setVisibility(VISIBLE);
+                    workspace.setAlpha(1f);
+                    for (int i = 0; i < workspace.getPageCount(); i++) {
+                        View page = workspace.getChildAt(i);
+                        if (page instanceof CellLayout) {
+                            CellLayout cl = (CellLayout) page;
+                            cl.setVisibility(VISIBLE);
+                            cl.setAlpha(1f);
+                            if (cl.getShortcutsAndWidgets() != null) {
+                                cl.getShortcutsAndWidgets().setVisibility(VISIBLE);
+                                cl.getShortcutsAndWidgets().setAlpha(1f);
+                            }
+                        }
+                    }
+                    boolean isAppLib = workspace.isAppLibraryCurrentPage();
+                    if (!isAppLib) {
+                        View pi = workspace.getPageIndicator();
+                        if (pi != null) {
+                            pi.setVisibility(VISIBLE);
+                            pi.setAlpha(1f);
+                            if (pi instanceof PageIndicatorDots) {
+                                ((PageIndicatorDots) pi).setForcedTranslationY(0f);
+                                ((PageIndicatorDots) pi).resetToIdle();
+                            }
+                            workspace.showPageIndicatorAtCurrentScroll();
+                        }
+                    }
+                }
+                boolean isAppLib = workspace != null && workspace.isAppLibraryCurrentPage();
+                if (!isAppLib) {
+                    Hotseat hotseat = launcher.getHotseat();
+                    if (hotseat != null) {
+                        hotseat.setVisibility(VISIBLE);
+                        hotseat.setAlpha(1f);
+                        hotseat.setIconsAlpha(1f);
+                        hotseat.setForcedTranslationY(0f);
+                    }
+                    View dockGlass = launcher.findViewById(R.id.dock_glass);
+                    if (dockGlass != null) {
+                        dockGlass.setVisibility(VISIBLE);
+                        dockGlass.setAlpha(1f);
+                        dockGlass.setTranslationY(0f);
+                    }
+                    if (launcher.mBlurLayer != null) {
+                        launcher.mBlurLayer.setAlpha(0f);
+                    }
+                }
+            }
+        }
     }
 
     private void clearDragInfo() {
@@ -1053,8 +1195,13 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         // We only close the folder if this is a true drag exit, ie. not because
         // a drop has occurred above the folder.
         if (!d.dragComplete) {
-            mOnExitAlarm.setOnAlarmListener(mOnExitAlarmListener);
-            mOnExitAlarm.setAlarm(ON_EXIT_CLOSE_DELAY);
+            if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                mOnExitAlarm.cancelAlarm();
+                completeDragExit();
+            } else {
+                mOnExitAlarm.setOnAlarmListener(mOnExitAlarmListener);
+                mOnExitAlarm.setAlarm(ON_EXIT_CLOSE_DELAY);
+            }
         }
         mReorderAlarm.cancelAlarm();
 
@@ -1139,6 +1286,19 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void updateItemLocationsInDatabaseBatch(boolean isBind) {
+        if (!isBind && mContent != null) {
+            ArrayList<View> icons = getIconsInReadingOrder();
+            if (icons.size() == mInfo.contents.size()) {
+                mInfo.contents.clear();
+                for (int i = 0; i < icons.size(); i++) {
+                    View iconView = icons.get(i);
+                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
+                        mInfo.contents.add((WorkspaceItemInfo) iconView.getTag());
+                    }
+                }
+            }
+        }
+
         FolderGridOrganizer verifier = new FolderGridOrganizer(
                 mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
 
@@ -1267,6 +1427,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     void replaceFolderWithFinalItem() {
+        if (mDestroyed) {
+            return;
+        }
         mDestroyed = mLauncherDelegate.replaceFolderWithFinalItem(this);
     }
 
@@ -1276,6 +1439,13 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public boolean isDragInProgress() {
         return mDragInProgress;
+    }
+
+    private boolean isDragActive() {
+        return mDragInProgress || (mLauncherDelegate != null
+                && mLauncherDelegate.getLauncher() != null
+                && mLauncherDelegate.getLauncher().getDragController() != null
+                && mLauncherDelegate.getLauncher().getDragController().isDragging());
     }
 
     // This method keeps track of the first and last item in the folder for the purposes
@@ -1359,6 +1529,11 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 si = (WorkspaceItemInfo) d.dragInfo;
             }
 
+            if (si != null && si.getTargetComponent() != null) {
+                com.android.launcher3.util.RemovedAppStore.unmarkRemoved(
+                        getContext(), si.getTargetComponent().flattenToString());
+            }
+
             View currentDragView;
             if (mIsExternalDrag) {
                 currentDragView = mContent.createAndAddViewForRank(si, mEmptyCellRank);
@@ -1396,6 +1571,21 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 mInfo.add(si, mEmptyCellRank, false);
             }
 
+            ArrayList<View> icons = getIconsInReadingOrder();
+            if (icons.size() == mInfo.contents.size()) {
+                mInfo.contents.clear();
+                FolderGridOrganizer verifier = new FolderGridOrganizer(
+                        mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
+                for (int i = 0; i < icons.size(); i++) {
+                    View iconView = icons.get(i);
+                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
+                        WorkspaceItemInfo itemInfo = (WorkspaceItemInfo) iconView.getTag();
+                        verifier.updateRankAndPos(itemInfo, i);
+                        mInfo.contents.add(itemInfo);
+                    }
+                }
+            }
+
             // We only need to update the locations if it doesn't get handled in
             // #onDropCompleted.
             if (d.dragSource != this) {
@@ -1405,6 +1595,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         // Clear the drag info, as it is no longer being dragged.
         mDragInProgress = false;
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
 
         if (mContent.getPageCount() > 1) {
             // The animation has already been shown while opening the folder.
@@ -1465,12 +1658,15 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         } else {
             rearrangeChildren();
         }
-        if (!mDragInProgress && getItemCount() <= 1) {
+        boolean isDragging = isDragActive();
+        if (!isDragging && getItemCount() <= 1) {
             if (mIsOpen) {
                 close(true);
             } else {
                 replaceFolderWithFinalItem();
             }
+        } else if (isDragging && getItemCount() <= 1) {
+            mDeleteFolderOnDropCompleted = true;
         }
     }
 
@@ -1527,7 +1723,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             if (hasFocus) {
                 mFromLabelState = mInfo.getFromLabelState();
                 mFromTitle = mInfo.title;
-                startEditingFolderName();
+                if (!mIsEditingName) {
+                    startEditingFolderName();
+                }
             } else {
                 StatsLogger statsLogger = mStatsLogManager.logger()
                         .withItemInfo(mInfo)
@@ -1640,11 +1838,12 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     private class SuppressInfoChanges implements AutoCloseable {
 
         SuppressInfoChanges() {
-            mInfo.removeListener(Folder.this);
+            mInfo.removeListenerIf(l -> l instanceof Folder);
         }
 
         @Override
         public void close() {
+            mInfo.removeListenerIf(l -> l instanceof Folder);
             mInfo.addListener(Folder.this);
             updateTextViewFocus();
         }
@@ -1658,26 +1857,36 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     @Override
+    public void onBackStarted(@NonNull BackEvent backEvent) {
+        // Prevent predictive back gestures from distorting folder scale/alpha
+    }
+
+    @Override
     public void onBackProgressed(@NonNull BackEvent backEvent) {
-        if (!isEditingName()) {
-            super.onBackProgressed(backEvent);
-        }
+        // Do not distort scale or alpha during back gesture
     }
 
     @Override
     public void onBackCancelled() {
-        if (!isEditingName()) {
-            super.onBackCancelled();
-        }
+        setScaleX(1f);
+        setScaleY(1f);
+        setTranslationX(0f);
+        setTranslationY(0f);
+        setAlpha(1f);
     }
 
     /** Navigation bar back key or hardware input back key has been issued. */
     @Override
     public void onBackInvoked() {
+        setScaleX(1f);
+        setScaleY(1f);
+        setTranslationX(0f);
+        setTranslationY(0f);
+        setAlpha(1f);
         if (isEditingName()) {
             mFolderName.dispatchBackKey();
         } else {
-            super.onBackInvoked();
+            close(true);
         }
     }
 

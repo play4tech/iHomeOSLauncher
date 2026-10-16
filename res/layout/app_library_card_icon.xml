@@ -5,5 +5,5 @@
     style="@style/BaseIcon.Workspace"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    launcher:iconDisplay="folder"
+    launcher:iconDisplay="workspace"
     launcher:centerVertically="true" />

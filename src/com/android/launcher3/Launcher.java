@@ -93,6 +93,7 @@ import static com.android.launcher3.model.ItemInstallQueue.FLAG_ACTIVITY_PAUSED;
 import static com.android.launcher3.model.ItemInstallQueue.FLAG_DRAG_AND_DROP;
 import static com.android.launcher3.popup.SystemShortcut.ADD_TO_HOME_SCREEN;
 import static com.android.launcher3.popup.SystemShortcut.APP_INFO;
+import static com.android.launcher3.popup.SystemShortcut.CHANGE_CATEGORY;
 import static com.android.launcher3.popup.SystemShortcut.EDIT_HOME_SCREEN;
 import static com.android.launcher3.popup.SystemShortcut.INSTALL;
 import static com.android.launcher3.popup.SystemShortcut.WIDGETS;
@@ -404,6 +405,7 @@ public class Launcher extends StatefulActivity<LauncherState>
     // TODO: See if we can remove this later
     private Runnable mOnDeferredActivityLaunchCallback;
     private OnPreDrawListener mOnInitialBindListener;
+    private BubbleTextView mLastLaunchedIcon;
 
     private LauncherModel mModel;
     private ModelWriter mModelWriter;
@@ -451,7 +453,9 @@ public class Launcher extends StatefulActivity<LauncherState>
     private LauncherAppMonitor mAppMonitor;
     public BlurBackgroundView mBlurLayer;
     public FrameLayout swipeSearchContainer;
-    private AnimatorSet currentAnimator;
+    private AnimatorSet mSwipeSearchAnimator;
+    private AnimatorSet mWidgetResizeAnimator;
+    private boolean mIsHidingWidgetResizeContainer = false;
     private RoundedWidgetView activeRoundedWidgetView;
 
     private final CannedAnimationCoordinator mAnimationCoordinator =
@@ -560,6 +564,7 @@ public class Launcher extends StatefulActivity<LauncherState>
                     notificationChannelId, notificationChannelName,
                     NotificationManager.IMPORTANCE_HIGH));
 
+            Context appContext = getApplicationContext();
             Thread.currentThread().setUncaughtExceptionHandler((thread, throwable) -> {
                 String stackTrace = Log.getStackTraceString(throwable);
 
@@ -569,16 +574,19 @@ public class Launcher extends StatefulActivity<LauncherState>
                     shareIntent.putExtra(Intent.EXTRA_TEXT, stackTrace);
                     shareIntent = Intent.createChooser(shareIntent, null);
                     PendingIntent sharePendingIntent = PendingIntent.getActivity(
-                            this, 0, shareIntent, FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE);
+                            appContext, 0, shareIntent, FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE);
 
-                    Notification notification = new Notification.Builder(this, notificationChannelId)
+                    Notification notification = new Notification.Builder(appContext, notificationChannelId)
                             .setSmallIcon(android.R.drawable.ic_menu_close_clear_cancel)
                             .setContentTitle("Launcher crash detected!")
                             .setStyle(new Notification.BigTextStyle().bigText(stackTrace))
                             .addAction(android.R.drawable.ic_menu_share, "Share", sharePendingIntent)
                             .build();
 
-                    notificationManager.notify(notificationTag, notificationId, notification);
+                    NotificationManager nm = appContext.getSystemService(NotificationManager.class);
+                    if (nm != null) {
+                        nm.notify(notificationTag, notificationId, notification);
+                    }
                 } else {
                     Timber.tag(TAG).e(throwable);
                 }
@@ -767,11 +775,25 @@ public class Launcher extends StatefulActivity<LauncherState>
             };
         }
 
+        // #3.5 Top Open Floating View (Popups, Menus, Dialogs, etc.)
+        AbstractFloatingView topView =
+                AbstractFloatingView.getTopOpenView(Launcher.this);
+        if (topView != null && topView.canHandleBack()) {
+            return topView;
+        }
+
         // #4 Spotlight Search Overlay
         com.android.launcher3.applibrary.view.SpotlightSearchOverlay spotlight =
                 com.android.launcher3.applibrary.view.SpotlightSearchOverlay.getOpen(this);
         if (spotlight != null) {
             return spotlight;
+        }
+
+        // #4.5 App Library Category Expanded View
+        com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView expandedCategory =
+                com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView.getOpen(this);
+        if (expandedCategory != null) {
+            return expandedCategory;
         }
 
         // #5 Folder handler
@@ -780,11 +802,21 @@ public class Launcher extends StatefulActivity<LauncherState>
             return openFolder;
         }
 
-        // #6 view handler
-        AbstractFloatingView topView =
-                AbstractFloatingView.getTopOpenView(Launcher.this);
-        if (topView != null && topView.canHandleBack()) {
-            return topView;
+        // #5.5 Close widget resize mode
+        if (isWidgetResizeContainerVisible()) {
+            return new OnBackAnimationCallback() {
+                @Override
+                public void onBackInvoked() {
+                    hideWidgetResizeContainer();
+                }
+            };
+        }
+
+        // #6 back press handlers
+        for (BackPressHandler handler : mBackPressedHandlers) {
+            if (handler.canHandleBack()) {
+                return handler;
+            }
         }
 
         // #7 Cancel Wobble
@@ -799,15 +831,17 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // #8 App Library back handling (search mode)
         if (mWorkspace != null) {
-            View appLib = mWorkspace.findViewById(R.id.app_library_page);
-            if (appLib instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
-                com.android.launcher3.applibrary.view.AppLibraryPage alp =
-                        (com.android.launcher3.applibrary.view.AppLibraryPage) appLib;
+            com.android.launcher3.applibrary.view.AppLibraryPage alp = mWorkspace.getAppLibraryPage();
+            android.util.Log.d("BACK_DEBUG", "Launcher #8 check: alp=" + alp + ", canHandleBack=" + (alp != null ? alp.canHandleBack() : "null"));
+            if (alp != null) {
                 if (alp.canHandleBack()) {
+                    return alp.getOnBackAnimationCallback();
+                }
+                if (alp.wasRecentlyInSearchMode()) {
                     return new OnBackAnimationCallback() {
                         @Override
                         public void onBackInvoked() {
-                            alp.handleBack();
+                            android.util.Log.d("BACK_DEBUG", "Launcher #8 debounce consumed back!");
                         }
                     };
                 }
@@ -816,6 +850,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // #9 Page return to 0
         if (mWorkspace != null && mWorkspace.getNextPage() != 0) {
+            android.util.Log.d("BACK_DEBUG", "Launcher #9 triggered: getNextPage=" + mWorkspace.getNextPage());
             return new OnBackAnimationCallback() {
                 @Override
                 public void onBackStarted(@NonNull BackEvent backEvent) {
@@ -842,16 +877,6 @@ public class Launcher extends StatefulActivity<LauncherState>
                 }
             };
         }
-
-        // #5 state handler
-        for (BackPressHandler handler : mBackPressedHandlers) {
-            if (handler.canHandleBack()) {
-                return handler;
-            }
-        }
-
-        // #5 Close widget resize mode
-        hideWidgetResizeContainer();
 
         // #6 state handler
         return new OnBackAnimationCallback() {
@@ -1182,7 +1207,9 @@ public class Launcher extends StatefulActivity<LauncherState>
         mPendingActivityRequestCode = -1;
         if (requestCode == REQUEST_CONFIGURE_APPWIDGET) {
             WidgetContainer.WidgetFragment widgetFragment = (WidgetContainer.WidgetFragment) getFragmentManager().findFragmentByTag("qsb_view");
-            widgetFragment.onActivityResult(requestCode, resultCode, data);
+            if (widgetFragment != null) {
+                widgetFragment.onActivityResult(requestCode, resultCode, data);
+            }
             mPendingActivityRequestCode = -1;
             return;
         }
@@ -1278,6 +1305,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         mAppWidgetHolder.setActivityStarted(false);
         NotificationListener.removeNotificationsChangedListener(getPopupDataProvider());
         FloatingIconView.resetIconLoadResult();
+        if (mLastLaunchedIcon != null) {
+            mLastLaunchedIcon.clearPressedBackground();
+            mLastLaunchedIcon = null;
+        }
         AccessibilityManagerCompat.sendTestProtocolEventToTest(
                 this, LAUNCHER_ACTIVITY_STOPPED_MESSAGE);
         mAppMonitor.onLauncherStop();
@@ -1313,6 +1344,11 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
+
+        if (mLastLaunchedIcon != null) {
+            mLastLaunchedIcon.clearPressedBackground();
+            mLastLaunchedIcon = null;
+        }
 
         // Listen for IME changes to keep state up to date.
         getRootView().setWindowInsetsAnimationCallback(
@@ -1492,6 +1528,11 @@ public class Launcher extends StatefulActivity<LauncherState>
         DragView.removeAllViews(this);
         mAppMonitor.onLauncherResumed();
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            foundation.e.bliss.glass.GlassConfig.notifyAllViews(this,
+                    foundation.e.bliss.glass.GlassConfig.loadSettings(this));
+        }
+
         foundation.e.bliss.wallpaper.WallpaperRepository repo =
                 foundation.e.bliss.wallpaper.WallpaperRepository.getInstanceNoCreate();
         if (repo != null && repo.getCurrentWallpaper() == null) {
@@ -1511,10 +1552,41 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
         mWasKeyguardLocked = isLocked;
 
-        if (mWorkspace != null && mWorkspace.isAppLibraryCurrentPage()) {
+        if (mWorkspace != null) {
             mWorkspace.post(() -> {
-                if (mWorkspace != null && mWorkspace.isAppLibraryCurrentPage()) {
+                if (mWorkspace == null) return;
+                boolean isSwipeSearchActive = swipeSearchContainer != null && swipeSearchContainer.getVisibility() == View.VISIBLE;
+                if (isSwipeSearchActive) {
+                    return;
+                }
+                boolean isPage0WithPinned = mWorkspace.getFirstPagePinnedItem() != null && mWorkspace.getNextPage() == 0;
+                if (mWorkspace.isAppLibraryCurrentPage()) {
                     mWorkspace.hideDockForAppLibrary();
+                } else if (isPage0WithPinned) {
+                    if (mHotseat != null) {
+                        mHotseat.setVisibility(View.INVISIBLE);
+                    }
+                    View dockGlass = findViewById(R.id.dock_glass);
+                    if (dockGlass != null) {
+                        dockGlass.setVisibility(View.INVISIBLE);
+                    }
+                } else if (Folder.getOpen(this) == null) {
+                    mWorkspace.restoreDockForHomeScreen();
+                    if (mHotseat != null) {
+                        mHotseat.setIconsAlpha(1f);
+                        mHotseat.setAlpha(1f);
+                        mHotseat.setForcedTranslationY(0f);
+                        mHotseat.setVisibility(View.VISIBLE);
+
+                        // If the hotseat has lost its child views (e.g. dropped due to an orientation race),
+                        // trigger a rebind to restore the dock icons immediately!
+                        if (mHotseat.getShortcutsAndWidgets() != null
+                                && mHotseat.getShortcutsAndWidgets().getChildCount() == 0
+                                && mModel != null) {
+                            Log.w(TAG, "Hotseat has 0 children on resume - rebinding callbacks to restore dock icons");
+                            mModel.rebindCallbacks();
+                        }
+                    }
                 }
             });
         }
@@ -1528,9 +1600,6 @@ public class Launcher extends StatefulActivity<LauncherState>
             if (mBlurLayer != null) mBlurLayer.setAlpha(1f);
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            foundation.e.bliss.glass.PortraitSensorHighlightController.ensureStarted(this);
-        }
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
             try {
@@ -1567,9 +1636,6 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
         mAppWidgetHolder.setActivityResumed(false);
         mAppMonitor.onLauncherPaused();
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            foundation.e.bliss.glass.PortraitSensorHighlightController.stopIfNoViews();
-        }
         hideWidgetResizeContainer();
     }
 
@@ -1638,10 +1704,9 @@ public class Launcher extends StatefulActivity<LauncherState>
                 glassSource,
                 getSharedPrefs()
             );
-            boolean glassEnabled = getSharedPrefs()
-                .getBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, true);
-            mDockGlassController.setEnabled(glassEnabled);
-            foundation.e.bliss.glass.PortraitSensorHighlightController.ensureStarted(this);
+            boolean glassDockEnabled = getSharedPrefs().getBoolean(
+                    BlissPrefs.PREF_GLASS_DOCK_ENABLED, true);
+            mDockGlassController.setEnabled(glassDockEnabled);
         }
 
         // Setup the drag layer
@@ -1725,6 +1790,9 @@ public class Launcher extends StatefulActivity<LauncherState>
                 if (mWorkspace.addToExistingFolderIfNecessary(view, layout, cellXY, 0, dragObject,
                         true)) {
                     return;
+                }
+                if (layout != null && !layout.isRegionVacant(cellXY[0], cellXY[1], 1, 1)) {
+                    foundCellSpan = layout.findCellForSpan(cellXY, 1, 1);
                 }
             } else {
                 foundCellSpan = layout.findCellForSpan(cellXY, 1, 1);
@@ -2248,7 +2316,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             int cellY) {
         final FolderInfo folderInfo = new FolderInfo();
         if (MultiModeController.isSingleLayerMode()) {
-            folderInfo.setTitle(this.getString(R.string.untitled_folder), getModelWriter());
+            folderInfo.setTitle(this.getString(R.string.untitled_folder), null);
         }
 
         // Update the model
@@ -2258,9 +2326,12 @@ public class Launcher extends StatefulActivity<LauncherState>
         FolderIcon newFolder = FolderIcon.inflateFolderAndIcon(R.layout.folder_icon, this, layout,
                 folderInfo);
         mWorkspace.addInScreen(newFolder, folderInfo);
-        // Force measure the new folder icon
+        // Force measure and layout the new folder icon immediately
         CellLayout parent = mWorkspace.getParentCellLayoutForView(newFolder);
-        parent.getShortcutsAndWidgets().measureChild(newFolder);
+        if (parent != null && parent.getShortcutsAndWidgets() != null) {
+            parent.getShortcutsAndWidgets().measureChild(newFolder);
+            parent.getShortcutsAndWidgets().layoutChild(newFolder);
+        }
         return newFolder;
     }
 
@@ -2444,8 +2515,17 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     @Override
     public void onBackPressed() {
+        android.util.Log.d("BACK_DEBUG", "Launcher.onBackPressed() called");
+        if (mWorkspace != null) {
+            com.android.launcher3.applibrary.view.AppLibraryPage alp = mWorkspace.getAppLibraryPage();
+            if (alp != null && alp.wasRecentlyInSearchMode()) {
+                android.util.Log.d("BACK_DEBUG", "Launcher.onBackPressed(): consumed by alp debounce");
+                return;
+            }
+        }
         if (Utilities.ATLEAST_U) {
             OnBackAnimationCallback cb = getOnBackAnimationCallback();
+            android.util.Log.d("BACK_DEBUG", "Launcher.onBackPressed(): cb=" + cb);
             if (cb != null) {
                 cb.onBackInvoked();
                 return;
@@ -2455,8 +2535,20 @@ public class Launcher extends StatefulActivity<LauncherState>
     }
 
     protected void onStateBack() {
+        android.util.Log.d("BACK_DEBUG", "Launcher.onStateBack() called");
+        if (isWidgetResizeContainerVisible()) {
+            hideWidgetResizeContainer();
+            return;
+        }
+
         if (swipeSearchContainer != null && swipeSearchContainer.getVisibility() == View.VISIBLE) {
             hideSwipeSearchContainer();
+            return;
+        }
+
+        AbstractFloatingView topView = AbstractFloatingView.getTopOpenView(this);
+        if (topView != null) {
+            topView.close(true);
             return;
         }
 
@@ -2473,25 +2565,20 @@ public class Launcher extends StatefulActivity<LauncherState>
             return;
         }
 
-        AbstractFloatingView topView = AbstractFloatingView.getTopOpenView(this);
-        if (topView != null) {
-            topView.close(true);
-            return;
-        }
-
         if (mWorkspace != null) {
             if (mWorkspace.isWobbling()) {
                 mWorkspace.wobbleLayouts(false);
                 return;
             }
 
-            View appLib = mWorkspace.findViewById(R.id.app_library_page);
-            if (appLib instanceof com.android.launcher3.applibrary.view.AppLibraryPage
-                    && ((com.android.launcher3.applibrary.view.AppLibraryPage) appLib).handleBack()) {
+            com.android.launcher3.applibrary.view.AppLibraryPage alp = mWorkspace.getAppLibraryPage();
+            android.util.Log.d("BACK_DEBUG", "onStateBack alp check: alp=" + alp + ", handleBack=" + (alp != null ? alp.canHandleBack() : "null"));
+            if (alp != null && alp.handleBack()) {
                 return;
             }
 
             if (mWorkspace.getNextPage() != 0) {
+                android.util.Log.d("BACK_DEBUG", "onStateBack snapToPage(0) called!");
                 mWorkspace.snapToPage(0);
                 return;
             }
@@ -2499,12 +2586,22 @@ public class Launcher extends StatefulActivity<LauncherState>
         mStateManager.getState().onBackPressed(this);
     }
 
+    public com.android.launcher3.applibrary.view.AppLibraryPage getAppLibraryPage() {
+        return mWorkspace != null ? mWorkspace.getAppLibraryPage() : null;
+    }
+
     private boolean mWasKeyguardLocked = false;
     private ValueAnimator mUnlockAnimator;
+    private long mLastUnlockAnimationTime = 0;
 
     public void playUnlockAnimation() {
         if (mWorkspace == null || mHotseat == null) return;
         if (Folder.getOpen(this) != null) return;
+        long now = SystemClock.uptimeMillis();
+        if (now - mLastUnlockAnimationTime < 200 && mUnlockAnimator != null && mUnlockAnimator.isRunning()) {
+            return;
+        }
+        mLastUnlockAnimationTime = now;
         if (mUnlockAnimator != null) {
             mUnlockAnimator.cancel();
         }
@@ -2514,6 +2611,7 @@ public class Launcher extends StatefulActivity<LauncherState>
         final float startAlpha = 0.3f;
         final float density = getResources().getDisplayMetrics().density;
         final float startHotseatTransY = 24f * density;
+        final View dockGlass = findViewById(R.id.dock_glass);
 
         if (mWorkspace.getWidth() > 0) mWorkspace.setPivotX(mWorkspace.getWidth() / 2f);
         if (mWorkspace.getHeight() > 0) mWorkspace.setPivotY(mWorkspace.getHeight() / 2f);
@@ -2528,9 +2626,17 @@ public class Launcher extends StatefulActivity<LauncherState>
             }
             mHotseat.setForcedTranslationY(slideDistance);
             mHotseat.setAlpha(0f);
+            if (dockGlass != null) {
+                dockGlass.setTranslationY(slideDistance);
+                dockGlass.setAlpha(0f);
+            }
         } else {
             mHotseat.setTranslationY(startHotseatTransY);
             mHotseat.setAlpha(startAlpha);
+            if (dockGlass != null) {
+                dockGlass.setTranslationY(startHotseatTransY);
+                dockGlass.setAlpha(startAlpha);
+            }
         }
 
         mUnlockAnimator = ValueAnimator.ofFloat(0f, 1f);
@@ -2549,6 +2655,10 @@ public class Launcher extends StatefulActivity<LauncherState>
             if (!isAppLib) {
                 mHotseat.setTranslationY(currentHotseatY);
                 mHotseat.setAlpha(currentAlpha);
+                if (dockGlass != null) {
+                    dockGlass.setTranslationY(currentHotseatY);
+                    dockGlass.setAlpha(currentAlpha);
+                }
             }
         });
         mUnlockAnimator.addListener(new AnimatorListenerAdapter() {
@@ -2563,9 +2673,18 @@ public class Launcher extends StatefulActivity<LauncherState>
                         return;
                     }
                 }
+                boolean folderOpen = Folder.getOpen(Launcher.this) != null;
                 if (mHotseat != null) {
                     mHotseat.setTranslationY(0f);
-                    mHotseat.setAlpha(1f);
+                    if (!folderOpen) {
+                        mHotseat.setAlpha(1f);
+                    }
+                }
+                if (dockGlass != null) {
+                    dockGlass.setTranslationY(0f);
+                    if (!folderOpen) {
+                        dockGlass.setAlpha(1f);
+                    }
                 }
             }
         });
@@ -2606,15 +2725,31 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         RunnableList result = super.startActivitySafely(v, intent, item);
-        if (result != null && v instanceof BubbleTextView) {
-            // This is set to the view that launched the activity that navigated the user away
-            // from launcher. Since there is no callback for when the activity has finished
-            // launching, enable the press state and keep this reference to reset the press
-            // state when we return to launcher.
+        if (v instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) v;
             btv.setStayPressed(true);
-            result.add(() -> btv.setStayPressed(false));
+            mLastLaunchedIcon = btv;
+            if (result != null) {
+                result.add(() -> {
+                    btv.setStayPressed(false);
+                    if (mLastLaunchedIcon == btv) {
+                        mLastLaunchedIcon = null;
+                    }
+                });
+            }
         }
+
+        // Record launch for App Library Suggestions
+        try {
+            com.android.launcher3.model.data.ItemInfo targetItem = item != null ? item
+                    : (v != null && v.getTag() instanceof com.android.launcher3.model.data.ItemInfo
+                            ? (com.android.launcher3.model.data.ItemInfo) v.getTag() : null);
+            if (targetItem != null && targetItem.getTargetPackage() != null) {
+                com.android.launcher3.applibrary.model.AppLibraryModel.getInstance(this)
+                        .recordPackageLaunch(targetItem.getTargetPackage());
+            }
+        } catch (Throwable ignored) {}
+
         return result;
     }
 
@@ -2662,6 +2797,10 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     @Override
     public void startBinding() {
+        if (mOnInitialBindListener != null) {
+            getRootView().getViewTreeObserver().removeOnPreDrawListener(mOnInitialBindListener);
+            mOnInitialBindListener = null;
+        }
         mModelCallbacks.startBinding();
     }
 
@@ -2739,7 +2878,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             CellPos presenterPos = getCellPosMapper().mapModelToPresenter(item);
             if (item.container == CONTAINER_DESKTOP) {
                 CellLayout cl = mWorkspace.getScreenWithId(presenterPos.screenId);
-                if (cl != null && cl.isOccupied(presenterPos.cellX, presenterPos.cellY)) {
+                if (cl != null && !cl.isRegionVacant(presenterPos.cellX, presenterPos.cellY, item.spanX, item.spanY)) {
                     View child = cl.getChildAt(presenterPos.cellX, presenterPos.cellY);
                     Object tag = child != null ? child.getTag() : "occupied_span";
                     String desc = "Collision while binding workspace item: " + item
@@ -2751,20 +2890,36 @@ public class Launcher extends StatefulActivity<LauncherState>
                         item.cellY = vacant[1];
                         getModelWriter().modifyItemInDatabase(item, item.container, item.screenId, item.cellX, item.cellY, item.spanX, item.spanY);
                     } else {
-                        int newScreen = presenterPos.screenId + 1;
-                        CellLayout nextCl = mWorkspace.getScreenWithId(newScreen);
-                        while (nextCl != null && !nextCl.findCellForSpan(vacant, item.spanX, item.spanY)) {
-                            newScreen++;
-                            nextCl = mWorkspace.getScreenWithId(newScreen);
+                        int targetScreen = presenterPos.screenId + 1;
+                        CellLayout targetCl = null;
+                        for (int i = 0; i < mWorkspace.getScreenOrder().size(); i++) {
+                            int sid = mWorkspace.getScreenOrder().get(i);
+                            if (sid <= presenterPos.screenId
+                                    || sid == Workspace.APP_LIBRARY_SCREEN_ID
+                                    || (mWorkspace.getFirstPagePinnedItem() != null && sid == Workspace.FIRST_SCREEN_ID)) {
+                                continue;
+                            }
+                            CellLayout layout = mWorkspace.getScreenWithId(sid);
+                            if (layout != null && layout != mWorkspace.getAppLibraryCellLayout()
+                                    && layout.findCellForSpan(vacant, item.spanX, item.spanY)) {
+                                targetCl = layout;
+                                targetScreen = sid;
+                                break;
+                            }
                         }
-                        item.screenId = newScreen;
-                        if (nextCl != null) {
-                            item.cellX = vacant[0];
-                            item.cellY = vacant[1];
-                        } else {
-                            item.cellX = 0;
-                            item.cellY = 0;
+                        if (targetCl == null) {
+                            targetScreen = LauncherAppState.getInstance(this).getModel().getModelDbController().getNewScreenId();
+                            while (mWorkspace.containsScreenId(targetScreen)) {
+                                targetScreen++;
+                            }
+                            mWorkspace.insertNewWorkspaceScreenBeforeEmptyScreen(targetScreen);
+                            targetCl = mWorkspace.getScreenWithId(targetScreen);
+                            vacant[0] = 0;
+                            vacant[1] = 0;
                         }
+                        item.screenId = targetScreen;
+                        item.cellX = vacant[0];
+                        item.cellY = vacant[1];
                         getModelWriter().modifyItemInDatabase(item, item.container, item.screenId, item.cellX, item.cellY, item.spanX, item.spanY);
                     }
                 }
@@ -2784,7 +2939,7 @@ public class Launcher extends StatefulActivity<LauncherState>
                 view.setScaleX(0f);
                 view.setScaleY(0f);
                 boundAnim.play(createNewAppBounceAnimation(view, index++));
-                newItemsScreenId = presenterPos.screenId;
+                newItemsScreenId = getCellPosMapper().mapModelToPresenter(item).screenId;
             }
         }
 
@@ -3051,7 +3206,9 @@ public class Launcher extends StatefulActivity<LauncherState>
      * Informs us that the page transition has ended, so that we can react to the newly selected
      * page if we want to.
      */
-    public void onPageEndTransition() {}
+    public void onPageEndTransition() {
+        updateDisallowBack();
+    }
 
     /**
      * See {@code LauncherBindingDelegate}
@@ -3289,7 +3446,7 @@ public class Launcher extends StatefulActivity<LauncherState>
         mBackPressedHandlers.remove(callback);
     }
 
-    private void updateDisallowBack() {
+    public void updateDisallowBack() {
         if (Flags.enableDesktopWindowingMode()) {
             // Do not disable back in launcher when prototype behavior is enabled
             return;
@@ -3297,9 +3454,22 @@ public class Launcher extends StatefulActivity<LauncherState>
         LauncherRootView rv = getRootView();
         if (rv != null) {
             boolean isSplitSelectionEnabled = isSplitSelectionActive();
+            boolean isAppLibrarySearchActive = mWorkspace != null
+                    && mWorkspace.getAppLibraryPage() != null
+                    && mWorkspace.getAppLibraryPage().canHandleBack();
+            boolean isNotOnFirstPage = mWorkspace != null && mWorkspace.getNextPage() != 0;
+            boolean isWobbling = mWorkspace != null && mWorkspace.isWobbling();
+            View swipeSearch = findViewById(R.id.swipe_search_container);
+            boolean isSwipeSearchActive = swipeSearch != null && swipeSearch.getVisibility() == View.VISIBLE;
+            boolean isWidgetResizing = isWidgetResizeContainerVisible();
             boolean disableBack = getStateManager().getState() == NORMAL
                     && AbstractFloatingView.getTopOpenView(this) == null
-                    && !isSplitSelectionEnabled;
+                    && !isAppLibrarySearchActive
+                    && !isNotOnFirstPage
+                    && !isWobbling
+                    && !isSwipeSearchActive
+                    && !isSplitSelectionEnabled
+                    && !isWidgetResizing;
             rv.setDisallowBackGesture(disableBack);
         }
     }
@@ -3424,90 +3594,112 @@ public class Launcher extends StatefulActivity<LauncherState>
     }
 
     private void showSwipeSearchContainer() {
-        if (currentAnimator != null) {
-            currentAnimator.cancel();
+        if (mSwipeSearchAnimator != null) {
+            mSwipeSearchAnimator.cancel();
         }
+        View dockGlass = findViewById(R.id.dock_glass);
         AnimatorSet set = new AnimatorSet();
-        set.play(ObjectAnimator.ofFloat(swipeSearchContainer, View.TRANSLATION_Y, 0))
+        AnimatorSet.Builder b = set.play(ObjectAnimator.ofFloat(swipeSearchContainer, View.TRANSLATION_Y, 0))
                 .with(ObjectAnimator.ofFloat(mBlurLayer, View.ALPHA, 1f))
                 .with(ObjectAnimator.ofFloat(mWorkspace, View.ALPHA, 0f))
                 .with(ObjectAnimator.ofFloat(mWorkspace.mPageIndicator, View.ALPHA, 0f))
                 .with(ObjectAnimator.ofFloat(mHotseat, View.ALPHA, 0f));
+        if (dockGlass != null) {
+            b.with(ObjectAnimator.ofFloat(dockGlass, View.ALPHA, 0f));
+        }
         set.setDuration(300);
         set.setInterpolator(new LinearInterpolator());
         set.addListener(new AnimatorListenerAdapter() {
+            private boolean mCancelled = false;
+
             @Override
             public void onAnimationStart(Animator animation) {
                 swipeSearchContainer.setVisibility(View.VISIBLE);
-                super.onAnimationStart(animation);
+                updateDisallowBack();
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
-                currentAnimator = null;
-                swipeSearchContainer.setVisibility(View.GONE);
-                mWorkspace.setVisibility(View.VISIBLE);
-                mHotseat.setVisibility(View.VISIBLE);
-                mWorkspace.mPageIndicator.setVisibility(View.VISIBLE);
-                mBlurLayer.setAlpha(0f);
-                super.onAnimationCancel(animation);
+                mCancelled = true;
+                mSwipeSearchAnimator = null;
+                updateDisallowBack();
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                currentAnimator = null;
+                mSwipeSearchAnimator = null;
+                if (mCancelled) return;
                 mWorkspace.setVisibility(View.GONE);
                 mHotseat.setVisibility(View.GONE);
                 mWorkspace.mPageIndicator.setVisibility(View.GONE);
-                super.onAnimationEnd(animation);
+                if (dockGlass != null) {
+                    dockGlass.setVisibility(View.GONE);
+                }
+                updateDisallowBack();
             }
         });
+        mSwipeSearchAnimator = set;
         set.start();
-        currentAnimator = set;
     }
 
     public void hideSwipeSearchContainer() {
-        if (currentAnimator != null) {
-            currentAnimator.cancel();
+        if (mSwipeSearchAnimator != null) {
+            mSwipeSearchAnimator.cancel();
         }
+        View dockGlass = findViewById(R.id.dock_glass);
+        boolean shouldShowDock = mWorkspace != null
+                && !mWorkspace.isAppLibraryCurrentPage()
+                && !(mWorkspace.getFirstPagePinnedItem() != null && mWorkspace.getNextPage() == 0)
+                && Folder.getOpen(this) == null;
+        float targetBlurAlpha = (mWorkspace != null && mWorkspace.isAppLibraryCurrentPage())
+                || Folder.getOpen(this) != null ? 1f : 0f;
+
         AnimatorSet set = new AnimatorSet();
-        set.play(ObjectAnimator.ofFloat(swipeSearchContainer, View.TRANSLATION_Y, -swipeSearchContainer.getHeight()))
+        AnimatorSet.Builder b = set.play(ObjectAnimator.ofFloat(swipeSearchContainer, View.TRANSLATION_Y, -swipeSearchContainer.getHeight()))
                 .with(ObjectAnimator.ofFloat(mWorkspace, View.ALPHA, 1f))
-                .with(ObjectAnimator.ofFloat(mWorkspace.mPageIndicator, View.ALPHA, 1f))
-                .with(ObjectAnimator.ofFloat(mHotseat, View.ALPHA, 1f))
-                .with(ObjectAnimator.ofFloat(mBlurLayer, View.ALPHA, 0f));
+                .with(ObjectAnimator.ofFloat(mBlurLayer, View.ALPHA, targetBlurAlpha));
+        if (shouldShowDock) {
+            b.with(ObjectAnimator.ofFloat(mWorkspace.mPageIndicator, View.ALPHA, 1f))
+             .with(ObjectAnimator.ofFloat(mHotseat, View.ALPHA, 1f));
+            if (dockGlass != null) {
+                b.with(ObjectAnimator.ofFloat(dockGlass, View.ALPHA, 1f));
+            }
+        }
         set.setDuration(300);
         set.setInterpolator(new LinearInterpolator());
         set.addListener(new AnimatorListenerAdapter() {
+            private boolean mCancelled = false;
+
             @Override
             public void onAnimationStart(Animator animation) {
                 mWorkspace.setVisibility(View.VISIBLE);
-                mHotseat.setVisibility(View.VISIBLE);
-                mWorkspace.mPageIndicator.setVisibility(View.VISIBLE);
-                super.onAnimationStart(animation);
+                if (shouldShowDock) {
+                    mHotseat.setVisibility(View.VISIBLE);
+                    mWorkspace.mPageIndicator.setVisibility(View.VISIBLE);
+                    if (dockGlass != null) {
+                        dockGlass.setVisibility(View.VISIBLE);
+                    }
+                }
             }
 
             @Override
             public void onAnimationCancel(Animator animation) {
-                currentAnimator = null;
-                swipeSearchContainer.setVisibility(View.VISIBLE);
-                mBlurLayer.setAlpha(1f);
-                mWorkspace.setVisibility(View.GONE);
-                mHotseat.setVisibility(View.GONE);
-                mWorkspace.mPageIndicator.setVisibility(View.GONE);
-                super.onAnimationCancel(animation);
+                mCancelled = true;
+                mSwipeSearchAnimator = null;
+                updateDisallowBack();
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                currentAnimator = null;
+                mSwipeSearchAnimator = null;
+                if (mCancelled) return;
                 swipeSearchContainer.setVisibility(View.GONE);
-                mBlurLayer.setAlpha(0f);
-                super.onAnimationEnd(animation);
+                mBlurLayer.setAlpha(targetBlurAlpha);
+                updateDisallowBack();
             }
         });
+        mSwipeSearchAnimator = set;
         set.start();
-        currentAnimator = set;
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -3517,11 +3709,19 @@ public class Launcher extends StatefulActivity<LauncherState>
                 .findViewById(R.id.widget_resizer_container);
         if (widgetResizeContainer == null) return;
 
+        if (mIsHidingWidgetResizeContainer) {
+            mIsHidingWidgetResizeContainer = false;
+            if (mWidgetResizeAnimator != null) {
+                mWidgetResizeAnimator.cancel();
+            }
+            widgetResizeContainer.setVisibility(View.GONE);
+        }
+
         if (widgetResizeContainer.getVisibility() != View.VISIBLE) {
             activeRoundedWidgetView = roundedWidgetView;
             SeekBar seekBar = widgetResizeContainer.findViewById(R.id.widget_resizer_seekbar);
-            if (currentAnimator != null) {
-                currentAnimator.cancel();
+            if (mWidgetResizeAnimator != null) {
+                mWidgetResizeAnimator.cancel();
             }
 
             seekBar.setOnTouchListener((v, event) -> {
@@ -3535,39 +3735,46 @@ public class Launcher extends StatefulActivity<LauncherState>
             set.setDuration(200);
             set.setInterpolator(new LinearInterpolator());
             set.addListener(new AnimatorListenerAdapter() {
+                private boolean mCancelled = false;
+
                 @Override
                 public void onAnimationStart(Animator animation) {
-                    super.onAnimationStart(animation);
                     widgetResizeContainer.setVisibility(View.VISIBLE);
                 }
 
                 @Override
                 public void onAnimationCancel(Animator animation) {
-                    super.onAnimationCancel(animation);
-                    currentAnimator = null;
+                    mCancelled = true;
+                    mWidgetResizeAnimator = null;
                     widgetResizeContainer.setVisibility(View.GONE);
                     roundedWidgetView.removeBorder();
                 }
 
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    super.onAnimationEnd(animation);
-                    currentAnimator = null;
+                    mWidgetResizeAnimator = null;
+                    if (mCancelled) return;
                     prepareWidgetResizeSeekBar(seekBar);
                     roundedWidgetView.addBorder();
                 }
             });
+            mWidgetResizeAnimator = set;
             set.start();
-            currentAnimator = set;
         }
     }
 
     private void prepareWidgetResizeSeekBar(SeekBar seekBar) {
+        if (activeRoundedWidgetView == null || activeRoundedWidgetView.getAppWidgetInfo() == null) {
+            return;
+        }
         int minHeight = activeRoundedWidgetView.getAppWidgetInfo().minResizeHeight;
         int maxHeight = mDeviceProfile.availableHeightPx * 3 / 4;
-        int normalisedDifference = (maxHeight - minHeight) / 100;
+        if (maxHeight <= minHeight) {
+            return;
+        }
+        int normalisedDifference = Math.max(1, (maxHeight - minHeight) / 100);
         int defaultHeight = activeRoundedWidgetView.getHeight();
-        int currentProgress = (defaultHeight - minHeight) * 100 / (maxHeight - minHeight);
+        int currentProgress = Math.max(0, Math.min(100, (defaultHeight - minHeight) * 100 / (maxHeight - minHeight)));
 
         seekBar.setMax(100);
         seekBar.setProgress(currentProgress);
@@ -3596,13 +3803,24 @@ public class Launcher extends StatefulActivity<LauncherState>
         });
     }
 
+    public boolean isWidgetResizeContainerVisible() {
+        if (mWorkspace == null || mWorkspace.getFirstPagePinnedItem() == null) return false;
+        RelativeLayout widgetResizeContainer = mWorkspace.getFirstPagePinnedItem().findViewById(R.id.widget_resizer_container);
+        return widgetResizeContainer != null && widgetResizeContainer.getVisibility() == View.VISIBLE;
+    }
+
     public void hideWidgetResizeContainer() {
         if (mWorkspace == null || mWorkspace.getFirstPagePinnedItem() == null) return;
         RelativeLayout widgetResizeContainer = mWorkspace.getFirstPagePinnedItem().findViewById(R.id.widget_resizer_container);
         if (widgetResizeContainer == null || widgetResizeContainer.getVisibility() != View.VISIBLE) return;
 
-        if (currentAnimator != null) {
-            currentAnimator.cancel();
+        if (mIsHidingWidgetResizeContainer && mWidgetResizeAnimator != null && mWidgetResizeAnimator.isRunning()) {
+            return;
+        }
+        mIsHidingWidgetResizeContainer = true;
+
+        if (mWidgetResizeAnimator != null) {
+            mWidgetResizeAnimator.cancel();
         }
         AnimatorSet set = new AnimatorSet();
         set.play(ObjectAnimator.ofFloat(widgetResizeContainer, View.TRANSLATION_Y,
@@ -3610,9 +3828,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         set.setDuration(200);
         set.setInterpolator(new LinearInterpolator());
         set.addListener(new AnimatorListenerAdapter() {
+            private boolean mCancelled = false;
+
             @Override
             public void onAnimationStart(Animator animation) {
-                super.onAnimationStart(animation);
                 if (mWorkspace != null && mWorkspace.getFirstPagePinnedItem() != null) {
                     SeekBar sb = mWorkspace.getFirstPagePinnedItem().findViewById(R.id.widget_resizer_seekbar);
                     if (sb != null) {
@@ -3623,23 +3842,25 @@ public class Launcher extends StatefulActivity<LauncherState>
 
             @Override
             public void onAnimationCancel(Animator animation) {
-                super.onAnimationCancel(animation);
-                currentAnimator = null;
+                mCancelled = true;
+                mIsHidingWidgetResizeContainer = false;
+                mWidgetResizeAnimator = null;
                 widgetResizeContainer.setVisibility(View.VISIBLE);
             }
 
             @Override
             public void onAnimationEnd(Animator animation) {
-                super.onAnimationEnd(animation);
-                currentAnimator = null;
+                mIsHidingWidgetResizeContainer = false;
+                mWidgetResizeAnimator = null;
+                if (mCancelled) return;
                 widgetResizeContainer.setVisibility(View.GONE);
                 if (activeRoundedWidgetView != null) {
                     activeRoundedWidgetView.removeBorder();
                 }
             }
         });
+        mWidgetResizeAnimator = set;
         set.start();
-        currentAnimator = set;
     }
 
     // Getters and Setters
@@ -3821,7 +4042,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
     public Stream<SystemShortcut.Factory> getSupportedShortcuts() {
         if (MultiModeController.isSingleLayerMode()) {
-            return Stream.of(APP_INFO, ADD_TO_HOME_SCREEN, EDIT_HOME_SCREEN, WIDGETS, INSTALL, UNINSTALL_APP);
+            return Stream.of(APP_INFO, ADD_TO_HOME_SCREEN, EDIT_HOME_SCREEN, CHANGE_CATEGORY, WIDGETS, INSTALL, UNINSTALL_APP);
         }
         return Stream.of(APP_INFO, ADD_TO_HOME_SCREEN, WIDGETS, INSTALL, UNINSTALL_APP);
     }

@@ -28,4 +28,4 @@ project(':IconLoader').projectDir = new File("$rootDir/libs_systemui", 'iconload
 include ':SearchUiLib'
 project(':SearchUiLib').projectDir = new File("$rootDir/libs_systemui", 'searchuilib')
 
-rootProject.name = "BlissLauncher3"
+rootProject.name = "iHomeLauncher"

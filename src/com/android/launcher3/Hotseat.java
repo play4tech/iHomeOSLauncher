@@ -380,11 +380,6 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
                 super.setAlpha(0f);
                 return;
             }
-            Folder folder = Folder.getOpen(mActivity);
-            if (folder == null && alpha < 1.0f && alpha > 0f) {
-                super.setAlpha(1f);
-                return;
-            }
         }
 
         super.setAlpha(alpha);

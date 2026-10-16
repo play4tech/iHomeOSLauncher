@@ -22,6 +22,7 @@ public class MiniClusterView extends View {
 
     private final List<ItemInfoWithIcon> mIcons = new ArrayList<>();
     private final List<FastBitmapDrawable> mDrawables = new ArrayList<>();
+    private final boolean[] mHiddenSlots = new boolean[4];
     private int mGap;
     private CategoryData mCategoryData;
 
@@ -42,7 +43,9 @@ public class MiniClusterView extends View {
             Log.d("MiniClusterView", "Clicked on mini cluster!");
             if (mCategoryData != null) {
                 Log.d("MiniClusterView", "CategoryData is not null, showing expanded view");
-                AppLibraryCategoryExpandedView.show(launcher, mCategoryData);
+                View parent = (View) getParent();
+                CategoryCardView card = (parent instanceof CategoryCardView) ? (CategoryCardView) parent : null;
+                AppLibraryCategoryExpandedView.show(launcher, mCategoryData, card);
             } else {
                 Log.d("MiniClusterView", "CategoryData is null!");
             }
@@ -52,14 +55,42 @@ public class MiniClusterView extends View {
         setFocusable(true);
     }
 
-    @Override
-    public boolean onTouchEvent(android.view.MotionEvent event) {
-        Log.d("MiniClusterView", "onTouchEvent action=" + event.getAction() + " x=" + event.getX() + " y=" + event.getY());
-        return super.onTouchEvent(event);
+
+    public void reset() {
+        mIcons.clear();
+        mDrawables.clear();
+        clearHiddenSlots();
+        mCategoryData = null;
     }
 
     public void setCategoryData(CategoryData data) {
         mCategoryData = data;
+    }
+
+    public int getGap() {
+        return mGap;
+    }
+
+    public void setSlotHidden(int slotIndex, boolean hidden) {
+        if (slotIndex >= 0 && slotIndex < mHiddenSlots.length) {
+            if (mHiddenSlots[slotIndex] != hidden) {
+                mHiddenSlots[slotIndex] = hidden;
+                invalidate();
+            }
+        }
+    }
+
+    public void clearHiddenSlots() {
+        boolean changed = false;
+        for (int i = 0; i < mHiddenSlots.length; i++) {
+            if (mHiddenSlots[i]) {
+                mHiddenSlots[i] = false;
+                changed = true;
+            }
+        }
+        if (changed) {
+            invalidate();
+        }
     }
 
     public void addIcon(ItemInfoWithIcon info) {
@@ -72,6 +103,16 @@ public class MiniClusterView extends View {
         }
     }
 
+    public List<Bitmap> getPreviewBitmaps() {
+        List<Bitmap> bitmaps = new ArrayList<>();
+        for (ItemInfoWithIcon info : mIcons) {
+            if (info != null && info.bitmap != null && info.bitmap.icon != null) {
+                bitmaps.add(info.bitmap.icon);
+            }
+        }
+        return bitmaps;
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -82,6 +123,7 @@ public class MiniClusterView extends View {
         int iconSize = (width - mGap) / 2;
 
         for (int i = 0; i < mDrawables.size(); i++) {
+            if (i < mHiddenSlots.length && mHiddenSlots[i]) continue;
             FastBitmapDrawable d = mDrawables.get(i);
             int row = i / 2;
             int col = i % 2;

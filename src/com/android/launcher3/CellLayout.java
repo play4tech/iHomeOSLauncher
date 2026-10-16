@@ -18,6 +18,7 @@ package com.android.launcher3;
 
 import static com.android.launcher3.dragndrop.DraggableView.DRAGGABLE_ICON;
 import static com.android.launcher3.icons.IconNormalizer.ICON_VISIBLE_AREA_FACTOR;
+import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_REORDER_BOUNCE_OFFSET;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_REORDER_PREVIEW_OFFSET;
 
 import android.animation.Animator;
@@ -84,6 +85,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
@@ -209,6 +212,8 @@ public class CellLayout extends ViewGroup {
     public final int[] mDirectionVector = new int[2];
 
     ItemConfiguration mPreviousSolution = null;
+    private ArrayList<View> mPendingOverflow;                       // set on drop, consumed by Workspace
+    private final ArrayList<View> mOverflowPreview = new ArrayList<>(); // dimmed during hover preview
     private static final int INVALID_DIRECTION = -100;
 
     private final Rect mTempRect = new Rect();
@@ -372,8 +377,7 @@ public class CellLayout extends ViewGroup {
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        return mTouchHelper != null
-                || (mInterceptTouchListener != null && mInterceptTouchListener.onTouch(this, ev));
+        return mInterceptTouchListener != null && mInterceptTouchListener.onTouch(this, ev);
     }
 
     public void enableHardwareLayer(boolean hasLayer) {
@@ -803,6 +807,11 @@ public class CellLayout extends ViewGroup {
 
         // Generate an id for each view, this assumes we have at most 256x256 cells
         // per workspace screen
+        if (mContainerType == HOTSEAT && (lp.getCellX() >= mCountX || lp.getCellY() >= mCountY)) {
+            if (lp.getCellX() >= mCountX) mCountX = lp.getCellX() + 1;
+            if (lp.getCellY() >= mCountY) mCountY = lp.getCellY() + 1;
+        }
+
         if (lp.getCellX() >= 0 && lp.getCellX() <= mCountX - 1
                 && lp.getCellY() >= 0 && lp.getCellY() <= mCountY - 1) {
             // If the horizontal or vertical span is set to -1, it is taken to
@@ -1484,7 +1493,7 @@ public class CellLayout extends ViewGroup {
         mShakeAnimators.clear();
     }
 
-    private void commitTempPlacement(View dragView) {
+    private void commitTempPlacement(ItemConfiguration solution, View dragView) {
         mTmpOccupied.copyTo(mOccupied);
 
         int screenId = mCellLayoutContainer.getCellLayoutId(this);
@@ -1503,6 +1512,11 @@ public class CellLayout extends ViewGroup {
             // We do a null check here because the item info can be null in the case of the
             // AllApps button in the hotseat.
             if (info != null && (child != dragView || dragView == null)) {
+                if (solution != null && !solution.map.containsKey(child)) {
+                    // Do not commit placement or update DB for views not in this solution
+                    // (e.g. overflow views that will be relocated to another page).
+                    continue;
+                }
                 CellPos presenterPos = mActivity.getCellPosMapper().mapModelToPresenter(info);
                 final boolean requiresDbUpdate = (presenterPos.cellX != lp.getTmpCellX()
                         || presenterPos.cellY != lp.getTmpCellY() || info.spanX != lp.cellHSpan
@@ -1510,6 +1524,15 @@ public class CellLayout extends ViewGroup {
 
                 lp.setCellX(lp.getTmpCellX());
                 lp.setCellY(lp.getTmpCellY());
+                lp.isLockedToGrid = true;
+                if (mReorderAnimators.containsKey(lp)) {
+                    mReorderAnimators.get(lp).cancel();
+                    mReorderAnimators.remove(lp);
+                }
+                if (child instanceof Reorderable) {
+                    ((Reorderable) child).getTranslateDelegate()
+                            .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
+                }
                 if (requiresDbUpdate) {
                     Launcher.cast(mActivity).getModelWriter().modifyItemInDatabase(info, container,
                             screenId, lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan);
@@ -1563,6 +1586,8 @@ public class CellLayout extends ViewGroup {
     }
 
     void revertTempState() {
+        mPreviousSolution = null;        // never let a reverted preview be reused
+        restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
         if (isItemPlacementDirty() && !DESTRUCTIVE_REORDER) {
             final int count = mShortcutsAndWidgets.getChildCount();
@@ -1579,6 +1604,38 @@ public class CellLayout extends ViewGroup {
             }
             setItemPlacementDirty(false);
         }
+    }
+
+    public void revertTempStateImmediately() {
+        mPreviousSolution = null;        // never let a reverted preview be reused
+        restoreOverflowPreview();
+        completeAndClearReorderPreviewAnimations();
+        for (Animator anim : mReorderAnimators.values()) {
+            if (anim != null) anim.cancel();
+        }
+        mReorderAnimators.clear();
+        final int count = mShortcutsAndWidgets.getChildCount();
+        for (int i = 0; i < count; i++) {
+            View child = mShortcutsAndWidgets.getChildAt(i);
+            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
+            lp.setTmpCellX(lp.getCellX());
+            lp.setTmpCellY(lp.getCellY());
+            lp.isLockedToGrid = true;
+            lp.useTmpCoords = false;
+            if (child instanceof Reorderable) {
+                ((Reorderable) child).getTranslateDelegate()
+                        .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0f, 0f);
+                ((Reorderable) child).getTranslateDelegate()
+                        .setTranslation(INDEX_REORDER_BOUNCE_OFFSET, 0f, 0f);
+            }
+            child.setTranslationX(0f);
+            child.setTranslationY(0f);
+            mShortcutsAndWidgets.measureChild(child);
+            mShortcutsAndWidgets.layoutChild(child);
+        }
+        setItemPlacementDirty(false);
+        setUseTempCoords(false);
+        mShortcutsAndWidgets.requestLayout();
     }
 
     boolean createAreaForResize(int cellX, int cellY, int spanX, int spanY,
@@ -1600,7 +1657,7 @@ public class CellLayout extends ViewGroup {
             animateItemsToSolution(swapSolution, dragView, commit);
 
             if (commit) {
-                commitTempPlacement(null);
+                commitTempPlacement(swapSolution, null);
                 completeAndClearReorderPreviewAnimations();
                 setItemPlacementDirty(false);
             } else {
@@ -1640,7 +1697,7 @@ public class CellLayout extends ViewGroup {
         }
     }
 
-    public void reArrangeIcons(int x, int y) {
+    public boolean reArrangeIcons(int x, int y) {
         ItemConfiguration solution = new ItemConfiguration();
         copyCurrentStateToSolution(solution);
         solution.save();
@@ -1655,6 +1712,8 @@ public class CellLayout extends ViewGroup {
             intersecting[1] = y;
         }
 
+        mOccupied.copyTo(mTmpOccupied);
+
         for (Map.Entry <View, CellAndSpan> keyValue : solution.map.entrySet()) {
             CellAndSpan c = keyValue.getValue();
 
@@ -1663,6 +1722,15 @@ public class CellLayout extends ViewGroup {
                 views.add(keyValue.getKey());
                 pushIconByRow(c, mCountX, mCountY, ViewCluster.LEFT);
             }
+        }
+        if (views.isEmpty()) {
+            return false;
+        }
+        View firstView = views.get(0);
+        CellLayoutLayoutParams firstLp = (CellLayoutLayoutParams) firstView.getLayoutParams();
+        if (!firstLp.canReorder || firstView instanceof LauncherAppWidgetHostView
+                || firstLp.cellHSpan > 1 || firstLp.cellVSpan > 1) {
+            return false;
         }
         ViewCluster cluster = new ViewCluster(this, views, solution);
         cluster.sortConfigurationForEdgePush(ViewCluster.LEFT);
@@ -1713,11 +1781,22 @@ public class CellLayout extends ViewGroup {
             solution.spanY = 1;
             solution.isSolution = true;
 
-
             if (views.size() > 0 && views.get(0) != null) {
-                performReorder(solution, views.get(0), MODE_ON_DROP);
+                // Pass null so performReorder animates and commits EVERY view in the solution
+                // instead of skipping views.get(0).
+                performReorder(solution, null, MODE_ON_DROP);
             }
         }
+        return isSolution;
+    }
+
+    /**
+     * Compacts all reorderable 1x1 icons in reading order (top-to-bottom, left-to-right)
+     * around fixed widgets in a single pass, animating and committing all moves at once.
+     */
+    public boolean compactIconsInReadingOrder() {
+        // Disabled: preserve freeform placement of apps anywhere on the grid (iOS 18 style).
+        return false;
     }
 
     public void pushIconByRow(CellAndSpan c, int countX, int countY, int whichEdge) {
@@ -1813,35 +1892,85 @@ public class CellLayout extends ViewGroup {
 
     int[] performReorder(int pixelX, int pixelY, int minSpanX, int minSpanY, int spanX, int spanY,
             View dragView, int[] result, int[] resultSpan, int mode) {
-        if (resultSpan == null) {
-            resultSpan = new int[]{-1, -1};
-        }
-        if (result == null) {
-            result = new int[]{-1, -1};
-        }
+        if (resultSpan == null) resultSpan = new int[]{-1, -1};
+        if (result == null) result = new int[]{-1, -1};
+
+        final boolean isDrop = mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL;
 
         ItemConfiguration finalSolution;
-        if (mode == MODE_SHOW_REORDER_HINT || mPreviousSolution == null) {
-            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY, dragView);
-            mPreviousSolution = finalSolution;
-        } else {
+        // Only the alarm (MODE_DRAG_OVER) may reuse the hint, and only if it still matches
+        // the current children. A drop ALWAYS recomputes against the live state.
+        if (mode == MODE_DRAG_OVER && mPreviousSolution != null
+                && isSolutionCurrent(mPreviousSolution, dragView)) {
             finalSolution = mPreviousSolution;
+        } else {
+            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
+                    dragView);
+            mPreviousSolution = finalSolution;
         }
-        
-        if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
+        if (isDrop) {
             mPreviousSolution = null;
         }
 
         if (finalSolution == null || !finalSolution.isSolution) {
+            restoreOverflowPreview();
+            if (isDrop) mPendingOverflow = null;
             result[0] = result[1] = resultSpan[0] = resultSpan[1] = -1;
         } else {
             result[0] = finalSolution.cellX;
             result[1] = finalSolution.cellY;
             resultSpan[0] = finalSolution.spanX;
             resultSpan[1] = finalSolution.spanY;
+            handleOverflow(finalSolution, isDrop);
             performReorder(finalSolution, dragView, mode);
         }
         return result;
+    }
+
+    /** A cached solution is only valid if it describes exactly the current set of children. */
+    private boolean isSolutionCurrent(ItemConfiguration s, View dragView) {
+        int children = 0;
+        for (int i = 0; i < mShortcutsAndWidgets.getChildCount(); i++) {
+            View c = mShortcutsAndWidgets.getChildAt(i);
+            if (c == dragView) continue;
+            if (!s.map.containsKey(c)) {
+                // Views that were pushed off-screen into overflow are legitimately absent.
+                if (!s.overflowViews.contains(c)) return false;
+            } else {
+                children++;
+            }
+        }
+        int mapped = s.map.size() - (dragView != null && s.map.containsKey(dragView) ? 1 : 0);
+        return mapped == children;
+    }
+
+    private void handleOverflow(ItemConfiguration s, boolean isDrop) {
+        restoreOverflowPreview();
+        ArrayList<View> real = new ArrayList<>();
+        for (View v : s.overflowViews) {
+            if (!s.map.containsKey(v)) real.add(v);   // really removed from the solution
+        }
+        if (isDrop) {
+            mPendingOverflow = real.isEmpty() ? null : real;
+        } else {
+            for (View v : real) {                      // hover preview: dim them
+                v.setAlpha(0.25f);
+                mOverflowPreview.add(v);
+            }
+        }
+    }
+
+    private void restoreOverflowPreview() {
+        for (View v : mOverflowPreview) v.setAlpha(1f);
+        mOverflowPreview.clear();
+    }
+
+    /** Called by Workspace.onDrop right after performReorder(MODE_ON_DROP). */
+    public List<View> consumeOverflowViews() {
+        restoreOverflowPreview();
+        List<View> r = mPendingOverflow;
+        mPendingOverflow = null;
+        return r == null ? Collections.<View>emptyList() : r;
     }
 
     /**
@@ -1879,7 +2008,7 @@ public class CellLayout extends ViewGroup {
             if (!DESTRUCTIVE_REORDER
                     && (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL)) {
                 // Since the temp solution didn't update dragView, don't commit it either
-                commitTempPlacement(dragView);
+                commitTempPlacement(solution, dragView);
                 completeAndClearReorderPreviewAnimations();
                 setItemPlacementDirty(false);
             } else {
@@ -1888,7 +2017,7 @@ public class CellLayout extends ViewGroup {
             }
         }
 
-        if (mode == MODE_ON_DROP && !DESTRUCTIVE_REORDER) {
+        if ((mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) && !DESTRUCTIVE_REORDER) {
             setUseTempCoords(false);
         }
 
@@ -2019,31 +2148,48 @@ public class CellLayout extends ViewGroup {
     }
 
     public void markCellsAsOccupiedForView(View view) {
-        if (view instanceof LauncherAppWidgetHostView
-                && view.getTag() instanceof LauncherAppWidgetInfo) {
-            LauncherAppWidgetInfo info = (LauncherAppWidgetInfo) view.getTag();
-            CellPos pos = mActivity.getCellPosMapper().mapModelToPresenter(info);
-            mOccupied.markCells(pos.cellX, pos.cellY, info.spanX, info.spanY, true);
-            return;
-        }
-        if (view == null || view.getParent() != mShortcutsAndWidgets) return;
-        CellLayoutLayoutParams
-                lp = (CellLayoutLayoutParams) view.getLayoutParams();
-        mOccupied.markCells(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, true);
+        markCellsForView(view, true);
     }
 
     public void markCellsAsUnoccupiedForView(View view) {
+        markCellsForView(view, false);
+    }
+
+    /** Explicit-coordinates variant, used by Workspace.onDrop after the final cell is known. */
+    public void markCellsOccupied(int cellX, int cellY, int spanX, int spanY, boolean occupied) {
+        mOccupied.markCells(cellX, cellY, spanX, spanY, occupied);
+    }
+
+    private void markCellsForView(View view, boolean occupied) {
+        if (view == null) return;
+
+        // 1) A real child of THIS layout: LayoutParams are the source of truth.
+        if (view.getParent() == mShortcutsAndWidgets
+                && view.getLayoutParams() instanceof CellLayoutLayoutParams) {
+            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) view.getLayoutParams();
+            mOccupied.markCells(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, occupied);
+            return;
+        }
+
+        // 2) A widget that is detached (lives inside the DragView): fall back to the model,
+        //    but ONLY if the model says it belongs to this layout.
         if (view instanceof LauncherAppWidgetHostView
                 && view.getTag() instanceof LauncherAppWidgetInfo) {
             LauncherAppWidgetInfo info = (LauncherAppWidgetInfo) view.getTag();
             CellPos pos = mActivity.getCellPosMapper().mapModelToPresenter(info);
-            mOccupied.markCells(pos.cellX, pos.cellY, info.spanX, info.spanY, false);
-            return;
+            if (isModelItemOnThisLayout(info, pos)) {
+                mOccupied.markCells(pos.cellX, pos.cellY, info.spanX, info.spanY, occupied);
+            }
         }
-        if (view == null || view.getParent() != mShortcutsAndWidgets) return;
-        CellLayoutLayoutParams
-                lp = (CellLayoutLayoutParams) view.getLayoutParams();
-        mOccupied.markCells(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, false);
+    }
+
+    private boolean isModelItemOnThisLayout(ItemInfo info, CellPos pos) {
+        if (mContainerType == HOTSEAT) {
+            return info.container == Favorites.CONTAINER_HOTSEAT;
+        }
+        return info.container == Favorites.CONTAINER_DESKTOP
+                && mCellLayoutContainer != null
+                && pos.screenId == mCellLayoutContainer.getCellLayoutId(this);
     }
 
     public int getDesiredWidth() {
@@ -2122,7 +2268,7 @@ public class CellLayout extends ViewGroup {
         if (configuration.isSolution) {
             if (commitConfig) {
                 copySolutionToTempState(configuration, null);
-                commitTempPlacement(null);
+                commitTempPlacement(configuration, null);
                 // undo marking cells occupied since there is actually nothing being placed yet.
                 mOccupied.markCells(0, mCountY - 1, mCountX, 1, false);
             }

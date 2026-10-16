@@ -102,7 +102,7 @@ If you are modifying the UI, strictly follow these rules:
 - Clear the data of Blisslauncher3 manually through settings or run the command through adb:
 
   ```bash
-  adb shell pm clear foundation.e.blisslauncher
+  adb shell pm clear com.ihome.launcher
   ```
 
 - Reboot

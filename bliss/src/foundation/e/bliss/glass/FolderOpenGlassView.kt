@@ -108,6 +108,9 @@ constructor(
         backdropSource = null
     }
 
+    private val tempSelfLoc = IntArray(2)
+    private val tempBackdropLoc = IntArray(2)
+
     override fun draw(canvas: Canvas) {
         if (width <= 0 || height <= 0) {
             super.draw(canvas)
@@ -122,7 +125,34 @@ constructor(
             )
         canvas.save()
         canvas.clipPath(path)
-        super.draw(canvas)
+
+        val backdrop = backdropSource
+        if (backdrop != null) {
+            var sx = 1f
+            var sy = 1f
+            var cur: View? = this
+            val root = rootView
+            while (cur != null && cur !== backdrop && cur !== root) {
+                sx *= cur.scaleX
+                sy *= cur.scaleY
+                val p = cur.parent
+                cur = if (p is View) p else null
+            }
+            if (kotlin.math.abs(sx - 1f) > 0.001f || kotlin.math.abs(sy - 1f) > 0.001f) {
+                getLocationOnScreen(tempSelfLoc)
+                backdrop.getLocationOnScreen(tempBackdropLoc)
+                val dx = (tempSelfLoc[0] - tempBackdropLoc[0]).toFloat()
+                val dy = (tempSelfLoc[1] - tempBackdropLoc[1]).toFloat()
+                com.android.launcher3.InsettableFrameLayout.setActiveGlassCapture(
+                    backdrop, sx, sy, dx, dy
+                )
+            }
+        }
+        try {
+            super.draw(canvas)
+        } finally {
+            com.android.launcher3.InsettableFrameLayout.clearActiveGlassCapture()
+        }
 
         if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
             GlassConfig.drawBorder(

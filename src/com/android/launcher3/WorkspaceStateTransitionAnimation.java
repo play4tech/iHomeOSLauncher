@@ -153,18 +153,25 @@ public class WorkspaceStateTransitionAnimation {
                     hotseatScaleInterpolator);
         }
 
+        boolean hideDockForPage = mWorkspace.isAppLibraryCurrentPage()
+                || (mWorkspace.getFirstPagePinnedItem() != null && mWorkspace.getNextPage() == 0)
+                || com.android.launcher3.folder.Folder.getOpen(mLauncher) != null;
+
         Interpolator workspaceFadeInterpolator = config.getInterpolator(ANIM_WORKSPACE_FADE,
                 pageAlphaProvider.interpolator);
-        float workspacePageIndicatorAlpha = (elements & WORKSPACE_PAGE_INDICATOR) != 0 ? 1 : 0;
+        float workspacePageIndicatorAlpha = (!hideDockForPage && (elements & WORKSPACE_PAGE_INDICATOR) != 0) ? 1 : 0;
         propertySetter.setViewAlpha(mLauncher.getWorkspace().getPageIndicator(),
                 workspacePageIndicatorAlpha, workspaceFadeInterpolator);
         Interpolator hotseatFadeInterpolator = config.getInterpolator(ANIM_HOTSEAT_FADE,
                 workspaceFadeInterpolator);
-        float hotseatIconsAlpha = (elements & HOTSEAT_ICONS) != 0 ? 1 : 0;
-        if (com.android.launcher3.folder.Folder.getOpen(mLauncher) != null) {
-            hotseatIconsAlpha = 0;
-        }
+        float hotseatIconsAlpha = (!hideDockForPage && (elements & HOTSEAT_ICONS) != 0) ? 1 : 0;
         propertySetter.setViewAlpha(hotseat, hotseatIconsAlpha, hotseatFadeInterpolator);
+
+        View dockGlass = mLauncher.findViewById(R.id.dock_glass);
+        if (dockGlass != null) {
+            float dockGlassAlpha = (hotseatIconsAlpha > 0f) ? 1f : 0f;
+            propertySetter.setViewAlpha(dockGlass, dockGlassAlpha, hotseatFadeInterpolator);
+        }
 
         if (FeatureFlags.SHOW_HOME_GARDENING.get() && QSB_ON_FIRST_SCREEN) {
             View firstPagePinnedItem = mWorkspace.getFirstPagePinnedItem();
@@ -208,8 +215,17 @@ public class WorkspaceStateTransitionAnimation {
                 config.getInterpolator(ANIM_WORKSPACE_TRANSLATE, ZOOM_OUT);
         propertySetter.setFloat(mWorkspace, VIEW_TRANSLATE_X,
                 scaleAndTranslation.translationX, translationInterpolator);
+        float targetTranslationY = scaleAndTranslation.translationY;
+        if (mWorkspace.isWobbling() && (state == NORMAL || state == SPRING_LOADED)) {
+            float wobbleY = mLauncher.getResources().getDisplayMetrics().density * 32f;
+            targetTranslationY = wobbleY;
+            if (mWorkspace.getAppLibraryCellLayout() != null) {
+                propertySetter.setFloat(mWorkspace.getAppLibraryCellLayout(), VIEW_TRANSLATE_Y,
+                        -wobbleY, translationInterpolator);
+            }
+        }
         propertySetter.setFloat(mWorkspace, VIEW_TRANSLATE_Y,
-                scaleAndTranslation.translationY, translationInterpolator);
+                targetTranslationY, translationInterpolator);
         PageTranslationProvider pageTranslationProvider = state.getWorkspacePageTranslationProvider(
                 mLauncher);
 
@@ -240,7 +256,10 @@ public class WorkspaceStateTransitionAnimation {
                 state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
 
         if (mLauncher.mBlurLayer != null) {
-            if (com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) {
+            boolean keepBlur = com.android.launcher3.folder.Folder.getOpen(mLauncher) != null
+                    || mWorkspace.isAppLibraryCurrentPage()
+                    || (mWorkspace.getFirstPagePinnedItem() != null && mWorkspace.getNextPage() == 0);
+            if (!keepBlur) {
                 propertySetter.setViewAlpha(mLauncher.mBlurLayer,
                         state.getWorkspaceBackgroundAlpha(mLauncher), LINEAR);
             }

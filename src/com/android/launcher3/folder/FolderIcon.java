@@ -124,6 +124,8 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     /** Liquid glass background view. Non-null only on API 33+ when attached to a window. */
     @Nullable private FolderGlassView mGlassView;
+    private boolean mGlassAttachAttempted = false;
+    private final Paint.FontMetrics mFontMetrics = new Paint.FontMetrics();
 
     FolderGridOrganizer mPreviewVerifier;
     private ClippedFolderIconLayoutRule mPreviewLayoutRule;
@@ -331,6 +333,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     public void onDragEnter(ItemInfo dragInfo) {
         if (mFolder.isDestroyed() || !willAcceptItem(dragInfo)) return;
+        if (mFolder.isDragInProgress()) return;
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) getLayoutParams();
         CellLayout cl = (CellLayout) getParent().getParent();
 
@@ -372,9 +375,12 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     public void performDestroyAnimation(Runnable onCompleteRunnable) {
         // This will animate the final item in the preview to be full size.
-        FolderPreviewItemAnim anim = mPreviewItemManager.createFirstItemAnimation(true /* reverse */, onCompleteRunnable);
+        FolderPreviewItemAnim anim = mPreviewItemManager.createFirstItemAnimation(
+                true /* reverse */, onCompleteRunnable);
         if (anim != null) {
             anim.start();
+        } else if (onCompleteRunnable != null) {
+            onCompleteRunnable.run();
         }
     }
 
@@ -465,6 +471,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
                     () -> {
                         mPreviewItemManager.hidePreviewItem(finalIndex, false);
                         mFolder.showItem(item);
+                        mBackground.animateToRest();
                     },
                     DragLayer.ANIMATION_END_DISAPPEAR, null);
 
@@ -538,6 +545,10 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         } else {
             item = (WorkspaceItemInfo) d.dragInfo;
         }
+        if (item != null && item.getTargetComponent() != null) {
+            com.android.launcher3.util.RemovedAppStore.unmarkRemoved(
+                    getContext(), item.getTargetComponent().flattenToString());
+        }
         mFolder.notifyDrop();
         onDrop(item, d, null, 1.0f,
                 itemReturnedOnFailedDrop ? item.rank : mInfo.contents.size(),
@@ -588,6 +599,12 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         if (mDotScaleAnim != null) {
             mDotScaleAnim.cancel();
         }
+    }
+
+    public void setDotScale(float dotScale) {
+        cancelDotScaleAnim();
+        mDotScale = dotScale;
+        invalidate();
     }
 
     public void animateDotScale(float... dotScales) {
@@ -651,7 +668,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     @Override
     protected boolean drawChild(Canvas canvas, View child, long drawingTime) {
         if (child == mGlassView) {
-            if (!mBackground.drawingDelegated()) {
+            if (mBackgroundIsVisible && !mBackground.drawingDelegated()) {
                 mBackground.drawShadow(canvas);
             }
             int saveCount = canvas.save();
@@ -715,7 +732,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         super.onLayout(changed, l, t, r, b);
-        if (mGlassView == null) {
+        if (mGlassView == null && !mGlassAttachAttempted) {
             attachGlassView();
         }
         updateGlassViewPosition();
@@ -727,6 +744,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
      * background area. Requires API 33+ (Android 13) to match the dock's glass behavior.
      */
     private void attachGlassView() {
+        mGlassAttachAttempted = true;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
         if (mGlassView != null) return; // already attached
 
@@ -764,6 +782,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     /** Removes the glass view and cleans up the reference. */
     private void detachGlassView() {
+        mGlassAttachAttempted = false;
         if (mGlassView != null) {
             mGlassView.unbind();
             mGlassView.setVisibility(GONE);
@@ -791,14 +810,10 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
         FrameLayout.LayoutParams lp =
                 (FrameLayout.LayoutParams) mGlassView.getLayoutParams();
         if (lp != null) {
-            if (lp.width != size || lp.height != size
-                    || lp.leftMargin != targetLeft || lp.topMargin != targetTop) {
-                lp.width = size;
-                lp.height = size;
-                lp.leftMargin = targetLeft;
-                lp.topMargin = targetTop;
-                mGlassView.setLayoutParams(lp);
-            }
+            lp.width = size;
+            lp.height = size;
+            lp.leftMargin = targetLeft;
+            lp.topMargin = targetTop;
         }
         mGlassView.layout(targetLeft, targetTop, targetLeft + size, targetTop + size);
     }
@@ -831,9 +846,9 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
             boolean shouldCenterIcon = mActivity.getDeviceProfile().iconCenterVertically;
             if (shouldCenterIcon) {
                 int iconSize = mActivity.getDeviceProfile().iconSizePx;
-                Paint.FontMetrics fm = mFolderName.getPaint().getFontMetrics();
+                mFolderName.getPaint().getFontMetrics(mFontMetrics);
                 int cellHeightPx = iconSize + mFolderName.getCompoundDrawablePadding()
-                        + (int) Math.ceil(fm.bottom - fm.top);
+                        + (int) Math.ceil(mFontMetrics.bottom - mFontMetrics.top);
                 setPadding(getPaddingLeft(), (MeasureSpec.getSize(heightMeasureSpec)
                         - cellHeightPx) / 2, getPaddingRight(), getPaddingBottom());
             }

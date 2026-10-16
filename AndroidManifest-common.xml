@@ -50,18 +50,18 @@
     name in the permissions. eq com.mypackage.permission.READ_SETTINGS
     -->
     <permission
-        android:name="${packageName}.permission.READ_SETTINGS"
+        android:name="${applicationId}.permission.READ_SETTINGS"
         android:protectionLevel="signatureOrSystem"
         android:label="@string/permlab_read_settings"
         android:description="@string/permdesc_read_settings"/>
     <permission
-        android:name="${packageName}.permission.WRITE_SETTINGS"
+        android:name="${applicationId}.permission.WRITE_SETTINGS"
         android:protectionLevel="signatureOrSystem"
         android:label="@string/permlab_write_settings"
         android:description="@string/permdesc_write_settings"/>
 
-    <uses-permission android:name="${packageName}.permission.READ_SETTINGS" />
-    <uses-permission android:name="${packageName}.permission.WRITE_SETTINGS" />
+    <uses-permission android:name="${applicationId}.permission.READ_SETTINGS" />
+    <uses-permission android:name="${applicationId}.permission.WRITE_SETTINGS" />
 
     <application
         android:backupAgent="com.android.launcher3.LauncherBackupAgent"
@@ -128,7 +128,7 @@
         -->
         <provider
             android:name="com.android.launcher3.LauncherProvider"
-            android:authorities="${packageName}.settings"
+            android:authorities="${applicationId}.settings"
             android:exported="true"
             android:writePermission="${applicationId}.permission.WRITE_SETTINGS"
             android:readPermission="${applicationId}.permission.READ_SETTINGS" />
@@ -138,7 +138,7 @@
         -->
         <provider
             android:name="com.android.launcher3.graphics.GridCustomizationsProvider"
-            android:authorities="${packageName}.grid_control"
+            android:authorities="${applicationId}.grid_control"
             android:exported="true"
             android:writePermission="${applicationId}.permission.WRITE_SETTINGS"
             android:readPermission="${applicationId}.permission.READ_SETTINGS" />
@@ -162,12 +162,12 @@
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="true"
+            android:exported="false"
             android:autoRemoveFromRecents="true" />
 
         <provider
             android:name="com.android.launcher3.testing.TestInformationProvider"
-            android:authorities="${packageName}.TestInfo"
+            android:authorities="${applicationId}.TestInfo"
             android:readPermission="android.permission.WRITE_SECURE_SETTINGS"
             android:writePermission="android.permission.WRITE_SECURE_SETTINGS"
             android:exported="true"

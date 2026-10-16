@@ -312,36 +312,6 @@
                     android:id="@+id/slider_bevel_width"
                     layout="@layout/item_glass_slider" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_refraction_falloff"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_displacement_scale"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_edge_softness"
-                    layout="@layout/item_glass_slider" />
-
             </LinearLayout>
 
             <!-- SECTION 2: OPTICAL BLUR & COLOR DYNAMICS -->
@@ -386,26 +356,16 @@
                     android:id="@+id/slider_dispersion_strength"
                     layout="@layout/item_glass_slider" />
 
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_aberration_intensity"
-                    layout="@layout/item_glass_slider" />
-
             </LinearLayout>
 
-            <!-- SECTION 3: SPECULAR HIGHLIGHT & PHYSICS -->
+            <!-- SECTION 3: SPECULAR HIGHLIGHT -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="20dp"
                 android:layout_marginBottom="6dp"
-                android:text="SPECULAR HIGHLIGHT &amp; PHYSICS"
+                android:text="SPECULAR HIGHLIGHT"
                 android:textColor="@color/ios_settings_section_title"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -428,16 +388,6 @@
 
                 <include
                     android:id="@+id/slider_edge_highlight_opacity"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_elasticity"
                     layout="@layout/item_glass_slider" />
 
             </LinearLayout>
@@ -471,16 +421,6 @@
                     android:background="@color/ios_settings_card_divider" />
 
                 <include
-                    android:id="@+id/slider_border_position"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
                     android:id="@+id/slider_border_width"
                     layout="@layout/item_glass_slider" />
 
@@ -491,101 +431,7 @@
                     android:background="@color/ios_settings_card_divider" />
 
                 <include
-                    android:id="@+id/slider_border_fade_spread"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_border_fade"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
                     android:id="@+id/slider_border_opacity"
-                    layout="@layout/item_glass_slider" />
-
-            </LinearLayout>
-
-            <!-- SECTION 5: WHITE OUTLINE BORDER -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="6dp"
-                android:text="WHITE OUTLINE BORDER"
-                android:textColor="@color/ios_settings_section_title"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_ios_settings_card"
-                android:orientation="vertical">
-
-                <include
-                    android:id="@+id/switch_white_border_enabled"
-                    layout="@layout/item_glass_switch" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_white_border_position"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_white_border_width"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_white_border_fade_spread"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_white_border_fade"
-                    layout="@layout/item_glass_slider" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="16dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <include
-                    android:id="@+id/slider_white_border_opacity"
                     layout="@layout/item_glass_slider" />
 
             </LinearLayout>

@@ -16,15 +16,116 @@
 package com.android.launcher3;
 
 import android.app.Application;
+import android.os.Looper;
+import android.util.Log;
 
 /**
  * Main application class for Launcher
  */
 public class LauncherApplication extends Application {
 
+    private static final String TAG = "LauncherApplication";
+
     @Override
     public void onCreate() {
         super.onCreate();
+        setupUncaughtExceptionHandler();
         MainProcessInitializer.initialize(this);
+        foundation.e.bliss.glass.GlassConfig.disableSensors(this);
+    }
+
+    private void setupUncaughtExceptionHandler() {
+        final Thread.UncaughtExceptionHandler defaultHandler =
+                Thread.getDefaultUncaughtExceptionHandler();
+
+        Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
+            boolean isMainThread = Looper.getMainLooper().getThread() == thread;
+            if (!isMainThread && shouldSuppressException(thread, throwable)) {
+                Log.w(TAG, "Suppressed external/OEM crash on thread ["
+                        + (thread != null ? thread.getName() : "unknown") + "]: "
+                        + (throwable != null ? throwable.toString() : "null"), throwable);
+                return;
+            }
+
+            if (defaultHandler != null) {
+                defaultHandler.uncaughtException(thread, throwable);
+            }
+        });
+    }
+
+    private static boolean shouldSuppressException(Thread thread, Throwable throwable) {
+        if (throwable == null) {
+            return false;
+        }
+
+        boolean isMainThread = Looper.getMainLooper().getThread() == thread;
+
+        Throwable current = throwable;
+        int depth = 0;
+        while (current != null && depth < 10) {
+            // Check stack trace elements
+            StackTraceElement[] stack = current.getStackTrace();
+            if (stack != null) {
+                for (StackTraceElement element : stack) {
+                    String className = element.getClassName();
+                    if (className == null) {
+                        continue;
+                    }
+
+                    // Known OEM and third-party widget packages that may crash on background threads
+                    if (className.contains(".vivo.")
+                            || className.contains(".bbk.")
+                            || className.contains(".oppo.")
+                            || className.contains(".coloros.")
+                            || className.contains(".heytap.")
+                            || className.contains(".oplus.")
+                            || className.contains(".miui.")
+                            || className.contains(".xiaomi.")
+                            || className.contains(".samsung.")
+                            || className.contains(".sec.android.")
+                            || className.contains(".transsion.")
+                            || className.contains(".huawei.")
+                            || className.contains(".honor.")
+                            || className.contains("timerwidget")
+                            || className.contains("analogworldclockwidget")) {
+                        return true;
+                    }
+
+                    // On background threads: if the crash originates in an appwidget / remoteviews / third-party component
+                    if (!isMainThread && (className.contains(".widget.") || className.contains(".appwidget."))) {
+                        if (!className.startsWith("com.android.launcher3")
+                                && !className.startsWith("foundation.e.bliss")
+                                && !className.startsWith("com.ihome.launcher")) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            // Also on background threads, catch LinkageError (NoSuchMethodError, NoClassDefFoundError, etc.)
+            // caused by vendor OEM code calling hidden/removed framework APIs on Android 16
+            if (!isMainThread && (current instanceof LinkageError)) {
+                boolean containsLauncherCode = false;
+                if (stack != null) {
+                    for (StackTraceElement element : stack) {
+                        String className = element.getClassName();
+                        if (className != null && (className.startsWith("com.android.launcher3")
+                                || className.startsWith("foundation.e.bliss")
+                                || className.startsWith("com.ihome.launcher"))) {
+                            containsLauncherCode = true;
+                            break;
+                        }
+                    }
+                }
+                if (!containsLauncherCode) {
+                    return true;
+                }
+            }
+
+            current = current.getCause();
+            depth++;
+        }
+
+        return false;
     }
 }

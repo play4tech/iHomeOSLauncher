@@ -2,19 +2,24 @@
 <com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:fitsSystemWindows="false">
 
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:fitsSystemWindows="false">
 
-        <!-- Full screen dark frosted scrim + glass background -->
-        <com.android.launcher3.applibrary.view.AppLibraryOverlayGlassView
+        <!-- Full screen glass background is not used in iOS App Library expansion (wallpaper blur persists seamlessly) -->
+        <View
             android:id="@+id/app_library_overlay_glass"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="#D9000000"
+            android:background="@android:color/transparent"
+            android:visibility="gone"
             android:fitsSystemWindows="false" />
 
         <!-- Content overlay — centered on screen like iOS folder/overlay -->
@@ -26,6 +31,8 @@
             android:paddingHorizontal="16dp"
             android:paddingTop="60dp"
             android:paddingBottom="60dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:fitsSystemWindows="false">
 
             <!-- Category Title -->
@@ -45,6 +52,7 @@
                 android:id="@+id/expanded_category_grid"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:clipChildren="false"
                 android:clipToPadding="false" />
 
         </LinearLayout>

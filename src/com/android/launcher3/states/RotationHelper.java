@@ -17,6 +17,7 @@ package com.android.launcher3.states;
 
 import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LOCKED;
 import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_NOSENSOR;
+import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT;
 import static android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED;
 import static android.util.DisplayMetrics.DENSITY_DEVICE_STABLE;
 
@@ -189,9 +190,9 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
                 || mHomeRotationEnabled || mForceAllowRotationForTesting) {
             activityFlags = SCREEN_ORIENTATION_UNSPECIFIED;
         } else {
-            // If auto rotation is off, allow rotation on the activity, in case the user is using
-            // forced rotation.
-            activityFlags = SCREEN_ORIENTATION_NOSENSOR;
+            // When auto rotation is disabled on phones, lock activity strictly to portrait
+            // to avoid remaining in landscape after exiting fullscreen video apps (e.g. YouTube/BookMyShow).
+            activityFlags = SCREEN_ORIENTATION_PORTRAIT;
         }
         if (activityFlags != mLastActivityFlags) {
             mLastActivityFlags = activityFlags;

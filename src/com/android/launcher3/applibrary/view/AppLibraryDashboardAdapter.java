@@ -48,10 +48,12 @@ public class AppLibraryDashboardAdapter extends RecyclerView.Adapter<AppLibraryD
         LinearLayout container = new LinearLayout(mContext);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setGravity(Gravity.CENTER_HORIZONTAL);
+        container.setClipChildren(false);
+        container.setClipToPadding(false);
         
-        // Setup margins and size for the StaggeredGridLayoutManager
+        // Setup margins and size for the GridLayoutManager
         int margin = mContext.getResources().getDimensionPixelSize(R.dimen.app_library_card_margin);
-        ViewGroup.MarginLayoutParams lp = new ViewGroup.MarginLayoutParams(
+        RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 
                 ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.setMargins(margin, margin, margin, margin);

@@ -75,8 +75,12 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
                 displaySize.x.toFloat() / wallpaperSize.x,
                 displaySize.y.toFloat() / wallpaperSize.y
             )
-        val minParallaxScale = (displaySize.x * 1.15f) / wallpaperSize.x
-        val scale = Math.max(baseScale, minParallaxScale)
+        val scale = if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode) {
+            baseScale * 1.10f
+        } else {
+            val minParallaxScale = (displaySize.x * 1.15f) / wallpaperSize.x
+            Math.max(baseScale * 1.10f, minParallaxScale)
+        }
 
         val scaledWidth = wallpaperSize.x * scale
         val scaledHeight = wallpaperSize.y * scale
@@ -84,12 +88,11 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         // Center crop vertically
         val dy = (displaySize.y - scaledHeight) / 2f
 
-        // Parallax horizontally
-        val safeOffset = if (offset.isNaN()) 0.5f else offset.coerceIn(0f, 1f)
+        // Horizontal positioning: strictly centered in single layer mode, parallax in multi-layer mode
         val availableWidth = displaySize.x - scaledWidth
         var dx = availableWidth / 2f
-        if (availableWidth < 0) {
-            // Offset goes 0 to 1. 0.5 is centered.
+        if (!foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode && availableWidth < 0) {
+            val safeOffset = if (offset.isNaN()) 0.5f else offset.coerceIn(0f, 1f)
             dx += (availableWidth * (safeOffset - 0.5f) + 0.5f)
         }
         // Strict boundary clamp: bitmap must cover [0, displaySize.x] horizontally

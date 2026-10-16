@@ -21,6 +21,7 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Outline
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -43,6 +44,13 @@ constructor(
     private val geometry = ContinuousCornerGeometry()
     var hasWhiteOverlay: Boolean = true
 
+    private var activeShape: RectF? = null
+
+    fun setAnimatedShape(rect: RectF?, radiusPx: Float = cornerRadiusPx) {
+        activeShape = rect?.let { RectF(it) }
+        setPrimaryShape(rect, radiusPx)
+    }
+
     private val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         style = android.graphics.Paint.Style.STROKE
     }
@@ -64,8 +72,8 @@ constructor(
     override var whiteBorderPosition: Int = GlassConfig.DEFAULT_WHITE_BORDER_POSITION
     override var whiteBorderFadeSpread: Float = GlassConfig.DEFAULT_WHITE_BORDER_FADE_SPREAD
 
-    // Popup container radius is typically smaller than folder, match it.
-    private var cornerRadiusPx = 24f * context.resources.displayMetrics.density
+    // Popup container radius matches iOS continuous squircle curvature (26pt).
+    private var cornerRadiusPx = 26f * context.resources.displayMetrics.density
 
     init {
         outlineProvider =
@@ -86,12 +94,14 @@ constructor(
 
         // Glass visual parameters for the popup - Frosted Liquid Glass matching master GlassConfig
         GlassConfig.applyDefaultConfig(this)
+        blurAmount = POPUP_BLUR_AMOUNT
         cornerRadius = cornerRadiusPx
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         GlassConfig.registerView(this)
+        blurAmount = POPUP_BLUR_AMOUNT
         isClickable = false
         isFocusable = false
         isEnabled = false
@@ -119,7 +129,7 @@ constructor(
     private val whiteTintPaint =
         android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
             style = android.graphics.Paint.Style.FILL
-            color = Color.argb(82, 255, 255, 255)
+            color = Color.argb(POPUP_WHITE_TINT_ALPHA, 255, 255, 255) // 70% opacity white overlay tint
         }
 
     private val rimPaint =
@@ -134,16 +144,28 @@ constructor(
             super.draw(canvas)
             return
         }
+        val p = activeShape
+        val currentW = p?.width() ?: width.toFloat()
+        val currentH = p?.height() ?: height.toFloat()
+        val currentL = p?.left ?: 0f
+        val currentT = p?.top ?: 0f
+
+        if (currentW <= 0f || currentH <= 0f) return
+
         val path =
             geometry.getPath(
-                width.toFloat(),
-                height.toFloat(),
+                currentW,
+                currentH,
                 cornerRadiusPx,
                 GlassShapeSpec.IOS_SMOOTHING
             )
         canvas.save()
+        canvas.translate(currentL, currentT)
         canvas.clipPath(path)
+        canvas.translate(-currentL, -currentT)
         super.draw(canvas)
+        canvas.save()
+        canvas.translate(currentL, currentT)
         if (hasWhiteOverlay) {
             canvas.drawPath(path, whiteTintPaint)
             canvas.drawPath(path, rimPaint)
@@ -153,7 +175,7 @@ constructor(
                 canvas, path, borderPaint,
                 borderWidthPx, borderOpacity, borderFade,
                 borderPosition, borderFadeSpread, false,
-                height.toFloat()
+                currentH
             )
         }
         if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
@@ -161,9 +183,10 @@ constructor(
                 canvas, path, whiteBorderPaint,
                 whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
                 whiteBorderPosition, whiteBorderFadeSpread, true,
-                height.toFloat()
+                currentH
             )
         }
+        canvas.restore()
         canvas.restore()
     }
 
@@ -175,17 +198,17 @@ constructor(
     private fun findWallpaperProxy(): View? {
         val root = rootView
         if (root != null) {
-            val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
-            if (proxy != null) return proxy
             val source = root.findViewById<View>(R.id.glass_source)
             if (source != null) return source
+            val proxy = root.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
         }
         var p = parent
         while (p is ViewGroup) {
-            val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
-            if (proxy != null) return proxy
             val source = p.findViewById<View>(R.id.glass_source)
             if (source != null) return source
+            val proxy = p.findViewById<View>(R.id.glass_wallpaper_proxy)
+            if (proxy != null) return proxy
             p = p.parent
         }
         return null
@@ -211,5 +234,10 @@ constructor(
 
     fun setTintAlpha(alpha: Float) {
         setGlassTint(Color.WHITE, alpha)
+    }
+
+    companion object {
+        const val POPUP_BLUR_AMOUNT: Float = 0.25f
+        const val POPUP_WHITE_TINT_ALPHA: Int = 179 // 70% opacity (179 / 255)
     }
 }

@@ -4,6 +4,7 @@
     android:id="@+id/spotlight_search_overlay"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:alpha="0"
     android:orientation="vertical"
     android:clipChildren="false"
     android:clipToPadding="false">
@@ -65,7 +66,7 @@
                             android:src="@drawable/ic_allapps_search"
                             android:tint="#FFFFFF" />
 
-                        <EditText
+                        <com.android.launcher3.ExtendedEditText
                             android:id="@+id/spotlight_search_input"
                             android:layout_width="0dp"
                             android:layout_height="match_parent"

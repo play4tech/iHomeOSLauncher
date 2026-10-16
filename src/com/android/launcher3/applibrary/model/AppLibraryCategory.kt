@@ -2,6 +2,7 @@ package com.android.launcher3.applibrary.model
 
 enum class AppLibraryCategory(val title: String) {
     SUGGESTIONS("Suggestions"),
+    WORK("Work"),
     SOCIAL("Social"),
     PRODUCTIVITY("Productivity"),
     FINANCE("Finance"),

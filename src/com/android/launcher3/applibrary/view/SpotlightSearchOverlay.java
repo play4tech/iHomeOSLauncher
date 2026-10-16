@@ -29,6 +29,8 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
+import android.view.WindowInsets;
 import android.view.animation.Interpolator;
 import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
@@ -46,10 +48,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.launcher3.AbstractFloatingView;
+import com.android.launcher3.ExtendedEditText;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
+import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.views.BaseDragLayer;
 
@@ -62,13 +66,13 @@ import java.util.Arrays;
 public class SpotlightSearchOverlay extends AbstractFloatingView {
 
     private static final Interpolator IOS_SPRING_INTERPOLATOR = new PathInterpolator(0.16f, 1f, 0.3f, 1f);
-    private static final Interpolator IOS_EXIT_INTERPOLATOR = new PathInterpolator(0.3f, 0f, 0.8f, 0.15f);
+    private static final Interpolator IOS_EXIT_INTERPOLATOR = new PathInterpolator(0.22f, 1f, 0.36f, 1f);
 
     private final Launcher mLauncher;
     private AppLibraryOverlayGlassView mBackdropGlass;
     private View mSearchContent;
     private View mSearchRow;
-    private EditText mSearchInput;
+    private ExtendedEditText mSearchInput;
     private ImageView mSearchClear;
     private TextView mSearchCancel;
     private RecyclerView mSearchResultsView;
@@ -76,6 +80,10 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     private AppLibrarySearchAdapter mSearchAdapter;
 
     private ValueAnimator mOpenCloseAnimator;
+    private boolean mIsClosing = false;
+    private boolean mKeyboardHiddenForClose = false;
+    private String mLastFilterQuery = "";
+    private final com.android.launcher3.allapps.AllAppsStore.OnUpdateListener mAppsUpdateListener;
 
     public SpotlightSearchOverlay(@NonNull Context context, @Nullable AttributeSet attrs) {
         this(context, attrs, 0);
@@ -84,6 +92,15 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     public SpotlightSearchOverlay(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         mLauncher = Launcher.getLauncher(context);
+        mAppsUpdateListener = () -> {
+            if (mLauncher != null && mLauncher.getAppsView() != null
+                    && mLauncher.getAppsView().getAppsStore() != null && mSearchAdapter != null) {
+                AppInfo[] apps = mLauncher.getAppsView().getAppsStore().getApps();
+                if (apps != null) {
+                    mSearchAdapter.setApps(Arrays.asList(apps));
+                }
+            }
+        };
     }
 
     @Override
@@ -108,6 +125,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
         mSearchAdapter = new AppLibrarySearchAdapter(mLauncher);
         mSearchResultsView.setLayoutManager(new LinearLayoutManager(getContext()));
+        mSearchResultsView.setItemAnimator(null);
         mSearchResultsView.setAdapter(mSearchAdapter);
 
         if (mIndexScroller != null) {
@@ -130,19 +148,43 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (!mIsOpen || mIsClosing) {
+                    return;
+                }
                 String query = s != null ? s.toString() : "";
-                mSearchAdapter.filter(query);
                 if (mSearchClear != null) {
                     mSearchClear.setVisibility(query.isEmpty() ? GONE : VISIBLE);
                 }
+                String trimmed = query.trim();
                 if (mIndexScroller != null) {
-                    mIndexScroller.setVisibility(query.trim().isEmpty() ? VISIBLE : GONE);
+                    mIndexScroller.setVisibility(trimmed.isEmpty() ? VISIBLE : GONE);
+                }
+                if (!trimmed.equals(mLastFilterQuery)) {
+                    mLastFilterQuery = trimmed;
+                    mSearchAdapter.filter(query);
                 }
             }
 
             @Override
             public void afterTextChanged(Editable s) {}
         });
+
+        if (mSearchInput != null) {
+            mSearchInput.setOnBackKeyListener(() -> {
+                Log.d("SpotlightBack", "mSearchInput.onKeyPreIme back key listener fired");
+                close(true);
+                return true;
+            });
+            mSearchInput.setOnKeyListener((v, keyCode, event) -> {
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    if (event.getAction() == KeyEvent.ACTION_UP) {
+                        close(true);
+                    }
+                    return true;
+                }
+                return false;
+            });
+        }
 
         if (mSearchClear != null) {
             mSearchClear.setOnClickListener(v -> mSearchInput.setText(""));
@@ -162,9 +204,20 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     }
 
     public static SpotlightSearchOverlay show(Launcher launcher) {
-        SpotlightSearchOverlay existing = getOpen(launcher);
-        if (existing != null) {
-            return existing;
+        DragLayer dragLayer = launcher.getDragLayer();
+        for (int i = dragLayer.getChildCount() - 1; i >= 0; i--) {
+            View child = dragLayer.getChildAt(i);
+            if (child instanceof SpotlightSearchOverlay) {
+                SpotlightSearchOverlay existing = (SpotlightSearchOverlay) child;
+                if (existing.mIsOpen && !existing.mIsClosing) {
+                    return existing;
+                }
+                if (existing.mOpenCloseAnimator != null) {
+                    existing.mOpenCloseAnimator.cancel();
+                    existing.mOpenCloseAnimator = null;
+                }
+                dragLayer.removeView(existing);
+            }
         }
 
         SpotlightSearchOverlay overlay = (SpotlightSearchOverlay) LayoutInflater.from(launcher)
@@ -175,8 +228,12 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         lp.ignoreInsets = true;
         overlay.setLayoutParams(lp);
 
-        launcher.getDragLayer().addView(overlay);
+        overlay.prepareForEntrance();
         overlay.mIsOpen = true;
+        overlay.mIsClosing = false;
+        overlay.mKeyboardHiddenForClose = false;
+        launcher.getDragLayer().addView(overlay);
+        launcher.onDragLayerHierarchyChanged();
 
         // Load apps
         AppInfo[] apps = launcher.getAppsView() != null && launcher.getAppsView().getAppsStore() != null
@@ -190,11 +247,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         return overlay;
     }
 
-    private void animateOpen() {
-        if (mOpenCloseAnimator != null) {
-            mOpenCloseAnimator.cancel();
-        }
-
+    public void prepareForEntrance() {
         final float density = getResources().getDisplayMetrics().density;
         final float contentSlidePx = 40f * density;
         final float rowSlidePx = -24f * density;
@@ -203,6 +256,12 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         setAlpha(0f);
         if (mBackdropGlass != null) {
             mBackdropGlass.setAlpha(0f);
+        }
+        if (mSearchContent != null) {
+            mSearchContent.setAlpha(1f);
+            mSearchContent.setTranslationY(0f);
+            mSearchContent.setScaleX(1f);
+            mSearchContent.setScaleY(1f);
         }
         if (mSearchRow != null) {
             mSearchRow.setTranslationY(rowSlidePx);
@@ -223,6 +282,23 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         if (mIndexScroller != null) {
             mIndexScroller.setAlpha(0f);
         }
+    }
+
+    private void animateOpen() {
+        if (mIsClosing || !mIsOpen) {
+            return;
+        }
+        if (mOpenCloseAnimator != null) {
+            mOpenCloseAnimator.cancel();
+        }
+
+        final float density = getResources().getDisplayMetrics().density;
+        final float contentSlidePx = 40f * density;
+        final float rowSlidePx = -24f * density;
+        final float cancelSlidePx = 20f * density;
+
+        prepareForEntrance();
+        setAlpha(1f);
 
         Workspace<?> ws = mLauncher.getWorkspace();
 
@@ -231,7 +307,6 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mOpenCloseAnimator.setInterpolator(IOS_SPRING_INTERPOLATOR);
         mOpenCloseAnimator.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
-            setAlpha(1f);
             if (mBackdropGlass != null) {
                 mBackdropGlass.setAlpha(progress);
             }
@@ -263,8 +338,18 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             }
         });
         mOpenCloseAnimator.addListener(new AnimatorListenerAdapter() {
+            private boolean mCancelled = false;
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+                mCancelled = true;
+            }
+
             @Override
             public void onAnimationEnd(Animator animation) {
+                if (mCancelled || mIsClosing || !mIsOpen) {
+                    return;
+                }
                 setAlpha(1f);
                 if (mBackdropGlass != null) mBackdropGlass.setAlpha(1f);
                 if (mSearchRow != null) {
@@ -297,9 +382,17 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     }
 
     public void showKeyboard() {
+        if (mIsClosing || !mIsOpen) {
+            return;
+        }
+        mInternalKeyboardHide = false;
+        mKeyboardHiddenForClose = false;
         if (mSearchInput != null) {
             mSearchInput.requestFocus();
             postDelayed(() -> {
+                if (mIsClosing || !mIsOpen) {
+                    return;
+                }
                 InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                 if (imm != null) {
                     imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
@@ -309,8 +402,12 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     }
 
     public void hideKeyboard() {
+        mInternalKeyboardHide = true;
+        if (mKeyboardHiddenForClose) {
+            return;
+        }
+        mKeyboardHiddenForClose = true;
         if (mSearchInput != null) {
-            mSearchInput.clearFocus();
             InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 imm.hideSoftInputFromWindow(mSearchInput.getWindowToken(), 0);
@@ -320,21 +417,29 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
     @Override
     protected void handleClose(boolean animate) {
-        hideKeyboard();
+        if (mIsClosing && animate) {
+            return;
+        }
+        mIsClosing = true;
         mIsOpen = false;
+        unregisterBackCallback();
+        hideKeyboard();
 
+        if (mBackdropGlass != null) mBackdropGlass.animate().cancel();
+        if (mSearchContent != null) mSearchContent.animate().cancel();
         Workspace<?> ws = mLauncher.getWorkspace();
+        if (ws != null) ws.animate().cancel();
 
         if (!animate) {
             if (mOpenCloseAnimator != null) {
                 mOpenCloseAnimator.cancel();
             }
-            if (ws != null) {
-                ws.setScaleX(1f);
-                ws.setScaleY(1f);
-            }
+            resetTransforms(ws);
             if (getParent() instanceof ViewGroup) {
                 ((ViewGroup) getParent()).removeView(this);
+            }
+            if (mLauncher != null) {
+                mLauncher.onDragLayerHierarchyChanged();
             }
             return;
         }
@@ -343,63 +448,157 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             mOpenCloseAnimator.cancel();
         }
 
+        if (mSearchResultsView != null) {
+            mSearchResultsView.stopScroll();
+            mSearchResultsView.setLayerType(LAYER_TYPE_HARDWARE, null);
+        }
+
+        // Keep root ViewGroup at 1f scale/alpha so LiquidGlassViews never render inside a scaled/translucent saveLayer
+        setScaleX(1f);
+        setScaleY(1f);
+        setAlpha(1f);
+
         final float density = getResources().getDisplayMetrics().density;
         final float slideOffsetPx = 28f * density;
-        final float startAlpha = getAlpha();
+        final float startBackdropAlpha = mBackdropGlass != null ? mBackdropGlass.getAlpha() : 1f;
+        final float startContentAlpha = mSearchContent != null ? mSearchContent.getAlpha() : 1f;
+        final float startContentTy = mSearchContent != null ? mSearchContent.getTranslationY() : 0f;
+        final float startContentScale = mSearchContent != null ? mSearchContent.getScaleX() : 1f;
         final float startWsScale = ws != null ? ws.getScaleX() : 0.95f;
 
         mOpenCloseAnimator = ValueAnimator.ofFloat(0f, 1f);
-        mOpenCloseAnimator.setDuration(240);
+        mOpenCloseAnimator.setDuration(250);
         mOpenCloseAnimator.setInterpolator(IOS_EXIT_INTERPOLATOR);
         mOpenCloseAnimator.addUpdateListener(animation -> {
-            float progress = (float) animation.getAnimatedValue();
-            float inv = 1f - progress;
-            setAlpha(inv * startAlpha);
+            float p = (float) animation.getAnimatedValue();
+            float inv = 1f - p;
+            if (mBackdropGlass != null) {
+                mBackdropGlass.setAlpha(startBackdropAlpha * inv);
+            }
             if (mSearchContent != null) {
-                mSearchContent.setTranslationY(progress * slideOffsetPx);
-                float contentScale = 1f - 0.05f * progress;
-                mSearchContent.setScaleX(contentScale);
-                mSearchContent.setScaleY(contentScale);
+                mSearchContent.setAlpha(startContentAlpha * inv);
+                mSearchContent.setTranslationY(startContentTy + (slideOffsetPx - startContentTy) * p);
+                float s = startContentScale + (0.94f - startContentScale) * p;
+                mSearchContent.setScaleX(s);
+                mSearchContent.setScaleY(s);
             }
             if (ws != null) {
-                float wsScale = startWsScale + (1f - startWsScale) * progress;
-                ws.setScaleX(wsScale);
-                ws.setScaleY(wsScale);
+                float w = startWsScale + (1f - startWsScale) * p;
+                ws.setScaleX(w);
+                ws.setScaleY(w);
             }
         });
         mOpenCloseAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                if (ws != null) {
+                if (mSearchResultsView != null) {
+                    mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
+                }
+                // Only restore workspace scale if a new Spotlight overlay hasn't opened
+                if (ws != null && getOpen(mLauncher) == null) {
                     ws.setScaleX(1f);
                     ws.setScaleY(1f);
                 }
-                if (getParent() instanceof ViewGroup) {
-                    ((ViewGroup) getParent()).removeView(SpotlightSearchOverlay.this);
+                resetTransforms(null);
+                setVisibility(GONE);
+                if (mLauncher != null) {
+                    mLauncher.onDragLayerHierarchyChanged();
                 }
+                // Defer detaching the focused EditText slightly so any in-flight IME hide animation finishes cleanly
+                postDelayed(() -> {
+                    if (getParent() instanceof ViewGroup) {
+                        ((ViewGroup) getParent()).removeView(SpotlightSearchOverlay.this);
+                    }
+                }, 120);
             }
         });
         mOpenCloseAnimator.start();
     }
 
+    private void resetTransforms(Workspace<?> ws) {
+        setScaleX(1f);
+        setScaleY(1f);
+        setAlpha(1f);
+        if (mBackdropGlass != null) {
+            mBackdropGlass.setAlpha(1f);
+        }
+        if (mSearchContent != null) {
+            mSearchContent.setAlpha(1f);
+            mSearchContent.setTranslationY(0f);
+            mSearchContent.setScaleX(1f);
+            mSearchContent.setScaleY(1f);
+        }
+        if (ws != null) {
+            ws.setScaleX(1f);
+            ws.setScaleY(1f);
+        }
+    }
+
     private OnBackInvokedCallback mBackCallback;
-    private float mTouchDownX;
-    private float mTouchDownY;
+    private boolean mImeWasVisible;
+    private boolean mInternalKeyboardHide;
+    private final ViewTreeObserver.OnGlobalLayoutListener mImeLayoutListener = this::checkRootImeVisibility;
+
+    private void checkRootImeVisibility() {
+        WindowInsets rootInsets = getRootWindowInsets();
+        if (rootInsets != null) {
+            handleImeVisibility(rootInsets.isVisible(WindowInsets.Type.ime()));
+        }
+    }
+
+    private void handleImeVisibility(boolean imeVisible) {
+        if (mIsClosing || !mIsOpen) {
+            mImeWasVisible = imeVisible;
+            return;
+        }
+        if (mImeWasVisible && !imeVisible) {
+            if (mInternalKeyboardHide) {
+                mInternalKeyboardHide = false;
+            } else {
+                Log.d("SpotlightBack", "IME hidden externally while Spotlight open");
+                mImeWasVisible = false;
+                return;
+            }
+        }
+        mImeWasVisible = imeVisible;
+    }
 
     @Override
     public void onBackStarted(@NonNull BackEvent backEvent) {
+        Log.d("SpotlightBack", "onBackStarted progress=" + backEvent.getProgress());
         super.onBackStarted(backEvent);
+        if (mIsClosing) {
+            return;
+        }
+        if (mOpenCloseAnimator != null && mOpenCloseAnimator.isRunning()) {
+            mOpenCloseAnimator.cancel();
+        }
+        if (mBackdropGlass != null) mBackdropGlass.animate().cancel();
+        if (mSearchContent != null) mSearchContent.animate().cancel();
+        Workspace<?> ws = mLauncher.getWorkspace();
+        if (ws != null) ws.animate().cancel();
+        if (mSearchResultsView != null) {
+            mSearchResultsView.stopScroll();
+            mSearchResultsView.setLayerType(LAYER_TYPE_HARDWARE, null);
+        }
     }
 
     @Override
     public void onBackProgressed(@NonNull BackEvent backEvent) {
+        Log.d("SpotlightBack", "onBackProgressed progress=" + backEvent.getProgress());
+        if (mIsClosing) {
+            return;
+        }
         float progress = backEvent.getProgress();
-        float scale = 1f - 0.08f * progress;
-        setScaleX(scale);
-        setScaleY(scale);
-        setAlpha(1f - 0.35f * progress);
+        if (mBackdropGlass != null) {
+            mBackdropGlass.setAlpha(1f - 0.35f * progress);
+        }
         if (mSearchContent != null) {
-            mSearchContent.setTranslationY(progress * 24f * getResources().getDisplayMetrics().density);
+            float scale = 1f - 0.06f * progress;
+            mSearchContent.setScaleX(scale);
+            mSearchContent.setScaleY(scale);
+            mSearchContent.setAlpha(1f - 0.25f * progress);
+            mSearchContent.setTranslationY(progress * 20f * getResources().getDisplayMetrics().density);
         }
         Workspace<?> ws = mLauncher.getWorkspace();
         if (ws != null) {
@@ -411,9 +610,18 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
     @Override
     public void onBackCancelled() {
-        animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(160).start();
+        Log.d("SpotlightBack", "onBackCancelled called");
+        if (mIsClosing) {
+            return;
+        }
+        if (mSearchResultsView != null) {
+            mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
+        }
+        if (mBackdropGlass != null) {
+            mBackdropGlass.animate().alpha(1f).setDuration(160).start();
+        }
         if (mSearchContent != null) {
-            mSearchContent.animate().translationY(0f).scaleX(1f).scaleY(1f).setDuration(160).start();
+            mSearchContent.animate().alpha(1f).translationY(0f).scaleX(1f).scaleY(1f).setDuration(160).start();
         }
         Workspace<?> ws = mLauncher.getWorkspace();
         if (ws != null) {
@@ -423,23 +631,45 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
     @Override
     public void onBackInvoked() {
-        setScaleX(1f);
-        setScaleY(1f);
-        setAlpha(1f);
-        if (mSearchContent != null) {
-            mSearchContent.setTranslationY(0f);
-            mSearchContent.setScaleX(1f);
-            mSearchContent.setScaleY(1f);
-        }
+        Log.d("SpotlightBack", "onBackInvoked called");
         close(true);
+    }
+
+    private void unregisterBackCallback() {
+        if (Utilities.ATLEAST_T && mBackCallback != null) {
+            try {
+                OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
+                if (dispatcher == null && mLauncher != null) {
+                    dispatcher = mLauncher.getOnBackInvokedDispatcher();
+                }
+                if (dispatcher != null) {
+                    dispatcher.unregisterOnBackInvokedCallback(mBackCallback);
+                }
+            } catch (Throwable ignored) {}
+            mBackCallback = null;
+        }
     }
 
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        setOnApplyWindowInsetsListener((v, insets) -> {
+            checkRootImeVisibility();
+            return v.onApplyWindowInsets(insets);
+        });
+        getViewTreeObserver().addOnGlobalLayoutListener(mImeLayoutListener);
+
+        if (mLauncher != null && mLauncher.getAppsView() != null
+                && mLauncher.getAppsView().getAppsStore() != null) {
+            mLauncher.getAppsView().getAppsStore().addUpdateListener(mAppsUpdateListener);
+        }
+
         if (Utilities.ATLEAST_T) {
             try {
                 OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
+                if (dispatcher == null && mLauncher != null) {
+                    dispatcher = mLauncher.getOnBackInvokedDispatcher();
+                }
                 if (dispatcher != null) {
                     if (Utilities.ATLEAST_U) {
                         mBackCallback = new OnBackAnimationCallback() {
@@ -480,48 +710,39 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        if (Utilities.ATLEAST_T && mBackCallback != null) {
-            try {
-                OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
-                if (dispatcher != null) {
-                    dispatcher.unregisterOnBackInvokedCallback(mBackCallback);
-                }
-            } catch (Throwable ignored) {}
-            mBackCallback = null;
+        if (mOpenCloseAnimator != null) {
+            mOpenCloseAnimator.cancel();
+            mOpenCloseAnimator = null;
         }
+        if (mLauncher != null && mLauncher.getWorkspace() != null && getOpen(mLauncher) == null) {
+            mLauncher.getWorkspace().setScaleX(1f);
+            mLauncher.getWorkspace().setScaleY(1f);
+        }
+        if (mLauncher != null && mLauncher.getAppsView() != null
+                && mLauncher.getAppsView().getAppsStore() != null) {
+            mLauncher.getAppsView().getAppsStore().removeUpdateListener(mAppsUpdateListener);
+        }
+        getViewTreeObserver().removeOnGlobalLayoutListener(mImeLayoutListener);
+        unregisterBackCallback();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent ev) {
+        if (mIsClosing || !mIsOpen) {
+            return false;
+        }
+        return super.onTouchEvent(ev);
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-            close(true);
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                close(true);
+            }
             return true;
         }
         return super.dispatchKeyEvent(event);
-    }
-
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent ev) {
-        switch (ev.getActionMasked()) {
-            case MotionEvent.ACTION_DOWN:
-                mTouchDownX = ev.getRawX();
-                mTouchDownY = ev.getRawY();
-                break;
-            case MotionEvent.ACTION_MOVE:
-                float dx = ev.getRawX() - mTouchDownX;
-                float dy = ev.getRawY() - mTouchDownY;
-                float screenWidth = getResources().getDisplayMetrics().widthPixels;
-                float density = getResources().getDisplayMetrics().density;
-                // If edge swipe back gesture (from left edge towards right OR right edge towards left)
-                boolean fromLeft = mTouchDownX < 60f * density && dx > 50f * density;
-                boolean fromRight = mTouchDownX > screenWidth - 60f * density && dx < -50f * density;
-                if ((fromLeft || fromRight) && Math.abs(dx) > Math.abs(dy) * 1.5f) {
-                    close(true);
-                    return true;
-                }
-                break;
-        }
-        return super.onInterceptTouchEvent(ev);
     }
 
     @Override

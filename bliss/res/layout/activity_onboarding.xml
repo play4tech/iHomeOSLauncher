@@ -133,6 +133,112 @@
                 android:textSize="12sp"
                 android:visibility="gone" />
 
+            <!-- Customize Tips Card (Step 3: Wallpaper & Widgets) -->
+            <LinearLayout
+                android:id="@+id/onboarding_tips_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_onboarding_info_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <!-- Row 1: Change Wallpaper -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_onboarding_wallpaper_icon"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_edit_wallpaper"
+                        android:tint="#007AFF"
+                        android:contentDescription="@null" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/onboarding_customize_wallpaper_title"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/onboarding_customize_wallpaper_body"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="13sp"
+                            android:lineSpacingExtra="1dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Subtle Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:layout_marginStart="52dp"
+                    android:background="#15000000" />
+
+                <!-- Row 2: Add Widgets -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_onboarding_widget_icon"
+                        android:padding="8dp"
+                        android:src="@drawable/ic_add_widget"
+                        android:tint="#34C759"
+                        android:contentDescription="@null" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/onboarding_customize_widget_title"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/onboarding_customize_widget_body"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="13sp"
+                            android:lineSpacingExtra="1dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
         </LinearLayout>
     </ScrollView>
 

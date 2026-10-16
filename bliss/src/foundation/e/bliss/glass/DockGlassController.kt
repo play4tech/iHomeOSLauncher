@@ -50,13 +50,14 @@ class DockGlassController(
      * Whether the glass effect is user-enabled. Set this from the persisted SharedPreference.
      * Changing it at runtime flips the visible effect immediately.
      */
-    var enabled: Boolean = false
+    var enabled: Boolean = true
         set(value) {
             field = value
             apply()
         }
 
     init {
+        enabled = sharedPrefs.getBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, true)
         envBuilder.addListener(this)
         sharedPrefs.registerOnSharedPreferenceChangeListener(this)
         apply()

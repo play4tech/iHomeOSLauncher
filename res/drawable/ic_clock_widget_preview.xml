@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+    <!-- Frosted squircle background -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M32,16 L96,16 C112,16 112,16 112,32 L112,96 C112,112 112,112 96,112 L32,112 C16,112 16,112 16,96 L16,32 C16,16 16,16 32,16 Z" />
+
+    <!-- Specular border -->
+    <path
+        android:strokeColor="#66FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M32,16 L96,16 C112,16 112,16 112,32 L112,96 C112,112 112,112 96,112 L32,112 C16,112 16,112 16,96 L16,32 C16,16 16,16 32,16 Z" />
+
+    <!-- Pure white circular face -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M64,24 A40,40 0 1,0 64,104 A40,40 0 1,0 64,24 Z" />
+
+    <!-- Hour ticks (12, 3, 6, 9) -->
+    <path
+        android:strokeColor="#1C1C1E"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M64,28 L64,34 M100,64 L94,64 M64,100 L64,94 M28,64 L34,64" />
+
+    <!-- Hour hand pointing at ~10:10 -->
+    <path
+        android:strokeColor="#1C1C1E"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"
+        android:pathData="M64,64 L50,48" />
+
+    <!-- Minute hand pointing at ~2:00 -->
+    <path
+        android:strokeColor="#1C1C1E"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round"
+        android:pathData="M64,64 L84,40" />
+
+    <!-- Orange second hand pointing at ~7:35 -->
+    <path
+        android:strokeColor="#FF9500"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:pathData="M64,64 L52,90 M64,64 L67,56" />
+
+    <!-- Orange center pin -->
+    <path
+        android:fillColor="#FF9500"
+        android:pathData="M64,61.5 A2.5,2.5 0 1,0 64,66.5 A2.5,2.5 0 1,0 64,61.5 Z" />
+
+</vector>

@@ -50,7 +50,6 @@ import com.android.launcher3.notification.NotificationListener;
 
 import foundation.e.bliss.multimode.MultiModeController;
 import foundation.e.bliss.preferences.BlissPrefs;
-import foundation.e.blisslauncher.features.notification.NotificationService;
 
 /**
  * iOS-styled Customize / Settings screen for Bliss Launcher.
@@ -119,13 +118,13 @@ public class SettingsActivity extends FragmentActivity
         }
 
         if (isDefault) {
-            txtStatus.setText("Bliss Launcher is set as default");
+            txtStatus.setText("iHome Launcher is set as default");
             layoutBadge.setVisibility(View.VISIBLE);
             btnSetDefault.setVisibility(View.GONE);
             card.setOnClickListener(null);
             card.setClickable(false);
         } else {
-            txtStatus.setText("Tap to set Bliss as default launcher");
+            txtStatus.setText("Tap to set iHome Launcher as default");
             layoutBadge.setVisibility(View.GONE);
             btnSetDefault.setVisibility(View.VISIBLE);
             card.setClickable(true);
@@ -145,7 +144,10 @@ public class SettingsActivity extends FragmentActivity
                 Log.w(TAG, "RoleManager request failed, trying fallback", e);
             }
         }
+        openHomeSettingsFallback();
+    }
 
+    private void openHomeSettingsFallback() {
         try {
             startActivity(new Intent(Settings.ACTION_HOME_SETTINGS));
         } catch (Exception e) {
@@ -157,16 +159,27 @@ public class SettingsActivity extends FragmentActivity
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_ROLE) {
+            RoleManager roleManager = getSystemService(RoleManager.class);
+            boolean isDefault = roleManager != null && roleManager.isRoleHeld(RoleManager.ROLE_HOME);
+            if (!isDefault) {
+                // OEMs like Vivo OriginOS and Xiaomi HyperOS silently cancel ROLE_HOME intent
+                openHomeSettingsFallback();
+            }
+            updateDefaultLauncherState();
+        }
+    }
+
     private void updateNotificationAccessState() {
         String enabledListeners = Settings.Secure.getString(
                 getContentResolver(), "enabled_notification_listeners");
         ComponentName myListener = new ComponentName(this, NotificationListener.class);
-        ComponentName myListener2 = new ComponentName(this, NotificationService.class);
         boolean hasAccess = enabledListeners != null &&
                 (enabledListeners.contains(myListener.flattenToString()) ||
-                 enabledListeners.contains(myListener.flattenToShortString()) ||
-                 enabledListeners.contains(myListener2.flattenToString()) ||
-                 enabledListeners.contains(myListener2.flattenToShortString()));
+                 enabledListeners.contains(myListener.flattenToShortString()));
 
         View rowBadges = findViewById(R.id.row_notification_badges);
         TextView txtSubtitle = findViewById(R.id.txt_badge_dots_subtitle);
@@ -261,18 +274,6 @@ public class SettingsActivity extends FragmentActivity
             });
         }
 
-        // Liquid Glass Dock
-        Switch switchGlassDock = findViewById(R.id.switch_glass_dock);
-        if (switchGlassDock != null) {
-            boolean glassDock = LauncherPrefs.getPrefs(this)
-                    .getBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, true);
-            switchGlassDock.setChecked(glassDock);
-            switchGlassDock.setOnCheckedChangeListener((btn, isChecked) -> {
-                LauncherPrefs.getPrefs(this).edit()
-                        .putBoolean(BlissPrefs.PREF_GLASS_DOCK_ENABLED, isChecked).apply();
-            });
-        }
-
         // Customize Glass Effect
         View rowCustomizeGlass = findViewById(R.id.row_customize_glass);
         if (rowCustomizeGlass != null) {
@@ -287,9 +288,9 @@ public class SettingsActivity extends FragmentActivity
         if (txtFooter != null) {
             try {
                 String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                txtFooter.setText("Bliss Launcher v" + versionName);
+                txtFooter.setText("iHome Launcher v" + versionName);
             } catch (Exception e) {
-                txtFooter.setText("Bliss Launcher");
+                txtFooter.setText("iHome Launcher");
             }
         }
     }

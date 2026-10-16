@@ -96,15 +96,15 @@ class LiquidGlassMinusDrawable(private val context: Context) : Drawable() {
             Shader.TileMode.CLAMP
         )
 
-        // Glass specular rim: brilliant refraction highlight on upper-left, subtle reflection on lower-right
+        // Glass specular rim: subtle refraction highlight on upper-left, gentle reflection on lower-right
         rimPaint.shader = LinearGradient(
             cx - radius, cy - radius,
             cx + radius, cy + radius,
             intArrayOf(
-                Color.argb(230, 255, 255, 255), // Brilliant specular highlight (90% white)
-                Color.argb(70, 255, 255, 255),  // Soft refraction dispersion
-                Color.argb(110, 255, 255, 255), // Internal reflection
-                Color.argb(175, 255, 255, 255)  // Secondary rim bounce
+                Color.argb(135, 255, 255, 255), // Subtle specular highlight
+                Color.argb(45, 255, 255, 255),  // Soft refraction dispersion
+                Color.argb(70, 255, 255, 255),  // Internal reflection
+                Color.argb(105, 255, 255, 255)  // Secondary rim bounce
             ),
             floatArrayOf(0.0f, 0.40f, 0.75f, 1.0f),
             Shader.TileMode.CLAMP

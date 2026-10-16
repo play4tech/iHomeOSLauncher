@@ -52,7 +52,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
     public static final String TAG = "StateManager";
     // b/279059025
-    private static final boolean DEBUG = true;
+    private static final boolean DEBUG = false;
 
     private final AnimationState mConfig = new AnimationState();
     private final Handler mUiHandler;

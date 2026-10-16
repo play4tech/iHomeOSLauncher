@@ -256,12 +256,21 @@ public class BgDataModel {
                     String.format("Adding item to ID map: %s", item.toString()),
                     /* stackTrace= */ null);
         }
+        if (item.id < 0) {
+            Log.e(TAG, "Skipping invalid item with negative id: " + item);
+            return;
+        }
         itemsIdMap.put(item.id, item);
         switch (item.itemType) {
             case LauncherSettings.Favorites.ITEM_TYPE_FOLDER:
             case LauncherSettings.Favorites.ITEM_TYPE_APP_PAIR:
-                folders.put(item.id, (FolderInfo) item);
-                workspaceItems.add(item);
+                if (item.container == LauncherSettings.Favorites.CONTAINER_DESKTOP ||
+                        item.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT) {
+                    folders.put(item.id, (FolderInfo) item);
+                    workspaceItems.add(item);
+                } else {
+                    Log.e(TAG, "Skipping folder with invalid container: " + item);
+                }
                 break;
             case LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT:
             case LauncherSettings.Favorites.ITEM_TYPE_APPLICATION:

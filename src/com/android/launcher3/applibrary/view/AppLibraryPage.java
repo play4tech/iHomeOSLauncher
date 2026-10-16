@@ -8,30 +8,46 @@ import android.graphics.Rect;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
+import android.os.Build;
+import android.os.SystemClock;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.view.WindowInsets;
 import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.window.BackEvent;
+import android.window.OnBackAnimationCallback;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.launcher3.ExtendedEditText;
 import com.android.launcher3.Insettable;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.Utilities;
+import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.applibrary.model.AppLibraryModel;
 import com.android.launcher3.model.data.AppInfo;
+import com.android.launcher3.model.data.ItemInfo;
+import com.android.launcher3.util.PackageUserKey;
 
 import java.util.Arrays;
+import java.util.function.Predicate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,8 +55,10 @@ import java.util.Map;
 public class AppLibraryPage extends FrameLayout implements Insettable {
 
     private View mContentContainer;
+    private View mSearchRow;
     private View mSearchContainer;
-    private EditText mSearchInput;
+    private View mSearchContent;
+    private ExtendedEditText mSearchInput;
     private TextView mSearchCancel;
     private AppLibraryDashboardView mDashboardView;
     private AppLibraryDashboardAdapter mDashboardAdapter;
@@ -59,6 +77,115 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private boolean mIsClearingSearch = false;
     private boolean mAppsStoreListenerRegistered = false;
     private ValueAnimator mTransitionAnimator;
+    private OnBackInvokedCallback mBackCallback;
+    private long mLastSearchExitedTime = 0;
+    private boolean mImeWasVisible = false;
+    private boolean mInternalKeyboardHide = false;
+    private boolean mBackGestureActive = false;
+    private final ViewTreeObserver.OnGlobalLayoutListener mImeLayoutListener = this::checkRootImeVisibility;
+    private final com.android.launcher3.allapps.AllAppsStore.OnUpdateListener mAppsStoreUpdateListener = () -> {
+        Launcher launcher = Launcher.getLauncher(getContext());
+        if (launcher != null && launcher.getAppsView() != null
+                && launcher.getAppsView().getAppsStore() != null) {
+            AppInfo[] apps = launcher.getAppsView().getAppsStore().getApps();
+            if (apps != null && apps.length > 0) {
+                updateApps(Arrays.asList(apps));
+            }
+        }
+    };
+    private final com.android.launcher3.applibrary.model.AppLibraryModel.AppLibraryUpdateListener mAppLibraryUpdateListener = () -> {
+        if (mAppLibraryModel == null || mDashboardAdapter == null) return;
+        Map<com.android.launcher3.applibrary.model.AppLibraryCategory, List<AppInfo>> newData = new LinkedHashMap<>();
+        for (com.android.launcher3.applibrary.model.AppLibraryCategory cat : mAppLibraryModel.getOrderedCategories()) {
+            newData.put(cat, mAppLibraryModel.getAppsForCategory(cat));
+        }
+        mDashboardAdapter.updateData(newData);
+    };
+
+    /** Listener that only runs its end logic if the animator was NOT cancelled. */
+    private abstract static class EndOnlyListener extends AnimatorListenerAdapter {
+        private boolean mCancelled;
+        @Override public void onAnimationCancel(Animator a) { mCancelled = true; }
+        @Override public void onAnimationEnd(Animator a) { if (!mCancelled) onFinished(); }
+        abstract void onFinished();
+    }
+
+    /** Stop every ViewPropertyAnimator a back-gesture cancel may have left running. */
+    private void cancelViewAnimators() {
+        if (mDashboardView != null) mDashboardView.animate().cancel();
+        if (mSearchResultsContainer != null) mSearchResultsContainer.animate().cancel();
+        if (mSearchBackdrop != null) mSearchBackdrop.animate().cancel();
+    }
+
+    /** The one place that guarantees the category grid is shown. */
+    private void settleDashboardVisible() {
+        if (mDashboardView == null) return;
+        mDashboardView.animate().cancel();
+        mDashboardView.setVisibility(VISIBLE);
+        mDashboardView.setAlpha(1f);
+        mDashboardView.setScaleX(1f);
+        mDashboardView.setScaleY(1f);
+    }
+
+    /** Final state of "search open". */
+    private void applySearchSteadyState() {
+        if (mSearchContent != null) mSearchContent.setTranslationX(0f);
+
+        ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
+        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+        mSearchCancel.setLayoutParams(lp);
+        mSearchCancel.setVisibility(VISIBLE);
+        mSearchCancel.setAlpha(1f);
+        mSearchCancel.setTranslationX(0f);
+
+        mDashboardView.animate().cancel();
+        mDashboardView.setVisibility(GONE);
+        mDashboardView.setAlpha(1f);      // never leave a hidden view at alpha 0
+        mDashboardView.setScaleX(1f);
+        mDashboardView.setScaleY(1f);
+
+        mSearchResultsContainer.setVisibility(VISIBLE);
+        mSearchResultsContainer.setAlpha(1f);
+        mSearchResultsContainer.setTranslationY(0f);
+        if (mSearchBackdrop != null) {
+            mSearchBackdrop.setVisibility(VISIBLE);
+            mSearchBackdrop.setAlpha(1f);
+        }
+    }
+
+    /** Final state of "browsing the App Library". Called when an exit animation completes. */
+    private void applyBrowseSteadyState(float targetShift) {
+        if (mInSearchMode) return;        // user re-entered search in the meantime
+
+        if (mSearchResultsView != null) {
+            mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
+        }
+        mIsClearingSearch = true;
+        try {
+            mSearchInput.setText("");
+            mSearchInput.clearFocus();
+        } finally {
+            mIsClearingSearch = false;
+        }
+        if (mSearchContent != null) mSearchContent.setTranslationX(targetShift);
+
+        mSearchCancel.setVisibility(GONE);
+        ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
+        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+        mSearchCancel.setLayoutParams(lp);
+        mSearchCancel.setAlpha(1f);
+        mSearchCancel.setTranslationX(0f);
+
+        if (mSearchBackdrop != null) {
+            mSearchBackdrop.setVisibility(GONE);
+            mSearchBackdrop.setAlpha(1f);
+        }
+        mSearchResultsContainer.setVisibility(GONE);
+        mSearchResultsContainer.setAlpha(1f);
+        mSearchResultsContainer.setTranslationY(0f);
+
+        settleDashboardVisible();         // <- the guarantee
+    }
 
     public AppLibraryPage(Context context) {
         this(context, null);
@@ -74,14 +201,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     private void init() {
-        mAppLibraryModel = new AppLibraryModel(getContext());
+        mAppLibraryModel = AppLibraryModel.getInstance(getContext());
         mDashboardAdapter = new AppLibraryDashboardAdapter(getContext());
 
         // Inflate layout contents
         LayoutInflater.from(getContext()).inflate(R.layout.app_library_page, this, true);
 
         mContentContainer = findViewById(R.id.app_library_content_container);
+        mSearchRow = findViewById(R.id.app_library_search_row);
+        if (mSearchRow != null) {
+            float rowElevation = 12f * getResources().getDisplayMetrics().density;
+            mSearchRow.setElevation(rowElevation);
+            mSearchRow.setTranslationZ(rowElevation);
+        }
         mSearchContainer = findViewById(R.id.app_library_search_container);
+        mSearchContent = findViewById(R.id.app_library_search_content);
         mSearchInput = findViewById(R.id.app_library_search_input);
         mSearchCancel = findViewById(R.id.app_library_search_cancel);
         mSearchGlass = findViewById(R.id.app_library_search_glass);
@@ -97,12 +231,13 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         }
 
         mDashboardView.setAdapter(mDashboardAdapter);
-        mDashboardView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                invalidateGlassSurfaces();
+        if (mAppLibraryModel != null && !mAppLibraryModel.getOrderedCategories().isEmpty()) {
+            Map<com.android.launcher3.applibrary.model.AppLibraryCategory, List<AppInfo>> initialData = new LinkedHashMap<>();
+            for (com.android.launcher3.applibrary.model.AppLibraryCategory cat : mAppLibraryModel.getOrderedCategories()) {
+                initialData.put(cat, mAppLibraryModel.getAppsForCategory(cat));
             }
-        });
+            mDashboardAdapter.updateData(initialData);
+        }
         mDashboardView.setOnOverscrollListener(translationY -> {
             invalidateGlassSurfaces();
         });
@@ -113,6 +248,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mSearchResultsView.setAdapter(mSearchAdapter);
 
         ViewCompat.setOnApplyWindowInsetsListener(mSearchResultsView, (v, windowInsets) -> {
+            handleImeVisibility(windowInsets.isVisible(WindowInsetsCompat.Type.ime()));
             Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
             Insets navInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
             int bottomPad = Math.max(imeInsets.bottom, navInsets.bottom);
@@ -122,14 +258,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             return windowInsets;
         });
 
-        // Bind update listener to AppLibraryModel
-        mAppLibraryModel.addListener(() -> {
-            Map<com.android.launcher3.applibrary.model.AppLibraryCategory, List<AppInfo>> newData = new LinkedHashMap<>();
-            for (com.android.launcher3.applibrary.model.AppLibraryCategory cat : mAppLibraryModel.getOrderedCategories()) {
-                newData.put(cat, mAppLibraryModel.getAppsForCategory(cat));
-            }
-            mDashboardAdapter.updateData(newData);
-        });
+
 
         // Search Container & Input focus & click listeners
         mSearchContainer.setOnClickListener(v -> {
@@ -137,15 +266,44 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             showKeyboard();
         });
 
+        if (mSearchContent != null) {
+            mSearchContent.setOnClickListener(v -> {
+                enterSearchMode();
+                showKeyboard();
+            });
+        }
+
         mSearchInput.setOnClickListener(v -> {
             enterSearchMode();
             showKeyboard();
         });
 
         mSearchInput.setOnFocusChangeListener((v, hasFocus) -> {
-            if (hasFocus) {
+            if (hasFocus && !mIsClearingSearch) {
                 enterSearchMode();
             }
+        });
+
+        mSearchInput.setOnBackKeyListener(() -> {
+            android.util.Log.d("BACK_DEBUG", "mSearchInput.onBackKey() called, mInSearchMode=" + mInSearchMode);
+            if (mInSearchMode) {
+                exitSearchMode(true);
+                return true;
+            }
+            return false;
+        });
+
+        mSearchInput.setOnKeyListener((v, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                android.util.Log.d("BACK_DEBUG", "mSearchInput.onKey(KEYCODE_BACK) called, action=" + event.getAction() + ", mInSearchMode=" + mInSearchMode);
+                if (mInSearchMode) {
+                    if (event.getAction() == KeyEvent.ACTION_UP) {
+                        exitSearchMode(true);
+                    }
+                    return true;
+                }
+            }
+            return false;
         });
 
         mSearchInput.addTextChangedListener(new TextWatcher() {
@@ -194,32 +352,58 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
     public void refreshApps() {
         Launcher launcher = Launcher.getLauncher(getContext());
+        if (launcher != null && mContentContainer != null
+                && AppLibraryCategoryExpandedView.getOpen(launcher) == null) {
+            mContentContainer.setAlpha(1f);
+            mContentContainer.setScaleX(1f);
+            mContentContainer.setScaleY(1f);
+        }
         if (launcher != null && launcher.getAppsView() != null
                 && launcher.getAppsView().getAppsStore() != null) {
 
-            // Register the AppsStore listener exactly once
             if (!mAppsStoreListenerRegistered) {
                 mAppsStoreListenerRegistered = true;
-                launcher.getAppsView().getAppsStore().addUpdateListener(() -> {
-                    AppInfo[] apps = launcher.getAppsView().getAppsStore().getApps();
-                    if (apps != null) {
-                        updateApps(Arrays.asList(apps));
-                    }
-                });
+                launcher.getAppsView().getAppsStore().addUpdateListener(mAppsStoreUpdateListener);
             }
 
-            // Always sync the current app list immediately
+            // Immediately bind existing categorized data if adapter is empty
+            if (mAppLibraryModel != null && !mAppLibraryModel.getOrderedCategories().isEmpty()
+                    && mDashboardAdapter != null && mDashboardAdapter.getItemCount() == 0) {
+                Map<com.android.launcher3.applibrary.model.AppLibraryCategory, List<AppInfo>> newData = new LinkedHashMap<>();
+                for (com.android.launcher3.applibrary.model.AppLibraryCategory cat : mAppLibraryModel.getOrderedCategories()) {
+                    newData.put(cat, mAppLibraryModel.getAppsForCategory(cat));
+                }
+                mDashboardAdapter.updateData(newData);
+            }
+
             AppInfo[] apps = launcher.getAppsView().getAppsStore().getApps();
             if (apps != null && apps.length > 0) {
-                updateApps(Arrays.asList(apps));
+                if (mSearchAdapter != null && mSearchAdapter.getItemCount() == 0) {
+                    mSearchAdapter.setApps(Arrays.asList(apps));
+                }
+                // Only trigger updateApps if model has not categorized yet
+                if (mAppLibraryModel != null && mAppLibraryModel.getOrderedCategories().isEmpty()) {
+                    updateApps(Arrays.asList(apps));
+                }
             }
         }
     }
 
     public void enterSearchMode() {
+        Log.d("AppLib", "enterSearchMode inSearch=" + mInSearchMode
+                + " dash(vis=" + (mDashboardView != null ? mDashboardView.getVisibility() : -1)
+                + " a=" + (mDashboardView != null ? mDashboardView.getAlpha() : -1f) + ")"
+                + " anim=" + (mTransitionAnimator != null && mTransitionAnimator.isRunning()));
         if (mInSearchMode) return;
         mInSearchMode = true;
+        cancelViewAnimators();
+        if (mSearchResultsView != null) mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
         refreshApps();
+        registerBackCallback();
+        Launcher launcher = Launcher.getLauncher(getContext());
+        if (launcher != null) {
+            launcher.onDragLayerHierarchyChanged();
+        }
 
         if (mTransitionAnimator != null) {
             mTransitionAnimator.cancel();
@@ -254,14 +438,12 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mSearchCancel.setAlpha(0f);
         mSearchCancel.setTranslationX(targetCancelWidth * 0.4f);
 
-        ViewGroup.LayoutParams cancelLp = mSearchCancel.getLayoutParams();
-        cancelLp.width = 0;
-        mSearchCancel.setLayoutParams(cancelLp);
-
         // Setup Dashboard for exit transition (scale downwards from top)
         mDashboardView.setVisibility(VISIBLE);
         mDashboardView.setPivotX(mDashboardView.getWidth() / 2f);
         mDashboardView.setPivotY(0f);
+
+        final float startShift = mSearchContent != null ? mSearchContent.getTranslationX() : 0f;
 
         mTransitionAnimator = ValueAnimator.ofFloat(0f, 1f);
         mTransitionAnimator.setDuration(260);
@@ -269,10 +451,12 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mTransitionAnimator.addUpdateListener(animation -> {
             float progress = (float) animation.getAnimatedValue();
 
-            // Cancel button width, alpha, and translation
-            ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-            lp.width = (int) (targetCancelWidth * progress);
-            mSearchCancel.setLayoutParams(lp);
+            // Search Content slide to left
+            if (mSearchContent != null) {
+                mSearchContent.setTranslationX((1f - progress) * startShift);
+            }
+
+            // Cancel button alpha and translation
             mSearchCancel.setAlpha(progress);
             mSearchCancel.setTranslationX((1f - progress) * (targetCancelWidth * 0.4f));
 
@@ -291,110 +475,138 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             mSearchResultsContainer.setAlpha(progress);
             mSearchResultsContainer.setTranslationY((1f - progress) * slideOffsetPx);
         });
-        mTransitionAnimator.addListener(new AnimatorListenerAdapter() {
+        mTransitionAnimator.addListener(new EndOnlyListener() {
             @Override
-            public void onAnimationEnd(Animator animation) {
-                ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-                lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-                mSearchCancel.setLayoutParams(lp);
-                mSearchCancel.setAlpha(1f);
-                mSearchCancel.setTranslationX(0f);
-
-                mDashboardView.setVisibility(GONE);
-                mDashboardView.setScaleX(1f);
-                mDashboardView.setScaleY(1f);
-
-                mSearchResultsContainer.setAlpha(1f);
-                mSearchResultsContainer.setTranslationY(0f);
-                if (mSearchBackdrop != null) {
-                    mSearchBackdrop.setAlpha(1f);
-                }
+            void onFinished() {
+                if (mInSearchMode) applySearchSteadyState();
             }
         });
         mTransitionAnimator.start();
     }
 
     public void exitSearchMode() {
+        exitSearchMode(true);
+    }
+
+    public void exitSearchMode(boolean animate) {
+        Log.d("AppLib", "exitSearchMode(animate=" + animate + ") inSearch=" + mInSearchMode
+                + " dash(vis=" + (mDashboardView != null ? mDashboardView.getVisibility() : -1)
+                + " a=" + (mDashboardView != null ? mDashboardView.getAlpha() : -1f) + ")"
+                + " anim=" + (mTransitionAnimator != null && mTransitionAnimator.isRunning()));
         if (!mInSearchMode) return;
         mIsClearingSearch = true;
         try {
             mInSearchMode = false;
-            mSearchInput.setText("");
-            mSearchInput.clearFocus();
+            mLastSearchExitedTime = SystemClock.uptimeMillis();
             hideKeyboard();
 
             Launcher launcher = Launcher.getLauncher(getContext());
-            if (launcher != null && launcher.getWorkspace() != null) {
-                launcher.getWorkspace().onAppLibrarySearchExited();
+            if (launcher != null) {
+                if (launcher.getWorkspace() != null) {
+                    launcher.getWorkspace().onAppLibrarySearchExited();
+                }
+                launcher.onDragLayerHierarchyChanged();
             }
+
+            post(this::unregisterBackCallback);
 
             if (mTransitionAnimator != null) {
                 mTransitionAnimator.cancel();
             }
+            cancelViewAnimators();     // kill any onBackCancelled / onBackProgressed leftovers
+
+            final float targetShift = calculateSearchCenteredShift();
+
+            if (!animate) {
+                mSearchInput.setText("");
+                mSearchInput.clearFocus();
+                if (mSearchContent != null) {
+                    mSearchContent.setTranslationX(targetShift);
+                }
+
+                mSearchCancel.setVisibility(GONE);
+                ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
+                lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                mSearchCancel.setLayoutParams(lp);
+                mSearchCancel.setAlpha(1f);
+                mSearchCancel.setTranslationX(0f);
+
+                if (mSearchBackdrop != null) {
+                    mSearchBackdrop.setVisibility(GONE);
+                    mSearchBackdrop.setAlpha(1f);
+                }
+
+                mSearchResultsContainer.setVisibility(GONE);
+                mSearchResultsContainer.setAlpha(1f);
+                mSearchResultsContainer.setTranslationY(0f);
+
+                settleDashboardVisible();
+                return;
+            }
+
+            if (mSearchResultsView != null) {
+                mSearchResultsView.stopScroll();
+                mSearchResultsView.setLayerType(LAYER_TYPE_HARDWARE, null);
+            }
+
+            // Capture current (potentially scrubbed) states for smooth handoff
+            final float startResultsAlpha = mSearchResultsContainer != null ? mSearchResultsContainer.getAlpha() : 1f;
+            final float startResultsTy = mSearchResultsContainer != null ? mSearchResultsContainer.getTranslationY() : 0f;
+            final float startBackdropAlpha = mSearchBackdrop != null ? mSearchBackdrop.getAlpha() : 1f;
+            final boolean dashAlreadyVisible = mDashboardView.getVisibility() == VISIBLE && mDashboardView.getAlpha() > 0f;
+            final float startDashAlpha = dashAlreadyVisible ? mDashboardView.getAlpha() : 0f;
+            final float startDashScale = dashAlreadyVisible ? mDashboardView.getScaleX() : 0.96f;
 
             // Restore Dashboard to VISIBLE behind the fading search results
             mDashboardView.setVisibility(VISIBLE);
-            mDashboardView.setAlpha(0f);
+            mDashboardView.setAlpha(startDashAlpha);
             mDashboardView.setPivotX(mDashboardView.getWidth() / 2f);
             mDashboardView.setPivotY(0f);
-            mDashboardView.setScaleX(0.96f);
-            mDashboardView.setScaleY(0.96f);
+            mDashboardView.setScaleX(startDashScale);
+            mDashboardView.setScaleY(startDashScale);
 
             final float slideOffsetPx = 20f * getResources().getDisplayMetrics().density;
             final int startCancelWidth = mSearchCancel.getWidth() > 0
                     ? mSearchCancel.getWidth()
                     : (int) (60 * getResources().getDisplayMetrics().density);
 
-            mTransitionAnimator = ValueAnimator.ofFloat(1f, 0f);
-            mTransitionAnimator.setDuration(240);
-            mTransitionAnimator.setInterpolator(new PathInterpolator(0.25f, 0.1f, 0.25f, 1f));
-            mTransitionAnimator.addUpdateListener(animation -> {
-                float progress = (float) animation.getAnimatedValue();
+            final float exitStartShift = mSearchContent != null ? mSearchContent.getTranslationX() : 0f;
 
-                // Cancel button width, alpha, and translation
-                ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-                lp.width = (int) (startCancelWidth * progress);
-                mSearchCancel.setLayoutParams(lp);
-                mSearchCancel.setAlpha(progress);
-                mSearchCancel.setTranslationX((1f - progress) * (startCancelWidth * 0.4f));
+            mTransitionAnimator = ValueAnimator.ofFloat(0f, 1f);
+            mTransitionAnimator.setDuration(250);
+            mTransitionAnimator.setInterpolator(new PathInterpolator(0.22f, 1f, 0.36f, 1f));
+            mTransitionAnimator.addUpdateListener(animation -> {
+                float p = (float) animation.getAnimatedValue();
+                float inv = 1f - p;
+
+                // Search Content slide back to center
+                if (mSearchContent != null) {
+                    mSearchContent.setTranslationX(exitStartShift + (targetShift - exitStartShift) * p);
+                }
+
+                // Cancel button alpha and translation
+                mSearchCancel.setAlpha(inv);
+                mSearchCancel.setTranslationX(p * (startCancelWidth * 0.4f));
 
                 // Search Backdrop fade-out
                 if (mSearchBackdrop != null) {
-                    mSearchBackdrop.setAlpha(progress);
+                    mSearchBackdrop.setAlpha(startBackdropAlpha * inv);
                 }
 
                 // Dashboard fade-in & scale up
-                mDashboardView.setAlpha(1f - progress);
-                float dashScale = 0.96f + (0.04f * (1f - progress));
+                mDashboardView.setAlpha(startDashAlpha + (1f - startDashAlpha) * p);
+                float dashScale = startDashScale + (1f - startDashScale) * p;
                 mDashboardView.setScaleX(dashScale);
                 mDashboardView.setScaleY(dashScale);
 
                 // Search Results fade-out
-                mSearchResultsContainer.setAlpha(progress);
-                mSearchResultsContainer.setTranslationY((1f - progress) * slideOffsetPx);
+                mSearchResultsContainer.setAlpha(startResultsAlpha * inv);
+                mSearchResultsContainer.setTranslationY(startResultsTy + (slideOffsetPx - startResultsTy) * p);
             });
-            mTransitionAnimator.addListener(new AnimatorListenerAdapter() {
+            mTransitionAnimator.addListener(new EndOnlyListener() {
                 @Override
-                public void onAnimationEnd(Animator animation) {
-                    mSearchCancel.setVisibility(GONE);
-                    ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-                    lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-                    mSearchCancel.setLayoutParams(lp);
-                    mSearchCancel.setAlpha(1f);
-                    mSearchCancel.setTranslationX(0f);
-
-                    if (mSearchBackdrop != null) {
-                        mSearchBackdrop.setVisibility(GONE);
-                        mSearchBackdrop.setAlpha(1f);
-                    }
-
-                    mSearchResultsContainer.setVisibility(GONE);
-                    mSearchResultsContainer.setAlpha(1f);
-                    mSearchResultsContainer.setTranslationY(0f);
-
-                    mDashboardView.setAlpha(1f);
-                    mDashboardView.setScaleX(1f);
-                    mDashboardView.setScaleY(1f);
+                void onFinished() {
+                    applyBrowseSteadyState(targetShift);
                 }
             });
             mTransitionAnimator.start();
@@ -403,19 +615,203 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         }
     }
 
+    public boolean isInSearchMode() {
+        return mInSearchMode;
+    }
+
     public boolean canHandleBack() {
         return mInSearchMode;
     }
 
+    public boolean wasRecentlyInSearchMode() {
+        return SystemClock.uptimeMillis() - mLastSearchExitedTime < 500;
+    }
+
     public boolean handleBack() {
         if (mInSearchMode) {
-            exitSearchMode();
+            exitSearchMode(true);
             return true;
         }
-        return false;
+        return wasRecentlyInSearchMode();
+    }
+
+    private void registerBackCallback() {
+        if (Utilities.ATLEAST_T && mBackCallback == null) {
+            try {
+                OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
+                if (dispatcher == null) {
+                    Launcher launcher = Launcher.getLauncher(getContext());
+                    if (launcher != null) {
+                        dispatcher = launcher.getOnBackInvokedDispatcher();
+                    }
+                }
+                if (dispatcher != null) {
+                    if (Utilities.ATLEAST_U) {
+                        mBackCallback = getOnBackAnimationCallback();
+                    } else {
+                        mBackCallback = this::exitSearchMode;
+                    }
+                    dispatcher.registerOnBackInvokedCallback(
+                            OnBackInvokedDispatcher.PRIORITY_OVERLAY, mBackCallback);
+                }
+            } catch (Throwable t) {
+                Log.w("AppLibraryPage", "Failed to register OnBackInvokedCallback", t);
+            }
+        }
+    }
+
+    private void unregisterBackCallback() {
+        if (Utilities.ATLEAST_T && mBackCallback != null) {
+            try {
+                OnBackInvokedDispatcher dispatcher = findOnBackInvokedDispatcher();
+                if (dispatcher == null) {
+                    Launcher launcher = Launcher.getLauncher(getContext());
+                    if (launcher != null) {
+                        dispatcher = launcher.getOnBackInvokedDispatcher();
+                    }
+                }
+                if (dispatcher != null) {
+                    dispatcher.unregisterOnBackInvokedCallback(mBackCallback);
+                }
+            } catch (Throwable ignored) {}
+            mBackCallback = null;
+        }
+    }
+
+    @NonNull
+    @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    public OnBackAnimationCallback getOnBackAnimationCallback() {
+        return new OnBackAnimationCallback() {
+            @Override
+            public void onBackStarted(@NonNull BackEvent backEvent) {
+                Log.d("AppLib", "onBackStarted inSearch=" + mInSearchMode
+                        + " dash(vis=" + (mDashboardView != null ? mDashboardView.getVisibility() : -1)
+                        + " a=" + (mDashboardView != null ? mDashboardView.getAlpha() : -1f) + ")"
+                        + " anim=" + (mTransitionAnimator != null && mTransitionAnimator.isRunning()));
+                if (!mInSearchMode) return;                  // exit already owns the views
+                mBackGestureActive = true;
+                if (mTransitionAnimator != null && mTransitionAnimator.isRunning()) {
+                    mTransitionAnimator.cancel();            // EndOnlyListener: no end logic runs
+                }
+                cancelViewAnimators();
+                if (mSearchResultsView != null) {
+                    mSearchResultsView.stopScroll();
+                    mSearchResultsView.setLayerType(LAYER_TYPE_HARDWARE, null);
+                }
+                // The IME hide below is ours: don't let handleImeVisibility() start a 2nd exit.
+                if (mImeWasVisible) mInternalKeyboardHide = true;
+                hideKeyboard();
+
+                mDashboardView.setVisibility(VISIBLE);
+                mDashboardView.setPivotX(mDashboardView.getWidth() / 2f);
+                mDashboardView.setPivotY(0f);
+            }
+
+            @Override
+            public void onBackProgressed(@NonNull BackEvent backEvent) {
+                if (!mInSearchMode) return;                  // late event after exit started
+                float progress = backEvent.getProgress();
+                if (mSearchResultsContainer != null) {
+                    mSearchResultsContainer.setAlpha(1f - 0.45f * progress);
+                    float slideOffsetPx = 20f * getResources().getDisplayMetrics().density;
+                    mSearchResultsContainer.setTranslationY(progress * slideOffsetPx);
+                }
+                if (mSearchBackdrop != null) {
+                    mSearchBackdrop.setAlpha(1f - 0.35f * progress);
+                }
+                if (mDashboardView != null) {
+                    mDashboardView.setVisibility(VISIBLE);
+                    mDashboardView.setAlpha(0.6f * progress);
+                    float dashScale = 0.96f + (0.04f * progress);
+                    mDashboardView.setScaleX(dashScale);
+                    mDashboardView.setScaleY(dashScale);
+                }
+            }
+
+            @Override
+            public void onBackCancelled() {
+                Log.d("AppLib", "onBackCancelled inSearch=" + mInSearchMode
+                        + " dash(vis=" + (mDashboardView != null ? mDashboardView.getVisibility() : -1)
+                        + " a=" + (mDashboardView != null ? mDashboardView.getAlpha() : -1f) + ")"
+                        + " anim=" + (mTransitionAnimator != null && mTransitionAnimator.isRunning()));
+                mBackGestureActive = false;
+                // If exit already started (late cancel from unregisterBackCallback), it owns
+                // every view. Touching the dashboard here is what leaves it at alpha 0.
+                if (!mInSearchMode) return;
+
+                if (mSearchResultsView != null) {
+                    mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
+                }
+                if (mSearchResultsContainer != null) {
+                    mSearchResultsContainer.animate().alpha(1f).translationY(0f)
+                            .setDuration(160).start();
+                }
+                if (mSearchBackdrop != null) {
+                    mSearchBackdrop.animate().alpha(1f).setDuration(160).start();
+                }
+                if (mDashboardView != null) {
+                    mDashboardView.animate().alpha(0f).scaleX(0.96f).scaleY(0.96f)
+                            .setDuration(160)
+                            .withEndAction(() -> {
+                                // withEndAction is NOT run if the animator is cancelled.
+                                if (mInSearchMode) applySearchSteadyState();
+                            }).start();
+                }
+            }
+
+            @Override
+            public void onBackInvoked() {
+                Log.d("AppLib", "onBackInvoked inSearch=" + mInSearchMode
+                        + " dash(vis=" + (mDashboardView != null ? mDashboardView.getVisibility() : -1)
+                        + " a=" + (mDashboardView != null ? mDashboardView.getAlpha() : -1f) + ")"
+                        + " anim=" + (mTransitionAnimator != null && mTransitionAnimator.isRunning()));
+                mBackGestureActive = false;
+                exitSearchMode(true);
+            }
+        };
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            android.util.Log.d("BACK_DEBUG", "AppLibraryPage.dispatchKeyEvent(KEYCODE_BACK) called, action=" + event.getAction() + ", mInSearchMode=" + mInSearchMode);
+            if (mInSearchMode) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    exitSearchMode(true);
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    private void checkRootImeVisibility() {
+        WindowInsets rootInsets = getRootWindowInsets();
+        if (rootInsets != null) {
+            handleImeVisibility(rootInsets.isVisible(WindowInsets.Type.ime()));
+        }
+    }
+
+    private void handleImeVisibility(boolean imeVisible) {
+        if (mInSearchMode && mImeWasVisible && !imeVisible) {
+            if (mInternalKeyboardHide) {
+                mInternalKeyboardHide = false;
+            } else {
+                Log.d("BACK_DEBUG", "AppLibraryPage IME hidden externally while in search mode -> exiting search mode");
+                mImeWasVisible = false;
+                post(() -> {
+                    if (mInSearchMode) {
+                        exitSearchMode(true);
+                    }
+                });
+                return;
+            }
+        }
+        mImeWasVisible = imeVisible;
     }
 
     public void showKeyboard() {
+        mInternalKeyboardHide = false;
         mSearchInput.requestFocus();
         InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
@@ -423,7 +819,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         }
     }
 
-    private void hideKeyboard() {
+    public void hideKeyboard() {
+        if (mImeWasVisible) {
+            mInternalKeyboardHide = true;
+        }
         InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
             imm.hideSoftInputFromWindow(mSearchInput.getWindowToken(), 0);
@@ -431,10 +830,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     private void performSearch(String query) {
-        if (mIsClearingSearch) return;
-        if (!mInSearchMode && query != null && !query.isEmpty()) {
-            enterSearchMode();
-        }
+        if (mIsClearingSearch || !mInSearchMode) return;
         mSearchAdapter.filter(query);
         // Show alphabet index scroller only when viewing full list (query is empty)
         mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
@@ -447,8 +843,12 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     public void restoreScrollState() {
-        if (mDashboardView != null && mSavedScrollY > 0) {
-            mDashboardView.scrollBy(0, mSavedScrollY);
+        if (mDashboardView != null) {
+            int currentOffset = mDashboardView.computeVerticalScrollOffset();
+            int deltaY = mSavedScrollY - currentOffset;
+            if (deltaY != 0) {
+                mDashboardView.scrollBy(0, deltaY);
+            }
         }
     }
 
@@ -460,25 +860,115 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             mSearchBackdropGlass.invalidate();
         }
         if (mDashboardView != null) {
-            invalidateGlassRecursively(mDashboardView);
+            for (int i = 0; i < mDashboardView.getChildCount(); i++) {
+                View child = mDashboardView.getChildAt(i);
+                if (child instanceof CategoryCardView) {
+                    AppLibraryCategoryGlassView gv = ((CategoryCardView) child).getGlassView();
+                    if (gv != null) {
+                        gv.invalidate();
+                    }
+                } else if (child instanceof ViewGroup) {
+                    ViewGroup vg = (ViewGroup) child;
+                    for (int j = 0; j < vg.getChildCount(); j++) {
+                        View subChild = vg.getChildAt(j);
+                        if (subChild instanceof CategoryCardView) {
+                            AppLibraryCategoryGlassView gv = ((CategoryCardView) subChild).getGlassView();
+                            if (gv != null) {
+                                gv.invalidate();
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
-    private void invalidateGlassRecursively(View v) {
-        if (v == null) return;
-        if (v instanceof CategoryCardView) {
-            AppLibraryCategoryGlassView gv = ((CategoryCardView) v).getGlassView();
-            if (gv != null) {
-                gv.invalidate();
-            }
-        } else if (v instanceof com.example.liquidglass.LiquidGlassView) {
-            v.invalidate();
-        } else if (v instanceof ViewGroup) {
-            ViewGroup group = (ViewGroup) v;
-            for (int i = 0; i < group.getChildCount(); i++) {
-                invalidateGlassRecursively(group.getChildAt(i));
+    public void updateNotificationDots(Predicate<PackageUserKey> updatedDots) {
+        final PackageUserKey packageUserKey = new PackageUserKey(null, null);
+        if (mDashboardView != null) {
+            for (int i = 0; i < mDashboardView.getChildCount(); i++) {
+                View child = mDashboardView.getChildAt(i);
+                updateCardNotificationDots(child, updatedDots, packageUserKey);
             }
         }
+        Launcher launcher = Launcher.getLauncher(getContext());
+        if (launcher != null) {
+            AppLibraryCategoryExpandedView expandedView = AppLibraryCategoryExpandedView.getOpen(launcher);
+            if (expandedView != null) {
+                RecyclerView grid = expandedView.findViewById(R.id.expanded_category_grid);
+                if (grid != null) {
+                    for (int i = 0; i < grid.getChildCount(); i++) {
+                        View child = grid.getChildAt(i);
+                        if (child instanceof BubbleTextView) {
+                            BubbleTextView btv = (BubbleTextView) child;
+                            if (btv.getTag() instanceof ItemInfo) {
+                                ItemInfo info = (ItemInfo) btv.getTag();
+                                if (!packageUserKey.updateFromItemInfo(info) || updatedDots.test(packageUserKey)) {
+                                    btv.applyDotState(info, true);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void updateCardNotificationDots(View view, Predicate<PackageUserKey> updatedDots, PackageUserKey packageUserKey) {
+        if (view instanceof CategoryCardView) {
+            CategoryCardView card = (CategoryCardView) view;
+            for (int j = 0; j < card.getChildCount(); j++) {
+                View sub = card.getChildAt(j);
+                if (sub instanceof BubbleTextView) {
+                    BubbleTextView btv = (BubbleTextView) sub;
+                    if (btv.getTag() instanceof ItemInfo) {
+                        ItemInfo info = (ItemInfo) btv.getTag();
+                        if (!packageUserKey.updateFromItemInfo(info) || updatedDots.test(packageUserKey)) {
+                            btv.applyDotState(info, true);
+                        }
+                    }
+                }
+            }
+        } else if (view instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) view;
+            for (int j = 0; j < vg.getChildCount(); j++) {
+                updateCardNotificationDots(vg.getChildAt(j), updatedDots, packageUserKey);
+            }
+        }
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        if (!mInSearchMode && (mTransitionAnimator == null || !mTransitionAnimator.isRunning())) {
+            updateSearchCenteredPosition();
+        }
+    }
+
+    public void updateSearchCenteredPosition() {
+        if (mInSearchMode) return;
+        if (mSearchContent != null) {
+            mSearchContent.setTranslationX(calculateSearchCenteredShift());
+        }
+    }
+
+    private float calculateSearchCenteredShift() {
+        if (mSearchContainer == null || mSearchInput == null) return 0f;
+        int containerWidth = mSearchContainer.getWidth();
+        if (containerWidth <= 0 && mSearchRow != null) {
+            containerWidth = mSearchRow.getWidth();
+        }
+        if (containerWidth <= 0) return 0f;
+
+        float density = getResources().getDisplayMetrics().density;
+        float iconWidth = 17f * density;
+        float iconPadding = 7f * density;
+        float leftPadding = 14f * density;
+        CharSequence hint = mSearchInput.getHint();
+        float textWidth = hint != null ? mSearchInput.getPaint().measureText(hint.toString()) : 0f;
+        float clusterWidth = iconWidth + iconPadding + textWidth;
+
+        return Math.max(0f, (containerWidth - clusterWidth) / 2f - leftPadding);
     }
 
     @Override
@@ -499,6 +989,16 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
+        if (mAppLibraryModel != null) {
+            mAppLibraryModel.addListener(mAppLibraryUpdateListener);
+        }
+        Launcher launcher = Launcher.getLauncher(getContext());
+        if (launcher != null && launcher.getAppsView() != null
+                && launcher.getAppsView().getAppsStore() != null && !mAppsStoreListenerRegistered) {
+            mAppsStoreListenerRegistered = true;
+            launcher.getAppsView().getAppsStore().addUpdateListener(mAppsStoreUpdateListener);
+        }
+        getViewTreeObserver().addOnGlobalLayoutListener(mImeLayoutListener);
         WindowInsets rootInsets = getRootWindowInsets();
         if (rootInsets != null) {
             Insets statusBarInsets = WindowInsetsCompat.toWindowInsetsCompat(rootInsets)
@@ -507,5 +1007,26 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 setInsets(new Rect(0, statusBarInsets.top, 0, 0));
             }
         }
+        if (mInSearchMode) {
+            registerBackCallback();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (mAppLibraryModel != null) {
+            mAppLibraryModel.removeListener(mAppLibraryUpdateListener);
+        }
+        if (mAppsStoreListenerRegistered) {
+            Launcher launcher = Launcher.getLauncher(getContext());
+            if (launcher != null && launcher.getAppsView() != null
+                    && launcher.getAppsView().getAppsStore() != null) {
+                launcher.getAppsView().getAppsStore().removeUpdateListener(mAppsStoreUpdateListener);
+            }
+            mAppsStoreListenerRegistered = false;
+        }
+        getViewTreeObserver().removeOnGlobalLayoutListener(mImeLayoutListener);
+        unregisterBackCallback();
     }
 }

@@ -22,17 +22,67 @@ import com.android.launcher3.InsettableFrameLayout;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.applibrary.model.CategoryData;
+import android.graphics.PointF;
 import com.android.launcher3.dragndrop.DragLayer;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class AppLibraryCategoryExpandedView extends AbstractFloatingView implements Insettable {
     private RecyclerView mGrid;
     private TextView mTitle;
+    private CategoryCardView mSourceCard;
+    private View mBackgroundPage;
+    private AppLibraryFolderTransition mTransition;
+    private final List<PointF> mStartCenters = new ArrayList<>();
+    private final List<Float> mStartScales = new ArrayList<>();
 
     // Whether we have fully settled after the first open gesture.
     // The ACTION_UP that ends the mini-cluster tap also hits this overlay
     // (since it appears during the down→up sequence). We must swallow that
     // first UP without closing, so we wait until the next DOWN→UP cycle.
     private boolean mIgnoreFirstUp = true;
+
+    private CategoryData mCategoryData;
+    private final com.android.launcher3.applibrary.model.AppLibraryModel.AppLibraryUpdateListener mModelListener =
+            this::onAppLibraryModelUpdated;
+
+    private void onAppLibraryModelUpdated() {
+        if (!mIsOpen || mCategoryData == null) return;
+        if (mTransition != null && mTransition.isAnimating()) {
+            post(() -> {
+                if (mIsOpen && mCategoryData != null) {
+                    onAppLibraryModelUpdated();
+                }
+            });
+            return;
+        }
+        List<com.android.launcher3.model.data.AppInfo> updated =
+                com.android.launcher3.applibrary.model.AppLibraryModel.getInstance(getContext())
+                        .getAppsForCategory(mCategoryData.category);
+        if (updated == null || updated.isEmpty()) {
+            close(true);
+        } else if (mCategoryData.apps != null && mCategoryData.apps.equals(updated)) {
+            return;
+        } else {
+            mCategoryData = new CategoryData(mCategoryData.category, updated);
+            mGrid.setAdapter(new ExpandedCategoryAdapter(Launcher.getLauncher(getContext()), updated));
+        }
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        com.android.launcher3.applibrary.model.AppLibraryModel.getInstance(getContext())
+                .addListener(mModelListener);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        com.android.launcher3.applibrary.model.AppLibraryModel.getInstance(getContext())
+                .removeListener(mModelListener);
+    }
 
     public AppLibraryCategoryExpandedView(Context context) {
         this(context, null);
@@ -50,10 +100,24 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
+        setClipChildren(false);
+        setClipToPadding(false);
         mGrid = findViewById(R.id.expanded_category_grid);
         mTitle = findViewById(R.id.expanded_category_title);
 
-        mGrid.setLayoutManager(new GridLayoutManager(getContext(), 4));
+        if (mGrid != null) {
+            mGrid.setClipChildren(false);
+            mGrid.setClipToPadding(false);
+            mGrid.setLayoutManager(new GridLayoutManager(getContext(), 4));
+            android.view.ViewParent p = mGrid.getParent();
+            while (p instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) p;
+                vg.setClipChildren(false);
+                vg.setClipToPadding(false);
+                if (vg == this) break;
+                p = vg.getParent();
+            }
+        }
 
         // Close on a genuine tap (not a scroll/fling) that lands on empty
         // grid space or outside icon bounds.
@@ -119,14 +183,47 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
         // Do nothing to avoid getting margins applied by DragLayer
     }
 
+    private void restoreBackgroundViews() {
+        if (mTransition != null) {
+            mTransition.cancelAndRestoreBackground();
+        }
+        if (mBackgroundPage != null) {
+            mBackgroundPage.setScaleX(1f);
+            mBackgroundPage.setScaleY(1f);
+            mBackgroundPage.setAlpha(1f);
+        }
+        if (mSourceCard != null) {
+            mSourceCard.setAlpha(1f);
+        }
+    }
+
+    @Override
+    public void onBackProgressed(@androidx.annotation.NonNull android.window.BackEvent backEvent) {
+        // No-op: AppLibraryFolderTransition handles custom geometry morphing
+        // and expects overlay scale to remain 1f.
+    }
+
+    @Override
+    public void onBackCancelled() {
+        super.onBackCancelled();
+        setScaleX(1f);
+        setScaleY(1f);
+        setAlpha(1f);
+    }
+
     @Override
     protected void handleClose(boolean animate) {
         if (!mIsOpen) return;
         mIsOpen = false;
+        setScaleX(1f);
+        setScaleY(1f);
 
-        if (animate) {
+        if (animate && mTransition != null) {
+            mTransition.close(mStartCenters, mStartScales, this::removeViewFromDragLayer);
+        } else if (animate) {
+            restoreBackgroundViews();
             ObjectAnimator anim = ObjectAnimator.ofFloat(this, View.ALPHA, 0f);
-            anim.setDuration(250);
+            anim.setDuration(200);
             anim.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
@@ -135,11 +232,13 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
             });
             anim.start();
         } else {
+            restoreBackgroundViews();
             removeViewFromDragLayer();
         }
     }
 
     private void removeViewFromDragLayer() {
+        restoreBackgroundViews();
         DragLayer dragLayer = Launcher.getLauncher(getContext()).getDragLayer();
         dragLayer.removeView(this);
     }
@@ -159,27 +258,38 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     }
     @Override
     protected boolean isOfType(int type) {
-        // TYPE_FOLDER allows back button to close this overlay
-        return (type & TYPE_FOLDER) != 0;
+        return (type & TYPE_APP_LIBRARY_EXPANDED) != 0;
+    }
+
+    public static AppLibraryCategoryExpandedView getOpen(Launcher launcher) {
+        return getOpenView(launcher, TYPE_APP_LIBRARY_EXPANDED);
     }
 
     public void bind(CategoryData data) {
+        mCategoryData = data;
         mTitle.setText(data.category.getTitle());
         mGrid.setAdapter(new ExpandedCategoryAdapter(Launcher.getLauncher(getContext()), data.apps));
     }
 
     public static AppLibraryCategoryExpandedView show(Launcher launcher, CategoryData data) {
+        return show(launcher, data, null);
+    }
+
+    public static AppLibraryCategoryExpandedView show(Launcher launcher, CategoryData data, CategoryCardView sourceCard) {
         Log.d("ExpandedCategory", "show() called for category: " + data.category.getTitle());
+        closeOpenViews(launcher, false, TYPE_APP_LIBRARY_EXPANDED);
         AppLibraryCategoryExpandedView view = (AppLibraryCategoryExpandedView) launcher.getLayoutInflater()
                 .inflate(R.layout.app_library_expanded_category, launcher.getDragLayer(), false);
 
         view.bind(data);
+        view.mSourceCard = sourceCard;
+        view.mBackgroundPage = launcher.findViewById(R.id.app_library_content_container);
 
         DragLayer dragLayer = launcher.getDragLayer();
 
-        Rect insets = dragLayer.getInsets();
-        int topInset = insets != null ? insets.top : 0;
-        int bottomInset = insets != null ? insets.bottom : 0;
+        if (sourceCard != null) {
+            sourceCard.getIconStartLocations(dragLayer, view.mStartCenters, view.mStartScales);
+        }
 
         InsettableFrameLayout.LayoutParams lp = new InsettableFrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -187,22 +297,42 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
         lp.ignoreInsets = true;
         view.setLayoutParams(lp);
 
-        dragLayer.addView(view);
-
-        view.setAlpha(0f);
-        view.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
-            @Override
-            public boolean onPreDraw() {
-                view.getViewTreeObserver().removeOnPreDrawListener(this);
-                view.animate().alpha(1f).setDuration(250).start();
-                return true;
-            }
-        });
-        
         view.mIsOpen = true;
         // Ignore the first ACTION_UP because it's the tail end of the
         // mini-cluster tap that opened this overlay.
         view.mIgnoreFirstUp = true;
+
+        dragLayer.addView(view);
+        launcher.onDragLayerHierarchyChanged();
+
+        View glass = view.findViewById(R.id.app_library_overlay_glass);
+        if (glass != null) {
+            glass.setAlpha(0f);
+        }
+        view.mTitle.setAlpha(0f);
+        view.setAlpha(1f);
+
+        view.getViewTreeObserver().addOnPreDrawListener(new android.view.ViewTreeObserver.OnPreDrawListener() {
+            @Override
+            public boolean onPreDraw() {
+                view.getViewTreeObserver().removeOnPreDrawListener(this);
+                if (!view.mIsOpen) {
+                    return true;
+                }
+                view.mTransition = new AppLibraryFolderTransition(
+                        view.mBackgroundPage,
+                        view.mSourceCard,
+                        view,
+                        glass,
+                        view.mTitle,
+                        view.mGrid
+                );
+                view.mTransition.open(view.mStartCenters, view.mStartScales, () -> {
+                    // settled
+                });
+                return true;
+            }
+        });
 
         return view;
     }

@@ -24,7 +24,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import foundation.e.bliss.utils.Logger
 
 class WidgetsDbHelper(context: Context) :
-    SQLiteOpenHelper(context, WIDGETS_DB, null, DATABASE_VERSION) {
+    SQLiteOpenHelper(context.applicationContext, WIDGETS_DB, null, DATABASE_VERSION) {
 
     override fun onCreate(db: SQLiteDatabase) {
         Logger.d(TAG, "Creating widgets database")
@@ -45,18 +45,20 @@ class WidgetsDbHelper(context: Context) :
     fun getWidgets(): List<WidgetInfo> {
         val widgets = mutableListOf<WidgetInfo>()
 
-        writableDatabase?.use { db ->
-            db.rawQuery("SELECT * FROM $WIDGETS_TABLE", null).use { cursor ->
-                while (cursor.moveToNext()) {
-                    val position = cursor.getInt(cursor.getColumnIndexOrThrow("position"))
-                    val component = cursor.getString(cursor.getColumnIndexOrThrow("component"))
-                    val widgetId = cursor.getInt(cursor.getColumnIndexOrThrow("widgetId"))
-                    val height = cursor.getInt(cursor.getColumnIndexOrThrow("height"))
+        val db = writableDatabase ?: return widgets
+        db.rawQuery("SELECT * FROM $WIDGETS_TABLE", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                val position = cursor.getInt(cursor.getColumnIndexOrThrow("position"))
+                val component = cursor.getString(cursor.getColumnIndexOrThrow("component"))
+                val widgetId = cursor.getInt(cursor.getColumnIndexOrThrow("widgetId"))
+                val height = cursor.getInt(cursor.getColumnIndexOrThrow("height"))
 
+                val componentName = ComponentName.unflattenFromString(component)
+                if (componentName != null) {
                     widgets.add(
                         WidgetInfo(
                             position,
-                            ComponentName.unflattenFromString(component)!!,
+                            componentName,
                             widgetId,
                             height
                         )
@@ -70,14 +72,29 @@ class WidgetsDbHelper(context: Context) :
 
     fun delete(id: Int) {
         Logger.d(TAG, "Deleting widget $id")
-        writableDatabase.use { db ->
-            db.apply {
-                execSQL("DELETE FROM $WIDGETS_TABLE WHERE widgetId = ?", arrayOf(id))
-                execSQL(
-                    "UPDATE $WIDGETS_TABLE SET position = position - 1 WHERE widgetId > ?",
-                    arrayOf(id)
+        val db = writableDatabase ?: return
+        db.beginTransaction()
+        try {
+            var deletedPosition: Int? = null
+            db.rawQuery(
+                "SELECT position FROM $WIDGETS_TABLE WHERE widgetId = ?",
+                arrayOf(id.toString())
+            ).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    deletedPosition = cursor.getInt(cursor.getColumnIndexOrThrow("position"))
+                }
+            }
+
+            db.execSQL("DELETE FROM $WIDGETS_TABLE WHERE widgetId = ?", arrayOf(id))
+            if (deletedPosition != null) {
+                db.execSQL(
+                    "UPDATE $WIDGETS_TABLE SET position = position - 1 WHERE position > ?",
+                    arrayOf(deletedPosition)
                 )
             }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
     }
 
@@ -86,38 +103,34 @@ class WidgetsDbHelper(context: Context) :
             TAG,
             "Inserting widget at position ${info.position} | ${info.component} | ${info.widgetId}"
         )
-        writableDatabase.use { db ->
-            db.execSQL(
-                "INSERT OR REPLACE INTO $WIDGETS_TABLE (position, component, widgetId, height) VALUES (?, ?, ?, ?)",
-                arrayOf(info.position, info.component.flattenToString(), info.widgetId, info.height)
-            )
-        }
+        val db = writableDatabase ?: return
+        db.execSQL(
+            "INSERT OR REPLACE INTO $WIDGETS_TABLE (position, component, widgetId, height) VALUES (?, ?, ?, ?)",
+            arrayOf(info.position, info.component.flattenToString(), info.widgetId, info.height)
+        )
     }
 
     fun updateHeight(id: Int, height: Int) {
         Logger.d(TAG, "Updating widget $id height to $height")
-        writableDatabase.use { db ->
-            db.execSQL(
-                "UPDATE $WIDGETS_TABLE SET height = ? WHERE widgetId = ?",
-                arrayOf(height, id)
-            )
-        }
+        val db = writableDatabase ?: return
+        db.execSQL(
+            "UPDATE $WIDGETS_TABLE SET height = ? WHERE widgetId = ?",
+            arrayOf(height, id)
+        )
     }
 
     fun getWidgetHeight(id: Int): Int? {
-        var height: Int? = null
-        writableDatabase?.use { db ->
-            db.rawQuery(
-                    "SELECT height FROM $WIDGETS_TABLE WHERE widgetId = ?",
-                    arrayOf(id.toString())
-                )
-                .use { cursor ->
-                    while (cursor.moveToNext()) {
-                        height = cursor.getInt(cursor.getColumnIndexOrThrow("height"))
-                    }
-                }
+        val db = writableDatabase ?: return null
+        db.rawQuery(
+            "SELECT height FROM $WIDGETS_TABLE WHERE widgetId = ?",
+            arrayOf(id.toString())
+        ).use { cursor ->
+            return if (cursor.moveToFirst()) {
+                cursor.getInt(cursor.getColumnIndexOrThrow("height"))
+            } else {
+                null
+            }
         }
-        return height
     }
 
     companion object {
@@ -131,7 +144,7 @@ class WidgetsDbHelper(context: Context) :
         @JvmStatic
         fun getInstance(context: Context): WidgetsDbHelper {
             if (instance == null) {
-                instance = WidgetsDbHelper(context)
+                instance = WidgetsDbHelper(context.applicationContext)
             }
             return requireNotNull(instance)
         }

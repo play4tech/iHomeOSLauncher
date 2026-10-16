@@ -15,6 +15,7 @@
   ~  along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 <resources>
+    <string name="app_name">iHome Launcher</string>
     <string name="edit">Edit</string>
     <string name="search">Search</string>
     <string name="suggestions">SUGGESTIONS</string>
@@ -35,12 +36,16 @@
     <string name="pref_glass_dock_summary">Use advanced refraction effect for the dock background</string>
 
     <!-- First-run Onboarding Strings -->
+    <string name="onboarding_step_1_of_3">Step 1 of 3</string>
+    <string name="onboarding_step_2_of_3">Step 2 of 3</string>
+    <string name="onboarding_step_3_of_3">Step 3 of 3</string>
     <string name="onboarding_step_1_of_2">Step 1 of 2</string>
     <string name="onboarding_step_2_of_2">Step 2 of 2</string>
     <string name="onboarding_step_1_of_1">Step 1 of 1</string>
     <string name="onboarding_default_title">Make this your\nhome screen.</string>
     <string name="onboarding_default_body">Set it as default so the Home button and gestures bring you here.</string>
     <string name="onboarding_default_action">Set as default</string>
+    <string name="onboarding_continue_action">Continue</string>
     <string name="onboarding_default_skip">Later</string>
     <string name="onboarding_notification_title">Show notification\ndots.</string>
     <string name="onboarding_notification_body">Allow notification access so app icons can show badges.</string>
@@ -49,4 +54,15 @@
     <string name="onboarding_notification_restricted_hint">If the switch is disabled in Settings, tap ⋮ in the top right corner and choose \'Allow restricted settings\'.</string>
     <string name="onboarding_notification_action">Allow</string>
     <string name="onboarding_notification_skip">Not now</string>
+    <string name="onboarding_customize_title">Wallpaper &amp; Widgets</string>
+    <string name="onboarding_customize_body">Personalize your layout anytime with widgets and wallpapers.</string>
+    <string name="onboarding_customize_wallpaper_title">Change Wallpaper</string>
+    <string name="onboarding_customize_wallpaper_body">Touch &amp; hold the screen, tap Edit in the top left, and select Edit Wallpaper and choose your wallpaper to change it.</string>
+    <string name="onboarding_customize_widget_title">Add Widgets</string>
+    <string name="onboarding_customize_widget_body">In the same Edit menu, select Add Widget to place widgets directly on your home screen.</string>
+    <string name="onboarding_customize_action">Get Started</string>
+
+    <!-- iOS 2x2 Analog Clock Widget -->
+    <string name="clock_widget_label">Clock</string>
+    <string name="clock_widget_description">Analog Clock</string>
 </resources>

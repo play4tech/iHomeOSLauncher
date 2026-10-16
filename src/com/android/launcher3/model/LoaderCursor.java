@@ -487,27 +487,29 @@ public class LoaderCursor extends CursorWrapper {
             // cause the item loading to get skipped
             ShortcutKey.fromItemInfo(info);
         }
-        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
-            ComponentName targetCn = info.getTargetComponent();
-            if (targetCn != null && info.user != null) {
-                com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(targetCn, info.user);
-                if (mLoadedDesktopComponents.contains(key)) {
-                    Log.w(TAG, "Duplicate app found in single-layer mode: " + targetCn + ", marking deleted id=" + id);
-                    markDeleted("Duplicate item: " + targetCn, RestoreError.INVALID_LOCATION);
-                    return;
+        if (info.itemType == Favorites.ITEM_TYPE_APPLICATION) {
+            if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                ComponentName targetCn = info.getTargetComponent();
+                if (targetCn != null && info.user != null) {
+                    com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(targetCn, info.user);
+                    if (mLoadedDesktopComponents.contains(key)) {
+                        Log.w(TAG, "Duplicate app found in single-layer mode: " + targetCn + ", marking deleted id=" + id);
+                        markDeleted("Duplicate item: " + targetCn, RestoreError.INVALID_LOCATION);
+                        return;
+                    }
+                    mLoadedDesktopComponents.add(key);
                 }
-                mLoadedDesktopComponents.add(key);
-            }
-        } else if (info.container == Favorites.CONTAINER_DESKTOP || info.container == Favorites.CONTAINER_HOTSEAT) {
-            ComponentName targetCn = info.getTargetComponent();
-            if (targetCn != null && info.user != null) {
-                com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(targetCn, info.user);
-                if (mLoadedDesktopComponents.contains(key)) {
-                    Log.w(TAG, "Duplicate desktop/hotseat item found: " + targetCn + ", marking deleted id=" + id);
-                    markDeleted("Duplicate desktop item: " + targetCn, RestoreError.INVALID_LOCATION);
-                    return;
+            } else if (info.container == Favorites.CONTAINER_DESKTOP || info.container == Favorites.CONTAINER_HOTSEAT) {
+                ComponentName targetCn = info.getTargetComponent();
+                if (targetCn != null && info.user != null) {
+                    com.android.launcher3.util.ComponentKey key = new com.android.launcher3.util.ComponentKey(targetCn, info.user);
+                    if (mLoadedDesktopComponents.contains(key)) {
+                        Log.w(TAG, "Duplicate desktop/hotseat item found: " + targetCn + ", marking deleted id=" + id);
+                        markDeleted("Duplicate desktop item: " + targetCn, RestoreError.INVALID_LOCATION);
+                        return;
+                    }
+                    mLoadedDesktopComponents.add(key);
                 }
-                mLoadedDesktopComponents.add(key);
             }
         }
         if (checkItemPlacement(info, dataModel.isFirstPagePinnedItemEnabled)) {

@@ -331,6 +331,16 @@ public class LauncherWidgetHolder {
             return lahv;
         }
 
+        if (foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.isClockWidget(appWidget.provider)) {
+            foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView =
+                    new foundation.e.bliss.widgets.clock.ClockWidgetHostView(mContext);
+            clockView.setAppWidget(appWidgetId, appWidget);
+            if (!enableWorkspaceInflation() || Looper.myLooper() == Looper.getMainLooper()) {
+                mViews.put(appWidgetId, clockView);
+            }
+            return clockView;
+        }
+
         LauncherAppWidgetHostView view = createViewInternal(appWidgetId, appWidget);
         // Do not update mViews on a background thread call, as the holder is not thread safe.
         if (!enableWorkspaceInflation() || Looper.myLooper() == Looper.getMainLooper()) {
@@ -365,6 +375,9 @@ public class LauncherWidgetHolder {
      *      as a result of using the same flow.
      */
     protected LauncherAppWidgetHostView recycleExistingView(LauncherAppWidgetHostView view) {
+        if (view instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
+            return view;
+        }
         if ((mFlags & FLAG_LISTENING) == 0) {
             if (view instanceof PendingAppWidgetHostView pv && pv.isDeferredWidget()) {
                 return view;
@@ -387,6 +400,12 @@ public class LauncherWidgetHolder {
     @NonNull
     protected LauncherAppWidgetHostView createViewInternal(
             int appWidgetId, @NonNull LauncherAppWidgetProviderInfo appWidget) {
+        if (foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.isClockWidget(appWidget.provider)) {
+            foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView =
+                    new foundation.e.bliss.widgets.clock.ClockWidgetHostView(mContext);
+            clockView.setAppWidget(appWidgetId, appWidget);
+            return clockView;
+        }
         if ((mFlags & FLAG_LISTENING) == 0) {
             // Since the launcher hasn't started listening to widget updates, we can't simply call
             // host.createView here because the later will make a binder call to retrieve

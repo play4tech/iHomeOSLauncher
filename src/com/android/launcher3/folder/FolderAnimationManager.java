@@ -290,7 +290,14 @@ public class FolderAnimationManager {
             mFolder.setScaleX(folderScale);
             mFolder.setScaleY(folderScale);
             
-            play(a, getAnimator(mFolder, View.SCALE_X, folderScaleEnd, 1f));
+            Animator scaleXAnim = getAnimator(mFolder, View.SCALE_X, folderScaleEnd, 1f);
+            if (mFolder instanceof foundation.e.bliss.folder.GridFolder) {
+                View glassView = ((foundation.e.bliss.folder.GridFolder) mFolder).mGlassView;
+                if (scaleXAnim instanceof ObjectAnimator && glassView != null) {
+                    ((ObjectAnimator) scaleXAnim).addUpdateListener(anim -> glassView.invalidate());
+                }
+            }
+            play(a, scaleXAnim);
             play(a, getAnimator(mFolder, View.SCALE_Y, folderScaleEnd, 1f));
             // Fade out the folder as it shrinks
             play(a, getAnimator(mFolder, View.ALPHA, 0f, 1f));
@@ -313,29 +320,62 @@ public class FolderAnimationManager {
             // own mIsOpening check handles direction, so don't also branch on it here or read
             // a live .getAlpha(); doing both was double-applying direction and caused these
             // views to animate the wrong way on close).
+            boolean isDraggingExit = !mIsOpening && (mFolder.isDragInProgress() || launcher.getDragController().isDragging());
             if (dockGlass != null) {
-                play(a, getAnimator(dockGlass, View.ALPHA, 1f, 0f));
+                dockGlass.setVisibility(View.VISIBLE);
+                if (isDraggingExit) {
+                    dockGlass.setAlpha(1f);
+                } else {
+                    play(a, getAnimator(dockGlass, View.ALPHA, 1f, 0f));
+                }
             }
             if (hotseat != null) {
+                hotseat.setVisibility(View.VISIBLE);
                 if (hotseat instanceof com.android.launcher3.Hotseat) {
                     ((com.android.launcher3.Hotseat) hotseat).setIconsAlpha(1f);
                 }
-                play(a, getAnimator(hotseat, View.ALPHA, 1f, 0f));
+                if (isDraggingExit) {
+                    hotseat.setAlpha(1f);
+                } else {
+                    play(a, getAnimator(hotseat, View.ALPHA, 1f, 0f));
+                }
             }
             if (pageIndicator != null) {
-                play(a, getAnimator(pageIndicator, View.ALPHA, 1f, 0f));
+                pageIndicator.setVisibility(View.VISIBLE);
+                if (isDraggingExit) {
+                    pageIndicator.setAlpha(1f);
+                } else {
+                    play(a, getAnimator(pageIndicator, View.ALPHA, 1f, 0f));
+                }
             }
             if (workspace != null) {
-                play(a, getAnimator(workspace, View.ALPHA, 1f, 0f));
+                workspace.setVisibility(View.VISIBLE);
+                if (isDraggingExit) {
+                    workspace.setAlpha(1f);
+                } else {
+                    play(a, getAnimator(workspace, View.ALPHA, 1f, 0f));
+                }
             }
             if (qsb != null) {
-                play(a, getAnimator(qsb, View.ALPHA, 1f, 0f));
+                if (isDraggingExit) {
+                    qsb.setAlpha(1f);
+                } else {
+                    play(a, getAnimator(qsb, View.ALPHA, 1f, 0f));
+                }
             }
             if (scrimView != null) {
-                play(a, getAnimator(scrimView, View.ALPHA, 1f, 0f));
+                if (isDraggingExit) {
+                    scrimView.setAlpha(1f);
+                } else {
+                    play(a, getAnimator(scrimView, View.ALPHA, 1f, 0f));
+                }
             }
             if (blurLayer != null) {
-                play(a, getAnimator(blurLayer, View.ALPHA, 0f, 1f));
+                if (isDraggingExit) {
+                    blurLayer.setAlpha(0f);
+                } else {
+                    play(a, getAnimator(blurLayer, View.ALPHA, 0f, 1f));
+                }
             }
             
             // Cross-fade the folder icon back in during close so it doesn't blink at the end.
@@ -451,6 +491,12 @@ public class FolderAnimationManager {
                 mContent.setClipToPadding(mContentClipToPadding);
                 mCellLayout.setClipChildren(mCellLayoutClipChildren);
                 mCellLayout.setClipToPadding(mCellLayoutClipPadding);
+                if (mFolder instanceof foundation.e.bliss.folder.GridFolder) {
+                    View glassView = ((foundation.e.bliss.folder.GridFolder) mFolder).mGlassView;
+                    if (glassView != null) {
+                        glassView.invalidate();
+                    }
+                }
             }
         });
 

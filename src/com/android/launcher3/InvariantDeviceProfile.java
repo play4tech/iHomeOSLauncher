@@ -486,13 +486,17 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
 
             // We need to ensure that there is enough extra space in the wallpaper
             // for the intended parallax effects
-            float parallaxFactor =
-                    dpiFromPx(Math.min(displayWidth, displayHeight), displayInfo.getDensityDpi())
-                            < 720
-                            ? 2
-                            : wallpaperTravelToScreenWidthRatio(displayWidth, displayHeight);
-            defaultWallpaperSize.x =
-                    Math.max(defaultWallpaperSize.x, Math.round(parallaxFactor * displayWidth));
+            if (!foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                float parallaxFactor =
+                        dpiFromPx(Math.min(displayWidth, displayHeight), displayInfo.getDensityDpi())
+                                < 720
+                                ? 2
+                                : wallpaperTravelToScreenWidthRatio(displayWidth, displayHeight);
+                defaultWallpaperSize.x =
+                        Math.max(defaultWallpaperSize.x, Math.round(parallaxFactor * displayWidth));
+            } else {
+                defaultWallpaperSize.x = Math.max(defaultWallpaperSize.x, displayWidth);
+            }
         }
         supportedProfiles = Collections.unmodifiableList(localSupportedProfiles);
 

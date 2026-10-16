@@ -37,8 +37,12 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
     @Nullable
     private static TrustDatabaseHelper sSingleton;
 
+    private final java.util.Set<String> mHiddenPackages = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    private final java.util.Set<String> mProtectedPackages = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+    private volatile boolean mCacheLoaded = false;
+
     private TrustDatabaseHelper(@NonNull Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        super(context.getApplicationContext(), DATABASE_NAME, null, DATABASE_VERSION);
     }
 
     public static synchronized TrustDatabaseHelper getInstance(@NonNull Context context) {
@@ -47,6 +51,35 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
         }
 
         return sSingleton;
+    }
+
+    private synchronized void ensureCacheLoaded() {
+        if (mCacheLoaded) return;
+        try {
+            SQLiteDatabase db = getReadableDatabase();
+            try (Cursor cursor = db.query(TABLE_NAME, new String[]{KEY_PKGNAME, KEY_HIDDEN, KEY_PROTECTED},
+                    null, null, null, null, null)) {
+                if (cursor != null) {
+                    int pkgCol = cursor.getColumnIndex(KEY_PKGNAME);
+                    int hiddenCol = cursor.getColumnIndex(KEY_HIDDEN);
+                    int protectedCol = cursor.getColumnIndex(KEY_PROTECTED);
+                    while (cursor.moveToNext()) {
+                        String pkg = cursor.getString(pkgCol);
+                        if (pkg != null) {
+                            if (cursor.getInt(hiddenCol) == 1) {
+                                mHiddenPackages.add(pkg);
+                            }
+                            if (cursor.getInt(protectedCol) == 1) {
+                                mProtectedPackages.add(pkg);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Ignored
+        }
+        mCacheLoaded = true;
     }
 
     @Override
@@ -66,8 +99,9 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void addHiddenApp(@NonNull String packageName) {
+        mHiddenPackages.add(packageName);
         if (isPackageHidden(packageName)) {
-            return;
+            // Check if already in DB
         }
 
         SQLiteDatabase db = getWritableDatabase();
@@ -93,8 +127,9 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void addProtectedApp(@NonNull String packageName) {
+        mProtectedPackages.add(packageName);
         if (isPackageProtected(packageName)) {
-            return;
+            // Check if already in DB
         }
 
         SQLiteDatabase db = getWritableDatabase();
@@ -121,9 +156,7 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
 
 
     public void removeHiddenApp(@NonNull String packageName) {
-        if (!isPackageHidden(packageName)) {
-            return;
-        }
+        mHiddenPackages.remove(packageName);
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -142,9 +175,7 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public void removeProtectedApp(@NonNull String packageName) {
-        if (!isPackageProtected(packageName)) {
-            return;
-        }
+        mProtectedPackages.remove(packageName);
 
         SQLiteDatabase db = getWritableDatabase();
         db.beginTransaction();
@@ -163,40 +194,16 @@ public class TrustDatabaseHelper extends SQLiteOpenHelper {
     }
 
     public boolean isPackageHidden(@NonNull String packageName) {
-        String query = String.format("SELECT * FROM %s WHERE %s = ? AND %s = ?", TABLE_NAME,
-                KEY_PKGNAME, KEY_HIDDEN);
-        SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, new String[]{packageName, String.valueOf(1)});
-        boolean result = false;
-        try {
-            result = cursor.getCount() != 0;
-        } catch (Exception e) {
-            // Ignored
-        } finally {
-            if (cursor != null && !cursor.isClosed()) {
-                cursor.close();
-            }
+        if (!mCacheLoaded) {
+            ensureCacheLoaded();
         }
-
-        return result;
+        return mHiddenPackages.contains(packageName);
     }
 
     public boolean isPackageProtected(@NonNull String packageName) {
-        String query = String.format("SELECT * FROM %s WHERE %s = ? AND %s = ?", TABLE_NAME,
-                KEY_PKGNAME, KEY_PROTECTED);
-        SQLiteDatabase db = getReadableDatabase();
-        Cursor cursor = db.rawQuery(query, new String[]{packageName, String.valueOf(1)});
-        boolean result = false;
-        try {
-            result = cursor.getCount() != 0;
-        } catch (Exception e) {
-            // Ignored
-        } finally {
-            if (cursor != null && !cursor.isClosed()) {
-                cursor.close();
-            }
+        if (!mCacheLoaded) {
+            ensureCacheLoaded();
         }
-
-        return result;
+        return mProtectedPackages.contains(packageName);
     }
 }

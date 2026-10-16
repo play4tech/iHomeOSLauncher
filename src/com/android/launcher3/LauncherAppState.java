@@ -200,10 +200,6 @@ public class LauncherAppState implements SafeCloseable {
         if (areNotificationDotsEnabled) {
             try {
                 NotificationListener.requestRebind(new ComponentName(
-                        mContext, foundation.e.blisslauncher.features.notification.NotificationService.class));
-            } catch (Throwable ignored) {}
-            try {
-                NotificationListener.requestRebind(new ComponentName(
                         mContext, NotificationListener.class));
             } catch (Throwable ignored) {}
         }

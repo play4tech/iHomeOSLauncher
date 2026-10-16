@@ -173,6 +173,15 @@ public class LauncherAppWidgetProviderInfo extends AppWidgetProviderInfo
             minSpanY = Math.min(spanY, minSpanY);
         }
 
+        if (provider != null && foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.Companion.isClockWidget(provider)) {
+            spanX = 2;
+            spanY = 2;
+            minSpanX = 2;
+            minSpanY = 2;
+            maxSpanX = 2;
+            maxSpanY = 2;
+        }
+
         // If minSpanX/Y > spanX/Y, ignore the minSpanX/Y to match the behavior described in
         // minResizeWidth & minResizeHeight Android documentation. See
         // https://developer.android.com/reference/android/appwidget/AppWidgetProviderInfo

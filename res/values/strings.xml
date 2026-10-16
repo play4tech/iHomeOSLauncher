@@ -21,7 +21,7 @@
     <skip />
 
     <!-- Application name -->
-    <string name="app_name">Launcher3</string>
+    <string name="app_name">iHome Launcher</string>
     <!-- Work folder name -->
     <string name="work_folder_name">Work</string>
     <!-- Displayed when user selects a shortcut for an app that was uninstalled [CHAR_LIMIT=none]-->
@@ -181,6 +181,7 @@
     <!-- Label for uninstall drop target (from the device).
          May appear next to remove_drop_target_label [CHAR_LIMIT=20]-->
     <string name="uninstall_drop_target_label">Remove App</string>
+    <string name="remove_app_drop_target_label">Remove App</string>
     <!-- Label for app info drop target. [CHAR_LIMIT=20] -->
     <string name="app_info_drop_target_label">App info</string>
     <!-- Label for install to private profile shortcut label. [CHAR_LIMIT=20] -->
@@ -191,6 +192,10 @@
     <string name="dismiss_prediction_label">Don\'t suggest app</string>
     <!-- Label for pinning predicted app. -->
     <string name="pin_prediction">Pin Prediction</string>
+
+    <string name="change_category">Change Category \u203A</string>
+    <string name="change_category_title">Change Category</string>
+    <string name="change_category_message">Select a category for \"%1$s\"</string>
 
 
     <!-- Permissions: -->
@@ -482,4 +487,8 @@
     <!-- Strings for bubble bar -->
     <!-- content description for the overflow bubble [CHAR_LIMIT=none] -->
     <string name="bubble_bar_overflow_description">Overflow</string>
+
+    <!-- iOS 2x2 Analog Clock Widget -->
+    <string name="clock_widget_label">Clock</string>
+    <string name="clock_widget_description">Analog Clock</string>
 </resources>

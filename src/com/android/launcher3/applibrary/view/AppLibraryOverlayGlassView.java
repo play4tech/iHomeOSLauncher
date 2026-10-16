@@ -85,9 +85,6 @@ public class AppLibraryOverlayGlassView extends LiquidGlassView {
         if (getBackdropSource() == null) {
             ensureBound();
         }
-        int[] loc = new int[2];
-        getLocationOnScreen(loc);
-        Log.d("AppLibraryOverlayGlass", "draw: loc=[" + loc[0] + "," + loc[1] + "] size=" + getWidth() + "x" + getHeight() + " backdrop=" + getBackdropSource());
         super.draw(canvas);
     }
 }

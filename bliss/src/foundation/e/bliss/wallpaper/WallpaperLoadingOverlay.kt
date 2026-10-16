@@ -72,21 +72,21 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val glassBg =
             PopupGlassView(context).apply {
                 layoutParams = FrameLayout.LayoutParams(cardWidth, cardHeight)
-                setPopupRadius(18f * density)
-                setBlurRadius(15f)
-                setTintAlpha(0.5f)
+                setPopupRadius(26f * density)
+                setBlurRadius(25f)
+                setTintAlpha(0.7f)
             }
         hudCard.addView(glassBg)
 
-        // Dark frosted backing for maximum contrast on any background
+        // Light translucent backing for fallback contrast
         val fallbackBacking =
             View(context).apply {
                 layoutParams = FrameLayout.LayoutParams(cardWidth, cardHeight)
                 background =
                     GradientDrawable().apply {
                         shape = GradientDrawable.RECTANGLE
-                        cornerRadius = 18f * density
-                        setColor(Color.parseColor("#33000000"))
+                        cornerRadius = 26f * density
+                        setColor(Color.parseColor("#14000000"))
                     }
             }
         hudCard.addView(fallbackBacking)
@@ -109,7 +109,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                     LinearLayout.LayoutParams((22 * density).toInt(), (22 * density).toInt())
                         .apply { marginEnd = (12 * density).toInt() }
                 isIndeterminate = true
-                indeterminateTintList = ColorStateList.valueOf(Color.WHITE)
+                indeterminateTintList = ColorStateList.valueOf(Color.BLACK)
             }
         contentRow.addView(progressBar)
 
@@ -118,7 +118,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                 layoutParams =
                     LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
                 text = "Setting Wallpaper..."
-                setTextColor(Color.WHITE)
+                setTextColor(Color.BLACK)
                 setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }

@@ -57,7 +57,7 @@ class AllAppsRecyclerViewPool<T> : RecycledViewPool() {
         // just need to perform onCreateViewHolder(parent, VIEW_TYPE_ICON) so it doesn't need
         // data source information.
         val adapter: RecyclerView.Adapter<BaseAllAppsAdapter.ViewHolder> =
-            object : BaseAllAppsAdapter<T>(context, context.appsView.layoutInflater, null, null) {
+            object : BaseAllAppsAdapter<T>(context, context.appsView.layoutInflater.cloneInContext(context), null, null) {
                 override fun setAppsPerRow(appsPerRow: Int) = Unit
                 override fun getLayoutManager(): RecyclerView.LayoutManager? = null
             }

@@ -417,8 +417,20 @@ public class ModelWriter {
 
         @Override
         public void runImpl() {
-            mModel.getModelDbController().update(
+            if (mItemId < 0) {
+                return;
+            }
+            int rows = mModel.getModelDbController().update(
                     getFavoritesTableName(), mWriter.get().getValues(mContext), itemIdMatch(mItemId), null);
+            if (rows == 0 && mItem != null && mItem.id >= 0
+                    && (mItem.container == Favorites.CONTAINER_DESKTOP
+                        || mItem.container == Favorites.CONTAINER_HOTSEAT
+                        || mItem.container >= 0)) {
+                ContentWriter writer = new ContentWriter(mContext);
+                mItem.onAddToDatabase(writer);
+                writer.put(Favorites._ID, mItemId);
+                mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+            }
             updateItemArrays(mItem, mItemId);
         }
     }

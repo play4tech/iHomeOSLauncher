@@ -28,6 +28,7 @@
         android:fullBackupContent="@xml/backupscheme"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/derived_app_name"
         android:theme="@style/AppTheme"
         android:largeHeap="@bool/config_largeHeap"
@@ -35,7 +36,7 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         tools:ignore="GoogleAppIndexingWarning"
-        tools:replace="android:icon">
+        tools:replace="android:icon,android:roundIcon">
 
         <!--
         Main launcher activity. When extending only change the name, and keep all the
@@ -65,13 +66,8 @@
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"
-                android:value="${packageName}.grid_control" />
+                android:value="${applicationId}.grid_control" />
         </activity>
-
-        <!-- Retail flavor: remove duplicate NotificationService so only Launcher3 NotificationListener remains -->
-        <service
-            android:name="foundation.e.blisslauncher.features.notification.NotificationService"
-            tools:node="remove" />
 
     </application>
 </manifest>

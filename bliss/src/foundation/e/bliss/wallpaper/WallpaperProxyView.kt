@@ -130,13 +130,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         super.onDraw(canvas)
         val environment = envBuilder.environment
         if (environment != null) {
-            if (!hasLoggedDraw) {
-                Log.d(
-                    "WallpaperProxyView",
-                    "onDraw: drawing wallpaper bitmap (${environment.wallpaper.width}x${environment.wallpaper.height}) to proxy canvas"
-                )
-                hasLoggedDraw = true
-            }
             environment.transform.toMatrix(matrix)
             canvas.drawBitmap(environment.wallpaper, matrix, paint)
         } else if (repository.currentWallpaper != null) {

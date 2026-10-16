@@ -24,6 +24,7 @@ import android.view.View;
 import androidx.annotation.Nullable;
 
 import com.android.launcher3.CellLayout;
+import com.android.launcher3.celllayout.CellPosMapper.CellPos;
 import com.android.launcher3.DragSource;
 import com.android.launcher3.DropTarget;
 import com.android.launcher3.Launcher;
@@ -92,36 +93,36 @@ public class LauncherDelegate {
                 if (itemCount <= 1) {
                     View newIcon = null;
                     WorkspaceItemInfo finalItem = null;
+                    CellPos presenterPos =
+                            mLauncher.getCellPosMapper().mapModelToPresenter(info);
+                    CellLayout cellLayout = mLauncher.getCellLayout(info.container,
+                            presenterPos.screenId);
 
-                    if (itemCount == 1) {
+                    if (itemCount == 1 && !info.contents.isEmpty() && cellLayout != null) {
                         // Move the item from the folder to the workspace, in the position of the
                         // folder
-                        CellLayout cellLayout = mLauncher.getCellLayout(info.container,
-                                mLauncher.getCellPosMapper().mapModelToPresenter(info).screenId);
-                        finalItem =  info.contents.remove(0);
+                        finalItem = info.contents.remove(0);
                         newIcon = mLauncher.getItemInflater().inflateItem(
                                 finalItem, mLauncher.getModelWriter(), cellLayout);
                         mLauncher.getModelWriter().addOrMoveItemInDatabase(finalItem,
-                                info.container, info.screenId, info.cellX, info.cellY);
+                                info.container, presenterPos.screenId, presenterPos.cellX, presenterPos.cellY);
                     }
 
-                    // Remove the folder
                     folder.mFolderIcon.clearAnimation();
 
-                    mLauncher.removeItem(folder.mFolderIcon, info, true /* deleteFromDb */,
-                            "folder removed because there's only 1 item in it");
-                    if (folder.mFolderIcon instanceof DropTarget) {
-                        folder.mDragController.removeDropTarget((DropTarget) folder.mFolderIcon);
-                    }
-
-                    if (newIcon != null) {
-                        // We add the child after removing the folder to prevent both from existing
-                        // at the same time in the CellLayout.  We need to add the new item with
-                        // addInScreenFromBind() to ensure that hotseat items are placed correctly.
-                        mLauncher.getWorkspace().addInScreenFromBind(newIcon, info);
-
-                        // Focus the newly created child
+                    if (newIcon != null && cellLayout != null) {
+                        folder.mFolderIcon.removeListeners();
+                        cellLayout.removeView(folder.mFolderIcon);
+                        if (folder.mFolderIcon instanceof DropTarget) {
+                            folder.mDragController.removeDropTarget((DropTarget) folder.mFolderIcon);
+                        }
+                        mLauncher.getModelWriter().deleteItemFromDatabase(info,
+                                "folder removed because there's only 1 item in it");
+                        mLauncher.getWorkspace().addInScreenFromBind(newIcon, finalItem);
                         newIcon.requestFocus();
+                    } else if (itemCount <= 0) {
+                        mLauncher.removeItem(folder.mFolderIcon, info, true /* deleteFromDb */,
+                                "folder removed because it is empty");
                     }
                     if (finalItem != null) {
                         StatsLogger logger = mLauncher.getStatsLogManager().logger()

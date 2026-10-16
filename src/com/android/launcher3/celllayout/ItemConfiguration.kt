@@ -28,6 +28,7 @@ class ItemConfiguration : CellAndSpan() {
     @JvmField val sortedViews = ArrayList<View>()
 
     @JvmField var intersectingViews: ArrayList<View> = ArrayList()
+    @JvmField val overflowViews = ArrayList<View>()
 
     @JvmField var isSolution = false
     fun save() {

@@ -41,6 +41,11 @@ class BlissAppWidgetHost(val context: Context) : AppWidgetHost(context, WIDGET_H
         appWidgetId: Int,
         appWidget: AppWidgetProviderInfo?
     ): AppWidgetHostView {
+        if (appWidget != null && foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.isClockWidget(appWidget.provider)) {
+            val clockView = foundation.e.bliss.widgets.clock.ClockWidgetHostView(context)
+            clockView.setAppWidget(appWidgetId, appWidget)
+            return clockView
+        }
         val blur = DefaultWidgets.defaultWidgets.contains(appWidget?.provider)
         return RoundedWidgetView(context, blur)
     }

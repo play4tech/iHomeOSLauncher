@@ -328,6 +328,37 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
         }
     }
 
+    @Override
+    public void removeView(View view) {
+        if (view != null) view.clearAnimation();
+        super.removeView(view);
+    }
+
+    @Override
+    public void removeViewInLayout(View view) {
+        if (view != null) view.clearAnimation();
+        super.removeViewInLayout(view);
+    }
+
+    @Override
+    public void removeViewAt(int index) {
+        View view = getChildAt(index);
+        if (view != null) view.clearAnimation();
+        super.removeViewAt(index);
+    }
+
+    @Override
+    public void removeAllViews() {
+        for (int i = 0; i < getChildCount(); i++) getChildAt(i).clearAnimation();
+        super.removeAllViews();
+    }
+
+    @Override
+    public void removeAllViewsInLayout() {
+        for (int i = 0; i < getChildCount(); i++) getChildAt(i).clearAnimation();
+        super.removeAllViewsInLayout();
+    }
+
     void setTranslationProvider(@Nullable TranslationProvider provider) {
         mTranslationProvider = provider;
     }

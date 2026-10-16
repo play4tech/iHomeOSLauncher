@@ -36,6 +36,7 @@ import android.widget.FrameLayout;
 
 import com.android.launcher3.Alarm;
 import com.android.launcher3.BubbleTextView;
+import com.android.launcher3.CellLayout;
 import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Hotseat;
 import com.android.launcher3.Launcher;
@@ -52,6 +53,7 @@ import com.android.launcher3.touch.ItemLongClickListener;
 import com.android.launcher3.views.ActivityContext;
 import com.android.launcher3.views.ClipPathView;
 import com.android.launcher3.views.ScrimView;
+import com.android.launcher3.pageindicators.PageIndicatorDots;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -90,15 +92,13 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
         mFolderTab = findViewById(R.id.folder_tab);
         mFolderName.setSelectAllOnFocus(false);
-        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
 
         mFooterHeight = getResources().getDimensionPixelSize(R.dimen.grid_folder_footer_height);
 
         DeviceProfile grid = mActivityContext.getDeviceProfile();
         int cellIconGap = (grid.folderCellWidthPx - mActivityContext.getDeviceProfile().iconSizePx);
         mContent.setPadding(cellIconGap, cellIconGap, cellIconGap, cellIconGap);
-
-        mFolderName.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, mFolderName.getTextSize() * 3);
 
         int measureSpec = MeasureSpec.UNSPECIFIED;
         mFolderTab.measure(measureSpec, measureSpec);
@@ -222,8 +222,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
         }
     }
 
+    @Override
     public boolean isFolderWobbling() {
-        return isFolderWobbling;
+        return isFolderWobbling || super.isFolderWobbling();
     }
 
     public boolean isAnimating() {
@@ -258,10 +259,38 @@ public class GridFolder extends Folder implements OnAlarmListener {
     }
 
     @Override
+    public void getHitRectRelativeToDragLayer(android.graphics.Rect outRect) {
+        if (mGridFolderPage != null && mGridFolderPage.getWidth() > 0 && mActivityContext != null
+                && mActivityContext.getDragLayer() != null) {
+            mActivityContext.getDragLayer().getDescendantRectRelativeToSelf(mGridFolderPage, outRect);
+            if (mFolderTab != null && mFolderTab.getVisibility() == VISIBLE) {
+                android.graphics.Rect tabRect = new android.graphics.Rect();
+                mActivityContext.getDragLayer().getDescendantRectRelativeToSelf(mFolderTab, tabRect);
+                outRect.union(tabRect);
+            }
+            int offset = Math.max(mScrollAreaOffset, (int) (getContext().getResources().getDisplayMetrics().density * 48));
+            outRect.left -= offset;
+            outRect.right += offset;
+        } else {
+            super.getHitRectRelativeToDragLayer(outRect);
+        }
+    }
+
+    @Override
     protected void onFolderCloseComplete() {
         showOrHideDesktop(mLauncher, false);
-        if (mLauncher.mBlurLayer != null) {
-            mLauncher.mBlurLayer.setAlpha(0f);
+        Workspace<?> ws = mLauncher.getWorkspace();
+        boolean onAppLibOrPinned = ws != null && (ws.isAppLibraryCurrentPage()
+                || (ws.getFirstPagePinnedItem() != null && ws.getNextPage() == 0));
+        if (!onAppLibOrPinned && Folder.getOpen(mLauncher) == null) {
+            if (mLauncher.mBlurLayer != null) {
+                mLauncher.mBlurLayer.setAlpha(0f);
+            }
+            View dockGlass = mLauncher.findViewById(R.id.dock_glass);
+            if (dockGlass != null) {
+                dockGlass.setVisibility(VISIBLE);
+                dockGlass.setAlpha(1f);
+            }
         }
         android.util.Log.d("GRID_FOLDER_TRACE", "onFolderCloseComplete restored desktop workspaceAlpha="
                 + (mLauncher.getWorkspace() != null ? mLauncher.getWorkspace().getAlpha() : "null"));
@@ -269,7 +298,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     @Override
     public boolean startDrag(View v, DragOptions options) {
-        if (!isFolderWobbling) {
+        if (!isFolderWobbling && mLauncher.getWorkspace() != null
+                && mLauncher.getWorkspace().isWobbling()) {
             wobbleFolder(true);
         }
         Object tag = v.getTag();
@@ -281,7 +311,12 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     @Override
     public void onDragEnd() {
-        if (isFolderWobbling) {
+        Workspace<?> ws = mLauncher.getWorkspace();
+        if (ws != null && ws.isWobbling()) {
+            wobbleFolder(true);
+            ws.resetWobbleAlarm();
+            wobbleExpireAlarm.setAlarm(Workspace.WOBBLE_EXPIRATION_TIMEOUT);
+        } else if (isFolderWobbling) {
             wobbleFolder(false);
         }
         super.onDragEnd();
@@ -300,25 +335,52 @@ public class GridFolder extends Folder implements OnAlarmListener {
         Workspace<?> workspace = launcher.getWorkspace();
         Hotseat hotseat = launcher.getHotseat();
 
+        boolean isAppLib = workspace != null && workspace.isAppLibraryCurrentPage();
+
         if (!hide) {
             if (workspace != null) {
+                workspace.setVisibility(VISIBLE);
                 workspace.setAlpha(1f);
-            }
-            if (workspace != null && workspace.getPageIndicator() != null) {
-                workspace.getPageIndicator().setAlpha(1f);
-                if (launcher.isInState(LauncherState.SPRING_LOADED)) {
-                    workspace.showPageIndicatorAtCurrentScroll();
+                for (int i = 0; i < workspace.getPageCount(); i++) {
+                    View page = workspace.getChildAt(i);
+                    if (page instanceof CellLayout) {
+                        CellLayout cl = (CellLayout) page;
+                        cl.setVisibility(VISIBLE);
+                        cl.setAlpha(1f);
+                        if (cl.getShortcutsAndWidgets() != null) {
+                            cl.getShortcutsAndWidgets().setVisibility(VISIBLE);
+                            cl.getShortcutsAndWidgets().setAlpha(1f);
+                        }
+                    }
                 }
             }
-            if (hotseat != null) {
-                hotseat.setAlpha(1f);
-                hotseat.setIconsAlpha(1f);
-                if (hotseat.getQsb() != null) {
-                    hotseat.getQsb().setAlpha(1f);
+            if (!isAppLib) {
+                if (workspace != null && workspace.getPageIndicator() != null) {
+                    workspace.getPageIndicator().setVisibility(VISIBLE);
+                    workspace.getPageIndicator().setAlpha(1f);
+                    if (workspace.getPageIndicator() instanceof PageIndicatorDots) {
+                        ((PageIndicatorDots) workspace.getPageIndicator()).resetToIdle();
+                    }
+                    if (launcher.isInState(LauncherState.SPRING_LOADED)) {
+                        workspace.showPageIndicatorAtCurrentScroll();
+                    }
                 }
-                hotseat.setVisibility(VISIBLE);
+                if (hotseat != null) {
+                    hotseat.setAlpha(1f);
+                    hotseat.setIconsAlpha(1f);
+                    if (hotseat.getQsb() != null) {
+                        hotseat.getQsb().setVisibility(VISIBLE);
+                        hotseat.getQsb().setAlpha(1f);
+                    }
+                    hotseat.setVisibility(VISIBLE);
+                }
+                View dockGlass = launcher.findViewById(R.id.dock_glass);
+                if (dockGlass != null) {
+                    dockGlass.setVisibility(VISIBLE);
+                    dockGlass.setAlpha(1f);
+                }
             }
-            if (!isSingleLayer) {
+            if (!isSingleLayer && !isAppLib) {
                 ScrimView scrimView = launcher.findViewById(R.id.scrim_view);
                 if (scrimView != null) {
                     scrimView.setAlpha(1f);
@@ -346,16 +408,16 @@ public class GridFolder extends Folder implements OnAlarmListener {
         }
 
         if (hotseat != null) {
-            if (!isSingleLayer) {
-                hotseat.setIconsAlpha(hide ? 0f : 1f);
-            } else {
-                hotseat.setIconsAlpha(1f);
-            }
+            hotseat.setIconsAlpha(hide ? 0f : 1f);
             play(set, getAnimator(hotseat, 1f, 0f, hide));
             View qsb = hotseat.getQsb();
             if (qsb != null) {
                 play(set, getAnimator(qsb, 1f, 0f, hide));
             }
+        }
+        View dockGlass = launcher.findViewById(R.id.dock_glass);
+        if (dockGlass != null) {
+            play(set, getAnimator(dockGlass, 1f, 0f, hide));
         }
 
         if (!isSingleLayer) {
@@ -386,6 +448,10 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 }
                 if (hotseat != null) {
                     hotseat.setAlpha(hide ? 0f : 1f);
+                    hotseat.setIconsAlpha(hide ? 0f : 1f);
+                }
+                if (dockGlass != null) {
+                    dockGlass.setAlpha(hide ? 0f : 1f);
                 }
                 if (hotseat != null && hotseat.getQsb() != null) {
                     hotseat.getQsb().setAlpha(hide ? 0f : 1f);
@@ -419,7 +485,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     @Override
     public WindowInsets onApplyWindowInsets(WindowInsets windowInsets) {
-        return windowInsets;
+        return super.onApplyWindowInsets(windowInsets);
     }
 
     public void wobbleFolder(boolean wobble) {
@@ -440,9 +506,9 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 }
                 index.getAndIncrement();
                 if (index.get() % 2 == 0) {
-                    // view.startAnimation(mLauncher.getWorkspace().getWobbleAnimation());
+                    view.startAnimation(mLauncher.getWorkspace().getWobbleAnimation());
                 } else {
-                    // view.startAnimation(mLauncher.getWorkspace().getReverseWobbleAnimation());
+                    view.startAnimation(mLauncher.getWorkspace().getReverseWobbleAnimation());
                 }
                 if (view instanceof BubbleTextView) {
                     ((BubbleTextView) view).applyUninstallIconState(true);
@@ -452,8 +518,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
             wobbleExpireAlarm.setAlarm(Workspace.WOBBLE_EXPIRATION_TIMEOUT);
         } else {
             wobbleExpireAlarm.cancelAlarm();
+            isFolderWobbling = false;
             iterateOverItems((info, view) -> {
-                isFolderWobbling = false;
                 view.setOnTouchListener(null);
                 view.clearAnimation();
                 if (view instanceof BubbleTextView) {
@@ -487,7 +553,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
     private void play(AnimatorSet as, Animator a) {
         a.setStartDelay(a.getStartDelay());
-        a.setDuration(0);
+        a.setDuration(280);
         as.play(a);
     }
 }

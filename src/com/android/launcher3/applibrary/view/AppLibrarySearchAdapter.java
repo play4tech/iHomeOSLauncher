@@ -14,26 +14,35 @@ import com.android.launcher3.R;
 import com.android.launcher3.icons.FastBitmapDrawable;
 import com.android.launcher3.model.data.AppInfo;
 
+import com.android.launcher3.util.ComponentKey;
+
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySearchAdapter.ViewHolder> {
 
     private final Launcher mLauncher;
     private final List<AppInfo> mAllApps = new ArrayList<>();
     private final List<AppInfo> mFilteredApps = new ArrayList<>();
+    private final Map<AppInfo, String> mLowerTitleCache = new HashMap<>();
     private final Collator mCollator = Collator.getInstance(Locale.getDefault());
 
     public AppLibrarySearchAdapter(Launcher launcher) {
         mLauncher = launcher;
         mCollator.setStrength(Collator.PRIMARY);
+        setHasStableIds(true);
     }
+
+    private String mCurrentQuery = "";
 
     public void setApps(List<AppInfo> apps) {
         mAllApps.clear();
+        mLowerTitleCache.clear();
         if (apps != null) {
             mAllApps.addAll(apps);
             Collections.sort(mAllApps, (a, b) -> {
@@ -41,19 +50,24 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
                 String titleB = b.title != null ? b.title.toString() : "";
                 return mCollator.compare(titleA, titleB);
             });
+            for (AppInfo app : mAllApps) {
+                String title = app.title != null ? app.title.toString().toLowerCase(Locale.getDefault()) : "";
+                mLowerTitleCache.put(app, title);
+            }
         }
-        filter("");
+        filter(mCurrentQuery);
     }
 
     public void filter(String query) {
+        mCurrentQuery = query != null ? query : "";
         mFilteredApps.clear();
-        if (query == null || query.trim().isEmpty()) {
+        if (mCurrentQuery.trim().isEmpty()) {
             mFilteredApps.addAll(mAllApps);
         } else {
-            String lower = query.trim().toLowerCase(Locale.getDefault());
+            String lower = mCurrentQuery.trim().toLowerCase(Locale.getDefault());
             for (AppInfo app : mAllApps) {
-                String title = app.title != null ? app.title.toString().toLowerCase(Locale.getDefault()) : "";
-                if (title.contains(lower)) {
+                String title = mLowerTitleCache.get(app);
+                if (title != null && title.contains(lower)) {
                     mFilteredApps.add(app);
                 }
             }
@@ -61,20 +75,53 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
         notifyDataSetChanged();
     }
 
+    private final Map<ComponentKey, Long> mStableIdMap = new HashMap<>();
+    private long mNextStableId = 1;
+
+    @Override
+    public long getItemId(int position) {
+        if (position >= 0 && position < mFilteredApps.size()) {
+            AppInfo app = mFilteredApps.get(position);
+            ComponentKey key = app.getComponentKey();
+            if (key != null) {
+                Long id = mStableIdMap.get(key);
+                if (id == null) {
+                    id = mNextStableId++;
+                    mStableIdMap.put(key, id);
+                }
+                return id;
+            }
+            if (app.id != com.android.launcher3.model.data.ItemInfo.NO_ID) {
+                return app.id;
+            }
+        }
+        return RecyclerView.NO_ID;
+    }
+
     public int getPositionForSection(char letter) {
+        if (mFilteredApps.isEmpty()) return -1;
         char target = Character.toUpperCase(letter);
+        if (target == '#') {
+            for (int i = 0; i < mFilteredApps.size(); i++) {
+                AppInfo app = mFilteredApps.get(i);
+                if (app.title != null && app.title.length() > 0) {
+                    char first = app.title.charAt(0);
+                    if (!Character.isLetter(first)) return i;
+                }
+            }
+            return mFilteredApps.size() - 1;
+        }
+
         for (int i = 0; i < mFilteredApps.size(); i++) {
             AppInfo app = mFilteredApps.get(i);
             if (app.title != null && app.title.length() > 0) {
                 char first = Character.toUpperCase(app.title.charAt(0));
-                if (target == '#') {
-                    if (!Character.isLetter(first)) return i;
-                } else if (first >= target) {
+                if (Character.isLetter(first) && first >= target) {
                     return i;
                 }
             }
         }
-        return -1;
+        return mFilteredApps.size() - 1;
     }
 
     public boolean isEmpty() {
@@ -104,9 +151,9 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
                 mLauncher.startActivitySafely(v, app.getIntent(), app);
             }
             v.postDelayed(() -> {
-                View appLib = mLauncher.findViewById(R.id.app_library_page);
-                if (appLib instanceof AppLibraryPage) {
-                    ((AppLibraryPage) appLib).exitSearchMode();
+                AppLibraryPage alp = mLauncher.getAppLibraryPage();
+                if (alp != null) {
+                    alp.exitSearchMode();
                 }
                 SpotlightSearchOverlay spotlight = SpotlightSearchOverlay.getOpen(mLauncher);
                 if (spotlight != null) {
@@ -114,38 +161,14 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
                 }
             }, 300);
         });
-        holder.itemView.setOnLongClickListener(v -> {
-            android.widget.PopupMenu popup = new android.widget.PopupMenu(mLauncher, v);
-            popup.getMenu().add(0, 1, 0, R.string.add_to_home_screen);
-            popup.getMenu().add(0, 2, 1, R.string.app_info_drop_target_label);
-            popup.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == 1) {
-                    android.content.ComponentName cn = app.getTargetComponent();
-                    if (cn != null) {
-                        com.android.launcher3.util.RemovedAppStore.unmarkRemoved(
-                                mLauncher, cn.flattenToString());
-                    }
-                    com.android.launcher3.model.data.WorkspaceItemInfo itemToAdd =
-                            app.makeWorkspaceItem(mLauncher);
-                    mLauncher.getModel().addAndBindAddedWorkspaceItems(
-                            java.util.Collections.singletonList(android.util.Pair.create(itemToAdd, null)));
-                    android.widget.Toast.makeText(mLauncher, R.string.add_to_home_screen,
-                            android.widget.Toast.LENGTH_SHORT).show();
-                    SpotlightSearchOverlay spotlight = SpotlightSearchOverlay.getOpen(mLauncher);
-                    if (spotlight != null) {
-                        spotlight.close(true);
-                    }
-                    return true;
-                } else if (item.getItemId() == 2) {
-                    new com.android.launcher3.util.PackageManagerHelper(mLauncher)
-                            .startDetailsActivityForInfo(app, null, null);
-                    return true;
-                }
-                return false;
-            });
-            popup.show();
+        View.OnLongClickListener longClickListener = v -> {
+            holder.icon.setTag(app);
+            holder.itemView.setTag(app);
+            com.android.launcher3.popup.PopupContainerWithArrow.showForSearchItem(holder.icon, app);
             return true;
-        });
+        };
+        holder.itemView.setOnLongClickListener(longClickListener);
+        holder.icon.setOnLongClickListener(longClickListener);
     }
 
     @Override

@@ -143,6 +143,12 @@ public interface WorkspaceLayoutManager {
         ItemInfo info = (ItemInfo) child.getTag();
         int childId = info.getViewId();
 
+        if (layout == null) {
+            Log.e(TAG, "No CellLayout for container=" + container
+                    + " screenId=" + screenId + " tag=" + child.getTag());
+            return;
+        }
+
         boolean markCellsAsOccupied = !(child instanceof Folder);
         if (!layout.addViewToCellLayout(child, -1, childId, lp, markCellsAsOccupied)) {
             // TODO: This branch occurs when the workspace is adding views

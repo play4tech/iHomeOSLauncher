@@ -24,7 +24,9 @@ import android.animation.PropertyValuesHolder
 import android.content.Context
 import android.content.Intent
 import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
@@ -33,6 +35,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.animation.AccelerateInterpolator
 import android.view.animation.PathInterpolator
 import android.widget.FrameLayout
@@ -43,6 +46,7 @@ import android.widget.Toast
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.R
+import com.android.launcher3.views.BaseDragLayer
 import com.android.launcher3.views.OptionsPopupView
 import foundation.e.bliss.glass.PopupGlassView
 import foundation.e.bliss.wallpaper.WallpaperPickerHelper
@@ -64,8 +68,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         clipToPadding = false
 
         val density = resources.displayMetrics.density
-        val cardWidth = (236 * density).toInt()
-        val rowHeight = (46 * density).toInt()
+        val cardWidth = (196 * density).toInt()
+        val rowHeight = (44 * density).toInt()
         val dividerHeight = maxOf(1, (0.55f * density).toInt())
         val cardHeight = (rowHeight * 3) + (dividerHeight * 2)
 
@@ -84,7 +88,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                         FrameLayout.LayoutParams.MATCH_PARENT,
                         FrameLayout.LayoutParams.MATCH_PARENT
                     )
-                setPopupRadius(20f * density)
+                setPopupRadius(26f * density)
             }
         cardContainer.addView(glassBg)
 
@@ -153,6 +157,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         isFocusable = true
     }
 
+    private fun isDarkTheme(): Boolean {
+        val nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
+        return nightMode == Configuration.UI_MODE_NIGHT_YES
+    }
+
     private fun createRow(
         iconRes: Int,
         label: String,
@@ -168,6 +177,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             isClickable = true
             isFocusable = true
 
+            val textColor = Color.BLACK
             val rippleColor = Color.argb(28, 0, 0, 0)
             background = RippleDrawable(ColorStateList.valueOf(rippleColor), null, ColorDrawable(Color.WHITE))
 
@@ -175,18 +185,18 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
             val iconView = ImageView(context).apply {
                 layoutParams =
-                    LinearLayout.LayoutParams((22 * density).toInt(), (22 * density).toInt())
-                        .apply { marginEnd = (14 * density).toInt() }
+                    LinearLayout.LayoutParams((20 * density).toInt(), (20 * density).toInt())
+                        .apply { marginEnd = (12 * density).toInt() }
                 setImageResource(iconRes)
-                imageTintList = ColorStateList.valueOf(Color.parseColor("#1C1C1E"))
+                imageTintList = ColorStateList.valueOf(textColor)
             }
             addView(iconView)
 
             val labelView = TextView(context).apply {
                 layoutParams = LinearLayout.LayoutParams(0, LayoutParams.WRAP_CONTENT, 1.0f)
                 text = label
-                setTextColor(Color.parseColor("#1C1C1E"))
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+                setTextColor(textColor)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                 typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }
             addView(labelView)
@@ -194,14 +204,15 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     }
 
     private fun createDivider(density: Float, dividerHeight: Int): View {
+        val dividerColor = Color.parseColor("#1F000000")
         return View(context).apply {
             layoutParams =
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dividerHeight)
                     .apply {
-                        marginStart = (52 * density).toInt()
+                        marginStart = (48 * density).toInt()
                         marginEnd = (16 * density).toInt()
                     }
-            setBackgroundColor(Color.parseColor("#1F000000"))
+            setBackgroundColor(dividerColor)
         }
     }
 
@@ -209,34 +220,42 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val dragLayer = launcher.dragLayer ?: return
         val density = resources.displayMetrics.density
 
-        val anchorLoc = IntArray(2)
-        anchorView.getLocationInWindow(anchorLoc)
-        val dragLayerLoc = IntArray(2)
-        dragLayer.getLocationInWindow(dragLayerLoc)
+        val anchorRect = Rect()
+        dragLayer.getDescendantRectRelativeToSelf(anchorView, anchorRect)
 
-        val left = anchorLoc[0] - dragLayerLoc[0]
-        val top = anchorLoc[1] - dragLayerLoc[1] + anchorView.height + (3 * density).toInt()
+        val left = if (anchorRect.left > 0) anchorRect.left else (16 * density).toInt()
+        val top = if (anchorRect.bottom > 0) {
+            anchorRect.bottom + (4 * density).toInt()
+        } else {
+            val statusBarHeight = launcher.deviceProfile?.insets?.top ?: (24 * density).toInt()
+            statusBarHeight + (42 * density).toInt()
+        }
+
+        val cardWidth = cardContainer.layoutParams.width
+        val maxLeft = if (dragLayer.width > cardWidth) dragLayer.width - cardWidth - (12 * density).toInt() else left
+        val safeLeft = if (maxLeft > (12 * density).toInt()) left.coerceIn((12 * density).toInt(), maxLeft) else left
 
         val lp = cardContainer.layoutParams as LayoutParams
-        lp.marginStart = maxOf((12 * density).toInt(), left)
+        lp.marginStart = safeLeft
         lp.topMargin = top
         cardContainer.layoutParams = lp
 
         layoutParams =
-            com.android.launcher3.InsettableFrameLayout.LayoutParams(
-                com.android.launcher3.InsettableFrameLayout.LayoutParams.MATCH_PARENT,
-                com.android.launcher3.InsettableFrameLayout.LayoutParams.MATCH_PARENT
+            BaseDragLayer.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             ).apply {
                 ignoreInsets = true
             }
         elevation = 200f
-        dragLayer.addView(this)
         isOpen = true
         mIsOpen = true
+        dragLayer.addView(this)
+        launcher.updateDisallowBack()
 
         post { glassBg.bindToWallpaper() }
 
-        cardContainer.pivotX = (20 * density)
+        cardContainer.pivotX = (16 * density)
         cardContainer.pivotY = 0f
         cardContainer.scaleX = 0.82f
         cardContainer.scaleY = 0.82f
@@ -301,6 +320,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         if (!isOpen) return
         isOpen = false
         mIsOpen = false
+        launcher.updateDisallowBack()
         if (animate) {
             val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 0.82f)
             val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.82f)
@@ -312,6 +332,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
                     object : AnimatorListenerAdapter() {
                         override fun onAnimationEnd(animation: Animator) {
                             launcher.dragLayer?.removeView(this@JiggleEditMenuPopup)
+                            launcher.updateDisallowBack()
                         }
                     }
                 )
@@ -319,6 +340,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             }
         } else {
             launcher.dragLayer?.removeView(this)
+            launcher.updateDisallowBack()
         }
     }
 
@@ -362,6 +384,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     companion object {
         @JvmStatic
         fun showPopup(anchorView: View): JiggleEditMenuPopup {
+            val launcher = Launcher.getLauncher(anchorView.context)
+            AbstractFloatingView.closeOpenViews(launcher, false, TYPE_OPTIONS_POPUP)
             val popup = JiggleEditMenuPopup(anchorView.context)
             popup.show(anchorView)
             return popup

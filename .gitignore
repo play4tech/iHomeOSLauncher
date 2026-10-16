@@ -20,3 +20,6 @@ blissWithoutQuickstep
 .agents/skills/
 skills/
 
+# Root temporary test screencaps and view hierarchy dumps
+/*.png
+/*_view.xml

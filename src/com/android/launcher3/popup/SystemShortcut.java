@@ -83,6 +83,12 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
     public void setIconAndLabelFor(View iconView, TextView labelView) {
         iconView.setBackgroundResource(mIconResId);
         labelView.setText(mLabelResId);
+        labelView.setTextColor(android.graphics.Color.BLACK);
+        if (iconView instanceof ImageView) {
+            ((ImageView) iconView).setColorFilter(android.graphics.Color.BLACK, android.graphics.PorterDuff.Mode.SRC_IN);
+        } else if (iconView != null) {
+            iconView.setBackgroundTintList(android.content.res.ColorStateList.valueOf(android.graphics.Color.BLACK));
+        }
     }
 
     public void setIconAndContentDescriptionFor(ImageView view) {
@@ -340,8 +346,14 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
                 if (originalView == null) {
                     return null;
                 }
+                boolean isWorkspace = (itemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_DESKTOP
+                        || itemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_HOTSEAT
+                        || itemInfo.container > 0);
                 ComponentName cn = SecondaryDropTarget.getUninstallTarget(originalView.getContext(),
                         itemInfo);
+                if (!isWorkspace && cn == null) {
+                    return null;
+                }
                 return new UninstallApp(activityContext, itemInfo, originalView, cn);
             };
 
@@ -350,7 +362,7 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
 
         UninstallApp(T target, ItemInfo itemInfo, @NonNull View originalView,
                 @Nullable ComponentName cn) {
-            super(R.drawable.ic_uninstall_no_shadow, R.string.uninstall_drop_target_label, target,
+            super(R.drawable.ic_uninstall_no_shadow, R.string.remove_app_drop_target_label, target,
                     itemInfo, originalView);
             mComponentName = cn;
 
@@ -359,21 +371,51 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
         @Override
         public void setIconAndLabelFor(View iconView, TextView labelView) {
             super.setIconAndLabelFor(iconView, labelView);
+            labelView.setText(R.string.remove_app_drop_target_label);
             int red = android.graphics.Color.parseColor("#FF3B30"); // iOS destructive red
             labelView.setTextColor(red);
             if (iconView instanceof ImageView) {
                 ((ImageView) iconView).setColorFilter(red, android.graphics.PorterDuff.Mode.SRC_IN);
+            } else if (iconView != null) {
+                iconView.setBackgroundTintList(android.content.res.ColorStateList.valueOf(red));
             }
         }
 
         @Override
         public void onClick(View view) {
             dismissTaskMenuView(mTarget);
-            if (mOriginalView instanceof com.android.launcher3.BubbleTextView
+            boolean isWorkspace = (mItemInfo instanceof com.android.launcher3.model.data.WorkspaceItemInfo)
+                    && (mItemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_DESKTOP
+                        || mItemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_HOTSEAT
+                        || mItemInfo.container > 0);
+            if (mTarget instanceof com.android.launcher3.Launcher) {
+                com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mTarget;
+                if (launcher.getAppLibraryPage() != null && launcher.getAppLibraryPage().isInSearchMode()) {
+                    isWorkspace = false;
+                }
+                if (com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView.getOpen(launcher) != null) {
+                    isWorkspace = false;
+                }
+                if (com.android.launcher3.applibrary.view.SpotlightSearchOverlay.getOpen(launcher) != null) {
+                    isWorkspace = false;
+                }
+            }
+            if (isWorkspace && mOriginalView instanceof com.android.launcher3.BubbleTextView
                     && mTarget instanceof com.android.launcher3.Launcher) {
                 ((com.android.launcher3.BubbleTextView) mOriginalView).showRemoveAppDialog(
                         (com.android.launcher3.Launcher) mTarget);
-            } else {
+            } else if (mTarget instanceof com.android.launcher3.Launcher && mComponentName != null) {
+                com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mTarget;
+                CharSequence title = mItemInfo.title != null ? mItemInfo.title : "App";
+                foundation.e.bliss.glass.LiquidGlassAlertView.showDeleteAppAlert(
+                        launcher,
+                        title,
+                        () -> {
+                            SecondaryDropTarget.performUninstall(view.getContext(), mComponentName, mItemInfo);
+                        },
+                        null
+                );
+            } else if (mComponentName != null) {
                 SecondaryDropTarget.performUninstall(view.getContext(), mComponentName, mItemInfo);
             }
             mTarget.getStatsLogManager()
@@ -388,14 +430,34 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
                 if (!(activityContext instanceof com.android.launcher3.Launcher)) {
                     return null;
                 }
+                com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) activityContext;
                 ComponentName cn = itemInfo.getTargetComponent();
                 if (cn == null) return null;
-                boolean isRemoved = com.android.launcher3.util.RemovedAppStore.isRemoved(
-                        (Context) activityContext, cn.flattenToString());
                 boolean isWorkspace = (itemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_DESKTOP
                         || itemInfo.container == com.android.launcher3.LauncherSettings.Favorites.CONTAINER_HOTSEAT
                         || itemInfo.container > 0);
+                boolean isRemoved = com.android.launcher3.util.RemovedAppStore.isRemoved(
+                        launcher, cn.flattenToString());
                 if (isWorkspace && !isRemoved) {
+                    return null;
+                }
+                if (launcher.getWorkspace() != null
+                        && launcher.getWorkspace().getFirstMatch((info, v) -> {
+                            if (info == null) return false;
+                            if (cn.equals(info.getTargetComponent())
+                                    && java.util.Objects.equals(info.user, itemInfo.user)) {
+                                return true;
+                            }
+                            if (info instanceof com.android.launcher3.model.data.FolderInfo fi) {
+                                for (WorkspaceItemInfo wii : fi.contents) {
+                                    if (wii != null && cn.equals(wii.getTargetComponent())
+                                            && java.util.Objects.equals(wii.user, itemInfo.user)) {
+                                        return true;
+                                    }
+                                }
+                            }
+                            return false;
+                        }) != null) {
                     return null;
                 }
                 return new AddToHomeScreen<>(activityContext, itemInfo, originalView);
@@ -412,6 +474,14 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
             AbstractFloatingView.closeAllOpenViews(mTarget);
             if (mTarget instanceof com.android.launcher3.Launcher) {
                 com.android.launcher3.Launcher launcher = (com.android.launcher3.Launcher) mTarget;
+                if (launcher.getAppLibraryPage() != null && launcher.getAppLibraryPage().isInSearchMode()) {
+                    launcher.getAppLibraryPage().exitSearchMode(false);
+                }
+                com.android.launcher3.applibrary.view.SpotlightSearchOverlay spotlight =
+                        com.android.launcher3.applibrary.view.SpotlightSearchOverlay.getOpen(launcher);
+                if (spotlight != null) {
+                    spotlight.close(false);
+                }
                 ComponentName cn = mItemInfo.getTargetComponent();
                 if (cn != null) {
                     com.android.launcher3.util.RemovedAppStore.unmarkRemoved(
@@ -427,8 +497,9 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
                 if (itemToAdd != null) {
                     launcher.getModel().addAndBindAddedWorkspaceItems(
                             java.util.Collections.singletonList(android.util.Pair.create(itemToAdd, null)));
-                    android.widget.Toast.makeText(launcher, R.string.add_to_home_screen,
-                            android.widget.Toast.LENGTH_SHORT).show();
+                    foundation.e.bliss.glass.LiquidGlassToast.show(launcher,
+                            launcher.getString(R.string.add_to_home_screen),
+                            R.drawable.ic_ios_check_circle);
                 }
             }
         }
@@ -452,9 +523,45 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
             dismissTaskMenuView(mTarget);
             AbstractFloatingView.closeAllOpenViews(mTarget);
             if (mTarget instanceof com.android.launcher3.Launcher launcher) {
-                if (launcher.getWorkspace() != null) {
-                    launcher.getWorkspace().wobbleLayouts(true);
+                com.android.launcher3.Workspace<?> ws = launcher.getWorkspace();
+                if (ws != null) {
+                    if (ws.isAppLibraryCurrentPage()) {
+                        int appLibIndex = ws.getPageIndexForScreenId(
+                                com.android.launcher3.Workspace.APP_LIBRARY_SCREEN_ID);
+                        ws.snapToPage(Math.max(0, appLibIndex - 1));
+                    }
+                    ws.wobbleLayouts(true);
                 }
+            }
+        }
+    }
+
+    public static final Factory<ActivityContext> CHANGE_CATEGORY =
+            (activityContext, itemInfo, originalView) -> {
+                if (!(activityContext instanceof com.android.launcher3.Launcher)) {
+                    return null;
+                }
+                if (itemInfo == null || itemInfo.getTargetComponent() == null) {
+                    return null;
+                }
+                if (itemInfo.itemType == com.android.launcher3.LauncherSettings.Favorites.ITEM_TYPE_FOLDER
+                        || itemInfo.itemType == com.android.launcher3.LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET) {
+                    return null;
+                }
+                return new ChangeCategory<>(activityContext, itemInfo, originalView);
+            };
+
+    private static class ChangeCategory<T extends ActivityContext> extends SystemShortcut<T> {
+        ChangeCategory(T target, ItemInfo itemInfo, @NonNull View originalView) {
+            super(R.drawable.ic_change_category, R.string.change_category, target, itemInfo, originalView);
+        }
+
+        @Override
+        public void onClick(View view) {
+            dismissTaskMenuView(mTarget);
+            AbstractFloatingView.closeAllOpenViews(mTarget);
+            if (mTarget instanceof com.android.launcher3.Launcher launcher) {
+                com.android.launcher3.applibrary.view.ChangeCategoryPickerView.show(launcher, mItemInfo);
             }
         }
     }
@@ -483,14 +590,14 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
         public void setIconAndLabelFor(View iconView, TextView labelView) {
             if (mCustomIconResId != 0) {
                 iconView.setBackgroundResource(mCustomIconResId);
-                if (mIsDestructive && iconView.getBackground() != null) {
-                    iconView.getBackground().mutate().setTint(android.graphics.Color.parseColor("#FF3B30"));
+                int tint = mIsDestructive ? android.graphics.Color.parseColor("#FF3B30") : android.graphics.Color.BLACK;
+                if (iconView.getBackground() != null) {
+                    iconView.getBackground().mutate().setTint(tint);
                 }
             }
             labelView.setText(mCustomLabel);
-            if (mIsDestructive) {
-                labelView.setTextColor(android.graphics.Color.parseColor("#FF3B30"));
-            }
+            int textColor = mIsDestructive ? android.graphics.Color.parseColor("#FF3B30") : android.graphics.Color.BLACK;
+            labelView.setTextColor(textColor);
         }
 
         @Override

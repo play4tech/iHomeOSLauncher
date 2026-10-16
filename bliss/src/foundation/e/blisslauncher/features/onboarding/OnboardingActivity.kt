@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 MURENA SAS
+ * Copyright (c) 2024 Murena SAS
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package foundation.e.blisslauncher.features.onboarding
@@ -34,9 +34,11 @@ import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.R
 
 /**
- * First-run two-step onboarding intro:
- * Step 1: Prompt user to set Bliss as the default launcher (skippable).
- * Step 2: Prompt user to grant notification access for badge dots (skippable).
+ * First-run onboarding flow guiding the user through:
+ * 1. Setting Bliss Launcher as default launcher
+ * 2. Granting notification listener access for notification badges
+ * 3. Quick tips for changing wallpaper and adding widgets
+ *
  * Adapts dynamically if either step is already granted. Never blocks launcher access.
  */
 class OnboardingActivity : Activity() {
@@ -50,14 +52,14 @@ class OnboardingActivity : Activity() {
 
     private enum class Step {
         DEFAULT_LAUNCHER,
-        NOTIFICATION_ACCESS
+        NOTIFICATION_ACCESS,
+        CUSTOMIZE_TIPS
     }
 
     private var currentStep: Step = Step.DEFAULT_LAUNCHER
     private var isDefaultStepNeeded: Boolean = true
     private var isNotificationStepNeeded: Boolean = true
-    private var totalSteps: Int = 2
-    private var initialTotalSteps: Int = 2
+    private var initialTotalSteps: Int = 3
 
     private lateinit var heroImage: ImageView
     private lateinit var stepPill: TextView
@@ -65,6 +67,7 @@ class OnboardingActivity : Activity() {
     private lateinit var bodyText: TextView
     private lateinit var infoCard: View
     private lateinit var restrictedHintText: TextView
+    private lateinit var tipsCard: View
     private lateinit var primaryButton: TextView
     private lateinit var secondaryButton: TextView
 
@@ -76,47 +79,54 @@ class OnboardingActivity : Activity() {
 
         initViews()
         evaluateSteps()
-        initialTotalSteps = totalSteps
+        initialTotalSteps = 3
 
-        if (!isDefaultStepNeeded && !isNotificationStepNeeded) {
-            Log.d(TAG, "Both steps already completed, skipping onboarding.")
-            completeOnboarding()
-            return
-        }
-
-        if (!isDefaultStepNeeded) {
+        val targetStepName = intent.getStringExtra("target_step")
+        if (targetStepName != null) {
+            when (targetStepName) {
+                "step1", "default" -> showStep(Step.DEFAULT_LAUNCHER)
+                "step2", "notification" -> showStep(Step.NOTIFICATION_ACCESS)
+                "step3", "tips", "customize" -> showStep(Step.CUSTOMIZE_TIPS)
+            }
+        } else if (isDefaultStepNeeded) {
+            showStep(Step.DEFAULT_LAUNCHER)
+        } else if (isNotificationStepNeeded) {
             showStep(Step.NOTIFICATION_ACCESS)
         } else {
-            showStep(Step.DEFAULT_LAUNCHER)
+            showStep(Step.CUSTOMIZE_TIPS)
         }
     }
 
     override fun onResume() {
         super.onResume()
+        if (intent.hasExtra("target_step")) {
+            return
+        }
         evaluateSteps()
         // If user returns from settings or dialog, check if requirement was satisfied
         if (currentStep == Step.DEFAULT_LAUNCHER && isDefaultLauncherGranted()) {
             Log.d(TAG, "Default launcher role was granted.")
-            if (isNotificationStepNeeded) {
-                showStep(Step.NOTIFICATION_ACCESS)
-            } else {
-                completeOnboarding()
-            }
+            showStep(Step.NOTIFICATION_ACCESS)
         } else if (currentStep == Step.NOTIFICATION_ACCESS && isNotificationAccessGranted()) {
             Log.d(TAG, "Notification listener access was granted.")
-            completeOnboarding()
+            showStep(Step.CUSTOMIZE_TIPS)
         }
     }
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         evaluateSteps()
-        if (currentStep == Step.DEFAULT_LAUNCHER && isDefaultLauncherGranted()) {
-            if (isNotificationStepNeeded) {
-                showStep(Step.NOTIFICATION_ACCESS)
-            } else {
-                completeOnboarding()
+        val targetStepName = intent?.getStringExtra("target_step")
+        if (targetStepName != null) {
+            when (targetStepName) {
+                "step1", "default" -> showStep(Step.DEFAULT_LAUNCHER)
+                "step2", "notification" -> showStep(Step.NOTIFICATION_ACCESS)
+                "step3", "tips", "customize" -> showStep(Step.CUSTOMIZE_TIPS)
             }
+            return
+        }
+        if (currentStep == Step.DEFAULT_LAUNCHER && isDefaultLauncherGranted()) {
+            showStep(Step.NOTIFICATION_ACCESS)
         }
     }
 
@@ -127,26 +137,33 @@ class OnboardingActivity : Activity() {
         bodyText = findViewById<TextView>(R.id.onboarding_body)!!
         infoCard = findViewById<View>(R.id.onboarding_info_card)!!
         restrictedHintText = findViewById<TextView>(R.id.onboarding_restricted_hint)!!
+        tipsCard = findViewById<View>(R.id.onboarding_tips_card)!!
         primaryButton = findViewById<TextView>(R.id.onboarding_btn_primary)!!
         secondaryButton = findViewById<TextView>(R.id.onboarding_btn_secondary)!!
 
         primaryButton.setOnClickListener {
             when (currentStep) {
-                Step.DEFAULT_LAUNCHER -> requestDefaultLauncher()
+                Step.DEFAULT_LAUNCHER -> {
+                    if (isDefaultLauncherGranted()) {
+                        showStep(Step.NOTIFICATION_ACCESS)
+                    } else {
+                        requestDefaultLauncher()
+                    }
+                }
                 Step.NOTIFICATION_ACCESS -> requestNotificationAccess()
+                Step.CUSTOMIZE_TIPS -> completeOnboarding()
             }
         }
 
         secondaryButton.setOnClickListener {
             when (currentStep) {
                 Step.DEFAULT_LAUNCHER -> {
-                    if (isNotificationStepNeeded && !isNotificationAccessGranted()) {
-                        showStep(Step.NOTIFICATION_ACCESS)
-                    } else {
-                        completeOnboarding()
-                    }
+                    showStep(Step.NOTIFICATION_ACCESS)
                 }
                 Step.NOTIFICATION_ACCESS -> {
+                    showStep(Step.CUSTOMIZE_TIPS)
+                }
+                Step.CUSTOMIZE_TIPS -> {
                     completeOnboarding()
                 }
             }
@@ -156,12 +173,6 @@ class OnboardingActivity : Activity() {
     private fun evaluateSteps() {
         isDefaultStepNeeded = !isDefaultLauncherGranted()
         isNotificationStepNeeded = !isNotificationAccessGranted()
-
-        totalSteps = when {
-            isDefaultStepNeeded && isNotificationStepNeeded -> 2
-            isDefaultStepNeeded || isNotificationStepNeeded -> 1
-            else -> 0
-        }
     }
 
     private fun setupSystemBars() {
@@ -172,36 +183,54 @@ class OnboardingActivity : Activity() {
         }
     }
 
+    private fun getStepPillText(step: Step): String {
+        return when (step) {
+            Step.DEFAULT_LAUNCHER -> getString(R.string.onboarding_step_1_of_3)
+            Step.NOTIFICATION_ACCESS -> getString(R.string.onboarding_step_2_of_3)
+            Step.CUSTOMIZE_TIPS -> getString(R.string.onboarding_step_3_of_3)
+        }
+    }
+
     private fun showStep(step: Step) {
         currentStep = step
+        stepPill.text = getStepPillText(step)
+
         when (step) {
             Step.DEFAULT_LAUNCHER -> {
                 heroImage.setImageResource(R.drawable.ic_onboarding_phone_mockup)
-                stepPill.text = if (initialTotalSteps == 1) {
-                    getString(R.string.onboarding_step_1_of_1)
-                } else {
-                    getString(R.string.onboarding_step_1_of_2)
-                }
                 titleText.setText(R.string.onboarding_default_title)
                 bodyText.setText(R.string.onboarding_default_body)
                 infoCard.visibility = View.GONE
                 restrictedHintText.visibility = View.GONE
-                primaryButton.setText(R.string.onboarding_default_action)
+                tipsCard.visibility = View.GONE
+                if (isDefaultLauncherGranted()) {
+                    primaryButton.setText(R.string.onboarding_continue_action)
+                } else {
+                    primaryButton.setText(R.string.onboarding_default_action)
+                }
                 secondaryButton.setText(R.string.onboarding_default_skip)
+                secondaryButton.visibility = View.VISIBLE
             }
             Step.NOTIFICATION_ACCESS -> {
                 heroImage.setImageResource(R.drawable.ic_onboarding_bell_badge)
-                stepPill.text = if (initialTotalSteps == 1) {
-                    getString(R.string.onboarding_step_1_of_1)
-                } else {
-                    getString(R.string.onboarding_step_2_of_2)
-                }
                 titleText.setText(R.string.onboarding_notification_title)
                 bodyText.setText(R.string.onboarding_notification_body)
                 infoCard.visibility = View.VISIBLE
                 restrictedHintText.visibility = View.VISIBLE
+                tipsCard.visibility = View.GONE
                 primaryButton.setText(R.string.onboarding_notification_action)
                 secondaryButton.setText(R.string.onboarding_notification_skip)
+                secondaryButton.visibility = View.VISIBLE
+            }
+            Step.CUSTOMIZE_TIPS -> {
+                heroImage.setImageResource(R.drawable.ic_onboarding_customize_hero)
+                titleText.setText(R.string.onboarding_customize_title)
+                bodyText.setText(R.string.onboarding_customize_body)
+                infoCard.visibility = View.GONE
+                restrictedHintText.visibility = View.GONE
+                tipsCard.visibility = View.VISIBLE
+                primaryButton.setText(R.string.onboarding_customize_action)
+                secondaryButton.visibility = View.GONE
             }
         }
     }
@@ -232,7 +261,6 @@ class OnboardingActivity : Activity() {
     private fun resolveNotificationComponent(): ComponentName {
         val cn1 = ComponentName(this, "com.android.launcher3.notification.NotificationListener")
         val cn2 = ComponentName(this, "foundation.e.blisslauncher.features.notification.NotificationService")
-        // Check if cn2 exists in packageManager, otherwise fallback to cn1
         return try {
             packageManager.getServiceInfo(cn2, 0)
             cn2
@@ -291,7 +319,7 @@ class OnboardingActivity : Activity() {
                 if (isNotificationStepNeeded && !isNotificationAccessGranted()) {
                     showStep(Step.NOTIFICATION_ACCESS)
                 } else {
-                    completeOnboarding()
+                    showStep(Step.CUSTOMIZE_TIPS)
                 }
             }
         }
@@ -299,10 +327,26 @@ class OnboardingActivity : Activity() {
 
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
-        if (currentStep == Step.NOTIFICATION_ACCESS && isDefaultStepNeeded) {
-            showStep(Step.DEFAULT_LAUNCHER)
-        } else {
-            completeOnboarding()
+        when (currentStep) {
+            Step.CUSTOMIZE_TIPS -> {
+                if (isNotificationStepNeeded) {
+                    showStep(Step.NOTIFICATION_ACCESS)
+                } else if (isDefaultStepNeeded) {
+                    showStep(Step.DEFAULT_LAUNCHER)
+                } else {
+                    completeOnboarding()
+                }
+            }
+            Step.NOTIFICATION_ACCESS -> {
+                if (isDefaultStepNeeded) {
+                    showStep(Step.DEFAULT_LAUNCHER)
+                } else {
+                    completeOnboarding()
+                }
+            }
+            Step.DEFAULT_LAUNCHER -> {
+                completeOnboarding()
+            }
         }
     }
 

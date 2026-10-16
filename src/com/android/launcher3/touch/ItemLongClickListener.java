@@ -65,6 +65,9 @@ public class ItemLongClickListener {
             ItemLongClickListener::onTouchTest;
 
     public static boolean onTouchTest(View v, MotionEvent ev) {
+        if (ev.getActionMasked() != MotionEvent.ACTION_MOVE) {
+            return false;
+        }
         if (v instanceof BubbleTextView && ((BubbleTextView) v).isOnUninstallIcon(ev.getX(), ev.getY())) {
             return false;
         }

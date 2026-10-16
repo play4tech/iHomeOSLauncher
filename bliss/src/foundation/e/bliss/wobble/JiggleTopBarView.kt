@@ -48,6 +48,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val contentRow: FrameLayout
     private var isShowing = false
     private var activePressedView: View? = null
+    private var currentAnimator: ObjectAnimator? = null
 
     init {
         visibility = GONE
@@ -79,11 +80,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             }
 
         val editGlassBg =
-            foundation.e.bliss.glass.PopupGlassView(context).apply {
+            foundation.e.bliss.glass.JiggleButtonGlassView(context).apply {
                 layoutParams = FrameLayout.LayoutParams(editWidth, buttonHeight)
-                setPopupRadius(16f * density)
-                hasWhiteOverlay = false
-                foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this)
             }
         editButtonContainer.addView(editGlassBg)
 
@@ -123,11 +121,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             }
 
         val doneGlassBg =
-            foundation.e.bliss.glass.PopupGlassView(context).apply {
+            foundation.e.bliss.glass.JiggleButtonGlassView(context).apply {
                 layoutParams = FrameLayout.LayoutParams(doneWidth, buttonHeight)
-                setPopupRadius(16f * density)
-                hasWhiteOverlay = false
-                foundation.e.bliss.glass.GlassConfig.applyDefaultConfig(this)
             }
         doneButtonContainer.addView(doneGlassBg)
 
@@ -256,6 +251,8 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     fun show() {
         if (isShowing) return
         isShowing = true
+        currentAnimator?.cancel()
+        currentAnimator = null
         visibility = VISIBLE
         bringToFront()
         alpha = 0f
@@ -281,11 +278,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         // Trigger wallpaper binding on glass views
         post {
             for (i in 0 until editButtonContainer.childCount) {
-                (editButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.PopupGlassView)
+                (editButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
                     ?.bindToWallpaper()
             }
             for (i in 0 until doneButtonContainer.childCount) {
-                (doneButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.PopupGlassView)
+                (doneButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
                     ?.bindToWallpaper()
             }
         }
@@ -293,40 +290,56 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val alphaAnim = PropertyValuesHolder.ofFloat(View.ALPHA, 0f, 1f)
         val transAnim = PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, -15f * density, 0f)
 
-        ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
+        val anim = ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
             duration = 250
             interpolator = Interpolators.EMPHASIZED_DECELERATE
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (currentAnimator === animation) {
+                        currentAnimator = null
+                    }
+                }
+            })
             start()
         }
+        currentAnimator = anim
     }
 
     fun hide() {
         if (!isShowing) return
         isShowing = false
         activePressedView = null
+        currentAnimator?.cancel()
+        currentAnimator = null
         val density = resources.displayMetrics.density
 
         val alphaAnim = PropertyValuesHolder.ofFloat(View.ALPHA, alpha, 0f)
         val transAnim =
             PropertyValuesHolder.ofFloat(View.TRANSLATION_Y, translationY, -15f * density)
 
-        ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
+        val anim = ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
             duration = 200
             interpolator = Interpolators.EMPHASIZED_ACCELERATE
             addListener(
                 object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
-                        visibility = GONE
-                        editButtonContainer.scaleX = 1f
-                        editButtonContainer.scaleY = 1f
-                        editButtonContainer.alpha = 1f
-                        doneButtonContainer.scaleX = 1f
-                        doneButtonContainer.scaleY = 1f
-                        doneButtonContainer.alpha = 1f
+                        if (currentAnimator === animation) {
+                            currentAnimator = null
+                        }
+                        if (!isShowing) {
+                            visibility = GONE
+                            editButtonContainer.scaleX = 1f
+                            editButtonContainer.scaleY = 1f
+                            editButtonContainer.alpha = 1f
+                            doneButtonContainer.scaleX = 1f
+                            doneButtonContainer.scaleY = 1f
+                            doneButtonContainer.alpha = 1f
+                        }
                     }
                 }
             )
             start()
         }
+        currentAnimator = anim
     }
 }

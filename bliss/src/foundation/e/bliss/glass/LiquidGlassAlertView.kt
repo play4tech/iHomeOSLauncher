@@ -388,6 +388,7 @@ constructor(
         elevation = 300f
         dragLayer.addView(this)
         mIsOpen = true
+        launcher.updateDisallowBack()
 
         post {
             glassBg.bindToWallpaper()
@@ -438,7 +439,7 @@ constructor(
     }
 
     override fun isOfType(type: Int): Boolean {
-        return (type and (TYPE_OPTIONS_POPUP_DIALOG or TYPE_ACTION_POPUP)) != 0
+        return (type and TYPE_OPTIONS_POPUP_DIALOG) != 0
     }
 
     override fun setInsets(insets: Rect?) {
@@ -448,6 +449,7 @@ constructor(
     override fun handleClose(animate: Boolean) {
         if (!mIsOpen) return
         mIsOpen = false
+        launcher.updateDisallowBack()
 
         if (animate) {
             val exitScaleX = ObjectAnimator.ofFloat(cardContainer, View.SCALE_X, 1f, 0.92f)
@@ -475,6 +477,7 @@ constructor(
 
     private fun removeViewFromDragLayer() {
         launcher.dragLayer?.removeView(this)
+        launcher.updateDisallowBack()
     }
 
     private fun notifyDismiss() {
@@ -499,7 +502,7 @@ constructor(
             alert.setTitle("Remove \"$appTitle\"?")
             alert.setMessage("Removing from Home Screen will keep the app in your App Library.")
             if (canUninstall) {
-                alert.addAction("Delete App", ActionStyle.DESTRUCTIVE) { onDeleteApp?.run() }
+                alert.addAction("Uninstall", ActionStyle.DESTRUCTIVE) { onDeleteApp?.run() }
                 alert.addAction("Remove from Home Screen", ActionStyle.ACTION) { onRemoveFromHome?.run() }
                 alert.addAction("Cancel", ActionStyle.CANCEL)
             } else {
@@ -545,6 +548,25 @@ constructor(
             // Short 2 buttons -> horizontal side-by-side with Cancel on left and Remove on right
             alert.addAction("Cancel", ActionStyle.CANCEL)
             alert.addAction("Remove", ActionStyle.DESTRUCTIVE) { onRemoveWidget?.run() }
+            alert.setOnDismissListener { onDismiss?.run() }
+            alert.show()
+            return alert
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun showDeleteAppAlert(
+            launcher: Launcher,
+            appTitle: CharSequence,
+            onDeleteApp: Runnable? = null,
+            onDismiss: Runnable? = null
+        ): LiquidGlassAlertView {
+            val alert = LiquidGlassAlertView(launcher)
+            alert.setTitle("Uninstall \"$appTitle\"?")
+            alert.setMessage("Uninstalling this app will also delete its data.")
+            // Short 2 buttons -> horizontal side-by-side with Cancel on left and Uninstall on right
+            alert.addAction("Cancel", ActionStyle.CANCEL)
+            alert.addAction("Uninstall", ActionStyle.DESTRUCTIVE) { onDeleteApp?.run() }
             alert.setOnDismissListener { onDismiss?.run() }
             alert.show()
             return alert

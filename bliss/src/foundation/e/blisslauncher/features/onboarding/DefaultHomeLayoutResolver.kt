@@ -21,10 +21,13 @@ import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Process
+import android.os.UserHandle
+import android.os.UserManager
 import android.provider.AlarmClock
 import android.provider.ContactsContract
 import android.provider.MediaStore
@@ -34,13 +37,14 @@ import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.LauncherSettings.Favorites
 import com.android.launcher3.model.DatabaseHelper
 import com.android.launcher3.pm.UserCache
+import com.android.launcher3.util.ComponentKey
 import com.android.launcher3.util.RemovedAppStore
 import foundation.e.bliss.multimode.MultiModeController
 
 /**
- * Resolves standard Android roles and categories to populate an iOS-style curated Page 0
- * on first run. Any apps not placed on Page 0 or in the dock are recorded in RemovedAppStore
- * so they remain accessible exclusively in the App Library.
+ * Resolves standard Android roles and categories to populate an iOS-style curated layout
+ * on first run. Places all installed apps on the home screen, keeping the last 3 icon slots
+ * on Screen 0 blank so it does not look crowded, and grouping work profile apps into a "Work" folder.
  */
 object DefaultHomeLayoutResolver {
     private const val TAG = "DefaultHomeResolver"
@@ -62,7 +66,11 @@ object DefaultHomeLayoutResolver {
                 "com.google.android.apps.photos",
                 "com.android.gallery3d",
                 "com.coloros.gallery3d",
-                "com.sec.android.gallery3d"
+                "com.oplus.gallery",
+                "com.sec.android.gallery3d",
+                "com.vivo.gallery",
+                "com.miui.gallery",
+                "com.oneplus.gallery"
             )
         ),
         RoleDescriptor(
@@ -73,7 +81,10 @@ object DefaultHomeLayoutResolver {
             listOf(
                 "com.google.android.calendar",
                 "com.android.calendar",
-                "com.bbk.calendar"
+                "com.bbk.calendar",
+                "com.vivo.calendar",
+                "com.xiaomi.calendar",
+                "com.oneplus.calendar"
             )
         ),
         RoleDescriptor(
@@ -86,7 +97,12 @@ object DefaultHomeLayoutResolver {
                 "com.google.android.deskclock",
                 "com.android.deskclock",
                 "com.coloros.alarmclock",
-                "com.sec.android.app.clockpackage"
+                "com.oplus.alarmclock",
+                "com.sec.android.app.clockpackage",
+                "com.vivo.clock",
+                "com.bbk.clock",
+                "com.miui.clock",
+                "com.oneplus.deskclock"
             )
         ),
         RoleDescriptor(
@@ -105,10 +121,17 @@ object DefaultHomeLayoutResolver {
                 Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_WEATHER")
             ),
             listOf(
+                "com.ihome.launcher.features.weather",
                 "foundation.e.blisslauncher.features.weather",
                 "com.google.android.apps.weather",
                 "com.coloros.weather",
+                "com.coloros.weather2",
+                "com.oplus.weather",
                 "com.sec.android.daemonapp",
+                "com.vivo.weather",
+                "com.vivo.weather.provider",
+                "com.miui.weather2",
+                "net.oneplus.weather",
                 "com.accuweather.android"
             )
         ),
@@ -132,7 +155,9 @@ object DefaultHomeLayoutResolver {
             ),
             listOf(
                 "com.google.android.contacts",
-                "com.android.contacts"
+                "com.android.contacts",
+                "com.vivo.contacts",
+                "com.oneplus.contacts"
             )
         ),
         RoleDescriptor(
@@ -144,7 +169,12 @@ object DefaultHomeLayoutResolver {
                 "com.google.android.calculator",
                 "com.android.calculator2",
                 "com.coloros.calculator",
-                "com.sec.android.app.popupcalculator"
+                "com.oplus.calculator",
+                "com.sec.android.app.popupcalculator",
+                "com.miui.calculator",
+                "com.oneplus.calculator",
+                "com.vivo.calculator",
+                "com.android.bbkcalculator"
             )
         ),
         RoleDescriptor(
@@ -158,7 +188,11 @@ object DefaultHomeLayoutResolver {
                 "com.android.documentsui",
                 "com.google.android.apps.nbu.files",
                 "com.coloros.filemanager",
-                "com.sec.android.app.myfiles"
+                "com.oplus.filemanager",
+                "com.sec.android.app.myfiles",
+                "com.mi.android.globalFileexplorer",
+                "com.vivo.filemanager",
+                "com.oneplus.filemanager"
             )
         ),
         RoleDescriptor(
@@ -197,16 +231,27 @@ object DefaultHomeLayoutResolver {
             return
         }
 
+        // Clear any old removed-app records so fresh setup starts completely clean
+        RemovedAppStore.clearAll(context)
+
         val db = dbHelper.writableDatabase
         val idp = InvariantDeviceProfile.INSTANCE.get(context)
         val numCols = idp.numColumns
         val numRows = idp.numRows
 
-        val occupiedCells = HashSet<Pair<Int, Int>>()
+        val occupiedCellsByScreen = HashMap<Int, HashSet<Pair<Int, Int>>>()
         val existingComponents = HashSet<ComponentName>()
         val existingPackages = HashSet<String>()
+        val existingComponentKeys = HashSet<ComponentKey>()
 
-        // 1. Inspect existing items in Favorites.TABLE_NAME_ALL
+        val myUser = Process.myUserHandle()
+        val userCache = UserCache.INSTANCE.get(context)
+        val userSerial = userCache.getSerialNumberForUser(myUser)
+        val userManager = context.getSystemService(UserManager::class.java)
+        val allProfiles = userManager?.userProfiles ?: listOf(myUser)
+        val launcherApps = context.getSystemService(LauncherApps::class.java)
+
+        // 1. Inspect existing items in Favorites.TABLE_NAME_ALL (e.g. dock/hotseat items)
         val projection = arrayOf(
             Favorites._ID,
             Favorites.CONTAINER,
@@ -215,7 +260,8 @@ object DefaultHomeLayoutResolver {
             Favorites.CELLY,
             Favorites.SPANX,
             Favorites.SPANY,
-            Favorites.INTENT
+            Favorites.INTENT,
+            Favorites.PROFILE_ID
         )
         val cursor = db.query(Favorites.TABLE_NAME_ALL, projection, null, null, null, null, null)
         cursor.use { c ->
@@ -226,6 +272,7 @@ object DefaultHomeLayoutResolver {
             val colSpanX = c.getColumnIndexOrThrow(Favorites.SPANX)
             val colSpanY = c.getColumnIndexOrThrow(Favorites.SPANY)
             val colIntent = c.getColumnIndexOrThrow(Favorites.INTENT)
+            val colProfileId = c.getColumnIndexOrThrow(Favorites.PROFILE_ID)
 
             while (c.moveToNext()) {
                 val container = c.getLong(colContainer)
@@ -235,12 +282,14 @@ object DefaultHomeLayoutResolver {
                 val spanX = c.getInt(colSpanX).coerceAtLeast(1)
                 val spanY = c.getInt(colSpanY).coerceAtLeast(1)
                 val intentStr = c.getString(colIntent)
+                val profileSerial = c.getLong(colProfileId)
+                val itemUser = userCache.getUserForSerialNumber(profileSerial) ?: myUser
 
-                // If on Desktop screen 0, mark all cells as occupied
-                if (container == Favorites.CONTAINER_DESKTOP.toLong() && screen == 0) {
+                if (container == Favorites.CONTAINER_DESKTOP.toLong()) {
+                    val occupied = occupiedCellsByScreen.getOrPut(screen) { HashSet() }
                     for (x in cellX until (cellX + spanX)) {
                         for (y in cellY until (cellY + spanY)) {
-                            occupiedCells.add(Pair(x, y))
+                            occupied.add(Pair(x, y))
                         }
                     }
                 }
@@ -251,6 +300,7 @@ object DefaultHomeLayoutResolver {
                         parsedIntent.component?.let {
                             existingComponents.add(it)
                             existingPackages.add(it.packageName)
+                            existingComponentKeys.add(ComponentKey(it, itemUser))
                         } ?: run {
                             parsedIntent.`package`?.let { existingPackages.add(it) }
                         }
@@ -261,82 +311,201 @@ object DefaultHomeLayoutResolver {
             }
         }
 
-        val myUser = Process.myUserHandle()
-        val userSerial = UserCache.INSTANCE.get(context).getSerialNumberForUser(myUser)
-        val launcherApps = context.getSystemService(LauncherApps::class.java)
-        val allActivities = launcherApps?.getActivityList(null, myUser) ?: emptyList()
+        val workActivities = ArrayList<LauncherActivityInfo>()
+        val personalActivities = ArrayList<LauncherActivityInfo>()
 
-        // 2. Resolve each curated role
-        val resolvedToPlace = ArrayList<ComponentName>()
+        for (profile in allProfiles) {
+            val isWork = userCache.getUserInfo(profile).isWork
+            val acts = launcherApps?.getActivityList(null, profile) ?: emptyList()
+            if (isWork) {
+                workActivities.addAll(acts)
+            } else {
+                personalActivities.addAll(acts)
+            }
+        }
+
+        // 2. Resolve curated roles for personal profile
+        val curatedToPlace = ArrayList<ComponentName>()
         for (role in CURATED_ROLES) {
             val resolved = resolveRole(context, role, launcherApps, myUser)
             if (resolved != null) {
-                if (existingComponents.contains(resolved) || existingPackages.contains(resolved.packageName)) {
+                val key = ComponentKey(resolved, myUser)
+                if (existingComponentKeys.contains(key) || existingPackages.contains(resolved.packageName)) {
                     Log.d(TAG, "Role ${role.roleName} resolved to $resolved but already in DB (deduped).")
                 } else {
-                    resolvedToPlace.add(resolved)
+                    curatedToPlace.add(resolved)
                     existingComponents.add(resolved)
                     existingPackages.add(resolved.packageName)
-                    Log.d(TAG, "Role ${role.roleName} resolved to $resolved to be placed on Page 0.")
+                    existingComponentKeys.add(key)
+                    Log.d(TAG, "Role ${role.roleName} resolved to $resolved to be placed on Home Screen.")
                 }
             } else {
                 Log.d(TAG, "Role ${role.roleName} not found on device.")
             }
         }
 
-        // 3. Place resolved apps into available cells on Page 0 (row by row, skipping occupied)
-        var currentX = 0
-        var currentY = 0
-        for (component in resolvedToPlace) {
-            var placed = false
-            while (currentY < numRows) {
-                while (currentX < numCols) {
-                    val cell = Pair(currentX, currentY)
-                    if (!occupiedCells.contains(cell)) {
-                        val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-                            addCategory(Intent.CATEGORY_LAUNCHER)
-                            setComponent(component)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-                        }
-                        val values = ContentValues().apply {
-                            put(Favorites._ID, dbHelper.generateNewItemId())
-                            put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                            put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                            put(Favorites.SCREEN, 0)
-                            put(Favorites.CELLX, currentX)
-                            put(Favorites.CELLY, currentY)
-                            put(Favorites.SPANX, 1)
-                            put(Favorites.SPANY, 1)
-                            put(Favorites.INTENT, launchIntent.toUri(0))
-                            put(Favorites.PROFILE_ID, userSerial)
-                            put(Favorites.MODIFIED, System.currentTimeMillis())
-                        }
-                        dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
-                        occupiedCells.add(cell)
-                        placed = true
-                        currentX++
-                        break
-                    }
-                    currentX++
-                }
-                if (placed) break
-                currentX = 0
-                currentY++
-            }
-            if (!placed) {
-                Log.w(TAG, "Screen 0 full, cannot place $component")
-                break
+        // 3. Collect remaining personal activities (sorted alphabetically)
+        val remainingPersonalToPlace = ArrayList<Pair<ComponentName, Long>>()
+        val sortedPersonal = personalActivities.sortedBy { it.label?.toString()?.lowercase() ?: "" }
+        for (act in sortedPersonal) {
+            val comp = act.componentName
+            val key = ComponentKey(comp, act.user)
+            if (!existingComponentKeys.contains(key)) {
+                val serial = userCache.getSerialNumberForUser(act.user)
+                remainingPersonalToPlace.add(Pair(comp, serial))
+                existingComponentKeys.add(key)
+                existingComponents.add(comp)
             }
         }
 
-        // 4. Mark all other installed apps in RemovedAppStore so VerifyIdleAppTask won't create additional pages
-        for (act in allActivities) {
-            val comp = act.componentName
-            if (!existingComponents.contains(comp)) {
-                RemovedAppStore.markRemoved(context, comp.flattenToString())
-                Log.d(TAG, "Marked unplaced app in RemovedAppStore: $comp")
+        // 4. Reserve the last 3 cells on Screen 0 so it stays clean and not too crowded
+        val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
+        val totalCellsScreen0 = numCols * numRows
+        for (idx in (totalCellsScreen0 - 3) until totalCellsScreen0) {
+            if (idx >= 0) {
+                val rx = idx % numCols
+                val ry = idx / numCols
+                reservedCellsScreen0.add(Pair(rx, ry))
             }
         }
+
+        var currentScreen = 0
+        var currentX = 0
+        var currentY = 0
+
+        fun getNextAvailableCell(): Triple<Int, Int, Int> {
+            while (true) {
+                val occupiedOnScreen = occupiedCellsByScreen.getOrPut(currentScreen) { HashSet() }
+                val cell = Pair(currentX, currentY)
+                val isReserved = (currentScreen == 0 && reservedCellsScreen0.contains(cell))
+                val isOccupied = occupiedOnScreen.contains(cell)
+
+                if (!isOccupied && !isReserved) {
+                    val result = Triple(currentScreen, currentX, currentY)
+                    occupiedOnScreen.add(cell)
+                    currentX++
+                    if (currentX >= numCols) {
+                        currentX = 0
+                        currentY++
+                        if (currentY >= numRows) {
+                            currentScreen++
+                            currentX = 0
+                            currentY = 0
+                        }
+                    }
+                    return result
+                }
+
+                currentX++
+                if (currentX >= numCols) {
+                    currentX = 0
+                    currentY++
+                    if (currentY >= numRows) {
+                        currentScreen++
+                        currentX = 0
+                        currentY = 0
+                    }
+                }
+            }
+        }
+
+        // 5. Place curated personal apps
+        for (component in curatedToPlace) {
+            val (screen, cellX, cellY) = getNextAvailableCell()
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setComponent(component)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            }
+            val values = ContentValues().apply {
+                put(Favorites._ID, dbHelper.generateNewItemId())
+                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                put(Favorites.SCREEN, screen)
+                put(Favorites.CELLX, cellX)
+                put(Favorites.CELLY, cellY)
+                put(Favorites.SPANX, 1)
+                put(Favorites.SPANY, 1)
+                put(Favorites.INTENT, launchIntent.toUri(0))
+                put(Favorites.PROFILE_ID, userSerial)
+                put(Favorites.MODIFIED, System.currentTimeMillis())
+            }
+            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
+        }
+
+        // 6. Place Work folder if work profile apps exist
+        if (workActivities.isNotEmpty()) {
+            val (folderScreen, folderCellX, folderCellY) = getNextAvailableCell()
+            val folderId = dbHelper.generateNewItemId()
+            val folderValues = ContentValues().apply {
+                put(Favorites._ID, folderId)
+                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_FOLDER)
+                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                put(Favorites.SCREEN, folderScreen)
+                put(Favorites.CELLX, folderCellX)
+                put(Favorites.CELLY, folderCellY)
+                put(Favorites.SPANX, 1)
+                put(Favorites.SPANY, 1)
+                put(Favorites.TITLE, "Work")
+                put(Favorites.PROFILE_ID, userSerial)
+                put(Favorites.MODIFIED, System.currentTimeMillis())
+            }
+            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, folderValues)
+
+            var workRank = 0
+            for (workAct in workActivities) {
+                val workUserSerial = userCache.getSerialNumberForUser(workAct.user)
+                val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    setComponent(workAct.componentName)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                }
+                val itemValues = ContentValues().apply {
+                    put(Favorites._ID, dbHelper.generateNewItemId())
+                    put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                    put(Favorites.CONTAINER, folderId)
+                    put(Favorites.SCREEN, 0)
+                    put(Favorites.CELLX, 0)
+                    put(Favorites.CELLY, 0)
+                    put(Favorites.SPANX, 1)
+                    put(Favorites.SPANY, 1)
+                    put(Favorites.RANK, workRank++)
+                    put(Favorites.INTENT, launchIntent.toUri(0))
+                    put(Favorites.PROFILE_ID, workUserSerial)
+                    put(Favorites.MODIFIED, System.currentTimeMillis())
+                }
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, itemValues)
+                existingComponents.add(workAct.componentName)
+                existingPackages.add(workAct.componentName.packageName)
+            }
+            Log.d(TAG, "Created 'Work' folder on screen $folderScreen with ${workActivities.size} apps.")
+        }
+
+        // 7. Place all remaining personal apps across screens
+        for ((component, serial) in remainingPersonalToPlace) {
+            val (screen, cellX, cellY) = getNextAvailableCell()
+            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+                setComponent(component)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            }
+            val values = ContentValues().apply {
+                put(Favorites._ID, dbHelper.generateNewItemId())
+                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                put(Favorites.SCREEN, screen)
+                put(Favorites.CELLX, cellX)
+                put(Favorites.CELLY, cellY)
+                put(Favorites.SPANX, 1)
+                put(Favorites.SPANY, 1)
+                put(Favorites.INTENT, launchIntent.toUri(0))
+                put(Favorites.PROFILE_ID, serial)
+                put(Favorites.MODIFIED, System.currentTimeMillis())
+            }
+            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
+        }
+
+        Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has last 3 slots blank.")
     }
 
     private fun resolveRole(

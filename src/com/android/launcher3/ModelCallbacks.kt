@@ -180,17 +180,18 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         launcher.appsView.appsStore.setApps(apps, flags, packageUserKeytoUidMap)
         
         android.util.Log.d("ModelCallbacks", "bindAllApplications called with apps array length: " + (apps?.size ?: -1));
-        // Push the update directly to the App Library page if it is instantiated
+        // Push the update directly to the App Library page and model
         apps?.let {
             val nonNullApps = it.filterNotNull()
             android.util.Log.d("ModelCallbacks", "bindAllApplications received " + nonNullApps.size + " apps");
+            // Immediately trigger background categorization in AppLibraryModel singleton
+            com.android.launcher3.applibrary.model.AppLibraryModel.getInstance(launcher).updateApps(nonNullApps)
+
             val appLibraryPage = launcher.workspace.appLibraryPinnedItem
             android.util.Log.d("ModelCallbacks", "appLibraryPinnedItem is: " + appLibraryPage);
             if (appLibraryPage is com.android.launcher3.applibrary.view.AppLibraryPage) {
                 android.util.Log.d("ModelCallbacks", "Calling updateApps on AppLibraryPage");
                 appLibraryPage.updateApps(nonNullApps)
-            } else {
-                android.util.Log.d("ModelCallbacks", "appLibraryPinnedItem is NOT an AppLibraryPage!");
             }
         }
         

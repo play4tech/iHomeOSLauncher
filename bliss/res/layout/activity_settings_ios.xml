@@ -124,7 +124,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Bliss Launcher is set as default"
+                        android:text="iHome Launcher is set as default"
                         android:textColor="@color/onboarding_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -456,14 +456,14 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- SECTION 4: DOCK -->
+            <!-- SECTION 4: LIQUID GLASS -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="22dp"
                 android:layout_marginBottom="6dp"
-                android:text="DOCK"
+                android:text="LIQUID GLASS"
                 android:textColor="@color/ios_settings_section_title"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -475,69 +475,7 @@
                 android:background="@drawable/bg_ios_settings_card"
                 android:orientation="vertical">
 
-                <!-- Row 1: Liquid Glass Dock -->
-                <LinearLayout
-                    android:id="@+id/row_glass_dock"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
-                    android:paddingTop="12dp"
-                    android:paddingBottom="12dp">
-
-                    <FrameLayout
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:background="@drawable/bg_ios_icon_container"
-                        android:backgroundTint="@color/ios_icon_teal">
-                        <ImageView
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_ios_dock" />
-                    </FrameLayout>
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:layout_marginStart="14dp"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Liquid Glass Dock"
-                            android:textColor="@color/onboarding_text_primary"
-                            android:textSize="16sp" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="2dp"
-                            android:text="Frosted glass blur effect behind dock"
-                            android:textColor="@color/onboarding_text_secondary"
-                            android:textSize="12sp" />
-                    </LinearLayout>
-
-                    <Switch
-                        android:id="@+id/switch_glass_dock"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:switchMinWidth="51dp"
-                        android:track="@drawable/ios_switch_track"
-                        android:thumb="@drawable/ios_switch_thumb" />
-                </LinearLayout>
-
-                <!-- Divider -->
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="0.5dp"
-                    android:layout_marginStart="62dp"
-                    android:background="@color/ios_settings_card_divider" />
-
-                <!-- Row 2: Customize Glass Effect -->
+                <!-- Row 1: Customize Glass Effect -->
                 <LinearLayout
                     android:id="@+id/row_customize_glass"
                     android:layout_width="match_parent"
@@ -600,7 +538,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:gravity="center"
-                android:text="Bliss Launcher"
+                android:text="iHome Launcher"
                 android:textColor="@color/onboarding_text_secondary"
                 android:textSize="13sp" />
 

@@ -1,0 +1,262 @@
+diff --git a/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java b/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java
+index 9c04b0bb..d9bdf1e1 100644
+--- a/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java
++++ b/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java
+@@ -29,6 +29,7 @@ import android.graphics.RectF;
+ import android.graphics.Path;
+ import android.graphics.Shader;
+ import android.graphics.BitmapShader;
++import android.graphics.LinearGradient;
+ import android.graphics.drawable.AdaptiveIconDrawable;
+ import android.graphics.drawable.BitmapDrawable;
+ import android.graphics.drawable.ColorDrawable;
+@@ -452,6 +453,126 @@ public class BaseIconFactory implements AutoCloseable {
+         return mCachedSquirclePath;
+     }
+ 
++    private Path mCachedTopSpecularPath = null;
++    private Path mCachedBottomSpecularPath = null;
++    private Paint mCachedTopSpecularPaint = null;
++    private Paint mCachedBottomSpecularPaint = null;
++    private int mCachedSpecularWidth = -1;
++    private int mCachedSpecularHeight = -1;
++
++    private void drawSpecularHighlight(Canvas canvas, Path squirclePath, int width, int height) {
++        if (width < 30 || height < 30) {
++            return;
++        }
++
++        if (mCachedSpecularWidth != width || mCachedSpecularHeight != height
++                || mCachedTopSpecularPath == null || mCachedBottomSpecularPath == null) {
++            mCachedSpecularWidth = width;
++            mCachedSpecularHeight = height;
++
++            float r = width / 2.0f;
++            float cx = r;
++            float cy = r;
++            float n = 4.0f;
++            float strokePx = Math.max(1.2f, width * 0.012f);
++
++            // Radius adjusted so the stroke center is slightly inside or on the squircle boundary
++            float rx = r - strokePx / 2.0f;
++            float ry = r - strokePx / 2.0f;
++
++            int steps = 60;
++
++            // Top specular arc (centered at 270 deg / top rim, span 85 deg)
++            mCachedTopSpecularPath = new Path();
++            float topCenterDeg = 270f;
++            float topSpanDeg = 85f;
++            float topStartDeg = topCenterDeg - topSpanDeg / 2f;
++            float topEndDeg = topCenterDeg + topSpanDeg / 2f;
++            for (int i = 0; i <= steps; i++) {
++                double deg = topStartDeg + (topEndDeg - topStartDeg) * (i / (double) steps);
++                double t = Math.toRadians(deg);
++                double cosT = Math.cos(t);
++                double sinT = Math.sin(t);
++                float sgnX = cosT < 0 ? -1f : (cosT > 0 ? 1f : 0f);
++                float sgnY = sinT < 0 ? -1f : (sinT > 0 ? 1f : 0f);
++                float px = cx + (float) (Math.pow(Math.abs(cosT), 2.0 / n) * rx * sgnX);
++                float py = cy + (float) (Math.pow(Math.abs(sinT), 2.0 / n) * ry * sgnY);
++                if (i == 0) {
++                    mCachedTopSpecularPath.moveTo(px, py);
++                } else {
++                    mCachedTopSpecularPath.lineTo(px, py);
++                }
++            }
++
++            // Bottom specular arc (centered at 90 deg / bottom rim, span 80 deg)
++            mCachedBottomSpecularPath = new Path();
++            float botCenterDeg = 90f;
++            float botSpanDeg = 80f;
++            float botStartDeg = botCenterDeg - botSpanDeg / 2f;
++            float botEndDeg = botCenterDeg + botSpanDeg / 2f;
++            for (int i = 0; i <= steps; i++) {
++                double deg = botStartDeg + (botEndDeg - botStartDeg) * (i / (double) steps);
++                double t = Math.toRadians(deg);
++                double cosT = Math.cos(t);
++                double sinT = Math.sin(t);
++                float sgnX = cosT < 0 ? -1f : (cosT > 0 ? 1f : 0f);
++                float sgnY = sinT < 0 ? -1f : (sinT > 0 ? 1f : 0f);
++                float px = cx + (float) (Math.pow(Math.abs(cosT), 2.0 / n) * rx * sgnX);
++                float py = cy + (float) (Math.pow(Math.abs(sinT), 2.0 / n) * ry * sgnY);
++                if (i == 0) {
++                    mCachedBottomSpecularPath.moveTo(px, py);
++                } else {
++                    mCachedBottomSpecularPath.lineTo(px, py);
++                }
++            }
++
++            float xMax = rx * 0.75f;
++            float x0 = cx - xMax;
++            float x1 = cx + xMax;
++            float[] positions = new float[] { 0.0f, 0.15f, 0.35f, 0.50f, 0.65f, 0.85f, 1.0f };
++
++            // Top specular paint (Subtle: peak alpha 80)
++            mCachedTopSpecularPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++            mCachedTopSpecularPaint.setStyle(Paint.Style.STROKE);
++            mCachedTopSpecularPaint.setStrokeWidth(strokePx);
++            int[] topColors = new int[] {
++                Color.argb(0, 255, 255, 255),
++                Color.argb(40, 255, 255, 255),
++                Color.argb(72, 255, 255, 255),
++                Color.argb(80, 255, 255, 255),
++                Color.argb(72, 255, 255, 255),
++                Color.argb(40, 255, 255, 255),
++                Color.argb(0, 255, 255, 255)
++            };
++            mCachedTopSpecularPaint.setShader(new LinearGradient(
++                    x0, cy, x1, cy,
++                    topColors, positions, Shader.TileMode.CLAMP));
++
++            // Bottom specular paint (Subtle: peak alpha 55)
++            mCachedBottomSpecularPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++            mCachedBottomSpecularPaint.setStyle(Paint.Style.STROKE);
++            mCachedBottomSpecularPaint.setStrokeWidth(strokePx);
++            int[] botColors = new int[] {
++                Color.argb(0, 255, 255, 255),
++                Color.argb(28, 255, 255, 255),
++                Color.argb(50, 255, 255, 255),
++                Color.argb(55, 255, 255, 255),
++                Color.argb(50, 255, 255, 255),
++                Color.argb(28, 255, 255, 255),
++                Color.argb(0, 255, 255, 255)
++            };
++            mCachedBottomSpecularPaint.setShader(new LinearGradient(
++                    x0, cy, x1, cy,
++                    botColors, positions, Shader.TileMode.CLAMP));
++        }
++
++        int saveCount = canvas.save();
++        canvas.clipPath(squirclePath);
++        canvas.drawPath(mCachedTopSpecularPath, mCachedTopSpecularPaint);
++        canvas.drawPath(mCachedBottomSpecularPath, mCachedBottomSpecularPaint);
++        canvas.restoreToCount(saveCount);
++    }
++
+     private void drawIconBitmap(@NonNull Canvas canvas, @Nullable final Drawable icon,
+             final float scale, @BitmapGenerationMode int bitmapGenerationMode,
+             @Nullable Bitmap targetBitmap) {
+@@ -517,6 +638,7 @@ public class BaseIconFactory implements AutoCloseable {
+             paint.setShader(shader);
+ 
+             canvas.drawPath(squirclePath, paint);
++            drawSpecularHighlight(canvas, squirclePath, iconWidth, iconHeight);
+             canvas.restoreToCount(count);
+         } else {
+             if (icon instanceof BitmapDrawable) {
+@@ -582,6 +704,12 @@ public class BaseIconFactory implements AutoCloseable {
+         clear();
+         mScratchBitmap = null;
+         mScratchCanvas = null;
++        mCachedTopSpecularPath = null;
++        mCachedBottomSpecularPath = null;
++        mCachedTopSpecularPaint = null;
++        mCachedBottomSpecularPaint = null;
++        mCachedSpecularWidth = -1;
++        mCachedSpecularHeight = -1;
+     }
+ 
+     @NonNull
+diff --git a/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java b/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
+index 31179ab5..9a7ae39b 100644
+--- a/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
++++ b/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
+@@ -138,21 +138,16 @@ public class DotRenderer {
+         float dotCenterX = iconBounds.left + iconBounds.width() * dotPosition[0];
+         float dotCenterY = iconBounds.top + iconBounds.height() * dotPosition[1];
+ 
+-        // Ensure dot fits entirely in canvas clip bounds.
+-        Rect canvasBounds = canvas.getClipBounds();
+-        float offsetX = params.leftAlign
+-                ? Math.max(0, canvasBounds.left - (dotCenterX + mBitmapOffset))
+-                : Math.min(0, canvasBounds.right - (dotCenterX - mBitmapOffset));
+-        float offsetY = Math.max(0, canvasBounds.top - (dotCenterY + mBitmapOffset));
+-
+-        // We draw the dot relative to its center.
+-        float dx = dotCenterX + offsetX;
+-        float dy = dotCenterY + offsetY - 15f;
++        // We draw the dot relative to its center at the exact same badge offset across homescreen and App Library
++        float dx = dotCenterX;
++        float dy = dotCenterY - 15f;
+ 
+         if (numNotifications > 9 && numNotifications < 1000) {
+             canvas.translate(dx - 17f, dy);
+         } else if (numNotifications > 0) {
+             canvas.translate(dx - 12f, dy);
++        } else {
++            canvas.translate(dx - 12f, dy);
+         }
+ 
+         canvas.scale(params.scale, params.scale);
+diff --git a/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java b/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java
+index e6668d1e..6a94551b 100644
+--- a/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java
++++ b/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java
+@@ -28,9 +28,12 @@ import android.graphics.Color;
+ import android.graphics.ColorFilter;
+ import android.graphics.ColorMatrix;
+ import android.graphics.ColorMatrixColorFilter;
++import android.graphics.LinearGradient;
+ import android.graphics.Paint;
++import android.graphics.Path;
+ import android.graphics.PixelFormat;
+ import android.graphics.Rect;
++import android.graphics.Shader;
+ import android.graphics.drawable.Drawable;
+ import android.util.FloatProperty;
+ import android.view.animation.AccelerateInterpolator;
+@@ -123,6 +126,8 @@ public class FastBitmapDrawable extends Drawable implements Drawable.Callback {
+         }
+     }
+ 
++    public static boolean sSpecularHighlightEnabled = true;
++
+     @Override
+     public final void draw(Canvas canvas) {
+         if (mScale != 1f) {
+@@ -135,13 +140,19 @@ public class FastBitmapDrawable extends Drawable implements Drawable.Callback {
+             }
+             canvas.restoreToCount(count);
+         } else {
+-            drawInternal(canvas, getBounds());
++            Rect bounds = getBounds();
++            drawInternal(canvas, bounds);
+             if (mBadge != null) {
+                 mBadge.draw(canvas);
+             }
+         }
+     }
+ 
++    protected void drawSpecularHighlight(Canvas canvas, Rect bounds) {
++        // Specular highlight is now baked directly into the icon squircle bitmap by BaseIconFactory
++        // for 100% pixel-perfect alignment across all device models and OEM aspect ratios.
++    }
++
+     protected void drawInternal(Canvas canvas, Rect bounds) {
+         canvas.drawBitmap(mBitmap, null, bounds, mPaint);
+     }
+@@ -246,6 +257,10 @@ public class FastBitmapDrawable extends Drawable implements Drawable.Callback {
+         return mPaint.getColorFilter();
+     }
+ 
++    public Bitmap getBitmap() {
++        return mBitmap;
++    }
++
+     @Override
+     protected boolean onStateChange(int[] state) {
+         boolean isPressed = false;
+diff --git a/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java b/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java
+index 072bcbfd..1bf003a8 100644
+--- a/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java
++++ b/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java
+@@ -700,7 +700,7 @@ public abstract class BaseIconCache {
+      * Cache class to store the actual entries on disk
+      */
+     public static final class IconDB extends SQLiteCacheHelper {
+-        private static final int RELEASE_VERSION = 34;
++        private static final int RELEASE_VERSION = 35;
+ 
+         public static final String TABLE_NAME = "icons";
+         public static final String COLUMN_ROWID = "rowid";

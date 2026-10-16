@@ -65,6 +65,7 @@ import foundation.e.bliss.widgets.DefaultWidgets.defaultWidgets
 import io.reactivex.rxjava3.disposables.Disposable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 
@@ -138,7 +139,8 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
     }
 
     private fun updatePadding() {
-        val insets = mLauncher.workspace.rootWindowInsets.getInsets(WindowInsets.Type.systemBars())
+        val windowInsets = rootWindowInsets ?: mLauncher.workspace?.rootWindowInsets ?: return
+        val insets = windowInsets.getInsets(WindowInsets.Type.systemBars())
         if (::mResizeContainer.isInitialized) {
             mResizeContainer.apply {
                 val layoutParams = this.layoutParams as LayoutParams
@@ -186,9 +188,10 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
             val widgetManager = AppWidgetManager.getInstance(context)
 
             mWrapper.forEach {
+                val hostView = it as? AppWidgetHostView ?: return@forEach
+                val info = hostView.appWidgetInfo ?: return@forEach
                 val height = widgetDbHelper.getWidgetHeight(it.id) ?: 0
 
-                val info = (it as AppWidgetHostView).appWidgetInfo
                 val opts =
                     WidgetSizes.getWidgetSizeOptions(
                         mLauncher,
@@ -204,7 +207,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                 val blacklistedComponents =
                     mLauncher.resources.getStringArray(R.array.blacklisted_widget_options)
                 if (!blacklistedComponents.contains(info.provider.className)) {
-                    widgetManager.updateAppWidgetOptions(it.appWidgetId, opts)
+                    widgetManager.updateAppWidgetOptions(hostView.appWidgetId, opts)
                 }
             }
         }
@@ -213,7 +216,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
     /** A fragment to display the default widgets. */
     class WidgetFragment : FragmentWithPreview() {
         private lateinit var mWrapper: LinearLayout
-        private lateinit var widgetObserver: Disposable
+        private var widgetObserver: Disposable? = null
         private lateinit var widgetsDbHelper: WidgetsDbHelper
 
         private val mOldWidgets by lazy { BlissDbUtils.getWidgetDetails(context) }
@@ -237,6 +240,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                     }
                 }
             }
+        private var mEventJob: Job? = null
 
         private var initialWidgetsAdded: Boolean
             set(value) {
@@ -285,6 +289,8 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
         }
 
         override fun onDestroyView() {
+            mEventJob?.cancel()
+            mEventJob = null
             mWidgetHost.stopListening()
             super.onDestroyView()
         }
@@ -312,13 +318,15 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                 Logger.e(TAG, "saved widgets added")
             }
 
+            widgetObserver?.dispose()
             widgetObserver =
                 defaultWidgets.observable.subscribe {
                     Logger.d(TAG, "Component: ${it.flattenToString()}")
                     bindWidget(it)
                 }
 
-            CoroutineScope(Dispatchers.Main).launch { eventFlow.collect { rebindWidgets() } }
+            mEventJob?.cancel()
+            mEventJob = CoroutineScope(Dispatchers.Main).launch { eventFlow.collect { rebindWidgets() } }
         }
 
         private fun rebindWidgets(backup: Boolean = false) {
@@ -326,9 +334,8 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
             if (!backup) {
 
                 val dbWidgets =
-                    widgetsDbHelper.getWidgets().apply {
-                        sortedBy { it.position }
-                        forEach { addView(it.widgetId) }
+                    widgetsDbHelper.getWidgets().sortedBy { it.position }.also { list ->
+                        list.forEach { addView(it.widgetId) }
                     }
 
                 // Remove all widgets not present in db
@@ -371,7 +378,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                     addView(widgetId)
                 }
             } else {
-                mWidgetHost.deleteAppWidgetId(id)
+                mWidgetHost.deleteAppWidgetId(widgetId)
             }
         }
 
@@ -505,7 +512,9 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
         @Deprecated("Deprecated in Java")
         override fun onDestroy() {
             super.onDestroy()
-            widgetObserver.dispose()
+            widgetObserver?.dispose()
+            widgetObserver = null
+            LauncherAppMonitor.getInstanceNoCreate()?.unregisterCallback(mAppMonitorCallback)
         }
 
         companion object {
@@ -529,10 +538,9 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
 
                 if (tag is PendingAddShortcutInfo) {
                     Toast.makeText(context, "Please select a widget", Toast.LENGTH_SHORT).show()
-                } else {
+                } else if (tag is PendingAddItemInfo) {
                     closeSheet(true)
-                    val widget = (view.parent as WidgetCell).tag as PendingAddItemInfo
-                    defaultWidgets.add(widget.componentName)
+                    defaultWidgets.add(tag.componentName)
                 }
             }
 

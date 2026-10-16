@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.function.Predicate;
 import java.util.stream.IntStream;
 
 /**
@@ -172,11 +173,20 @@ public class FolderInfo extends ItemInfo {
     }
 
     public void addListener(FolderListener listener) {
-        mListeners.add(listener);
+        if (listener.getClass().getName().endsWith(".Folder")) {
+            mListeners.removeIf(l -> l.getClass().getName().endsWith(".Folder"));
+        }
+        if (!mListeners.contains(listener)) {
+            mListeners.add(listener);
+        }
     }
 
     public void removeListener(FolderListener listener) {
-        mListeners.remove(listener);
+        mListeners.removeIf(l -> l == listener);
+    }
+
+    public void removeListenerIf(Predicate<FolderListener> filter) {
+        mListeners.removeIf(filter);
     }
 
     public void itemsChanged(boolean animate) {

@@ -184,6 +184,9 @@ public class WallpaperOffsetInterpolator {
 
     /** Returns the number of pages used for the wallpaper parallax. */
     public int getNumPagesForWallpaperParallax() {
+        if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            return 1;
+        }
         if (mWallpaperIsLiveWallpaper) {
             return mNumScreens;
         } else {
@@ -298,6 +301,12 @@ public class WallpaperOffsetInterpolator {
                     return;
                 }
                 case MSG_SET_NUM_PARALLAX: {
+                    if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+                        mOffsetX = 0f;
+                        mWM.setWallpaperOffsetSteps(0f, 0f);
+                        setOffsetSafely(token);
+                        return;
+                    }
                     // Set wallpaper offset steps (1 / (number of screens - 1))
                     mOffsetX = 1.0f / (msg.arg1 - 1);
                     mWM.setWallpaperOffsetSteps(mOffsetX, 1.0f);
@@ -316,8 +325,10 @@ public class WallpaperOffsetInterpolator {
 
         private void setOffsetSafely(IBinder token) {
             try {
-                float offset = foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()
-                        ? 0.5f : mCurrentOffset;
+                boolean isSingleLayer = foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode();
+                float offset = isSingleLayer ? 0.5f : mCurrentOffset;
+                float step = isSingleLayer ? 0f : mOffsetX;
+                mWM.setWallpaperOffsetSteps(step, 0f);
                 mWM.setWallpaperOffsets(token, offset, 0.5f);
                 setIsLiveWallpaper();
                 WallpaperEnvironmentBuilder.Companion.getInstanceNoCreate()

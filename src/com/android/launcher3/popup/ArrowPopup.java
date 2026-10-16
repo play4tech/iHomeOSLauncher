@@ -137,16 +137,17 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
     public ArrowPopup(Context context, AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         mInflater = LayoutInflater.from(context);
-        mOutlineRadius = Themes.getDialogCornerRadius(context);
         mActivityContext = ActivityContext.lookupContext(context);
         mIsRtl = Utilities.isRtl(getResources());
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+            mOutlineRadius = 26f * getResources().getDisplayMetrics().density;
             mElevation = getResources().getDisplayMetrics().density * 8; // 8dp
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 setOutlineAmbientShadowColor(android.graphics.Color.argb(20, 0, 0, 0)); // 8%
                 setOutlineSpotShadowColor(android.graphics.Color.argb(46, 0, 0, 0)); // 18%
             }
         } else {
+            mOutlineRadius = Themes.getDialogCornerRadius(context);
             mElevation = getResources().getDimension(R.dimen.deep_shortcuts_elevation);
         }
 

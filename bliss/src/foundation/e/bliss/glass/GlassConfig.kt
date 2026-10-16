@@ -48,22 +48,23 @@ object GlassConfig {
     const val DEFAULT_ABERRATION_INTENSITY: Float = 2f
     const val DEFAULT_DISPLACEMENT_SCALE: Float = 43f
     const val DEFAULT_ELASTICITY: Float = 0.15f
-    const val DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH: Float = 0.4f
-    const val DEFAULT_EDGE_HIGHLIGHT_OPACITY: Float = 100f
+    const val DEFAULT_EDGE_HIGHLIGHT_BORDER_WIDTH: Float = 0.35f
+    const val DEFAULT_EDGE_HIGHLIGHT_OPACITY: Float = 55f
     const val DEFAULT_EDGE_SOFTNESS: Float = 2f
     const val DEFAULT_ENABLE_EDGE_HIGHLIGHT: Boolean = true
-    const val DEFAULT_ENABLE_SENSOR_HIGHLIGHT: Boolean = true
+    const val DEFAULT_ENABLE_SENSOR_HIGHLIGHT: Boolean = false
     const val DEFAULT_ENABLE_ADAPTIVE_TINT: Boolean = false
     const val DEFAULT_REFRACTION_NO_FOLD: Boolean = false
-    const val DEFAULT_REFRACTION_OUTWARD: Boolean = true
+    const val DEFAULT_REFRACTION_OUTWARD: Boolean = false
     const val POSITION_SIDES: Int = 0
     const val POSITION_TOP: Int = 1
     const val POSITION_BOTTOM: Int = 2
     const val POSITION_ALL: Int = 3
+    const val POSITION_TOP_BOTTOM: Int = 4
 
     const val DEFAULT_BORDER_ENABLED: Boolean = true
     const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
-    const val DEFAULT_BORDER_OPACITY: Float = 80f        // 80% peak opacity
+    const val DEFAULT_BORDER_OPACITY: Float = 55f        // 55% peak opacity (subtle)
     const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at ends
     const val DEFAULT_BORDER_POSITION: Int = POSITION_SIDES
     const val DEFAULT_BORDER_FADE_SPREAD: Float = 35f    // 35% fade transition distance
@@ -72,12 +73,12 @@ object GlassConfig {
     const val DEFAULT_WHITE_BORDER_WIDTH: Float = 0.25f
     const val DEFAULT_WHITE_BORDER_OPACITY: Float = 80f
     const val DEFAULT_WHITE_BORDER_FADE: Float = 100f
-    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_TOP
+    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_SIDES
     const val DEFAULT_WHITE_BORDER_FADE_SPREAD: Float = 35f
 
     // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
     const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
-    const val CURRENT_CONFIG_VERSION: Int = 4
+    const val CURRENT_CONFIG_VERSION: Int = 8
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
@@ -160,18 +161,21 @@ object GlassConfig {
     )
 
     private var prefsListenerRegistered = false
+    private var prefsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
 
     private fun ensurePrefsListener(context: Context) {
         if (!prefsListenerRegistered) {
             try {
                 val prefs = LauncherPrefs.getPrefs(context.applicationContext)
-                prefs.registerOnSharedPreferenceChangeListener { _, key ->
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
                     if (key != null && key.startsWith("pref_glass_")) {
                         cachedSettings = null
                         val newSettings = loadSettings(context)
                         notifyAllViews(context, newSettings)
                     }
                 }
+                prefsListener = listener
+                prefs.registerOnSharedPreferenceChangeListener(listener)
                 prefsListenerRegistered = true
             } catch (e: Exception) {
                 // ignore
@@ -181,26 +185,61 @@ object GlassConfig {
 
     @JvmStatic
     fun registerView(view: LiquidGlassView) {
-        val wasEmpty = synchronized(registeredViews) {
-            val empty = registeredViews.isEmpty()
+        synchronized(registeredViews) {
             registeredViews.add(view)
-            empty
         }
         val settings = loadSettings(view.context)
         applyConfig(view, settings)
-        if (settings.enableSensorHighlight) {
-            PortraitSensorHighlightController.ensureStarted(view.context)
-        }
     }
 
     @JvmStatic
     fun unregisterView(view: LiquidGlassView) {
-        val isEmpty = synchronized(registeredViews) {
+        synchronized(registeredViews) {
             registeredViews.remove(view)
-            registeredViews.isEmpty()
         }
-        if (isEmpty) {
-            PortraitSensorHighlightController.stopIfNoViews()
+    }
+
+    @JvmStatic
+    fun disableSensors(context: Context) {
+        try {
+            val cls = Class.forName("com.example.liquidglass.LightSourceController")
+            val instanceField = cls.getDeclaredField("INSTANCE").apply { isAccessible = true }
+            val inst = instanceField.get(null) as? android.hardware.SensorEventListener
+            val registeredField = cls.getDeclaredField("registered").apply { isAccessible = true }
+            val lightDirXField = cls.getDeclaredField("lightDirX").apply { isAccessible = true }
+            val lightDirYField = cls.getDeclaredField("lightDirY").apply { isAccessible = true }
+            val lastNotifiedXField = cls.getDeclaredField("lastNotifiedX").apply { isAccessible = true }
+            val lastNotifiedYField = cls.getDeclaredField("lastNotifiedY").apply { isAccessible = true }
+            val listenersField = cls.getDeclaredField("listeners").apply { isAccessible = true }
+
+            val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+            if (inst != null && sm != null) {
+                sm.unregisterListener(inst)
+            }
+
+            // Keep a dummy view in listeners so listeners.isEmpty() is never true,
+            // preventing unregister() from resetting registered to false.
+            @Suppress("UNCHECKED_CAST")
+            val listeners = listenersField.get(null) as? java.util.LinkedHashSet<android.view.View>
+            if (listeners != null) {
+                synchronized(listeners) {
+                    if (listeners.isEmpty()) {
+                        listeners.add(android.view.View(context.applicationContext))
+                    }
+                }
+            }
+
+            // Mark registered = true so LightSourceController.register() never registers a listener
+            registeredField.setBoolean(null, true)
+
+            // Lock specular light direction permanently to top/bottom: X = 0.0 (no sides), Y = 1.0 (top and bottom specular)
+            lightDirXField.setFloat(null, 0.0f)
+            lightDirYField.setFloat(null, 1.0f)
+            lastNotifiedXField.setFloat(null, 0.0f)
+            lastNotifiedYField.setFloat(null, 1.0f)
+            android.util.Log.d("GlassConfig", "disableSensors: Locked specular lightDir to (0.0, 1.0)")
+        } catch (e: Throwable) {
+            android.util.Log.e("GlassConfig", "disableSensors failed", e)
         }
     }
 
@@ -221,6 +260,7 @@ object GlassConfig {
 
     @JvmStatic
     fun loadSettings(context: Context): GlassSettings {
+        disableSensors(context)
         ensurePrefsListener(context)
         cachedSettings?.let { return it.copy() }
         val prefs = LauncherPrefs.getPrefs(context)
@@ -286,7 +326,9 @@ object GlassConfig {
             borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH),
             borderOpacity = prefs.getFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY),
             borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE),
-            borderPosition = prefs.getInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION),
+            borderPosition = prefs.getInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION).let {
+                if (it == POSITION_TOP_BOTTOM) DEFAULT_BORDER_POSITION else it
+            },
             borderFadeSpread = prefs.getFloat(PREF_KEY_BORDER_FADE_SPREAD, DEFAULT_BORDER_FADE_SPREAD),
 
             whiteBorderEnabled = prefs.getBoolean(PREF_KEY_WHITE_BORDER_ENABLED, DEFAULT_WHITE_BORDER_ENABLED),
@@ -353,15 +395,18 @@ object GlassConfig {
     @JvmStatic
     fun applyConfig(glassView: LiquidGlassView, settings: GlassSettings) {
         // --- Liquid Glass 2.0 lens pipeline (API 33+, silently no-ops below) ---
+        val isAppLibSearch = glassView.javaClass.simpleName == "AppLibrarySearchGlassView"
         glassView.material = GlassMaterial.REGULAR      // REGULAR (readability) | CLEAR (over media)
-        glassView.refractionHeight = settings.refractionHeight
-        glassView.bevelWidth = settings.bevelWidth
+        if (!isAppLibSearch) {
+            glassView.refractionHeight = settings.refractionHeight
+            glassView.bevelWidth = settings.bevelWidth
+        }
         glassView.refractionFalloff = settings.refractionFalloff
         glassView.dispersionStrength = settings.dispersionStrength
         glassView.enableEdgeHighlight = settings.enableEdgeHighlight
         glassView.edgeHighlightBorderWidth = settings.edgeHighlightBorderWidth
         glassView.edgeHighlightOpacity = settings.edgeHighlightOpacity
-        glassView.enableSensorHighlight = settings.enableSensorHighlight
+        glassView.enableSensorHighlight = true
         glassView.enableAdaptiveTint = settings.enableAdaptiveTint
 
         // --- Optical blur, saturation, aberration & physics defaults ---
@@ -372,7 +417,9 @@ object GlassConfig {
         glassView.elasticity = settings.elasticity
         glassView.glassTint = settings.glassTint
         glassView.useShaderPipeline = true
-        glassView.adaptiveLensScale = true
+        if (!isAppLibSearch) {
+            glassView.adaptiveLensScale = true
+        }
         glassView.refractionNoFold = settings.refractionNoFold
         glassView.refractionOutward = settings.refractionOutward
         glassView.edgeSoftness = settings.edgeSoftness
@@ -467,6 +514,28 @@ object GlassConfig {
                         Color.argb(peakAlpha, r, g, b)
                     )
                     val positions = floatArrayOf(0f, fadeStart, solidStart, 1.0f)
+                    paint.shader = LinearGradient(
+                        0f, 0f, 0f, viewHeight,
+                        colors, positions,
+                        Shader.TileMode.CLAMP
+                    )
+                }
+            }
+            POSITION_TOP_BOTTOM -> {
+                if (edgeAlpha >= peakAlpha) {
+                    paint.shader = null
+                    paint.color = Color.argb(peakAlpha, r, g, b)
+                } else {
+                    // In Top & Bottom mode, confine the gradient strictly near the top and bottom rims
+                    // so the vertical sides (middle 80%+) are completely clear of any border.
+                    val clampedSpread = (spreadRatio * 0.35f).coerceIn(0.04f, 0.16f)
+                    val colors = intArrayOf(
+                        Color.argb(peakAlpha, r, g, b),
+                        Color.argb(edgeAlpha, r, g, b),
+                        Color.argb(edgeAlpha, r, g, b),
+                        Color.argb(peakAlpha, r, g, b)
+                    )
+                    val positions = floatArrayOf(0f, clampedSpread, 1f - clampedSpread, 1.0f)
                     paint.shader = LinearGradient(
                         0f, 0f, 0f, viewHeight,
                         colors, positions,

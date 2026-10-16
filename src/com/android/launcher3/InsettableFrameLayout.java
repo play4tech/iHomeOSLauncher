@@ -2,6 +2,7 @@ package com.android.launcher3;
 
 import android.content.Context;
 import android.content.res.TypedArray;
+import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.View;
@@ -10,6 +11,44 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 public class InsettableFrameLayout extends FrameLayout implements Insettable {
+
+    private static java.lang.ref.WeakReference<View> sActiveCaptureTarget;
+    private static float sActiveScaleX = 1f;
+    private static float sActiveScaleY = 1f;
+    private static float sActivePivotX = 0f;
+    private static float sActivePivotY = 0f;
+
+    public static void setActiveGlassCapture(
+            View target, float scaleX, float scaleY, float pivotX, float pivotY) {
+        sActiveCaptureTarget = target != null ? new java.lang.ref.WeakReference<>(target) : null;
+        sActiveScaleX = scaleX;
+        sActiveScaleY = scaleY;
+        sActivePivotX = pivotX;
+        sActivePivotY = pivotY;
+    }
+
+    public static void clearActiveGlassCapture() {
+        sActiveCaptureTarget = null;
+        sActiveScaleX = 1f;
+        sActiveScaleY = 1f;
+    }
+
+    @Override
+    public void draw(Canvas canvas) {
+        if (sActiveCaptureTarget != null && sActiveCaptureTarget.get() == this) {
+            sActiveCaptureTarget = null;
+            if (sActiveScaleX > 0.01f && sActiveScaleY > 0.01f
+                    && (Math.abs(sActiveScaleX - 1f) > 0.001f
+                            || Math.abs(sActiveScaleY - 1f) > 0.001f)) {
+                int save = canvas.save();
+                canvas.scale(1f / sActiveScaleX, 1f / sActiveScaleY, sActivePivotX, sActivePivotY);
+                super.draw(canvas);
+                canvas.restoreToCount(save);
+                return;
+            }
+        }
+        super.draw(canvas);
+    }
 
     @ViewDebug.ExportedProperty(category = "launcher")
     protected Rect mInsets = new Rect();

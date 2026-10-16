@@ -232,6 +232,8 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     private boolean mEnableIconUpdateAnimation = false;
 
     private Launcher mLauncher;
+    private final Rect mTempIconBounds = new Rect();
+    private final Paint.FontMetrics mTempFontMetrics = new Paint.FontMetrics();
 
     public BubbleTextView(Context context) {
         this(context, null, 0);
@@ -338,6 +340,10 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         cancelDotScaleAnim();
         mDotParams.scale = 0f;
         mForceHideDot = false;
+        applyUninstallIconState(false);
+        mDownOnMinusBadge = false;
+        setOnTouchListener(null);
+        clearAnimation();
         setBackground(null);
 
         setTag(null);
@@ -612,14 +618,17 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             return false;
         }
         if (mDisplay == DISPLAY_APP_LIBRARY_EXPANDED) {
-            android.graphics.Rect bounds = new android.graphics.Rect();
-            getIconBounds(bounds);
+            getIconBounds(mTempIconBounds);
             // Add 16px (~8dp) hit margin around the icon image and label
             int margin = 16;
-            int hitLeft = bounds.left - margin;
-            int hitRight = bounds.right + margin;
-            int hitTop = bounds.top - margin;
-            int hitBottom = getHeight();
+            int hitLeft = mTempIconBounds.left - margin;
+            int hitRight = mTempIconBounds.right + margin;
+            int hitTop = mTempIconBounds.top - margin;
+            getPaint().getFontMetrics(mTempFontMetrics);
+            int textHeight = getText().length() > 0
+                    ? (getCompoundDrawablePadding() + (int) Math.ceil(mTempFontMetrics.bottom - mTempFontMetrics.top))
+                    : 0;
+            int hitBottom = mTempIconBounds.bottom + textHeight + margin;
             if (x < hitLeft || x > hitRight || y < hitTop || y > hitBottom) {
                 return true;
             }
@@ -631,9 +640,17 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                 || x > getWidth() - getPaddingRight();
     }
 
+    private final Runnable mResetStayPressedRunnable = this::clearPressedBackground;
+
     void setStayPressed(boolean stayPressed) {
         mStayPressed = stayPressed;
         refreshDrawableState();
+        removeCallbacks(mResetStayPressedRunnable);
+        if (stayPressed) {
+            // Guarantee that the icon never remains stuck enlarged if remote transition
+            // callbacks are dropped (e.g. OEM ROMs like ColorOS / Realme UI).
+            postDelayed(mResetStayPressedRunnable, 400);
+        }
     }
 
     @Override
@@ -642,11 +659,34 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         if (mIcon != null) {
             mIcon.setVisible(isVisible, false);
         }
+        if (!isVisible && mStayPressed) {
+            clearPressedBackground();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onWindowFocusChanged(hasWindowFocus);
+        if (mStayPressed) {
+            clearPressedBackground();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        if (mStayPressed) {
+            clearPressedBackground();
+        }
     }
 
     public void clearPressedBackground() {
+        removeCallbacks(mResetStayPressedRunnable);
         setPressed(false);
-        setStayPressed(false);
+        if (mStayPressed) {
+            mStayPressed = false;
+            refreshDrawableState();
+        }
     }
 
     @Override
@@ -766,14 +806,13 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             return;
         }
 
-        Rect iconBounds = new Rect();
-        getIconBounds(iconBounds);
+        getIconBounds(mTempIconBounds);
 
         final int scrollX = getScrollX();
         final int scrollY = getScrollY();
 
         canvas.translate(scrollX, scrollY);
-        mUninstallButtonRenderer.draw(canvas, iconBounds);
+        mUninstallButtonRenderer.draw(canvas, mTempIconBounds);
         canvas.translate(-scrollX, -scrollY);
     }
 
@@ -790,9 +829,8 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         if (!isUninstallVisible || mUninstallButtonRenderer == null) return false;
         ItemInfo tag = (ItemInfo) this.getTag();
         if (tag == null || tag.itemType == ITEM_TYPE_FOLDER) return false;
-        Rect iconBounds = new Rect();
-        getIconBounds(iconBounds);
-        Rect uninstallIconBounds = mUninstallButtonRenderer.getBoundsScaled(iconBounds);
+        getIconBounds(mTempIconBounds);
+        Rect uninstallIconBounds = mUninstallButtonRenderer.getBoundsScaled(mTempIconBounds);
         return uninstallIconBounds.contains((int) x, (int) y);
     }
 
@@ -926,8 +964,8 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         if (mCenterVertically && (getTag() != null && !(getTag() instanceof FolderInfo))) {
             int cellHeightPx = mIconSize;
             if (getText().length() > 0) {
-                Paint.FontMetrics fm = getPaint().getFontMetrics();
-                cellHeightPx += getCompoundDrawablePadding() + (int) Math.ceil(fm.bottom - fm.top);
+                getPaint().getFontMetrics(mTempFontMetrics);
+                cellHeightPx += getCompoundDrawablePadding() + (int) Math.ceil(mTempFontMetrics.bottom - mTempFontMetrics.top);
             }
             setPadding(getPaddingLeft(), (height - cellHeightPx) / 2, getPaddingRight(),
                     getPaddingBottom());
@@ -996,7 +1034,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         setTextAlpha(visible ? 1 : 0);
     }
 
-    private void setTextAlpha(float alpha) {
+    public void setTextAlpha(float alpha) {
         mTextAlpha = alpha;
         if (mTextColorStateList != null) {
             setTextColor(mTextColorStateList);
@@ -1247,7 +1285,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     /**
      * Sets the icon for this view based on the layout direction.
      */
-    protected void setIcon(FastBitmapDrawable icon) {
+    public void setIcon(FastBitmapDrawable icon) {
         if (mIsIconVisible) {
             applyCompoundDrawables(icon);
         }
@@ -1406,9 +1444,11 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     public SafeCloseable prepareDrawDragView() {
         resetIconScale();
         setForceHideDot(true);
+        final boolean wasUninstallVisible = isUninstallVisible;
         applyUninstallIconState(false);
         return () -> {
             setForceHideDot(false);
+            applyUninstallIconState(wasUninstallVisible);
         };
     }
 
@@ -1442,8 +1482,14 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     public PreDragCondition startLongPressAction() {
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
             Launcher launcher = Launcher.getLauncher(getContext());
-            if (launcher != null && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
-                return null;
+            if (launcher != null) {
+                if (launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+                    return null;
+                }
+                if (com.android.launcher3.folder.Folder.getOpen(launcher)
+                        instanceof foundation.e.bliss.folder.GridFolder gf && gf.isFolderWobbling()) {
+                    return null;
+                }
             }
         }
         PopupContainerWithArrow popup = PopupContainerWithArrow.showForIcon(this);
@@ -1473,8 +1519,14 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     public boolean canShowLongPressPopup() {
         if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
             Launcher launcher = Launcher.getLauncher(getContext());
-            if (launcher != null && launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
-                return false;
+            if (launcher != null) {
+                if (launcher.getWorkspace() != null && launcher.getWorkspace().isWobbling()) {
+                    return false;
+                }
+                if (com.android.launcher3.folder.Folder.getOpen(launcher)
+                        instanceof foundation.e.bliss.folder.GridFolder gf && gf.isFolderWobbling()) {
+                    return false;
+                }
             }
         }
         return getTag() instanceof ItemInfo && ShortcutUtil.supportsShortcuts((ItemInfo) getTag());

@@ -41,6 +41,8 @@ public class AppLibraryIndexScrollerView extends View {
     }
 
     private void init() {
+        setClickable(true);
+        setFocusable(false);
         float density = getResources().getDisplayMetrics().density;
         mPaint.setColor(0xCCFFFFFF); // Crisp semi-transparent white matching iOS
         mPaint.setTextSize(10f * density);
@@ -88,32 +90,25 @@ public class AppLibraryIndexScrollerView extends View {
             case MotionEvent.ACTION_DOWN:
                 mDownX = event.getX();
                 mDownY = event.getY();
-                break;
+                if (getParent() != null) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
+                selectSectionAt(event.getY());
+                return true;
+
             case MotionEvent.ACTION_MOVE:
                 float dx = event.getX() - mDownX;
                 float dy = event.getY() - mDownY;
-                if (Math.abs(dx) > Math.abs(dy) * 1.5f && Math.abs(dx) > 20f) {
+                if (Math.abs(dx) > Math.abs(dy) * 2.0f && Math.abs(dx) > 40f) {
                     if (getParent() != null) {
                         getParent().requestDisallowInterceptTouchEvent(false);
                     }
                     return false;
                 }
-                float y = event.getY();
-                int height = getHeight();
-                if (height <= 0) return true;
-                int index = (int) (y / ((float) height / SECTIONS.length));
-                index = Math.max(0, Math.min(index, SECTIONS.length - 1));
-
-                if (index != mLastSelectedIndex) {
-                    mLastSelectedIndex = index;
-                    performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
-                    if (mListener != null) {
-                        mListener.onSectionSelected(SECTIONS[index]);
-                    }
-                }
                 if (getParent() != null) {
                     getParent().requestDisallowInterceptTouchEvent(true);
                 }
+                selectSectionAt(event.getY());
                 return true;
 
             case MotionEvent.ACTION_UP:
@@ -122,5 +117,20 @@ public class AppLibraryIndexScrollerView extends View {
                 return true;
         }
         return super.onTouchEvent(event);
+    }
+
+    private void selectSectionAt(float y) {
+        int height = getHeight();
+        if (height <= 0) return;
+        int index = (int) (y / ((float) height / SECTIONS.length));
+        index = Math.max(0, Math.min(index, SECTIONS.length - 1));
+
+        if (index != mLastSelectedIndex) {
+            mLastSelectedIndex = index;
+            performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+            if (mListener != null) {
+                mListener.onSectionSelected(SECTIONS[index]);
+            }
+        }
     }
 }

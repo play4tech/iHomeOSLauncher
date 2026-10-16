@@ -168,8 +168,12 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
             CellLayout page = (CellLayout) getChildAt(i);
             ShortcutAndWidgetContainer container = page.getShortcutsAndWidgets();
             for (int j = container.getChildCount() - 1; j >= 0; j--) {
-                container.getChildAt(j).setVisibility(View.VISIBLE);
-                mViewCache.recycleView(R.layout.folder_application, container.getChildAt(j));
+                View child = container.getChildAt(j);
+                child.setVisibility(View.VISIBLE);
+                if (child instanceof BubbleTextView) {
+                    ((BubbleTextView) child).reset();
+                }
+                mViewCache.recycleView(R.layout.folder_application, child);
             }
             page.removeAllViews();
             mViewCache.recycleView(R.layout.folder_page, page);
@@ -252,7 +256,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         return getPageAt(getNextPage());
     }
 
-    private CellLayout createAndAddNewPage() {
+    public CellLayout createAndAddNewPage() {
         DeviceProfile grid = mFolder.mActivityContext.getDeviceProfile();
         CellLayout page = mViewCache.getView(R.layout.folder_page, getContext(), this);
         page.setCellDimensions(grid.folderCellWidthPx, grid.folderCellHeightPx);
@@ -260,7 +264,18 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         page.setInvertIfRtl(true);
         page.setGridSize(mGridCountX, mGridCountY);
 
+        if (getPageCount() > 0) {
+            CellLayout firstPage = getPageAt(0);
+            if (firstPage != null && firstPage.getDesiredWidth() > 0) {
+                page.setFixedSize(firstPage.getDesiredWidth(), firstPage.getDesiredHeight());
+            }
+        }
+
         addView(page, -1, generateDefaultLayoutParams());
+        setEnableOverscroll(getPageCount() > 1);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+        }
         return page;
     }
 
@@ -397,13 +412,22 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
     public int findNearestArea(int pixelX, int pixelY) {
         int pageIndex = getNextPage();
         CellLayout page = getPageAt(pageIndex);
+        if (page == null) {
+            return 0;
+        }
         page.findNearestAreaIgnoreOccupied(pixelX, pixelY, 1, 1, sTmpArray);
         if (mFolder.isLayoutRtl()) {
             sTmpArray[0] = page.getCountX() - sTmpArray[0] - 1;
         }
-        return Math.min(mAllocatedContentSize - 1,
-                pageIndex * mOrganizer.getMaxItemsPerPage()
-                        + sTmpArray[1] * mGridCountX + sTmpArray[0]);
+        int maxItems = mOrganizer.getMaxItemsPerPage();
+        int pageMin = pageIndex * maxItems;
+        int targetRank = pageMin + sTmpArray[1] * mGridCountX + sTmpArray[0];
+
+        int childCountOnPage = page.getShortcutsAndWidgets() != null
+                ? page.getShortcutsAndWidgets().getChildCount() : 0;
+        int maxRankOnPage = pageMin + Math.min(childCountOnPage, maxItems - 1);
+
+        return Math.max(pageMin, Math.min(maxRankOnPage, targetRank));
     }
 
     public View getFirstItem() {
@@ -692,5 +716,28 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
     public void setClipPath(Path clipPath) {
         mClipPath = clipPath;
         invalidate();
+    }
+
+    public void cleanupEmptyPages() {
+        boolean removed = false;
+        while (getPageCount() > 1) {
+            CellLayout lastPage = getPageAt(getPageCount() - 1);
+            if (lastPage.getShortcutsAndWidgets() == null
+                    || lastPage.getShortcutsAndWidgets().getChildCount() == 0) {
+                removeView(lastPage);
+                removed = true;
+            } else {
+                break;
+            }
+        }
+        if (removed) {
+            setEnableOverscroll(getPageCount() > 1);
+            if (mPageIndicator != null) {
+                mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+            }
+            if (getNextPage() >= getPageCount()) {
+                snapToPageImmediately(getPageCount() - 1);
+            }
+        }
     }
 }

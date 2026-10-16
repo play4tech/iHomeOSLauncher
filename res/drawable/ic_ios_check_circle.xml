@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="20"
+    android:viewportHeight="20">
+    <!-- Apple Vibrant Blue circle badge -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M10,0 C15.52,0 20,4.48 20,10 C20,15.52 15.52,20 10,20 C4.48,20 0,15.52 0,10 C0,4.48 4.48,0 10,0 Z"/>
+    <!-- White checkmark stroke -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:fillColor="#00000000"
+        android:pathData="M6,10.2 L8.8,13.2 L14.2,7.2"/>
+</vector>

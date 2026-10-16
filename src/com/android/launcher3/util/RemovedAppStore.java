@@ -59,4 +59,10 @@ public class RemovedAppStore {
             prefs.edit().putStringSet(PREF_REMOVED_APPS, updated).apply();
         }
     }
+
+    public static synchronized void clearAll(Context context) {
+        if (context == null) return;
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        prefs.edit().remove(PREF_REMOVED_APPS).apply();
+    }
 }

@@ -5,7 +5,7 @@ import com.android.launcher3.model.data.AppInfo
 
 class AppLibraryModel(private val context: Context) {
 
-    private val categoryProvider = CategoryProvider(context)
+    val categoryProvider = CategoryProvider.getInstance(context)
     val suggestionsProvider = SuggestionsProvider(context)
     val recentProvider = RecentProvider(context)
 
@@ -16,6 +16,7 @@ class AppLibraryModel(private val context: Context) {
     private var orderedCategories = emptyList<AppLibraryCategory>()
 
     private var allApps: List<AppInfo> = emptyList()
+    private var cachedSuggestions: List<AppInfo>? = null
 
     private val listeners = mutableListOf<AppLibraryUpdateListener>()
 
@@ -23,44 +24,88 @@ class AppLibraryModel(private val context: Context) {
         fun onAppLibraryUpdated()
     }
 
+    companion object {
+        @Volatile
+        private var INSTANCE: AppLibraryModel? = null
+
+        @JvmStatic
+        fun getInstance(context: Context): AppLibraryModel {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: AppLibraryModel(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
+
     fun addListener(listener: AppLibraryUpdateListener) {
-        listeners.add(listener)
+        if (!listeners.contains(listener)) {
+            listeners.add(listener)
+        }
+        if (orderedCategories.isNotEmpty()) {
+            listener.onAppLibraryUpdated()
+        }
     }
 
     fun removeListener(listener: AppLibraryUpdateListener) {
         listeners.remove(listener)
     }
 
+    private var pendingSequence = 0L
+
     fun updateApps(apps: List<AppInfo>) {
         this.allApps = apps
-        categorizedApps.clear()
-
-        // Distribute to categories
-        for (app in apps) {
-            val category = categoryProvider.getCategory(app)
-            if (!categorizedApps.containsKey(category)) {
-                categorizedApps[category] = mutableListOf()
+        val seq = ++pendingSequence
+        com.android.launcher3.util.Executors.THREAD_POOL_EXECUTOR.execute {
+            if (seq != pendingSequence) {
+                android.util.Log.d("AppLibraryModel", "updateApps skipped: superseded by seq $pendingSequence")
+                return@execute
             }
-            categorizedApps[category]!!.add(app)
-        }
+            val t0 = System.currentTimeMillis()
+            val newCategorized = mutableMapOf<AppLibraryCategory, MutableList<AppInfo>>()
 
-        // Sort categories by predefined order, skipping empty ones
-        val ordered = mutableListOf<AppLibraryCategory>()
-        // Suggestions is special and always first if it has content
-        ordered.add(AppLibraryCategory.SUGGESTIONS)
+            // Distribute to categories
+            for (app in apps) {
+                val category = categoryProvider.getCategory(app)
+                newCategorized.getOrPut(category) { mutableListOf() }.add(app)
+            }
+            val t1 = System.currentTimeMillis()
 
-        AppLibraryCategory.values().forEach { cat ->
-            if (cat != AppLibraryCategory.SUGGESTIONS) {
-                if (categorizedApps.containsKey(cat) && categorizedApps[cat]!!.isNotEmpty()) {
-                    ordered.add(cat)
-                    // Sort apps alphabetically within category
-                    categorizedApps[cat]!!.sortBy { it.title.toString() }
+            // Sort categories by predefined order, skipping empty ones
+            val ordered = mutableListOf<AppLibraryCategory>()
+            // Suggestions is special and always first if it has content
+            ordered.add(AppLibraryCategory.SUGGESTIONS)
+
+            AppLibraryCategory.values().forEach { cat ->
+                if (cat != AppLibraryCategory.SUGGESTIONS) {
+                    val list = newCategorized[cat]
+                    if (!list.isNullOrEmpty()) {
+                        ordered.add(cat)
+                        // Sort apps alphabetically within category
+                        list.sortBy { it.title?.toString()?.lowercase() ?: "" }
+                    }
                 }
             }
-        }
-        orderedCategories = ordered
+            val t2 = System.currentTimeMillis()
 
-        notifyListeners()
+            val suggestions = suggestionsProvider.getSuggestions(apps)
+            val t3 = System.currentTimeMillis()
+
+            android.util.Log.d("AppLibraryModel", "updateApps seq $seq timing: categorize=${t1 - t0}ms, sort=${t2 - t1}ms, suggestions=${t3 - t2}ms, total=${t3 - t0}ms")
+
+            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute {
+                if (seq != pendingSequence) return@execute
+                categorizedApps.clear()
+                categorizedApps.putAll(newCategorized)
+                cachedSuggestions = suggestions
+                orderedCategories = ordered
+                notifyListeners()
+            }
+        }
+    }
+
+    fun refreshCategories() {
+        if (allApps.isNotEmpty()) {
+            updateApps(allApps)
+        }
     }
 
     fun getOrderedCategories(): List<AppLibraryCategory> {
@@ -69,18 +114,25 @@ class AppLibraryModel(private val context: Context) {
 
     fun getAppsForCategory(category: AppLibraryCategory): List<AppInfo> {
         return when (category) {
-            AppLibraryCategory.SUGGESTIONS -> suggestionsProvider.getSuggestions(allApps)
+            AppLibraryCategory.SUGGESTIONS -> cachedSuggestions ?: emptyList()
             else -> categorizedApps[category] ?: emptyList()
         }
     }
 
     fun recordAppLaunch(app: AppInfo) {
-        suggestionsProvider.recordLaunch(app)
-        notifyListeners()
+        val packageName = app.componentName?.packageName ?: return
+        recordPackageLaunch(packageName)
+    }
+
+    fun recordPackageLaunch(packageName: String?) {
+        if (packageName.isNullOrEmpty()) return
+        com.android.launcher3.util.Executors.MODEL_EXECUTOR.execute {
+            suggestionsProvider.recordLaunch(packageName)
+        }
     }
 
     private fun notifyListeners() {
-        for (listener in listeners) {
+        for (listener in listeners.toList()) {
             listener.onAppLibraryUpdated()
         }
     }

@@ -267,15 +267,15 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
                 (android.widget.FrameLayout.LayoutParams) getLayoutParams();
         if (grid.isFloatingDockEnabled() && grid.hotseatGeometry != null) {
             lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
-            int realDockTop = insets.top + grid.hotseatGeometry.getBounds().top;
-            int dockTopFromBottom = grid.heightPx - realDockTop;
+            int dockTopFromBottom = insets.bottom + grid.hotseatBarBottomSpacePx
+                    + grid.hotseatGeometry.getBounds().height();
             lp.bottomMargin = dockTopFromBottom + grid.hotseatGeometry.getIndicatorMargin();
             lp.topMargin = 0;
         } else {
             // Position indicator just above the dock: hotseatBarSizePx + small 8dp gap
             lp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.CENTER_HORIZONTAL;
             int gapPx = (int) (8 * getResources().getDisplayMetrics().density);
-            lp.bottomMargin = grid.hotseatBarSizePx + gapPx;
+            lp.bottomMargin = insets.bottom + grid.hotseatBarSizePx + gapPx;
         }
         setLayoutParams(lp);
     }

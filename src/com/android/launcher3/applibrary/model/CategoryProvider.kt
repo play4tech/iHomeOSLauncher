@@ -2,34 +2,215 @@ package com.android.launcher3.applibrary.model
 
 import android.content.Context
 import android.content.pm.ApplicationInfo
+import android.os.UserHandle
 import com.android.launcher3.model.data.AppInfo
+import com.android.launcher3.model.data.ItemInfo
+import com.android.launcher3.pm.UserCache
 
 class CategoryProvider(private val context: Context) {
 
-    fun getCategory(appInfo: AppInfo): AppLibraryCategory {
-        val packageName = (appInfo.componentName?.packageName ?: "").lowercase()
-        val appName = appInfo.title.toString().lowercase().trim()
+    companion object {
+        private const val PREFS_NAME = "app_library_category_overrides"
+        private const val RESOLVED_CACHE_PREFS = "app_library_resolved_categories"
 
-        // 1. Known Package DB (Highest priority for accuracy)
-        getCategoryByPackage(packageName)?.let { return it }
+        @Volatile
+        private var INSTANCE: CategoryProvider? = null
 
-        // 2. Developer Rules (e.g. Adobe, Microsoft)
-        getCategoryByDeveloper(packageName)?.let { return it }
+        @JvmStatic
+        fun getInstance(context: Context): CategoryProvider {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: CategoryProvider(context.applicationContext).also { INSTANCE = it }
+            }
+        }
+    }
 
-        // 3. Keyword Rules based on App Name
-        getCategoryByKeyword(appName)?.let { return it }
+    private val categoryCache = java.util.concurrent.ConcurrentHashMap<String, AppLibraryCategory>()
+    private val diskPrefs by lazy {
+        context.getSharedPreferences(RESOLVED_CACHE_PREFS, Context.MODE_PRIVATE)
+    }
 
-        // 4. ApplicationInfo.category (API 26+)
-        val pm = context.packageManager
+    init {
         try {
-            val appInfoFlags = pm.getApplicationInfo(packageName, 0)
-            getCategoryByAppInfoCategory(appInfoFlags.category, appName, packageName)?.let { return it }
+            val all = diskPrefs.all
+            for ((key, value) in all) {
+                if (value is String) {
+                    try {
+                        categoryCache[key] = AppLibraryCategory.valueOf(value)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            }
         } catch (e: Exception) {
-            // Ignore if package not found
+            // ignore
+        }
+    }
+
+    @Volatile
+    private var bulkAppCategoryMap: Map<String, Int>? = null
+
+    private fun getAppInfoCategory(packageName: String): Int? {
+        var map = bulkAppCategoryMap
+        if (map == null) {
+            val newMap = mutableMapOf<String, Int>()
+            try {
+                val pm = context.packageManager
+                val installed = pm.getInstalledApplications(0)
+                for (app in installed) {
+                    newMap[app.packageName.lowercase()] = app.category
+                }
+            } catch (e: Exception) {
+                // fallback if getInstalledApplications fails
+            }
+            bulkAppCategoryMap = newMap
+            map = newMap
+        }
+        return map?.get(packageName) ?: try {
+            context.packageManager.getApplicationInfo(packageName, 0).category
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun getCategory(itemInfo: ItemInfo): AppLibraryCategory {
+        val packageName = (itemInfo.targetComponent?.packageName ?: itemInfo.targetPackage ?: "").lowercase().trim()
+        val appName = itemInfo.title?.toString()?.lowercase()?.trim() ?: ""
+        return getCategory(packageName, appName, itemInfo.user)
+    }
+
+    fun getCategory(appInfo: AppInfo): AppLibraryCategory {
+        val packageName = (appInfo.componentName?.packageName ?: appInfo.targetPackage ?: "").lowercase().trim()
+        val appName = appInfo.title?.toString()?.lowercase()?.trim() ?: ""
+        return getCategory(packageName, appName, appInfo.user)
+    }
+
+    fun getCategory(packageName: String, appName: String, user: UserHandle?): AppLibraryCategory {
+        val normPkg = packageName.lowercase().trim()
+        if (normPkg.isEmpty()) return AppLibraryCategory.OTHER
+
+        val cacheKey = "$normPkg#${user?.hashCode() ?: 0}"
+        categoryCache[cacheKey]?.let { return it }
+
+        val category = resolveCategory(normPkg, appName.lowercase().trim(), user)
+        if (appName.isNotBlank() || category != AppLibraryCategory.OTHER) {
+            categoryCache[cacheKey] = category
+            try {
+                diskPrefs.edit().putString(cacheKey, category.name).apply()
+            } catch (e: Exception) {
+                // ignore
+            }
+        }
+        return category
+    }
+
+    private fun resolveCategory(packageName: String, appName: String, user: UserHandle?): AppLibraryCategory {
+        // 0. User Category Override (Highest priority)
+        getUserCategoryOverride(packageName, user)?.let { return it }
+
+        // 1. Work Profile App
+        if (user != null) {
+            try {
+                if (UserCache.getInstance(context).getUserInfo(user).isWork) {
+                    return AppLibraryCategory.WORK
+                }
+            } catch (e: Exception) {
+                // ignore
+            }
         }
 
-        // 5. Fallback
+        // 2. Known Package DB (Highest priority for accuracy)
+        getCategoryByPackage(packageName)?.let { return it }
+
+        // 3. Developer Rules (e.g. Adobe, Microsoft)
+        getCategoryByDeveloper(packageName)?.let { return it }
+
+        // 4. Keyword Rules based on App Name
+        getCategoryByKeyword(appName)?.let { return it }
+
+        // 5. ApplicationInfo.category (API 26+)
+        val appCat = getAppInfoCategory(packageName)
+        if (appCat != null) {
+            getCategoryByAppInfoCategory(appCat, appName, packageName)?.let { return it }
+        }
+
+        // 6. Fallback
         return AppLibraryCategory.OTHER
+    }
+
+    fun getUserCategoryOverride(packageName: String, user: UserHandle?): AppLibraryCategory? {
+        val normPkg = packageName.lowercase().trim()
+        if (normPkg.isEmpty()) return null
+        val userSerial = if (user != null) {
+            try {
+                UserCache.getInstance(context).getSerialNumberForUser(user)
+            } catch (e: Exception) {
+                0L
+            }
+        } else {
+            0L
+        }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val catName = prefs.getString("${userSerial}#$normPkg", null)
+            ?: prefs.getString(normPkg, null)
+        if (catName != null) {
+            return try {
+                AppLibraryCategory.valueOf(catName)
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return null
+    }
+
+    fun setCategoryOverride(packageName: String, user: UserHandle?, category: AppLibraryCategory) {
+        val normPkg = packageName.lowercase().trim()
+        if (normPkg.isEmpty()) return
+        val cacheKey = "$normPkg#${user?.hashCode() ?: 0}"
+        categoryCache[cacheKey] = category
+        try {
+            diskPrefs.edit().putString(cacheKey, category.name).apply()
+        } catch (e: Exception) {
+            // ignore
+        }
+        val userSerial = if (user != null) {
+            try {
+                UserCache.getInstance(context).getSerialNumberForUser(user)
+            } catch (e: Exception) {
+                0L
+            }
+        } else {
+            0L
+        }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString("${userSerial}#$normPkg", category.name)
+            .apply()
+    }
+
+    fun clearCategoryOverride(packageName: String, user: UserHandle?) {
+        val normPkg = packageName.lowercase().trim()
+        if (normPkg.isEmpty()) return
+        val cacheKey = "$normPkg#${user?.hashCode() ?: 0}"
+        categoryCache.remove(cacheKey)
+        try {
+            diskPrefs.edit().remove(cacheKey).apply()
+        } catch (e: Exception) {
+            // ignore
+        }
+        val userSerial = if (user != null) {
+            try {
+                UserCache.getInstance(context).getSerialNumberForUser(user)
+            } catch (e: Exception) {
+                0L
+            }
+        } else {
+            0L
+        }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .remove("${userSerial}#$normPkg")
+            .remove(normPkg)
+            .apply()
     }
 
     private fun getCategoryByDeveloper(packageName: String): AppLibraryCategory? {
@@ -46,10 +227,11 @@ class CategoryProvider(private val context: Context) {
             // Social: Dialers, Messaging, Contacts, Social Media & Chat
             "com.google.android.dialer", "com.android.dialer", "com.samsung.android.dialer",
             "com.coloros.phonemanager", "com.oplus.dialer", "com.coloros.dialer",
+            "com.oneplus.dialer", "com.android.incallui",
             "com.google.android.contacts", "com.android.contacts", "com.samsung.android.app.contacts",
-            "com.coloros.contacts", "com.oplus.contacts",
+            "com.coloros.contacts", "com.oplus.contacts", "com.oneplus.contacts", "com.vivo.contacts",
             "com.google.android.apps.messaging", "com.android.mms", "com.samsung.android.messaging",
-            "com.coloros.mms", "com.oplus.mms",
+            "com.coloros.mms", "com.oplus.mms", "com.oneplus.mms", "com.miui.mms",
             "com.whatsapp", "com.whatsapp.w4b", "com.facebook.katana", "com.facebook.orca",
             "com.facebook.lite", "com.instagram.android", "com.twitter.android",
             "com.snapchat.android", "org.telegram.messenger", "org.telegram.plus",
@@ -64,14 +246,21 @@ class CategoryProvider(private val context: Context) {
             "com.google.android.deskclock", "com.android.deskclock", "com.sec.android.app.clockpackage",
             "com.coloros.alarmclock", "com.oplus.alarmclock",
             "com.google.android.calculator", "com.android.calculator2", "com.sec.android.app.popupcalculator",
-            "com.coloros.calculator", "com.oplus.calculator",
+            "com.coloros.calculator", "com.oplus.calculator", "com.miui.calculator", "com.oneplus.calculator",
+            "com.vivo.calculator", "com.android.bbkcalculator",
+            "com.miui.compass", "com.vivo.compass", "com.coloros.Compass2", "com.oplus.compass",
+            "com.miui.securitycenter", "com.iqoo.secure", "com.vivo.imanager",
             "com.google.android.documentsui", "com.android.documentsui", "com.google.android.apps.nbu.files",
             "com.sec.android.app.myfiles", "com.coloros.filemanager", "com.oplus.filemanager",
+            "com.mi.android.globalFileexplorer", "com.vivo.filemanager", "com.oneplus.filemanager",
+            "com.vivo.easyshare", "com.xiaomi.midrop", "com.coloros.backuprestore",
             "com.google.android.apps.weather", "com.sec.android.daemonapp", "com.coloros.weather2",
-            "com.oplus.weather",
+            "com.oplus.weather", "com.vivo.weather", "com.vivo.weather.provider", "com.miui.weather2",
+            "net.oneplus.weather",
             "com.android.chrome", "org.mozilla.firefox", "com.microsoft.emmx",
             "com.opera.browser", "com.brave.browser", "com.duckduckgo.mobile.android",
-            "com.sec.android.app.sbrowser",
+            "com.sec.android.app.sbrowser", "com.vivo.browser", "com.mi.globalbrowser", "com.android.browser",
+            "com.vivo.FMRadio",
             "com.google.android.soundpicker", "com.android.soundrecorder", "com.coloros.soundrecorder",
             "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk" -> AppLibraryCategory.UTILITIES
 
@@ -92,21 +281,24 @@ class CategoryProvider(private val context: Context) {
             "com.google.android.gm", "com.android.email", "com.microsoft.office.outlook",
             "com.samsung.android.email.provider", "com.yahoo.mobile.client.android.mail",
             "com.google.android.calendar", "com.android.calendar", "com.samsung.android.calendar",
-            "com.coloros.calendar", "com.oplus.calendar",
-            "com.google.android.keep", "com.coloros.note", "com.oplus.note",
-            "com.samsung.android.app.notes", "com.evernote",
+            "com.coloros.calendar", "com.oplus.calendar", "com.xiaomi.calendar", "com.bbk.calendar",
+            "com.vivo.calendar", "com.oneplus.calendar",
+            "com.google.android.keep", "com.coloros.note", "com.oplus.note", "com.oneplus.note",
+            "com.samsung.android.app.notes", "com.miui.notes", "com.vivo.notes", "com.evernote",
             "com.google.android.apps.docs", "com.google.android.apps.docs.editors.docs",
             "com.google.android.apps.docs.editors.sheets", "com.google.android.apps.docs.editors.slides",
             "com.microsoft.office.word", "com.microsoft.office.excel", "com.microsoft.office.powerpoint",
-            "com.microsoft.office.officehubrow", "com.microsoft.office.onenote",
+            "com.microsoft.office.officehubrow", "com.microsoft.office.onenote", "com.wps.moffice_eng",
             "notion.id", "com.dropbox.android", "com.microsoft.skydrive",
             "com.todoist", "com.ticktick.task", "com.trello", "com.asana.app", "com.slack" -> AppLibraryCategory.PRODUCTIVITY
 
             // Creativity: Photos, Camera, Design, Art, Photo/Video editing
             "com.google.android.apps.photos", "com.google.android.camera", "com.android.camera2",
             "com.android.camera", "com.sec.android.app.camera", "com.oplus.camera",
-            "com.coloros.camera", "com.google.android.gallery3d", "com.android.gallery3d",
+            "com.coloros.camera", "com.oneplus.camera", "com.vivo.camera",
+            "com.google.android.gallery3d", "com.android.gallery3d",
             "com.sec.android.gallery3d", "com.coloros.gallery3d", "com.oplus.gallery",
+            "com.vivo.gallery", "com.miui.gallery", "com.oneplus.gallery",
             "com.adobe.psmobile", "com.adobe.lrmobile", "com.niksoftware.snapseed",
             "com.canva.editor", "com.picsart.studio", "com.camerasideas.instashot",
             "com.capcut.android" -> AppLibraryCategory.CREATIVITY
