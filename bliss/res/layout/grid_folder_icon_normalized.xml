@@ -25,29 +25,30 @@
         android:id="@+id/folder_tab"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_gravity="start"
         android:orientation="vertical"
-        android:paddingBottom="40dp">
+        android:paddingBottom="28dp">
 
         <com.android.launcher3.folder.FolderNameEditText
             android:id="@+id/folder_name"
             style="@style/TextHeadline"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
+            android:layout_gravity="start"
             android:background="@android:color/transparent"
-            android:gravity="center"
+            android:gravity="start|center_vertical"
             android:hint="@string/folder_hint_text"
             android:imeOptions="flagNoExtractUi"
             android:singleLine="true"
-            android:textSize="36sp"
+            android:ellipsize="end"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif"
             android:textColor="@android:color/white"
-            android:shadowColor="#80000000"
-            android:shadowDx="0"
-            android:shadowDy="2"
-            android:shadowRadius="4"
+            android:shadowColor="@android:color/transparent"
+            android:shadowRadius="0"
             android:textColorHighlight="?android:attr/colorControlHighlight"
-            android:textColorHint="#B3FFFFFF" />
+            android:textColorHint="#99FFFFFF" />
     </LinearLayout>
 
     <foundation.e.bliss.folder.GridFolderPage

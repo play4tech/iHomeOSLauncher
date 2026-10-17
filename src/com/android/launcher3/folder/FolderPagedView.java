@@ -385,10 +385,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         boolean showIndicator = getPageCount() > 1;
         mPageIndicator.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
 
-        if (!MultiModeController.isSingleLayerMode()) {
-            // Set the gravity as LEFT or RIGHT instead of START, as START depends on the actual text.
-            mFolder.mFolderName.setGravity(getPageCount() > 1 ?
-                    (mIsRtl ? Gravity.RIGHT : Gravity.LEFT) : Gravity.CENTER_HORIZONTAL);
+        if (mFolder != null && mFolder.mFolderName != null) {
+            mFolder.mFolderName.setGravity((mIsRtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+            mFolder.updateFolderNamePadding();
         }
 
         if (wobbling) {

@@ -193,6 +193,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
             mBackgroundPage.setAlpha(1f);
         }
         if (mSourceCard != null) {
+            mSourceCard.clearHiddenPreviewSlots();
             mSourceCard.setAlpha(1f);
         }
     }

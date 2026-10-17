@@ -21113,7 +21113,7 @@ public interface DropTarget {
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2011 | **Bytes**: 76737
+**Lines**: 2058 | **Bytes**: 78381
 
 ```java
 /*
@@ -21152,9 +21152,11 @@ import android.annotation.SuppressLint;
 import android.appwidget.AppWidgetHostView;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Looper;
@@ -21166,6 +21168,7 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.view.FocusFinder;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -21411,7 +21414,11 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         mPageIndicator = findViewById(R.id.folder_page_indicator);
         mFolderName = findViewById(R.id.folder_name);
-        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_PX, dp.folderLabelTextSizePx);
+        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+        mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        mFolderName.setShadowLayer(0, 0, 0, 0);
         mFolderName.setOnBackKeyListener(this);
         mFolderName.setOnEditorActionListener(this);
         mFolderName.setSelectAllOnFocus(true);
@@ -21420,12 +21427,63 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         mFolderName.forceDisableSuggestions(true);
+        updateFolderNamePadding();
 
         mFooter = findViewById(R.id.folder_footer);
         mFooterHeight = dp.folderFooterHeightPx;
 
         mKeyboardInsetAnimationCallback = new KeyboardInsetAnimationCallback(this);
         setWindowInsetsAnimationCallback(mKeyboardInsetAnimationCallback);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        updateFolderNamePadding();
+    }
+
+    public void updateFolderNamePadding() {
+        if (mFolderName == null) return;
+        int iconLeft = getFolderTitleLeftPadding();
+        if (iconLeft > 0 && (mFolderName.getPaddingStart() != iconLeft || mFolderName.getPaddingEnd() != iconLeft)) {
+            mFolderName.setPaddingRelative(iconLeft, 0, iconLeft, 0);
+        }
+    }
+
+    public int getFolderTitleLeftPadding() {
+        DeviceProfile grid = mActivityContext.getDeviceProfile();
+        int cellIconGap = (grid.folderCellWidthPx - grid.iconSizePx);
+        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
+                ? mContent.getPaddingLeft()
+                : cellIconGap;
+
+        int cellWidth = grid.folderCellWidthPx;
+        int iconSize = grid.iconSizePx;
+
+        if (mContent != null && mContent.getPageCount() > 0) {
+            CellLayout page = mContent.getPageAt(0);
+            if (page != null) {
+                if (page.getCellWidth() > 0) {
+                    cellWidth = page.getCellWidth();
+                }
+                if (page.getShortcutsAndWidgets() != null && page.getShortcutsAndWidgets().getChildCount() > 0) {
+                    View firstChild = page.getShortcutsAndWidgets().getChildAt(0);
+                    if (firstChild instanceof BubbleTextView) {
+                        BubbleTextView btv = (BubbleTextView) firstChild;
+                        if (btv.getWidth() > 0) {
+                            cellWidth = btv.getWidth();
+                        }
+                        if (btv.getIconSize() > 0) {
+                            iconSize = btv.getIconSize();
+                        }
+                    }
+                }
+            }
+        }
+
+        int iconOffset = Math.max(0, (cellWidth - iconSize) / 2);
+        int targetPadding = contentPadding + iconOffset;
+        return Math.max(0, targetPadding);
     }
 
     public boolean onLongClick(View v) {
@@ -21915,14 +21973,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         // Footer animation
         if (mContent.getPageCount() > 1 && !mInfo.hasOption(FolderInfo.FLAG_MULTI_PAGE_ANIMATION)) {
-                if(!MultiModeController.isSingleLayerMode()) {
-                    int footerWidth = mContent.getDesiredWidth()
-                            - mFooter.getPaddingLeft() - mFooter.getPaddingRight();
-
-                    float textWidth = mFolderName.getPaint().measureText(mFolderName.getText().toString());
-                    float translation = (footerWidth - textWidth) / 2;
-                    mFolderName.setTranslationX(mContent.mIsRtl ? -translation : translation);
-                }
+            mFolderName.setTranslationX(0);
             mPageIndicator.prepareEntryAnimation();
 
             // Do not update the flag if we are in drag mode. The flag will be updated, when we
@@ -21933,10 +21984,6 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 @SuppressLint("InlinedApi")
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    mFolderName.animate().setDuration(FOLDER_NAME_ANIMATION_DURATION)
-                            .translationX(0)
-                            .setInterpolator(AnimationUtils.loadInterpolator(
-                                    getContext(), android.R.interpolator.fast_out_slow_in));
                     mPageIndicator.playEntryAnimation();
 
                     if (updateAnimationFlag) {
@@ -23811,7 +23858,7 @@ public class FolderAnimationManager {
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
 **Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 560 | **Bytes**: 21673
+**Lines**: 569 | **Bytes**: 22131
 
 ```java
 /*
@@ -23842,9 +23889,12 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowInsets;
@@ -23908,13 +23958,17 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
         mFolderTab = findViewById(R.id.folder_tab);
         mFolderName.setSelectAllOnFocus(false);
-        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-
+        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+        mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        mFolderName.setShadowLayer(0, 0, 0, 0);
         mFooterHeight = getResources().getDimensionPixelSize(R.dimen.grid_folder_footer_height);
 
         DeviceProfile grid = mActivityContext.getDeviceProfile();
         int cellIconGap = (grid.folderCellWidthPx - mActivityContext.getDeviceProfile().iconSizePx);
         mContent.setPadding(cellIconGap, cellIconGap, cellIconGap, cellIconGap);
+        updateFolderNamePadding();
 
         int measureSpec = MeasureSpec.UNSPECIFIED;
         mFolderTab.measure(measureSpec, measureSpec);
@@ -23950,7 +24004,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
         mContent.setFixedSize(contentWidth, contentHeight);
         mContent.measure(contentAreaWidthSpec, contentAreaHeightSpec);
 
-        mFolderTab.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(mFolderTabHeight, MeasureSpec.EXACTLY));
+        mFolderTab.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        mFolderTabHeight = mFolderTab.getMeasuredHeight();
 
         mGridFolderPage.measure(contentAreaWidthSpec,
                 MeasureSpec.makeMeasureSpec(contentHeight + mFooterHeight, MeasureSpec.EXACTLY));
@@ -24030,6 +24085,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
             }
         }
 
+        updateFolderNamePadding();
         showOrHideDesktop(mLauncher, true);
         if (mLauncher.getWorkspace().isWobbling()) {
             wobbleFolder(true);
@@ -25458,7 +25514,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 # src/com/android/launcher3/folder/FolderPagedView.java
 
 **Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderPagedView.java`  
-**Lines**: 744 | **Bytes**: 26205
+**Lines**: 743 | **Bytes**: 26112
 
 ```java
 /*
@@ -25848,10 +25904,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         boolean showIndicator = getPageCount() > 1;
         mPageIndicator.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
 
-        if (!MultiModeController.isSingleLayerMode()) {
-            // Set the gravity as LEFT or RIGHT instead of START, as START depends on the actual text.
-            mFolder.mFolderName.setGravity(getPageCount() > 1 ?
-                    (mIsRtl ? Gravity.RIGHT : Gravity.LEFT) : Gravity.CENTER_HORIZONTAL);
+        if (mFolder != null && mFolder.mFolderName != null) {
+            mFolder.mFolderName.setGravity((mIsRtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+            mFolder.updateFolderNamePadding();
         }
 
         if (wobbling) {
@@ -31934,7 +31989,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
 **Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
-**Lines**: 286 | **Bytes**: 11553
+**Lines**: 310 | **Bytes**: 12587
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -32131,14 +32186,38 @@ public class CategoryCardView extends ViewGroup {
     }
 
     public void setPreviewSlotHidden(int appIndex, boolean hidden) {
-        if (getChildCount() > 4 && getChildAt(4) instanceof MiniClusterView) {
-            ((MiniClusterView) getChildAt(4)).setSlotHidden(appIndex - 3, hidden);
+        boolean hasMiniCluster = mCategoryData != null && mCategoryData.apps != null && mCategoryData.apps.size() > 4;
+        if (hasMiniCluster) {
+            if (appIndex < 3) {
+                int childIndex = appIndex + 1; // child 0 is mGlassView
+                if (childIndex < getChildCount()) {
+                    View child = getChildAt(childIndex);
+                    if (child != null) {
+                        child.setVisibility(hidden ? View.INVISIBLE : View.VISIBLE);
+                    }
+                }
+            } else if (getChildCount() > 4 && getChildAt(4) instanceof MiniClusterView) {
+                ((MiniClusterView) getChildAt(4)).setSlotHidden(appIndex - 3, hidden);
+            }
+        } else {
+            int childIndex = appIndex + 1;
+            if (childIndex < getChildCount()) {
+                View child = getChildAt(childIndex);
+                if (child != null) {
+                    child.setVisibility(hidden ? View.INVISIBLE : View.VISIBLE);
+                }
+            }
         }
     }
 
     public void clearHiddenPreviewSlots() {
-        if (getChildCount() > 4 && getChildAt(4) instanceof MiniClusterView) {
-            ((MiniClusterView) getChildAt(4)).clearHiddenSlots();
+        for (int i = 1; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child instanceof MiniClusterView) {
+                ((MiniClusterView) child).clearHiddenSlots();
+            } else if (child != null) {
+                child.setVisibility(View.VISIBLE);
+            }
         }
     }
 
@@ -32382,7 +32461,7 @@ public class MiniClusterView extends View {
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
 **Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
-**Lines**: 340 | **Bytes**: 12894
+**Lines**: 341 | **Bytes**: 12945
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -32580,6 +32659,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
             mBackgroundPage.setAlpha(1f);
         }
         if (mSourceCard != null) {
+            mSourceCard.clearHiddenPreviewSlots();
             mSourceCard.setAlpha(1f);
         }
     }
@@ -33355,7 +33435,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
 **Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
-**Lines**: 627 | **Bytes**: 23812
+**Lines**: 520 | **Bytes**: 19678
 
 ```kotlin
 package com.android.launcher3.applibrary.view
@@ -33409,8 +33489,7 @@ class AppLibraryFolderTransition(
      */
     private data class ItemConfig(
         val index: Int,
-        val tier: Int, // 1 = 4 corners, 2 = outer perimeter, 3 = inner core
-        val cornerSlot: Int = -1, // 0 = TL, 1 = TR, 2 = BL, 3 = BR (for Tier 1)
+        val tier: Int, // 0 = Large Card Hero (Slots 0..2), 1 = Mini-Cluster Hero (Slots 3..6), 2 = Outer Perimeter Overflow, 3 = Inner Core Overflow
         val startX: Float,
         val startY: Float,
         val startScale: Float,
@@ -33452,145 +33531,67 @@ class AppLibraryFolderTransition(
         return PointF(leftInOverlay + icX, topInOverlay + icY)
     }
 
-    private fun determineCornerIndices(n: Int): IntArray {
-        if (n <= 0) return intArrayOf()
-        if (n <= 4) {
-            return IntArray(n) { it }
-        }
-        val totalRows = (n + 3) / 4
-        val tl = 0
-        val tr = minOf(3, n - 1)
-
-        val blCandidate = (totalRows - 1) * 4
-        val bl = if (blCandidate < n) blCandidate else 0
-
-        var brCandidate = if ((totalRows - 1) * 4 + 3 < n) {
-            (totalRows - 1) * 4 + 3
-        } else if (totalRows >= 2 && (totalRows - 2) * 4 + 3 < n) {
-            (totalRows - 2) * 4 + 3
-        } else {
-            n - 1
-        }
-
-        val corners = mutableListOf(tl, tr)
-        if (bl !in corners) corners.add(bl)
-        if (brCandidate !in corners) {
-            corners.add(brCandidate)
-        } else {
-            for (idx in (n - 1) downTo 0) {
-                if (idx !in corners) {
-                    corners.add(idx)
-                    break
-                }
-            }
-        }
-        return corners.toIntArray()
-    }
-
-    fun open(
+    private fun buildConfigs(
+        n: Int,
+        hasMiniCluster: Boolean,
         startCenters: List<PointF>,
         startScales: List<Float>,
-        onEnd: Runnable
-    ) {
-        isClosing = false
-        val n = grid.childCount
-        if (n == 0) {
-            onEnd.run()
-            return
-        }
-
-        val card = folderTile as? CategoryCardView
-        val miniClusterBitmaps = card?.miniClusterBitmaps ?: emptyList()
-        val hasMiniCluster = n >= 5 && startCenters.size > 4
-
-        // Setup dimming overlay
-        overlayGlass?.visibility = View.VISIBLE
-        overlayGlass?.setBackgroundColor(0x22000000.toInt())
-        overlayGlass?.alpha = 0f
-
-        val finals = (0 until n).map { computeChildIconCenterAndSetPivot(grid.getChildAt(it)) }
-        val gridCenterX = if (finals.isNotEmpty()) finals.map { it.x }.average().toFloat() else overlay.width / 2f
-        val gridCenterY = if (finals.isNotEmpty()) finals.map { it.y }.average().toFloat() else overlay.height / 2f
-
-        val cornerIndices = if (hasMiniCluster) determineCornerIndices(n) else intArrayOf()
-        val totalRows = (n + 3) / 4
-
-        // Hide card's mini preview slots during flight
-        if (hasMiniCluster) {
-            for (s in 0..3) {
-                card?.setPreviewSlotHidden(s + 3, true)
-            }
-        }
-
-        // Overlay offsets relative to DragLayer
-        val ovLeft = overlay.left.toFloat()
-        val ovTop = overlay.top.toFloat()
-
-        val miniGridCenterInOverlay = if (hasMiniCluster && startCenters.size >= 7) {
-            PointF(
-                (startCenters[3].x + startCenters[6].x) / 2f - ovLeft,
-                (startCenters[3].y + startCenters[6].y) / 2f - ovTop
-            )
-        } else if (startCenters.isNotEmpty()) {
-            PointF(startCenters[0].x - ovLeft, startCenters[0].y - ovTop)
-        } else {
-            PointF(gridCenterX, gridCenterY)
-        }
-
-        val miniScale = if (hasMiniCluster && startScales.size > 3) startScales[3] else 0.45f
-
-        // Prepare item configurations and cross-fade drawables
+        ovLeft: Float,
+        ovTop: Float,
+        miniGridCenterInOverlay: PointF,
+        miniScale: Float,
+        finals: List<PointF>,
+        gridCenterX: Float,
+        gridCenterY: Float,
+        totalRows: Int
+    ): ArrayList<ItemConfig> {
         val configs = ArrayList<ItemConfig>(n)
-        originalDrawables.clear()
-
         for (i in 0 until n) {
-            val child = grid.getChildAt(i)
             val finalPos = finals[i]
             val row = i / 4
             val col = i % 4
 
             if (hasMiniCluster) {
-                val cornerPos = cornerIndices.indexOf(i)
-                if (cornerPos in 0..3) {
-                    // Tier 1: Corner Hero
-                    val startCenter = if (3 + cornerPos < startCenters.size) {
-                        PointF(startCenters[3 + cornerPos].x - ovLeft, startCenters[3 + cornerPos].y - ovTop)
+                if (i < 3) {
+                    // Tier 0: Large Card Preview Hero (Slots 0..2)
+                    // Starts from its exact resting slot on the card at scale 1.0f
+                    val startCenter = if (i < startCenters.size) {
+                        PointF(startCenters[i].x - ovLeft, startCenters[i].y - ovTop)
                     } else {
-                        miniGridCenterInOverlay
+                        finalPos
                     }
-                    val startS = if (3 + cornerPos < startScales.size) startScales[3 + cornerPos] else miniScale
-
+                    val startS = if (i < startScales.size) startScales[i] else 1.0f
                     configs.add(
                         ItemConfig(
                             index = i,
-                            tier = 1,
-                            cornerSlot = cornerPos,
+                            tier = 0,
                             startX = startCenter.x,
                             startY = startCenter.y,
                             startScale = startS,
                             finalPos = finalPos
                         )
                     )
-
-                    // Install CrossFadeBitmapDrawable if bitmaps available
-                    if (child is BubbleTextView && cornerPos < miniClusterBitmaps.size) {
-                        val sourceBmp = miniClusterBitmaps[cornerPos]
-                        val targetFast = child.icon
-                        if (targetFast != null) {
-                            val targetBmp = targetFast.bitmap
-                            if (sourceBmp != null && targetBmp != null) {
-                                originalDrawables[child] = targetFast
-                                val xfadeDrawable = CrossFadeBitmapDrawable(
-                                    sourceBmp,
-                                    targetBmp,
-                                    targetFast.iconColor
-                                )
-                                child.setIcon(xfadeDrawable)
-                            }
-                        }
+                } else if (i < 7) {
+                    // Tier 1: Mini-Cluster Preview Hero (Slots 3..6)
+                    // Starts from its visible sub-slot in the mini-cluster at scale miniScale (~0.45f)
+                    val startCenter = if (i < startCenters.size) {
+                        PointF(startCenters[i].x - ovLeft, startCenters[i].y - ovTop)
+                    } else {
+                        miniGridCenterInOverlay
                     }
+                    val startS = if (i < startScales.size) startScales[i] else miniScale
+                    configs.add(
+                        ItemConfig(
+                            index = i,
+                            tier = 1,
+                            startX = startCenter.x,
+                            startY = startCenter.y,
+                            startScale = startS,
+                            finalPos = finalPos
+                        )
+                    )
                 } else if (col == 0 || col == 3 || row == 0 || row == totalRows - 1) {
-                    // Tier 2: Outer Perimeter
+                    // Tier 2: Outer Perimeter Overflow Apps (N >= 8)
                     val startX = miniGridCenterInOverlay.x + (finalPos.x - gridCenterX) * 0.16f
                     val startY = miniGridCenterInOverlay.y + (finalPos.y - gridCenterY) * 0.16f
                     configs.add(
@@ -33604,7 +33605,7 @@ class AppLibraryFolderTransition(
                         )
                     )
                 } else {
-                    // Tier 3: Inner Core (Trailing Cushion)
+                    // Tier 3: Inner Core Overflow Apps (Trailing Cushion)
                     val startX = miniGridCenterInOverlay.x + (finalPos.x - gridCenterX) * 0.16f
                     val startY = miniGridCenterInOverlay.y + (finalPos.y - gridCenterY) * 0.16f
                     configs.add(
@@ -33629,7 +33630,7 @@ class AppLibraryFolderTransition(
                 configs.add(
                     ItemConfig(
                         index = i,
-                        tier = 1,
+                        tier = 0,
                         startX = startCenter.x,
                         startY = startCenter.y,
                         startScale = startS,
@@ -33638,6 +33639,63 @@ class AppLibraryFolderTransition(
                 )
             }
         }
+        return configs
+    }
+
+    fun open(
+        startCenters: List<PointF>,
+        startScales: List<Float>,
+        onEnd: Runnable
+    ) {
+        isClosing = false
+        val n = grid.childCount
+        if (n == 0) {
+            onEnd.run()
+            return
+        }
+
+        val card = folderTile as? CategoryCardView
+        val hasMiniCluster = n >= 5 && startCenters.size > 4
+
+        // Setup dimming overlay
+        overlayGlass?.visibility = View.VISIBLE
+        overlayGlass?.setBackgroundColor(0x22000000.toInt())
+        overlayGlass?.alpha = 0f
+
+        val finals = (0 until n).map { computeChildIconCenterAndSetPivot(grid.getChildAt(it)) }
+        val gridCenterX = if (finals.isNotEmpty()) finals.map { it.x }.average().toFloat() else overlay.width / 2f
+        val gridCenterY = if (finals.isNotEmpty()) finals.map { it.y }.average().toFloat() else overlay.height / 2f
+        val totalRows = (n + 3) / 4
+
+        // Hide card's preview slots during flight so they do not duplicate
+        val previewSlotsToHide = if (hasMiniCluster) minOf(n, 7) else n
+        for (s in 0 until previewSlotsToHide) {
+            card?.setPreviewSlotHidden(s, true)
+        }
+
+        // Overlay offsets relative to DragLayer
+        val ovLeft = overlay.left.toFloat()
+        val ovTop = overlay.top.toFloat()
+
+        val miniGridCenterInOverlay = if (hasMiniCluster && startCenters.size >= 7) {
+            PointF(
+                (startCenters[3].x + startCenters[6].x) / 2f - ovLeft,
+                (startCenters[3].y + startCenters[6].y) / 2f - ovTop
+            )
+        } else if (hasMiniCluster && startCenters.size > 3) {
+            PointF(startCenters[3].x - ovLeft, startCenters[3].y - ovTop)
+        } else if (startCenters.isNotEmpty()) {
+            PointF(startCenters[0].x - ovLeft, startCenters[0].y - ovTop)
+        } else {
+            PointF(gridCenterX, gridCenterY)
+        }
+
+        val miniScale = if (hasMiniCluster && startScales.size > 3) startScales[3] else 0.45f
+
+        val configs = buildConfigs(
+            n, hasMiniCluster, startCenters, startScales, ovLeft, ovTop,
+            miniGridCenterInOverlay, miniScale, finals, gridCenterX, gridCenterY, totalRows
+        )
 
         overlay.scaleX = 1f
         overlay.scaleY = 1f
@@ -33685,21 +33743,17 @@ class AppLibraryFolderTransition(
         }
 
         val card = folderTile as? CategoryCardView
-        val miniClusterBitmaps = card?.miniClusterBitmaps ?: emptyList()
         val hasMiniCluster = n >= 5 && startCenters.size > 4
 
-        // Ensure card mini slots are hidden during reverse flight
-        if (hasMiniCluster) {
-            for (s in 0..3) {
-                card?.setPreviewSlotHidden(s + 3, true)
-            }
+        // Ensure card preview slots stay hidden during reverse flight
+        val previewSlotsToHide = if (hasMiniCluster) minOf(n, 7) else n
+        for (s in 0 until previewSlotsToHide) {
+            card?.setPreviewSlotHidden(s, true)
         }
 
         val finals = (0 until n).map { computeChildIconCenterAndSetPivot(grid.getChildAt(it)) }
         val gridCenterX = if (finals.isNotEmpty()) finals.map { it.x }.average().toFloat() else overlay.width / 2f
         val gridCenterY = if (finals.isNotEmpty()) finals.map { it.y }.average().toFloat() else overlay.height / 2f
-
-        val cornerIndices = if (hasMiniCluster) determineCornerIndices(n) else intArrayOf()
         val totalRows = (n + 3) / 4
 
         val ovLeft = overlay.left.toFloat()
@@ -33710,6 +33764,8 @@ class AppLibraryFolderTransition(
                 (startCenters[3].x + startCenters[6].x) / 2f - ovLeft,
                 (startCenters[3].y + startCenters[6].y) / 2f - ovTop
             )
+        } else if (hasMiniCluster && startCenters.size > 3) {
+            PointF(startCenters[3].x - ovLeft, startCenters[3].y - ovTop)
         } else if (startCenters.isNotEmpty()) {
             PointF(startCenters[0].x - ovLeft, startCenters[0].y - ovTop)
         } else {
@@ -33718,101 +33774,10 @@ class AppLibraryFolderTransition(
 
         val miniScale = if (hasMiniCluster && startScales.size > 3) startScales[3] else 0.45f
 
-        val configs = ArrayList<ItemConfig>(n)
-        originalDrawables.clear()
-
-        for (i in 0 until n) {
-            val child = grid.getChildAt(i)
-            val finalPos = finals[i]
-            val row = i / 4
-            val col = i % 4
-
-            if (hasMiniCluster) {
-                val cornerPos = cornerIndices.indexOf(i)
-                if (cornerPos in 0..3) {
-                    val startCenter = if (3 + cornerPos < startCenters.size) {
-                        PointF(startCenters[3 + cornerPos].x - ovLeft, startCenters[3 + cornerPos].y - ovTop)
-                    } else {
-                        miniGridCenterInOverlay
-                    }
-                    val startS = if (3 + cornerPos < startScales.size) startScales[3 + cornerPos] else miniScale
-
-                    configs.add(
-                        ItemConfig(
-                            index = i,
-                            tier = 1,
-                            cornerSlot = cornerPos,
-                            startX = startCenter.x,
-                            startY = startCenter.y,
-                            startScale = startS,
-                            finalPos = finalPos
-                        )
-                    )
-
-                    // Re-install CrossFadeBitmapDrawable for reverse flight
-                    if (child is BubbleTextView && cornerPos < miniClusterBitmaps.size) {
-                        val sourceBmp = miniClusterBitmaps[cornerPos]
-                        val targetFast = child.icon
-                        if (targetFast != null) {
-                            val targetBmp = targetFast.bitmap
-                            if (sourceBmp != null && targetBmp != null) {
-                                originalDrawables[child] = targetFast
-                                val xfadeDrawable = CrossFadeBitmapDrawable(
-                                    sourceBmp,
-                                    targetBmp,
-                                    targetFast.iconColor
-                                )
-                                xfadeDrawable.setCrossFadeProgress(1f)
-                                child.setIcon(xfadeDrawable)
-                            }
-                        }
-                    }
-                } else if (col == 0 || col == 3 || row == 0 || row == totalRows - 1) {
-                    val startX = miniGridCenterInOverlay.x + (finalPos.x - gridCenterX) * 0.16f
-                    val startY = miniGridCenterInOverlay.y + (finalPos.y - gridCenterY) * 0.16f
-                    configs.add(
-                        ItemConfig(
-                            index = i,
-                            tier = 2,
-                            startX = startX,
-                            startY = startY,
-                            startScale = 0.14f,
-                            finalPos = finalPos
-                        )
-                    )
-                } else {
-                    val startX = miniGridCenterInOverlay.x + (finalPos.x - gridCenterX) * 0.16f
-                    val startY = miniGridCenterInOverlay.y + (finalPos.y - gridCenterY) * 0.16f
-                    configs.add(
-                        ItemConfig(
-                            index = i,
-                            tier = 3,
-                            startX = startX,
-                            startY = startY,
-                            startScale = 0.14f,
-                            finalPos = finalPos
-                        )
-                    )
-                }
-            } else {
-                val startCenter = if (i < startCenters.size) {
-                    PointF(startCenters[i].x - ovLeft, startCenters[i].y - ovTop)
-                } else {
-                    finalPos
-                }
-                val startS = if (i < startScales.size) startScales[i] else 1.0f
-                configs.add(
-                    ItemConfig(
-                        index = i,
-                        tier = 1,
-                        startX = startCenter.x,
-                        startY = startCenter.y,
-                        startScale = startS,
-                        finalPos = finalPos
-                    )
-                )
-            }
-        }
+        val configs = buildConfigs(
+            n, hasMiniCluster, startCenters, startScales, ovLeft, ovTop,
+            miniGridCenterInOverlay, miniScale, finals, gridCenterX, gridCenterY, totalRows
+        )
 
         overlay.scaleX = 1f
         overlay.scaleY = 1f
@@ -33872,8 +33837,6 @@ class AppLibraryFolderTransition(
         title.scaleY = titleScale
 
         // 4. Per-app choreographies
-        val xfadeVal = invLerp(0.22f, 0.78f, p)
-
         for (cfg in configs) {
             val child = grid.getChildAt(cfg.index) ?: continue
 
@@ -33884,28 +33847,38 @@ class AppLibraryFolderTransition(
 
             if (hasMiniCluster) {
                 when (cfg.tier) {
+                    0 -> {
+                        // Tier 0: Large Card Preview Hero (Slots 0..2)
+                        // Smoothly moves between card position and expanded grid position at scale 1.0
+                        val pPos = spring(p, 3.2f)
+                        curX = lerp(cfg.startX, cfg.finalPos.x, pPos)
+                        curY = lerp(cfg.startY, cfg.finalPos.y, pPos)
+                        curScale = 1.0f
+                        curAlpha = 1.0f
+
+                        if (child is BubbleTextView) {
+                            val labelP = invLerp(0.08f, 0.45f, p)
+                            child.setTextAlpha(labelP)
+                        }
+                    }
                     1 -> {
-                        // Tier 1: 4 Corner Heroes (k_pos = 3.6, k_scale = 4.2)
-                        val pPos = spring(invLerp(0.00f, 0.86f, p), 3.6f)
-                        val pScale = spring(invLerp(0.00f, 0.78f, p), 4.2f)
+                        // Tier 1: Mini-Cluster Preview Hero (Slots 3..6)
+                        // Expands from miniScale to 1.0
+                        val pPos = spring(invLerp(0.00f, 0.88f, p), 3.4f)
+                        val pScale = spring(invLerp(0.00f, 0.82f, p), 3.8f)
 
                         curX = lerp(cfg.startX, cfg.finalPos.x, pPos)
                         curY = lerp(cfg.startY, cfg.finalPos.y, pPos)
                         curScale = lerp(cfg.startScale, 1.0f, pScale)
                         curAlpha = 1.0f
 
-                        // Update dual-icon crossfade
                         if (child is BubbleTextView) {
-                            val iconDrawable = child.icon
-                            if (iconDrawable is CrossFadeBitmapDrawable) {
-                                iconDrawable.setCrossFadeProgress(xfadeVal)
-                            }
-                            val labelP = invLerp(0.12f, 0.45f, p)
+                            val labelP = invLerp(0.12f, 0.55f, p)
                             child.setTextAlpha(labelP)
                         }
                     }
                     2 -> {
-                        // Tier 2: Outer Perimeter (k_pos = 2.7, k_scale = 2.5)
+                        // Tier 2: Outer Perimeter Overflow Apps (k_pos = 2.7, k_scale = 2.5)
                         val pPos = spring(invLerp(0.06f, 0.98f, p), 2.7f)
                         val pScale = spring(invLerp(0.06f, 0.98f, p), 2.5f)
 
@@ -33920,7 +33893,7 @@ class AppLibraryFolderTransition(
                         }
                     }
                     else -> {
-                        // Tier 3: Inner Core / Trailing Cushion (k_pos = 2.0, k_scale = 1.75)
+                        // Tier 3: Inner Core Overflow Apps / Trailing Cushion (k_pos = 2.0, k_scale = 1.75)
                         val pPos = spring(invLerp(0.16f, 0.98f, p), 2.0f)
                         val pScale = spring(invLerp(0.16f, 0.98f, p), 1.75f)
 
@@ -33941,10 +33914,10 @@ class AppLibraryFolderTransition(
                 curX = lerp(cfg.startX, cfg.finalPos.x, pPos)
                 curY = lerp(cfg.startY, cfg.finalPos.y, pPos)
                 curScale = lerp(cfg.startScale, 1.0f, pPos)
-                curAlpha = invLerp(0.0f, 0.3f, p)
+                curAlpha = 1.0f
 
                 if (child is BubbleTextView) {
-                    val labelP = invLerp(0.2f, 0.6f, p)
+                    val labelP = invLerp(0.15f, 0.55f, p)
                     child.setTextAlpha(labelP)
                 }
             }

@@ -34,9 +34,11 @@ import android.annotation.SuppressLint;
 import android.appwidget.AppWidgetHostView;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Insets;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Looper;
@@ -48,6 +50,7 @@ import android.util.Log;
 import android.util.Pair;
 import android.util.TypedValue;
 import android.view.FocusFinder;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -293,7 +296,11 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         mPageIndicator = findViewById(R.id.folder_page_indicator);
         mFolderName = findViewById(R.id.folder_name);
-        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_PX, dp.folderLabelTextSizePx);
+        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+        mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        mFolderName.setShadowLayer(0, 0, 0, 0);
         mFolderName.setOnBackKeyListener(this);
         mFolderName.setOnEditorActionListener(this);
         mFolderName.setSelectAllOnFocus(true);
@@ -302,12 +309,63 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
         mFolderName.forceDisableSuggestions(true);
+        updateFolderNamePadding();
 
         mFooter = findViewById(R.id.folder_footer);
         mFooterHeight = dp.folderFooterHeightPx;
 
         mKeyboardInsetAnimationCallback = new KeyboardInsetAnimationCallback(this);
         setWindowInsetsAnimationCallback(mKeyboardInsetAnimationCallback);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        super.onLayout(changed, l, t, r, b);
+        updateFolderNamePadding();
+    }
+
+    public void updateFolderNamePadding() {
+        if (mFolderName == null) return;
+        int iconLeft = getFolderTitleLeftPadding();
+        if (iconLeft > 0 && (mFolderName.getPaddingStart() != iconLeft || mFolderName.getPaddingEnd() != iconLeft)) {
+            mFolderName.setPaddingRelative(iconLeft, 0, iconLeft, 0);
+        }
+    }
+
+    public int getFolderTitleLeftPadding() {
+        DeviceProfile grid = mActivityContext.getDeviceProfile();
+        int cellIconGap = (grid.folderCellWidthPx - grid.iconSizePx);
+        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
+                ? mContent.getPaddingLeft()
+                : cellIconGap;
+
+        int cellWidth = grid.folderCellWidthPx;
+        int iconSize = grid.iconSizePx;
+
+        if (mContent != null && mContent.getPageCount() > 0) {
+            CellLayout page = mContent.getPageAt(0);
+            if (page != null) {
+                if (page.getCellWidth() > 0) {
+                    cellWidth = page.getCellWidth();
+                }
+                if (page.getShortcutsAndWidgets() != null && page.getShortcutsAndWidgets().getChildCount() > 0) {
+                    View firstChild = page.getShortcutsAndWidgets().getChildAt(0);
+                    if (firstChild instanceof BubbleTextView) {
+                        BubbleTextView btv = (BubbleTextView) firstChild;
+                        if (btv.getWidth() > 0) {
+                            cellWidth = btv.getWidth();
+                        }
+                        if (btv.getIconSize() > 0) {
+                            iconSize = btv.getIconSize();
+                        }
+                    }
+                }
+            }
+        }
+
+        int iconOffset = Math.max(0, (cellWidth - iconSize) / 2);
+        int targetPadding = contentPadding + iconOffset;
+        return Math.max(0, targetPadding);
     }
 
     public boolean onLongClick(View v) {
@@ -797,14 +855,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         // Footer animation
         if (mContent.getPageCount() > 1 && !mInfo.hasOption(FolderInfo.FLAG_MULTI_PAGE_ANIMATION)) {
-                if(!MultiModeController.isSingleLayerMode()) {
-                    int footerWidth = mContent.getDesiredWidth()
-                            - mFooter.getPaddingLeft() - mFooter.getPaddingRight();
-
-                    float textWidth = mFolderName.getPaint().measureText(mFolderName.getText().toString());
-                    float translation = (footerWidth - textWidth) / 2;
-                    mFolderName.setTranslationX(mContent.mIsRtl ? -translation : translation);
-                }
+            mFolderName.setTranslationX(0);
             mPageIndicator.prepareEntryAnimation();
 
             // Do not update the flag if we are in drag mode. The flag will be updated, when we
@@ -815,10 +866,6 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 @SuppressLint("InlinedApi")
                 @Override
                 public void onAnimationEnd(Animator animation) {
-                    mFolderName.animate().setDuration(FOLDER_NAME_ANIMATION_DURATION)
-                            .translationX(0)
-                            .setInterpolator(AnimationUtils.loadInterpolator(
-                                    getContext(), android.R.interpolator.fast_out_slow_in));
                     mPageIndicator.playEntryAnimation();
 
                     if (updateAnimationFlag) {

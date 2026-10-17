@@ -66,19 +66,19 @@ object GlassConfig {
     const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
     const val DEFAULT_BORDER_OPACITY: Float = 55f        // 55% peak opacity (subtle)
     const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at ends
-    const val DEFAULT_BORDER_POSITION: Int = POSITION_SIDES
+    const val DEFAULT_BORDER_POSITION: Int = POSITION_TOP_BOTTOM
     const val DEFAULT_BORDER_FADE_SPREAD: Float = 35f    // 35% fade transition distance
 
     const val DEFAULT_WHITE_BORDER_ENABLED: Boolean = false
     const val DEFAULT_WHITE_BORDER_WIDTH: Float = 0.25f
     const val DEFAULT_WHITE_BORDER_OPACITY: Float = 80f
     const val DEFAULT_WHITE_BORDER_FADE: Float = 100f
-    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_SIDES
+    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_TOP_BOTTOM
     const val DEFAULT_WHITE_BORDER_FADE_SPREAD: Float = 35f
 
     // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
     const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
-    const val CURRENT_CONFIG_VERSION: Int = 8
+    const val CURRENT_CONFIG_VERSION: Int = 9
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
@@ -199,45 +199,55 @@ object GlassConfig {
         }
     }
 
+    private var sensorsPermanentlyDisabled = false
+    private var dummyListenerView: android.view.View? = null
+
     @JvmStatic
     fun disableSensors(context: Context) {
         try {
             val cls = Class.forName("com.example.liquidglass.LightSourceController")
-            val instanceField = cls.getDeclaredField("INSTANCE").apply { isAccessible = true }
-            val inst = instanceField.get(null) as? android.hardware.SensorEventListener
-            val registeredField = cls.getDeclaredField("registered").apply { isAccessible = true }
             val lightDirXField = cls.getDeclaredField("lightDirX").apply { isAccessible = true }
             val lightDirYField = cls.getDeclaredField("lightDirY").apply { isAccessible = true }
             val lastNotifiedXField = cls.getDeclaredField("lastNotifiedX").apply { isAccessible = true }
             val lastNotifiedYField = cls.getDeclaredField("lastNotifiedY").apply { isAccessible = true }
+            val registeredField = cls.getDeclaredField("registered").apply { isAccessible = true }
             val listenersField = cls.getDeclaredField("listeners").apply { isAccessible = true }
-
-            val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
-            if (inst != null && sm != null) {
-                sm.unregisterListener(inst)
-            }
-
-            // Keep a dummy view in listeners so listeners.isEmpty() is never true,
-            // preventing unregister() from resetting registered to false.
-            @Suppress("UNCHECKED_CAST")
-            val listeners = listenersField.get(null) as? java.util.LinkedHashSet<android.view.View>
-            if (listeners != null) {
-                synchronized(listeners) {
-                    if (listeners.isEmpty()) {
-                        listeners.add(android.view.View(context.applicationContext))
-                    }
-                }
-            }
-
-            // Mark registered = true so LightSourceController.register() never registers a listener
-            registeredField.setBoolean(null, true)
 
             // Lock specular light direction permanently to top/bottom: X = 0.0 (no sides), Y = 1.0 (top and bottom specular)
             lightDirXField.setFloat(null, 0.0f)
             lightDirYField.setFloat(null, 1.0f)
             lastNotifiedXField.setFloat(null, 0.0f)
             lastNotifiedYField.setFloat(null, 1.0f)
-            android.util.Log.d("GlassConfig", "disableSensors: Locked specular lightDir to (0.0, 1.0)")
+
+            // Mark registered = true so LightSourceController.register() never registers a listener
+            registeredField.setBoolean(null, true)
+
+            if (!sensorsPermanentlyDisabled) {
+                val instanceField = cls.getDeclaredField("INSTANCE").apply { isAccessible = true }
+                val inst = instanceField.get(null) as? android.hardware.SensorEventListener
+                val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+                if (inst != null && sm != null) {
+                    sm.unregisterListener(inst)
+                }
+                sensorsPermanentlyDisabled = true
+                android.util.Log.d("GlassConfig", "disableSensors: Locked specular lightDir to (0.0, 1.0)")
+            }
+
+            // Keep a dummy view in listeners permanently so listeners.isEmpty() is NEVER true,
+            // preventing unregister() from resetting registered to false.
+            @Suppress("UNCHECKED_CAST")
+            val listeners = listenersField.get(null) as? java.util.LinkedHashSet<android.view.View>
+            if (listeners != null) {
+                synchronized(listeners) {
+                    if (dummyListenerView == null) {
+                        dummyListenerView = android.view.View(context.applicationContext)
+                    }
+                    val dummy = dummyListenerView
+                    if (dummy != null && !listeners.contains(dummy)) {
+                        listeners.add(dummy)
+                    }
+                }
+            }
         } catch (e: Throwable) {
             android.util.Log.e("GlassConfig", "disableSensors failed", e)
         }
@@ -326,9 +336,7 @@ object GlassConfig {
             borderWidth = prefs.getFloat(PREF_KEY_BORDER_WIDTH, DEFAULT_BORDER_WIDTH),
             borderOpacity = prefs.getFloat(PREF_KEY_BORDER_OPACITY, DEFAULT_BORDER_OPACITY),
             borderFade = prefs.getFloat(PREF_KEY_BORDER_FADE, DEFAULT_BORDER_FADE),
-            borderPosition = prefs.getInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION).let {
-                if (it == POSITION_TOP_BOTTOM) DEFAULT_BORDER_POSITION else it
-            },
+            borderPosition = prefs.getInt(PREF_KEY_BORDER_POSITION, DEFAULT_BORDER_POSITION),
             borderFadeSpread = prefs.getFloat(PREF_KEY_BORDER_FADE_SPREAD, DEFAULT_BORDER_FADE_SPREAD),
 
             whiteBorderEnabled = prefs.getBoolean(PREF_KEY_WHITE_BORDER_ENABLED, DEFAULT_WHITE_BORDER_ENABLED),
@@ -408,6 +416,10 @@ object GlassConfig {
         glassView.edgeHighlightOpacity = settings.edgeHighlightOpacity
         glassView.enableSensorHighlight = true
         glassView.enableAdaptiveTint = settings.enableAdaptiveTint
+        try {
+            val powerSaveField = LiquidGlassView::class.java.getDeclaredField("a11yPowerSave").apply { isAccessible = true }
+            powerSaveField.setBoolean(glassView, false)
+        } catch (_: Throwable) {}
 
         // --- Optical blur, saturation, aberration & physics defaults ---
         glassView.blurAmount = settings.blurAmount

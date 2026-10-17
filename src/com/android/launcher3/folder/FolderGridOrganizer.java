@@ -163,9 +163,11 @@ public class FolderGridOrganizer {
      * Returns the position of the item in the grid
      */
     public Point getPosForRank(int rank) {
-        int pagePos = rank % mMaxItemsPerPage;
-        mPoint.x = pagePos % mCountX;
-        mPoint.y = pagePos / mCountX;
+        int maxItems = Math.max(1, mMaxItemsPerPage);
+        int countX = Math.max(1, mCountX);
+        int pagePos = rank % maxItems;
+        mPoint.x = pagePos % countX;
+        mPoint.y = pagePos / countX;
         return mPoint;
     }
 

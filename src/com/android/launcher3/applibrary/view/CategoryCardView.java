@@ -192,14 +192,38 @@ public class CategoryCardView extends ViewGroup {
     }
 
     public void setPreviewSlotHidden(int appIndex, boolean hidden) {
-        if (getChildCount() > 4 && getChildAt(4) instanceof MiniClusterView) {
-            ((MiniClusterView) getChildAt(4)).setSlotHidden(appIndex - 3, hidden);
+        boolean hasMiniCluster = mCategoryData != null && mCategoryData.apps != null && mCategoryData.apps.size() > 4;
+        if (hasMiniCluster) {
+            if (appIndex < 3) {
+                int childIndex = appIndex + 1; // child 0 is mGlassView
+                if (childIndex < getChildCount()) {
+                    View child = getChildAt(childIndex);
+                    if (child != null) {
+                        child.setVisibility(hidden ? View.INVISIBLE : View.VISIBLE);
+                    }
+                }
+            } else if (getChildCount() > 4 && getChildAt(4) instanceof MiniClusterView) {
+                ((MiniClusterView) getChildAt(4)).setSlotHidden(appIndex - 3, hidden);
+            }
+        } else {
+            int childIndex = appIndex + 1;
+            if (childIndex < getChildCount()) {
+                View child = getChildAt(childIndex);
+                if (child != null) {
+                    child.setVisibility(hidden ? View.INVISIBLE : View.VISIBLE);
+                }
+            }
         }
     }
 
     public void clearHiddenPreviewSlots() {
-        if (getChildCount() > 4 && getChildAt(4) instanceof MiniClusterView) {
-            ((MiniClusterView) getChildAt(4)).clearHiddenSlots();
+        for (int i = 1; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child instanceof MiniClusterView) {
+                ((MiniClusterView) child).clearHiddenSlots();
+            } else if (child != null) {
+                child.setVisibility(View.VISIBLE);
+            }
         }
     }
 

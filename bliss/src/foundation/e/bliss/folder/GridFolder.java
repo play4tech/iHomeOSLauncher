@@ -26,9 +26,12 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowInsets;
@@ -92,13 +95,17 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
         mFolderTab = findViewById(R.id.folder_tab);
         mFolderName.setSelectAllOnFocus(false);
-        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22);
-
+        mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
+        mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
+        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        mFolderName.setShadowLayer(0, 0, 0, 0);
         mFooterHeight = getResources().getDimensionPixelSize(R.dimen.grid_folder_footer_height);
 
         DeviceProfile grid = mActivityContext.getDeviceProfile();
         int cellIconGap = (grid.folderCellWidthPx - mActivityContext.getDeviceProfile().iconSizePx);
         mContent.setPadding(cellIconGap, cellIconGap, cellIconGap, cellIconGap);
+        updateFolderNamePadding();
 
         int measureSpec = MeasureSpec.UNSPECIFIED;
         mFolderTab.measure(measureSpec, measureSpec);
@@ -134,7 +141,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
         mContent.setFixedSize(contentWidth, contentHeight);
         mContent.measure(contentAreaWidthSpec, contentAreaHeightSpec);
 
-        mFolderTab.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(mFolderTabHeight, MeasureSpec.EXACTLY));
+        mFolderTab.measure(contentAreaWidthSpec, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+        mFolderTabHeight = mFolderTab.getMeasuredHeight();
 
         mGridFolderPage.measure(contentAreaWidthSpec,
                 MeasureSpec.makeMeasureSpec(contentHeight + mFooterHeight, MeasureSpec.EXACTLY));
@@ -214,6 +222,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
             }
         }
 
+        updateFolderNamePadding();
         showOrHideDesktop(mLauncher, true);
         if (mLauncher.getWorkspace().isWobbling()) {
             wobbleFolder(true);
