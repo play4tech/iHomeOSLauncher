@@ -988,6 +988,30 @@ public class CellLayout extends ViewGroup {
         int[] centerPoint = mTmpPoint;
         getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
 
+        return calculateReorderRadius(targetCell, spanX, spanY, centerPoint, true);
+    }
+
+    /** Returns the outer horizontal edge of the first or last column's reorder rings. */
+    float getBoundaryReorderRingOuterX(boolean firstColumn) {
+        int cellX = firstColumn ? 0 : mCountX - 1;
+        float outerX = firstColumn ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
+        int[] targetCell = new int[]{cellX, 0};
+        int[] centerPoint = mTmpPoint;
+        for (int cellY = 0; cellY < mCountY; cellY++) {
+            // Empty cells have no active reorder ring and must not narrow the bezel zone.
+            if (getChildAt(cellX, cellY) == null) continue;
+            targetCell[1] = cellY;
+            getWorkspaceCellVisualCenter(cellX, cellY, centerPoint);
+            float radius = calculateReorderRadius(targetCell, 1, 1, centerPoint, false);
+            outerX = firstColumn ? Math.min(outerX, centerPoint[0] - radius)
+                    : Math.max(outerX, centerPoint[0] + radius);
+        }
+        return outerX;
+    }
+
+    private float calculateReorderRadius(int[] targetCell, int spanX, int spanY,
+            int[] centerPoint, boolean logGeometry) {
+
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
         cellBoundsWithSpacing.inset(-mBorderSpace.x / 2, -mBorderSpace.y / 2);
@@ -999,16 +1023,20 @@ public class CellLayout extends ViewGroup {
             minRadius = Math.min(minRadius, centerPoint[1] - cellBoundsWithSpacing.top);
             minRadius = Math.min(minRadius, cellBoundsWithSpacing.right - centerPoint[0]);
             minRadius = Math.min(minRadius, cellBoundsWithSpacing.bottom - centerPoint[1]);
-            logReorderDebugGeometry(targetCell, spanX, spanY, minRadius,
-                    centerPoint[0], centerPoint[1]);
+            if (logGeometry) {
+                logReorderDebugGeometry(targetCell, spanX, spanY, minRadius,
+                        centerPoint[0], centerPoint[1]);
+            }
             return minRadius;
         }
         // Take up the entire cell, including space between this cell and the adjacent ones.
         // Multiply by span to scale radius
         float radius = (float) Math.hypot(spanX * cellBoundsWithSpacing.width() / 2f,
                 spanY * cellBoundsWithSpacing.height() / 2f);
-        logReorderDebugGeometry(targetCell, spanX, spanY, radius,
-                centerPoint[0], centerPoint[1]);
+        if (logGeometry) {
+            logReorderDebugGeometry(targetCell, spanX, spanY, radius,
+                    centerPoint[0], centerPoint[1]);
+        }
         return radius;
     }
 

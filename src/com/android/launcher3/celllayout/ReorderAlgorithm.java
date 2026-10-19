@@ -165,6 +165,8 @@ public class ReorderAlgorithm {
 
         solution.intersectingViews = intersectingViews;
 
+        applyBoundaryHorizontalPreference(intersectingViews, occupiedRect, direction, solution);
+
         // First we try to find a solution which respects the push mechanic. That is,
         // we try to find a solution such that no displaced item travels through another item
         // without also displacing that item.
@@ -186,6 +188,79 @@ public class ReorderAlgorithm {
             }
         }
         return true;
+    }
+
+    /**
+     * Prefer shifting a displaced boundary item back into the same row when the proposed
+     * configuration contains a real contiguous slot for its full span. A full row keeps the
+     * existing vertical/cross-row fallback.
+     */
+    private void applyBoundaryHorizontalPreference(ArrayList<View> intersectingViews,
+            Rect dropRegion, int[] direction, ItemConfiguration solution) {
+        if (direction[0] == 0) return;
+
+        int countX = mCellLayout.getCountX();
+        for (View displacedView : intersectingViews) {
+            CellAndSpan displaced = solution.map.get(displacedView);
+            if (displaced == null) continue;
+
+            boolean rightBoundaryPush = direction[0] > 0
+                    && displaced.cellX + displaced.spanX == countX;
+            boolean leftBoundaryPush = direction[0] < 0 && displaced.cellX == 0;
+            if (!rightBoundaryPush && !leftBoundaryPush) continue;
+
+            int horizontalShift = rightBoundaryPush ? -1 : 1;
+            int availableCellX = findSameRowSlot(displacedView, displaced, horizontalShift,
+                    dropRegion, solution);
+            Log.d("ReorderDebug", "boundaryHorizontalPreference itemCell=(" + displaced.cellX
+                    + "," + displaced.cellY + ") span=(" + displaced.spanX + ","
+                    + displaced.spanY + ") directionBefore=(" + direction[0] + ","
+                    + direction[1] + ") sameRowSlotX=" + availableCellX + " dropRegion="
+                    + dropRegion);
+            if (availableCellX >= 0) {
+                mCellLayout.mTmpOccupied.markCells(displaced, false);
+                displaced.cellX = availableCellX;
+                mCellLayout.mTmpOccupied.markCells(displaced, true);
+                mCellLayout.mTmpOccupied.markCells(dropRegion, true);
+                intersectingViews.remove(displacedView);
+                direction[0] = horizontalShift;
+                direction[1] = 0;
+                Log.d("ReorderDebug", "boundaryHorizontalPreference applied directionAfter=("
+                        + direction[0] + "," + direction[1] + ") itemCellAfter=("
+                        + displaced.cellX + "," + displaced.cellY + ") remainingIntersecting="
+                        + intersectingViews.size());
+                return;
+            }
+        }
+    }
+
+    /** Returns a fitting free cell start on the same row, or -1 if none is available. */
+    private int findSameRowSlot(View displacedView, CellAndSpan displaced, int horizontalShift,
+            Rect dropRegion, ItemConfiguration solution) {
+        int firstCellX = horizontalShift < 0 ? 0 : displaced.cellX + 1;
+        int lastCellX = horizontalShift < 0 ? displaced.cellX - 1
+                : mCellLayout.getCountX() - displaced.spanX;
+
+        for (int candidateX = firstCellX; candidateX <= lastCellX; candidateX++) {
+            Rect candidate = new Rect(candidateX, displaced.cellY,
+                    candidateX + displaced.spanX, displaced.cellY + displaced.spanY);
+            if (Rect.intersects(candidate, dropRegion)) continue;
+
+            boolean occupied = false;
+            for (Entry<View, CellAndSpan> entry : solution.map.entrySet()) {
+                View otherView = entry.getKey();
+                if (otherView == displacedView) continue;
+                CellAndSpan other = entry.getValue();
+                Rect otherRect = new Rect(other.cellX, other.cellY,
+                        other.cellX + other.spanX, other.cellY + other.spanY);
+                if (Rect.intersects(candidate, otherRect)) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied) return candidateX;
+        }
+        return -1;
     }
 
     private boolean addViewToTempLocation(View v, Rect rectOccupiedByPotentialDrop, int[] direction,

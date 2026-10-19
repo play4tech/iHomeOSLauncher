@@ -3794,14 +3794,23 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         float relTouchX = d.x - screenLeft;
         float relCenterX = centerX - screenLeft;
 
-        // Edge gutter threshold: only trigger neighbor page snap when the user deliberately
-        // pushes into the screen edge gutter (<= 24dp from outer bezel).
-        // Inside Column 0 (center ~57dp, left bound 16dp) or Column 3, neither the finger
-        // nor the icon center can reach <= 24dp, keeping in-page reordering fully responsive.
-        float edgeGutter = getResources().getDisplayMetrics().density * 24f;
+        float density = getResources().getDisplayMetrics().density;
+        float edgeGutter = density * 24f;
+        float minimumBezelZone = density * 8f;
+        float leftReorderRingOuterX = leftLayout.getBoundaryReorderRingOuterX(true);
+        float rightReorderRingOuterX = rightLayout.getLeft() - screenLeft
+                + rightLayout.getBoundaryReorderRingOuterX(false);
+        // Keep page flips outside the boundary reorder rings whenever the rings fit on screen.
+        // If a ring reaches the physical edge, retain an 8dp bezel strip for deliberate paging.
+        float leftEdgeThreshold = Math.max(minimumBezelZone,
+                Math.min(edgeGutter, leftReorderRingOuterX - 1f));
+        float rightEdgeThreshold = Math.min(screenWidth - minimumBezelZone,
+                Math.max(screenWidth - edgeGutter, rightReorderRingOuterX + 1f));
 
-        boolean isAtLeftEdge = (relCenterX <= edgeGutter || relTouchX <= edgeGutter);
-        boolean isAtRightEdge = (relCenterX >= screenWidth - edgeGutter || relTouchX >= screenWidth - edgeGutter);
+        boolean isAtLeftEdge = (relCenterX <= leftEdgeThreshold
+                || relTouchX <= leftEdgeThreshold);
+        boolean isAtRightEdge = (relCenterX >= rightEdgeThreshold
+                || relTouchX >= rightEdgeThreshold);
         int[] workspaceScreenLocation = new int[2];
         getLocationOnScreen(workspaceScreenLocation);
         int[] dragLayerScreenLocation = new int[2];
@@ -3811,17 +3820,21 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         int[] rightPageScreenLocation = new int[2];
         rightLayout.getLocationOnScreen(rightPageScreenLocation);
         Log.d("ReorderDebug", "pageFlipGeometry page=" + nextPage + " density="
-                + getResources().getDisplayMetrics().density + " edgeGutterPx=" + edgeGutter
-                + " leftThresholdRawScreenPx=" + (leftPageScreenLocation[0] + edgeGutter)
+                + density + " edgeGutterPx=" + edgeGutter + " minimumBezelPx="
+                + minimumBezelZone + " leftReorderRingOuterX=" + leftReorderRingOuterX
+                + " rightReorderRingOuterX=" + rightReorderRingOuterX
+                + " leftThresholdRawScreenPx="
+                + (leftPageScreenLocation[0] + leftEdgeThreshold)
                 + " rightThresholdRawScreenPx="
-                + (rightPageScreenLocation[0] + rightLayout.getWidth() - edgeGutter)
+                + (leftPageScreenLocation[0] + rightEdgeThreshold)
                 + " pageBoundsRawScreenPx=[" + leftPageScreenLocation[0] + ","
                 + (rightPageScreenLocation[0] + rightLayout.getWidth()) + "] touchRawScreenPx=("
                 + (workspaceScreenLocation[0] + d.x) + "," + (workspaceScreenLocation[1] + d.y)
                 + ") centerRawScreenPx=(" + (dragLayerScreenLocation[0] + centerX) + ","
                 + (dragLayerScreenLocation[1] + mDragViewVisualCenter[1]) + ") relTouchX="
-                + relTouchX + " relCenterX=" + relCenterX + " isAtLeftEdge=" + isAtLeftEdge
-                + " isAtRightEdge=" + isAtRightEdge);
+                + relTouchX + " relCenterX=" + relCenterX + " leftEdgeThreshold="
+                + leftEdgeThreshold + " rightEdgeThreshold=" + rightEdgeThreshold
+                + " isAtLeftEdge=" + isAtLeftEdge + " isAtRightEdge=" + isAtRightEdge);
 
         IntSet pageIndexesToVerify = IntSet.wrap(nextPage - 1,
                 nextPage + (isTwoPanelEnabled() ? 2 : 1));
