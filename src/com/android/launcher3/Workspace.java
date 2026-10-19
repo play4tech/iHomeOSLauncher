@@ -3775,15 +3775,18 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         float density = getResources().getDisplayMetrics().density;
         float edgeGutter = density * 24f;
         float minimumBezelZone = density * 8f;
+        float reorderEdgeClearance = density * 24f;
         float leftReorderRingOuterX = leftLayout.getBoundaryReorderRingOuterX(true);
         float rightReorderRingOuterX = rightLayout.getLeft() - screenLeft
                 + rightLayout.getBoundaryReorderRingOuterX(false);
-        // Keep page flips outside the boundary reorder rings whenever the rings fit on screen.
-        // If a ring reaches the physical edge, retain an 8dp bezel strip for deliberate paging.
+        // Keep a full edge-clearance beyond boundary reorder rings so a slightly shaky drag can
+        // still show the reorder preview before it enters the page-flip zone. If the rings leave
+        // less room, retain an 8dp bezel strip for deliberate paging.
         float leftEdgeThreshold = Math.max(minimumBezelZone,
-                Math.min(edgeGutter, leftReorderRingOuterX - 1f));
+                Math.min(edgeGutter, leftReorderRingOuterX - reorderEdgeClearance));
         float rightEdgeThreshold = Math.min(screenWidth - minimumBezelZone,
-                Math.max(screenWidth - edgeGutter, rightReorderRingOuterX + 1f));
+                Math.max(screenWidth - edgeGutter,
+                        rightReorderRingOuterX + reorderEdgeClearance));
 
         boolean isAtLeftEdge = (relCenterX <= leftEdgeThreshold
                 || relTouchX <= leftEdgeThreshold);

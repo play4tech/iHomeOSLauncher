@@ -973,8 +973,12 @@ public class CellLayout extends ViewGroup {
     public float getFolderCreationRadius(int[] targetCell) {
         DeviceProfile grid = mActivity.getDeviceProfile();
         float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
-        // Halfway between reorder radius and icon.
-        float folderRadius = (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
+        // Keep folder creation inside the normal reorder ring. Boundary cells get a wider
+        // reorder-only margin so a drag does not need to land on a narrow pixel band.
+        int[] centerPoint = mTmpPoint;
+        getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
+        float reorderRadius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
+        float folderRadius = (reorderRadius + iconVisibleRadius) / 2;
         return folderRadius;
     }
 
@@ -984,8 +988,9 @@ public class CellLayout extends ViewGroup {
     public float getReorderRadius(int[] targetCell, int spanX, int spanY) {
         int[] centerPoint = mTmpPoint;
         getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
-
-        return calculateReorderRadius(targetCell, spanX, spanY, centerPoint);
+        float radius = calculateReorderRadius(targetCell, spanX, spanY, centerPoint);
+        return radius + getBoundaryReorderRadiusExtension(targetCell, spanX, spanY,
+                centerPoint, radius);
     }
 
     /** Returns the outer horizontal edge of the first or last column's reorder rings. */
@@ -999,11 +1004,34 @@ public class CellLayout extends ViewGroup {
             if (getChildAt(cellX, cellY) == null) continue;
             targetCell[1] = cellY;
             getWorkspaceCellVisualCenter(cellX, cellY, centerPoint);
-            float radius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
+            float baseRadius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
+            float radius = baseRadius + getBoundaryReorderRadiusExtension(targetCell, 1, 1,
+                    centerPoint, baseRadius);
             outerX = firstColumn ? Math.min(outerX, centerPoint[0] - radius)
                     : Math.max(outerX, centerPoint[0] + radius);
         }
         return outerX;
+    }
+
+    /**
+     * Extends reorder hit targets for folderable icons at the workspace edges. The folder hit
+     * radius stays unchanged, preserving a clear center target for folder creation.
+     */
+    private float getBoundaryReorderRadiusExtension(int[] targetCell, int spanX, int spanY,
+            int[] centerPoint, float baseRadius) {
+        if (spanX != 1 || spanY != 1
+                || (targetCell[0] != 0 && targetCell[0] != mCountX - 1)
+                || !canCreateFolder(getChildAt(targetCell[0], targetCell[1]))) {
+            return 0;
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        float desiredExtension = 12f * density;
+        float minimumEdgeInset = 8f * density;
+        float spaceToScreenEdge = targetCell[0] == 0
+                ? centerPoint[0] - baseRadius
+                : getWidth() - centerPoint[0] - baseRadius;
+        return Math.max(0, Math.min(desiredExtension, spaceToScreenEdge - minimumEdgeInset));
     }
 
     private float calculateReorderRadius(int[] targetCell, int spanX, int spanY,
