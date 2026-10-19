@@ -16,6 +16,7 @@
 package com.android.launcher3.celllayout;
 
 import android.graphics.Rect;
+import android.util.Log;
 import android.view.View;
 
 import com.android.launcher3.CellLayout;
@@ -575,6 +576,12 @@ public class ReorderAlgorithm {
         } else {
             computeDirectionVector(deltaX, deltaY, resultDirection);
         }
+        Log.d("ReorderDebug", "directionVector targetCell=(" + targetDestination[0] + ","
+                + targetDestination[1] + ") dragCenterPx=(" + reorderParameters.getPixelX() + ","
+                + reorderParameters.getPixelY() + ") span=(" + reorderParameters.getSpanX() + ","
+                + reorderParameters.getSpanY() + ") dropRegion=" + dropRegionRect + " delta=("
+                + deltaX + "," + deltaY + ") vector=(" + resultDirection[0] + ","
+                + resultDirection[1] + ")");
     }
 
     /**
@@ -628,6 +635,12 @@ public class ReorderAlgorithm {
                 // and that passed in.
                 int curDirectionScore =
                         direction[0] * curDirection[0] + direction[1] * curDirection[1];
+                Log.d("ReorderDebug", "reorderCandidate cell=(" + x + "," + y + ") span=("
+                        + spanX + "," + spanY + ") originCell=(" + cellX + "," + cellY
+                        + ") direction=(" + direction[0] + "," + direction[1]
+                        + ") candidateDirection=(" + curDirection[0] + "," + curDirection[1]
+                        + ") distanceCells=" + distance + " directionScore=" + curDirectionScore
+                        + " bestBefore=(" + bestXY[0] + "," + bestXY[1] + ")");
                 if (Float.compare(distance, bestDistance) < 0 || (Float.compare(distance,
                         bestDistance) == 0 && curDirectionScore > bestDirectionScore)) {
                     bestDistance = distance;
@@ -643,6 +656,9 @@ public class ReorderAlgorithm {
             bestXY[0] = -1;
             bestXY[1] = -1;
         }
+        Log.d("ReorderDebug", "reorderResult originCell=(" + cellX + "," + cellY + ") result=("
+                + bestXY[0] + "," + bestXY[1] + ") distanceCells=" + bestDistance
+                + " directionScore=" + bestDirectionScore);
         return bestXY;
     }
 }
