@@ -15,26 +15,16 @@
  */
 package com.android.launcher3.celllayout;
 
-import static com.android.launcher3.CellLayout.MODE_ON_DROP;
-
 import android.graphics.Rect;
 import android.view.View;
 
 import com.android.launcher3.CellLayout;
-import com.android.launcher3.Launcher;
-import com.android.launcher3.LauncherSettings;
-import com.android.launcher3.Workspace;
-import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.util.CellAndSpan;
 import com.android.launcher3.util.GridOccupancy;
-import com.android.launcher3.views.ActivityContext;
-import com.android.launcher3.widget.LauncherAppWidgetHostView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -45,18 +35,11 @@ import java.util.Map.Entry;
  */
 public class ReorderAlgorithm {
 
-    private static final boolean DEBUG = false;
-
     CellLayout mCellLayout;
-    private boolean mIsWidget;
 
     public ReorderAlgorithm(CellLayout cellLayout) {
         mCellLayout = cellLayout;
     }
-
-    private final ArrayList<View> mIntersectingViews = new ArrayList<>();
-
-    private final Rect mOccupiedRect = new Rect();
 
     /**
      * This method differs from closestEmptySpaceReorder and dropInPlaceSolution because this method
@@ -90,10 +73,6 @@ public class ReorderAlgorithm {
      */
     public ItemConfiguration findReorderSolution(ReorderParameters reorderParameters,
             int[] direction, boolean decX) {
-        mIsWidget = Workspace.isWidget
-                || reorderParameters.getSpanX() > 1
-                || reorderParameters.getSpanY() > 1
-                || (reorderParameters.getDragView() instanceof LauncherAppWidgetHostView);
         return findReorderSolutionRecursive(reorderParameters.getPixelX(),
                 reorderParameters.getPixelY(), reorderParameters.getMinSpanX(),
                 reorderParameters.getMinSpanY(), reorderParameters.getSpanX(),
@@ -106,7 +85,6 @@ public class ReorderAlgorithm {
             ItemConfiguration solution) {
         // Copy the current state into the solution. This solution will be manipulated as necessary.
         mCellLayout.copyCurrentStateToSolution(solution);
-        solution.overflowViews.clear();
         // Copy the current occupied array into the temporary occupied array. This array will be
         // manipulated as necessary to find a solution.
         mCellLayout.getOccupied().copyTo(mCellLayout.mTmpOccupied);
@@ -119,164 +97,37 @@ public class ReorderAlgorithm {
         boolean success;
         // First we try the exact nearest position of the item being dragged,
         // we will then want to try to move this around to other neighbouring positions
-        boolean isWidgetDrag = isWidget() || spanX > 1 || spanY > 1
-                || (dragView instanceof LauncherAppWidgetHostView);
+        success = rearrangementExists(result[0], result[1], spanX, spanY, direction, dragView,
+                solution);
 
-        if (isWidgetDrag && result[0] >= 0 && reflowIconsAroundWidget(result[0], result[1], spanX, spanY,
-                dragView, solution)) {
-            mIntersectingViews.clear();          // rearrangementExists() -> true
-            solution.intersectingViews = new ArrayList<>();
+        if (!success) {
+            // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
+            // x, then 1 in y etc.
+            if (spanX > minSpanX && (minSpanY == spanY || decX)) {
+                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
+                        spanY, direction, dragView, false, solution);
+            } else if (spanY > minSpanY) {
+                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
+                        spanY - 1, direction, dragView, true, solution);
+            }
+            solution.isSolution = false;
+        } else {
             solution.isSolution = true;
             solution.cellX = result[0];
             solution.cellY = result[1];
             solution.spanX = spanX;
             solution.spanY = spanY;
-            return solution;
         }
-
-        // 2D Spatial Grid Reflow Solver
-        SpatialGridSolver.Solution solverSolution = SpatialGridSolver.solve(
-                mCellLayout,
-                result[0], result[1],
-                spanX, spanY,
-                direction,
-                dragView,
-                isWidgetDrag
-        );
-
-        if (solverSolution.isSolution()) {
-            solution.map.clear();
-            for (Map.Entry<View, CellAndSpan> entry : solverSolution.getPlacements().entrySet()) {
-                solution.map.put(entry.getKey(), entry.getValue());
-            }
-            if (dragView != null) {
-                solution.map.put(dragView, new CellAndSpan(result[0], result[1], spanX, spanY));
-            }
-            solution.intersectingViews = new ArrayList<>(solverSolution.getDisplacedViews());
-            mIntersectingViews.clear();
-            mIntersectingViews.addAll(solverSolution.getDisplacedViews());
-            solution.cellX = result[0];
-            solution.cellY = result[1];
-            solution.spanX = spanX;
-            solution.spanY = spanY;
-            solution.isSolution = true;
-            updateTmpOccupiedForReflow(result[0], result[1], spanX, spanY, dragView, solution);
-            return solution;
-        }
-
-        // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
-        // x, then 1 in y etc.
-        if (spanX > minSpanX && (minSpanY == spanY || decX)) {
-            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
-                    spanY, direction, dragView, false, solution);
-        } else if (spanY > minSpanY) {
-            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
-                    spanY - 1, direction, dragView, true, solution);
-        }
-        solution.isSolution = false;
         return solution;
     }
 
-    /**
-     * iOS-style placement of a widget at (cellX, cellY, spanX, spanY).
-     * Icons flow in reading order around widgets / non-reorderable items. Only icons from the first
-     * displaced one onward move. Icons that run off the end of the grid go to solution.overflowViews.
-     *
-     * @return false (solution untouched) if the rect is out of bounds or collides with another
-     *         widget / fixed item. The caller then falls back to the legacy push.
-     */
-    private boolean reflowIconsAroundWidget(int cellX, int cellY, int spanX, int spanY,
-            View dragView, ItemConfiguration solution) {
-        final int countX = mCellLayout.getCountX();
-        final int countY = mCellLayout.getCountY();
-        if (cellX < 0 || cellY < 0 || cellX + spanX > countX || cellY + spanY > countY) {
-            return false;
-        }
-
-        final boolean[][] blocked = new boolean[countX][countY];
-        for (int x = cellX; x < cellX + spanX; x++) {
-            for (int y = cellY; y < cellY + spanY; y++) blocked[x][y] = true;
-        }
-
-        final ArrayList<View> icons = new ArrayList<>();
-        for (Map.Entry<View, CellAndSpan> e : solution.map.entrySet()) {
-            View child = e.getKey();
-            if (child == dragView) continue;
-            CellAndSpan c = e.getValue();
-            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
-            boolean fixed = c.spanX > 1 || c.spanY > 1 || !lp.canReorder
-                    || child instanceof LauncherAppWidgetHostView;
-            if (fixed) {
-                for (int x = c.cellX; x < c.cellX + c.spanX; x++) {
-                    for (int y = c.cellY; y < c.cellY + c.spanY; y++) {
-                        if (x < 0 || y < 0 || x >= countX || y >= countY) continue;
-                        if (blocked[x][y]) return false;   // collides with the dropped widget
-                        blocked[x][y] = true;
-                    }
-                }
-            } else {
-                icons.add(child);
-            }
-        }
-
-        icons.sort(Comparator
-                .comparingInt((View v) -> solution.map.get(v).cellY)
-                .thenComparingInt(v -> solution.map.get(v).cellX));
-
-        // First icon sitting under the widget.
-        int first = -1;
-        for (int i = 0; i < icons.size(); i++) {
-            CellAndSpan c = solution.map.get(icons.get(i));
-            if (blocked[c.cellX][c.cellY]) { first = i; break; }
-        }
-        if (first < 0) {
-            updateTmpOccupiedForReflow(cellX, cellY, spanX, spanY, dragView, solution);
-            return true;   // nothing displaced
-        }
-
-        final int total = countX * countY;
-        CellAndSpan start = solution.map.get(icons.get(first));
-        int cursor = start.cellY * countX + start.cellX;
-
-        for (int i = first; i < icons.size(); i++) {
-            View icon = icons.get(i);
-            while (cursor < total && blocked[cursor % countX][cursor / countX]) cursor++;
-            if (cursor >= total) {
-                // Out of room: this and every following icon overflow, order preserved.
-                for (int j = i; j < icons.size(); j++) {
-                    View o = icons.get(j);
-                    solution.map.remove(o);
-                    solution.overflowViews.add(o);
-                }
-                break;
-            }
-            CellAndSpan c = solution.map.get(icon);
-            c.cellX = cursor % countX;
-            c.cellY = cursor / countX;
-            cursor++;
-        }
-        updateTmpOccupiedForReflow(cellX, cellY, spanX, spanY, dragView, solution);
-        return true;
-    }
-
-    private void updateTmpOccupiedForReflow(int cellX, int cellY, int spanX, int spanY,
-            View dragView, ItemConfiguration solution) {
-        mCellLayout.mTmpOccupied.clear();
-        for (Map.Entry<View, CellAndSpan> entry : solution.map.entrySet()) {
-            if (entry.getKey() != dragView) {
-                CellAndSpan c = entry.getValue();
-                mCellLayout.mTmpOccupied.markCells(c.cellX, c.cellY, c.spanX, c.spanY, true);
-            }
-        }
-        mCellLayout.mTmpOccupied.markCells(cellX, cellY, spanX, spanY, true);
-    }
-
-    private boolean intersectingViewsExists(int cellX, int cellY, int spanX, int spanY, int[] direction,
+    private boolean rearrangementExists(int cellX, int cellY, int spanX, int spanY, int[] direction,
             View ignoreView, ItemConfiguration solution) {
         // Return early if get invalid cell positions
         if (cellX < 0 || cellY < 0) return false;
-        mIntersectingViews.clear();
-        mOccupiedRect.set(cellX, cellY, cellX + spanX, cellY + spanY);
+
+        ArrayList<View> intersectingViews = new ArrayList<>();
+        Rect occupiedRect = new Rect(cellX, cellY, cellX + spanX, cellY + spanY);
 
         // Mark the desired location of the view currently being dragged.
         if (ignoreView != null) {
@@ -304,68 +155,37 @@ public class ReorderAlgorithm {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
             r1.set(c.cellX, c.cellY, c.cellX + c.spanX, c.cellY + c.spanY);
             if (Rect.intersects(r0, r1)) {
-                mIntersectingViews.add(child);
+                if (!lp.canReorder) {
+                    return false;
+                }
+                intersectingViews.add(child);
             }
         }
 
-        solution.intersectingViews = new ArrayList<>(mIntersectingViews);
+        solution.intersectingViews = intersectingViews;
 
-        return !mIntersectingViews.isEmpty();
-
-    }
-
-    public boolean rearrangementExists(int[] direction, View ignoreView, ItemConfiguration solution) {
-        if (mIntersectingViews.isEmpty()) return true;
-
-        for (View child : mIntersectingViews) {
-            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
-            if (!lp.canReorder || (!isWidget() && child instanceof LauncherAppWidgetHostView)) {
-                return false;
-            }
-        }
-
-        final Map<View, int[]> snap = snapshot(solution);
-
-        if (mIntersectingViews.size() == 1 || isWidget()) {
-            if (attemptPushInDirection(mIntersectingViews, mOccupiedRect, direction, ignoreView,
-                    solution)) {
-                return true;
-            }
-            restore(solution, snap);
-        }
-        if (addViewsToTempLocation(mIntersectingViews, mOccupiedRect, direction, ignoreView,
+        // First we try to find a solution which respects the push mechanic. That is,
+        // we try to find a solution such that no displaced item travels through another item
+        // without also displacing that item.
+        if (attemptPushInDirection(intersectingViews, occupiedRect, direction, ignoreView,
                 solution)) {
             return true;
         }
-        restore(solution, snap);
 
-        for (View v : mIntersectingViews) {
-            if (!addViewToTempLocation(v, mOccupiedRect, direction, solution)) {
-                restore(solution, snap);
+        // Next we try moving the views as a block, but without requiring the push mechanic.
+        if (addViewsToTempLocation(intersectingViews, occupiedRect, direction, ignoreView,
+                solution)) {
+            return true;
+        }
+
+        // Ok, they couldn't move as a block, let's move them individually
+        for (View v : intersectingViews) {
+            if (!addViewToTempLocation(v, occupiedRect, direction, solution)) {
                 return false;
             }
         }
         return true;
     }
-
-    private static Map<View, int[]> snapshot(ItemConfiguration s) {
-        Map<View, int[]> m = new HashMap<>();
-        for (Map.Entry<View, CellAndSpan> e : s.map.entrySet()) {
-            CellAndSpan c = e.getValue();
-            m.put(e.getKey(), new int[]{c.cellX, c.cellY, c.spanX, c.spanY});
-        }
-        return m;
-    }
-
-    private static void restore(ItemConfiguration s, Map<View, int[]> snap) {
-        for (Map.Entry<View, int[]> e : snap.entrySet()) {
-            CellAndSpan c = s.map.get(e.getKey());
-            if (c == null) continue;
-            int[] v = e.getValue();
-            c.cellX = v[0]; c.cellY = v[1]; c.spanX = v[2]; c.spanY = v[3];
-        }
-    }
-
 
     private boolean addViewToTempLocation(View v, Rect rectOccupiedByPotentialDrop, int[] direction,
             ItemConfiguration currentState) {
@@ -376,17 +196,6 @@ public class ReorderAlgorithm {
 
         int[] tmpLocation = findNearestArea(c.cellX, c.cellY, c.spanX, c.spanY, direction,
                 mCellLayout.mTmpOccupied.cells, null, new int[2]);
-
-        // Guard against distant teleportation: for 1x1 icons, only allow displacement
-        // to an immediately adjacent cell (Euclidean distance <= 1.5f, i.e. 1 cell away).
-        // Never allow distant vacant cell hunting that teleports icons across the screen.
-        if (tmpLocation[0] >= 0 && tmpLocation[1] >= 0) {
-            float dist = (float) Math.hypot(tmpLocation[0] - c.cellX, tmpLocation[1] - c.cellY);
-            if (c.spanX == 1 && c.spanY == 1 && dist > 1.5f) {
-                tmpLocation[0] = -1;
-                tmpLocation[1] = -1;
-            }
-        }
 
         if (tmpLocation[0] >= 0 && tmpLocation[1] >= 0) {
             c.cellX = tmpLocation[0];
@@ -399,9 +208,6 @@ public class ReorderAlgorithm {
 
     private boolean pushViewsToTempLocation(ArrayList<View> views, Rect rectOccupiedByPotentialDrop,
             int[] direction, View dragView, ItemConfiguration currentState) {
-
-        int countX = mCellLayout.getCountX();
-        int countY = mCellLayout.getCountY();
 
         ViewCluster cluster = new ViewCluster(mCellLayout, views, currentState);
         Rect clusterRect = cluster.getBoundingRect();
@@ -446,48 +252,11 @@ public class ReorderAlgorithm {
         // left edge, we consider sort the views by their right edge, from right to left.
         cluster.sortConfigurationForEdgePush(whichEdge);
 
-        if (!isWidget()) {
-            if (whichEdge == ViewCluster.LEFT) {
-                //order by row desc
-                currentState.sortedViews.sort((lhs, rhs) -> {
-                    CellLayoutLayoutParams lplhs = (CellLayoutLayoutParams) lhs.getLayoutParams();
-                    CellLayoutLayoutParams lprhs = (CellLayoutLayoutParams) rhs.getLayoutParams();
-                    if (lprhs.getCellY() + lprhs.cellVSpan == lplhs.getCellY() + lplhs.cellVSpan) {
-                        return lprhs.getCellX() - lplhs.getCellX();
-                    }
-                    return (lprhs.getCellY() + lprhs.cellVSpan) - (lplhs.getCellY() + lplhs.cellVSpan);
-                });
-
-            } else if (whichEdge == ViewCluster.RIGHT) {
-                //order by row asc
-                currentState.sortedViews.sort((lhs, rhs) -> {
-                    CellLayoutLayoutParams lplhs = (CellLayoutLayoutParams) lhs.getLayoutParams();
-                    CellLayoutLayoutParams lprhs = (CellLayoutLayoutParams) rhs.getLayoutParams();
-                    if (lplhs.getCellY() + lplhs.cellVSpan == lprhs.getCellY() + lprhs.cellVSpan) {
-                        return lplhs.getCellX() - lprhs.getCellX();
-                    }
-                    return (lplhs.getCellY() + lplhs.cellVSpan) - (lprhs.getCellY() + lprhs.cellVSpan);
-                });
-            }
-
-            if (cluster.views.size() == 1) {
-                View v = cluster.views.get(0);
-                CellAndSpan c = currentState.map.get(v);
-                mCellLayout.pushIconByRow(c, countX, countY, whichEdge);
-            }
-        }
-
         while (pushDistance > 0 && !fail) {
             for (View v : currentState.sortedViews) {
                 // For each view that isn't in the cluster, we see if the leading edge of the
                 // cluster is contacting the edge of that view. If so, we add that view to the
                 // cluster.
-                if (!isWidget()) {
-                    if (v instanceof LauncherAppWidgetHostView) {
-                        fail = true;
-                        break;
-                    }
-                }
                 if (!cluster.views.contains(v) && v != dragView) {
                     if (cluster.isViewTouchingEdge(v, whichEdge)) {
                         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) v.getLayoutParams();
@@ -501,9 +270,6 @@ public class ReorderAlgorithm {
 
                         // Adding view to cluster, mark it as not occupied.
                         mCellLayout.mTmpOccupied.markCells(c, false);
-                        if (!isWidget()) {
-                            mCellLayout.pushIconByRow(c, countX, countY, whichEdge);
-                        }
                     }
                 }
             }
@@ -544,93 +310,36 @@ public class ReorderAlgorithm {
     // to push items in each of the cardinal directions, in an order based on the direction vector
     // passed.
     private boolean attemptPushInDirection(ArrayList<View> intersectingViews, Rect occupied,
-                                           int[] direction, View ignoreView, ItemConfiguration solution) {
+            int[] direction, View ignoreView, ItemConfiguration solution) {
         if ((Math.abs(direction[0]) + Math.abs(direction[1])) > 1) {
             // If the direction vector has two non-zero components, we try pushing
             // separately in each of the components.
-            int temp = direction[1];
-            direction[1] = 0;
-
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
+            int temp;
+            for (int j = 0; j < 2; j++) {
+                for (int i = 1; i >= 0; i--) {
+                    temp = direction[i];
+                    direction[i] = 0;
+                    if (pushViewsToTempLocation(intersectingViews, occupied, direction, ignoreView,
+                            solution)) {
+                        return true;
+                    }
+                    direction[i] = temp;
+                }
+                revertDir(direction);
             }
-            direction[1] = temp;
-            temp = direction[0];
-            direction[0] = 0;
-
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // Revert the direction
-            direction[0] = temp;
-
-            // Now we try pushing in each component of the opposite direction
-            direction[0] *= -1;
-            direction[1] *= -1;
-            temp = direction[1];
-            direction[1] = 0;
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-
-            direction[1] = temp;
-            temp = direction[0];
-            direction[0] = 0;
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // revert the direction
-            direction[0] = temp;
-            direction[0] *= -1;
-            direction[1] *= -1;
-
         } else {
             // If the direction vector has a single non-zero component, we push first in the
             // direction of the vector
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // Then we try the opposite direction
-            direction[0] *= -1;
-            direction[1] *= -1;
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // Switch the direction back
-            direction[0] *= -1;
-            direction[1] *= -1;
-
-            // If we have failed to find a push solution with the above, then we try
-            // to find a solution by pushing along the perpendicular axis.
-
-            // Swap the components
-            if (isWidget()) {
-                int temp = direction[1];
-                direction[1] = direction[0];
-                direction[0] = temp;
-                if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                        ignoreView, solution)) {
-                    return true;
+            int temp;
+            for (int j = 0; j < 2; j++) {
+                for (int i = 0; i < 2; i++) {
+                    if (pushViewsToTempLocation(intersectingViews, occupied, direction, ignoreView,
+                            solution)) {
+                        return true;
+                    }
+                    revertDir(direction);
                 }
-
-                // Then we try the opposite direction
-                direction[0] *= -1;
-                direction[1] *= -1;
-                if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                        ignoreView, solution)) {
-                    return true;
-                }
-                // Switch the direction back
-                direction[0] *= -1;
-                direction[1] *= -1;
-
-                // Swap the components back
+                // Swap the components
                 temp = direction[1];
                 direction[1] = direction[0];
                 direction[0] = temp;
@@ -719,15 +428,18 @@ public class ReorderAlgorithm {
 
     private boolean isConfigurationRegionOccupied(Rect region, ItemConfiguration configuration,
             View ignoreView) {
-        for (Map.Entry<View, CellAndSpan> entry : configuration.map.entrySet()) {
-            if (entry.getKey() == ignoreView) continue;
-            CellAndSpan cs = entry.getValue();
-            if (Math.max(region.left, cs.cellX) < Math.min(region.right, cs.cellX + cs.spanX)
-                    && Math.max(region.top, cs.cellY) < Math.min(region.bottom, cs.cellY + cs.spanY)) {
-                return true;
-            }
-        }
-        return false;
+        return configuration.map
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getKey() != ignoreView)
+                .map(Entry::getValue)
+                .anyMatch(cellAndSpan -> region.intersect(
+                        cellAndSpan.cellX,
+                        cellAndSpan.cellY,
+                        cellAndSpan.cellX + cellAndSpan.spanX,
+                        cellAndSpan.cellY + cellAndSpan.spanY
+                        )
+                );
     }
 
     /**
@@ -766,99 +478,24 @@ public class ReorderAlgorithm {
      * the locations they should be in the given solution.
      */
     public ItemConfiguration calculateReorder(ReorderParameters reorderParameters) {
-        mIsWidget = Workspace.isWidget
-                || reorderParameters.getSpanX() > 1
-                || reorderParameters.getSpanY() > 1
-                || (reorderParameters.getDragView() instanceof LauncherAppWidgetHostView);
-        if (mCellLayout.mDirectionVector[0] == 0 && mCellLayout.mDirectionVector[1] == 0) {
-            getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
-        }
-
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "calculateReorder START pixelXY=(" +
-                    reorderParameters.getPixelX() + "," + reorderParameters.getPixelY() + ")" +
-                    " span=(" + reorderParameters.getSpanX() + "," + reorderParameters.getSpanY() + ")");
-
-            StringBuilder occupiedLog = new StringBuilder("mOccupied grid:\n");
-            for (int row = 0; row < mCellLayout.getCountY(); row++) {
-                occupiedLog.append("  row").append(row).append(": ");
-                for (int col = 0; col < mCellLayout.getCountX(); col++) {
-                    occupiedLog.append(mCellLayout.isOccupied(col, row) ? "X" : ".").append(" ");
-                }
-                occupiedLog.append("\n");
-            }
-            android.util.Log.d("ReorderDebug", occupiedLog.toString());
-        }
-
-        boolean isInternalDrag = reorderParameters.getDragView() != null
-                && reorderParameters.getDragView().getParent() == mCellLayout.getShortcutsAndWidgets();
-        if (!isInternalDrag && !isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "calculateReorder: NO EMPTY CELL FOUND -> returning no-solution");
-            }
-            ItemConfiguration solution = new ItemConfiguration();
-            solution.cellX = solution.cellY = solution.spanX = solution.spanY = -1;
-            solution.isSolution = false;
-            return solution;
-        }
-
+        getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
 
         ItemConfiguration dropInPlaceSolution = dropInPlaceSolution(reorderParameters);
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "dropInPlaceSolution: isSolution=" + dropInPlaceSolution.isSolution
-                    + " cell=(" + dropInPlaceSolution.cellX + "," + dropInPlaceSolution.cellY + ")");
-        }
-
-        // When the target cell is unoccupied, place the app directly there without rearranging other views
-        if (dropInPlaceSolution.isSolution) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: dropInPlaceSolution -> Cell("
-                        + dropInPlaceSolution.cellX + "," + dropInPlaceSolution.cellY + ")");
-            }
-            return dropInPlaceSolution;
-        }
 
         // Find a solution involving pushing / displacing any items in the way
         ItemConfiguration swapSolution = findReorderSolution(reorderParameters, true);
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "swapSolution:        isSolution=" + swapSolution.isSolution
-                    + " cell=(" + swapSolution.cellX + "," + swapSolution.cellY + ")"
-                    + " area=" + swapSolution.area());
-        }
-
-        // iOS behaviour: a widget dropped on icons pushes them, it does not hop to the nearest hole.
-        if (isWidget() && swapSolution.isSolution) {
-            return swapSolution;
-        }
 
         // We attempt the approach which doesn't shuffle views at all
         ItemConfiguration closestSpaceSolution = closestEmptySpaceReorder(reorderParameters);
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "closestSpaceSolution: isSolution=" + closestSpaceSolution.isSolution
-                    + " cell=(" + closestSpaceSolution.cellX + "," + closestSpaceSolution.cellY + ")"
-                    + " area=" + closestSpaceSolution.area());
-        }
 
         // If the reorder solution requires resizing (shrinking) the item being dropped, we instead
         // favor a solution in which the item is not resized, but
         if (swapSolution.isSolution && swapSolution.area() >= closestSpaceSolution.area()) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: swapSolution -> Cell(" + swapSolution.cellX + "," + swapSolution.cellY + ")");
-            }
             return swapSolution;
         } else if (closestSpaceSolution.isSolution) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: closestSpaceSolution -> Cell(" + closestSpaceSolution.cellX + "," + closestSpaceSolution.cellY + ")");
-            }
             return closestSpaceSolution;
-        } else if (swapSolution.isSolution) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: swapSolution (fallback) -> Cell(" + swapSolution.cellX + "," + swapSolution.cellY + ")");
-            }
-            return swapSolution;
-        }
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "CHOSEN: null (no solution found)");
+        } else if (dropInPlaceSolution.isSolution) {
+            return dropInPlaceSolution;
         }
         return null;
     }
@@ -1008,15 +645,4 @@ public class ReorderAlgorithm {
         }
         return bestXY;
     }
-
-    public boolean isWidget() {
-        return mIsWidget || Workspace.isWidget || (mOccupiedRect != null && (mOccupiedRect.width() > 1 || mOccupiedRect.height() > 1));
-    }
-
-
-
-    public Workspace<?> getWorkspace() {
-        return Launcher.cast(mCellLayout.mActivity).getWorkspace();
-    }
-
 }

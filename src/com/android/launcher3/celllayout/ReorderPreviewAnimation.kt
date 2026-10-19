@@ -102,7 +102,6 @@ class ReorderPreviewAnimation<T>(
     }
 
     fun animate() {
-        if (MultiModeController.isSingleLayerMode) return;
         val noMovement = finalDeltaX == 0f && finalDeltaY == 0f
         if (shakeAnimators.containsKey(child)) {
             val oldAnimation: ReorderPreviewAnimation<T>? = shakeAnimators.remove(child)

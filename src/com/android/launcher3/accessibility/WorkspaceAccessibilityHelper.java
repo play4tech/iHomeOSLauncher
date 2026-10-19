@@ -141,6 +141,9 @@ public class WorkspaceAccessibilityHelper extends DragAndDropAccessibilityDelega
     }
 
     public static String getDescriptionForDropOver(View overChild, Context context) {
+        if (overChild == null || !(overChild.getTag() instanceof ItemInfo)) {
+            return "";
+        }
         ItemInfo info = (ItemInfo) overChild.getTag();
         if (info instanceof WorkspaceItemInfo) {
             return context.getString(R.string.create_folder_with, info.title);

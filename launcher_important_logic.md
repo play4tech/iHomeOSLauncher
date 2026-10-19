@@ -6509,7 +6509,7 @@ public class SettingsActivity extends FragmentActivity
 # src/com/android/launcher3/Workspace.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
-**Lines**: 5302 | **Bytes**: 230659
+**Lines**: 5210 | **Bytes**: 226416
 
 ```java
 /*
@@ -6783,14 +6783,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     final WallpaperOffsetInterpolator mWallpaperOffset;
     private boolean mUnlockWallpaperFromDefaultPageOnLayout;
 
-    public static final int REORDER_TIMEOUT = 35;
+    public static final int REORDER_TIMEOUT = 250;
     protected final Alarm mReorderAlarm = new Alarm();
-    public static final int FOLDER_CREATION_TIMEOUT = 650;
-    protected final Alarm mFolderCreationAlarm = new Alarm();
-    public static final int REVERT_TIMEOUT = 150;
-    protected final Alarm mRevertAlarm = new Alarm();
     private final float[] mPrevDragViewVisualCenter = new float[]{-1f, -1f};
-    private View mPendingFolderDragOverView = null;
+    private View mDragOverView = null;
     private PreviewBackground mFolderCreateBg;
     private FolderIcon mDragOverFolderIcon = null;
     private boolean mCreateUserFolderOnDrop = false;
@@ -7183,7 +7179,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             }
         });
 
-        mRevertAlarm.cancelAlarm();
         mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         mDragInfo = null;
         mDragSourceInternal = null;
@@ -9278,16 +9273,25 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         return willCreateUserFolder(info, dropOverView, considerTimeout);
     }
 
+    private static boolean willAcceptItem(Object o) {
+        if (o instanceof WorkspaceItemInfo) {
+            WorkspaceItemInfo info = (WorkspaceItemInfo) o;
+            return info.container != LauncherSettings.Favorites.CONTAINER_HOTSEAT_PREDICTION
+                    && (info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION
+                    || info.itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT);
+        } else if (o instanceof ItemInfo) {
+            ItemInfo info = (ItemInfo) o;
+            return info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPLICATION
+                    || info.itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT;
+        }
+        return false;
+    }
+
     boolean willCreateUserFolder(ItemInfo info, View dropOverView, boolean considerTimeout) {
-        if (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty()) {
-            return false;
-        }
-        if (mDragMode == DRAG_MODE_REORDER) {
-            return false;
-        }
         if (dropOverView != null) {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) dropOverView.getLayoutParams();
-            if (lp.getTmpCellX() != lp.getCellX() || lp.getTmpCellY() != lp.getCellY()) {
+            if (lp.useTmpCoords && (lp.getTmpCellX() != lp.getCellX()
+                    || lp.getTmpCellY() != lp.getCellY())) {
                 return false;
             }
         }
@@ -9301,12 +9305,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             return false;
         }
 
-        boolean aboveShortcut = (dropOverView.getTag() instanceof WorkspaceItemInfo
-                && ((WorkspaceItemInfo) dropOverView.getTag()).container
-                != LauncherSettings.Favorites.CONTAINER_HOTSEAT_PREDICTION);
-        boolean willBecomeShortcut =
-                (info.itemType == ITEM_TYPE_APPLICATION ||
-                        info.itemType == LauncherSettings.Favorites.ITEM_TYPE_DEEP_SHORTCUT);
+        boolean aboveShortcut = willAcceptItem(dropOverView.getTag());
+        boolean willBecomeShortcut = willAcceptItem(info);
 
         return (aboveShortcut && willBecomeShortcut);
     }
@@ -9349,63 +9349,37 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     mDragInfo.cellY == targetCell[1]) && (cellParent == target);
         }
 
-        if (v == null || hasntMoved) return false;
-
-        boolean aboveShortcut = (v.getTag() instanceof WorkspaceItemInfo);
-        boolean willBecomeShortcut = (newView.getTag() instanceof WorkspaceItemInfo);
-        if (!aboveShortcut || !willBecomeShortcut) return false;
-
         boolean allowCreateFolder = mCreateUserFolderOnDrop || mDragMode == DRAG_MODE_CREATE_FOLDER;
-        if (!allowCreateFolder) return false;
+        if (v == null || hasntMoved || !allowCreateFolder) return false;
 
         DragTrace.log("Workspace.createUserFolder confirmed targetCell=(" + targetCell[0] + "," + targetCell[1] + ")");
         mCreateUserFolderOnDrop = false;
 
-        // Immediately cancel reorder alarm and snap all views in target layout back to true permanent positions
-        cleanupReorder(true);
-        if (target != null) {
-            target.revertTempStateImmediately();
-        }
+        boolean aboveShortcut = willAcceptItem(v.getTag());
+        boolean willBecomeShortcut = willAcceptItem(newView != null && newView.getTag() != null ? newView.getTag() : (d != null ? d.dragInfo : null));
 
-        if (v instanceof BubbleTextView || v instanceof Folder) {
-            v.clearAnimation();
-        }
-        if (v != null) {
-            v.setTranslationX(0f);
-            v.setTranslationY(0f);
-            if (v instanceof Reorderable) {
-                ((Reorderable) v).getTranslateDelegate()
-                        .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0f, 0f);
-                ((Reorderable) v).getTranslateDelegate()
-                        .setTranslation(INDEX_REORDER_BOUNCE_OFFSET, 0f, 0f);
-            }
-            if (target != null && target.getShortcutsAndWidgets() != null) {
-                target.getShortcutsAndWidgets().measureChild(v);
-                target.getShortcutsAndWidgets().layoutChild(v);
-            }
-        }
-        final int screenId = getCellLayoutId(target);
         if (aboveShortcut && willBecomeShortcut) {
-            WorkspaceItemInfo sourceInfo = (WorkspaceItemInfo) newView.getTag();
+            WorkspaceItemInfo sourceInfo = (WorkspaceItemInfo) (newView != null && newView.getTag() != null ? newView.getTag() : (d != null ? d.dragInfo : null));
             WorkspaceItemInfo destInfo = (WorkspaceItemInfo) v.getTag();
 
             // if the drag started here, we need to remove it from the workspace
-            if (!external) {
+            if (!external && mDragInfo != null && mDragInfo.cell != null) {
                 getParentCellLayoutForView(mDragInfo.cell).removeView(mDragInfo.cell);
             }
 
+            Rect folderLocation = new Rect();
+            float scale = mLauncher.getDragLayer().getDescendantRectRelativeToSelf(v, folderLocation);
+            v.clearAnimation();
             target.removeView(v);
-            mStatsLogManager.logger().withItemInfo(destInfo).withInstanceId(d.logInstanceId)
+            mStatsLogManager.logger().withItemInfo(destInfo).withInstanceId(d != null ? d.logInstanceId : null)
                     .log(LauncherEvent.LAUNCHER_ITEM_DROP_FOLDER_CREATED);
+            final int screenId = getCellLayoutId(target);
             FolderIcon fi = mLauncher.addFolder(target, container, screenId, targetCell[0],
                     targetCell[1]);
             destInfo.cellX = -1;
             destInfo.cellY = -1;
             sourceInfo.cellX = -1;
             sourceInfo.cellY = -1;
-
-            Rect folderLocation = new Rect();
-            float scale = mLauncher.getDragLayer().getDescendantRectRelativeToSelf(fi, folderLocation);
 
             // If the dragView is null, we can't animate
             boolean animate = d != null;
@@ -9417,7 +9391,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     mFolderCreateBg.setup(mLauncher, mLauncher, null,
                             v.getMeasuredWidth(), v.getPaddingTop());
                 }
-                mFolderCreateBg.animateToAccept(target, targetCell[0], targetCell[1]);
                 fi.setFolderBackground(mFolderCreateBg);
                 mFolderCreateBg = new PreviewBackground();
                 fi.performCreateAnimation(destInfo, v, sourceInfo, d, folderLocation, scale);
@@ -9436,8 +9409,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (distance > target.getFolderCreationRadius(targetCell)) return false;
 
         View dropOverView = target.getChildAt(targetCell[0], targetCell[1]);
-        boolean allowAddToFolder = mAddToExistingFolderOnDrop || mDragMode == DRAG_MODE_ADD_TO_FOLDER
-                || willAddToExistingUserFolder(d.dragInfo, dropOverView);
+        boolean allowAddToFolder = mAddToExistingFolderOnDrop || mDragMode == DRAG_MODE_ADD_TO_FOLDER;
         if (!allowAddToFolder) return false;
         mAddToExistingFolderOnDrop = false;
 
@@ -9449,7 +9421,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                         .log(LauncherEvent.LAUNCHER_ITEM_DROP_COMPLETED_ON_FOLDER_ICON);
                 fi.onDrop(d, false /* itemReturnedOnFailedDrop */);
                 // if the drag started here, we need to remove it from the workspace
-                if (!external) {
+                if (!external && mDragInfo != null && mDragInfo.cell != null) {
                     getParentCellLayoutForView(mDragInfo.cell).removeView(mDragInfo.cell);
                 }
                 return true;
@@ -9466,7 +9438,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         DragTrace.log("Workspace.onDrop item=" + (d.dragInfo != null ? d.dragInfo.title : "null")
                 + " source=" + (d.dragSource != null ? d.dragSource.getClass().getSimpleName() : "null"));
         isDragWidget(d);
-        mRevertAlarm.cancelAlarm();
         mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         android.util.Log.d("DropDebug", "onDrop called. d.dragSource==this: " + (d.dragSource == this) + " mDragInfo==null: " + (mDragInfo == null) + " mDropToLayout==null: " + (mDropToLayout == null));
         dumpFullWorkspaceState("Workspace.onDrop");
@@ -9512,13 +9483,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
                 // First we find the cell nearest to point at which the item is
                 // dropped, without any consideration to whether there is an item there.
-                if (mDragMode == DRAG_MODE_CREATE_FOLDER && mDragOverX >= 0 && mDragOverY >= 0) {
-                    mTargetCell[0] = mDragOverX;
-                    mTargetCell[1] = mDragOverY;
-                } else {
-                    mTargetCell = findNearestArea((int) mDragViewVisualCenter[0], (int)
-                            mDragViewVisualCenter[1], spanX, spanY, dropTargetLayout, mTargetCell);
-                }
+                mTargetCell = findNearestArea((int) mDragViewVisualCenter[0], (int)
+                        mDragViewVisualCenter[1], spanX, spanY, dropTargetLayout, mTargetCell);
                 int dropLayoutId = getCellLayoutId(dropTargetLayout);
                 if (Workspace.EXTRA_EMPTY_SCREEN_IDS.contains(dropLayoutId)) {
                     commitExtraEmptyScreens();
@@ -9953,7 +9919,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
 
         // Reset the previous drag target
-        mRevertAlarm.cancelAlarm();
         mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         setCurrentDropLayout(null, /* revertTemp= */ !d.dragComplete);
         setCurrentDragOverlappingLayout(null);
@@ -10038,11 +10003,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     protected void cleanupFolderCreation() {
-        mFolderCreationAlarm.cancelAlarm();
-        mPendingFolderDragOverView = null;
         if (mFolderCreateBg != null) {
             mFolderCreateBg.animateToRest();
         }
+        mDragOverView = null;
     }
 
     private void cleanupAddToFolder() {
@@ -10057,7 +10021,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (cancelAlarm) {
             mReorderAlarm.cancelAlarm();
         }
-        mRevertAlarm.cancelAlarm();
         mLastReorderX = -1;
         mLastReorderY = -1;
     }
@@ -10182,30 +10145,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             manageReorderOnDragOver(d, targetCellDistance, nearestDropOccupied, minSpanX, minSpanY,
                     reorderX, reorderY);
 
-            if (mDragMode == DRAG_MODE_CREATE_FOLDER || mDragMode == DRAG_MODE_ADD_TO_FOLDER) {
-                if (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty()) {
-                    mDragTargetLayout.revertTempStateImmediately();
-                }
-            } else if (!nearestDropOccupied) {
-                // Debounce reverting when temporarily crossing gutters / empty space
-                if (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty()) {
-                    if (!mRevertAlarm.alarmPending()) {
-                        final CellLayout targetToRevert = mDragTargetLayout;
-                        mRevertAlarm.setOnAlarmListener(alarm -> {
-                            if (targetToRevert != null && targetToRevert.isItemPlacementDirty()) {
-                                DragTrace.log("Workspace.mRevertAlarm fired -> reverting reorder dirty=true");
-                                targetToRevert.revertTempState();
-                                setDragMode(DRAG_MODE_NONE);
-                            }
-                        });
-                        mRevertAlarm.setAlarm(REVERT_TIMEOUT);
-                    }
-                } else {
-                    setDragMode(DRAG_MODE_NONE);
-                }
-            } else {
-                if (mRevertAlarm.alarmPending()) {
-                    mRevertAlarm.cancelAlarm();
+            if (mDragMode == DRAG_MODE_CREATE_FOLDER || mDragMode == DRAG_MODE_ADD_TO_FOLDER ||
+                    !nearestDropOccupied) {
+                if (mDragTargetLayout != null) {
+                    mDragTargetLayout.revertTempState();
                 }
             }
         } else {
@@ -10216,43 +10159,34 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     protected void manageReorderOnDragOver(DragObject d, float targetCellDistance,
             boolean nearestDropOccupied, int minSpanX, int minSpanY, int reorderX, int reorderY) {
 
-        if (mDragMode == DRAG_MODE_CREATE_FOLDER || mDragMode == DRAG_MODE_ADD_TO_FOLDER) {
-            cleanupReorder(true);
-            return;
-        }
-
         ItemInfo item = d.dragInfo;
         final View child = (mDragInfo == null) ? null : mDragInfo.cell;
-
         if (!nearestDropOccupied) {
-            cleanupReorder(true);
-            int[] span = new int[]{item.spanX, item.spanY};
-            int[] hintCell = new int[]{mTargetCell[0], mTargetCell[1]};
-            mDragTargetLayout.visualizeDropLocation(hintCell[0], hintCell[1], span[0],
+            int[] span = new int[2];
+            mDragTargetLayout.performReorder((int) mDragViewVisualCenter[0],
+                    (int) mDragViewVisualCenter[1], minSpanX, minSpanY, item.spanX, item.spanY,
+                    child, mTargetCell, span, CellLayout.MODE_SHOW_REORDER_HINT);
+            mDragTargetLayout.visualizeDropLocation(mTargetCell[0], mTargetCell[1], span[0],
                     span[1], d);
-        } else if (targetCellDistance < mDragTargetLayout.getReorderRadius(mTargetCell, item.spanX, item.spanY)) {
-            if (mRevertAlarm.alarmPending()) {
-                mRevertAlarm.cancelAlarm();
-            }
-            final boolean cellChanged = (mLastReorderX != reorderX || mLastReorderY != reorderY);
-            if (cellChanged) {
-                mReorderAlarm.cancelAlarm();
-                mLastReorderX = reorderX;
-                mLastReorderY = reorderY;
-                ReorderAlarmListener listener = new ReorderAlarmListener(mDragViewVisualCenter,
-                        minSpanX, minSpanY, item.spanX, item.spanY, d, child);
-                mReorderAlarm.setOnAlarmListener(listener);
-                int timeout = (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty())
-                        ? 25 : REORDER_TIMEOUT;
-                DragTrace.log("manageReorderOnDragOver scheduleReorder target=(" + reorderX + "," + reorderY + ") timeout=" + timeout);
-                mReorderAlarm.setAlarm(timeout);
-            } else if (!mReorderAlarm.alarmPending() && (mDragTargetLayout != null && !mDragTargetLayout.isItemPlacementDirty())) {
-                ReorderAlarmListener listener = new ReorderAlarmListener(mDragViewVisualCenter,
-                        minSpanX, minSpanY, item.spanX, item.spanY, d, child);
-                mReorderAlarm.setOnAlarmListener(listener);
-                DragTrace.log("manageReorderOnDragOver scheduleInitialReorder target=(" + reorderX + "," + reorderY + ") timeout=" + REORDER_TIMEOUT);
-                mReorderAlarm.setAlarm(REORDER_TIMEOUT);
-            }
+            nearestDropOccupied = mDragTargetLayout.isNearestDropLocationOccupied((int)
+                            mDragViewVisualCenter[0], (int) mDragViewVisualCenter[1], item.spanX,
+                    item.spanY, child, mTargetCell);
+        } else if ((mDragMode == DRAG_MODE_NONE || mDragMode == DRAG_MODE_REORDER)
+                && (mLastReorderX != reorderX || mLastReorderY != reorderY)
+                && targetCellDistance < mDragTargetLayout.getReorderRadius(mTargetCell, item.spanX,
+                item.spanY)) {
+            mReorderAlarm.cancelAlarm();
+            mLastReorderX = reorderX;
+            mLastReorderY = reorderY;
+            mDragTargetLayout.performReorder((int) mDragViewVisualCenter[0],
+                    (int) mDragViewVisualCenter[1], minSpanX, minSpanY, item.spanX, item.spanY,
+                    child, mTargetCell, new int[2], CellLayout.MODE_SHOW_REORDER_HINT);
+            // Otherwise, if we aren't adding to or creating a folder and there's no pending
+            // reorder, then we schedule a reorder
+            ReorderAlarmListener listener = new ReorderAlarmListener(mDragViewVisualCenter,
+                    minSpanX, minSpanY, item.spanX, item.spanY, d, child);
+            mReorderAlarm.setOnAlarmListener(listener);
+            mReorderAlarm.setAlarm(REORDER_TIMEOUT);
         }
     }
 
@@ -10440,11 +10374,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     private void manageFolderFeedback(float distance, DragObject dragObject) {
-        if (distance > mDragTargetLayout.getFolderCreationRadius(mTargetCell)
-                || (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty())
-                || mDragMode == DRAG_MODE_REORDER) {
-            mFolderCreationAlarm.cancelAlarm();
-            mPendingFolderDragOverView = null;
+        if (distance > mDragTargetLayout.getFolderCreationRadius(mTargetCell)) {
             if ((mDragMode == DRAG_MODE_ADD_TO_FOLDER
                     || mDragMode == DRAG_MODE_CREATE_FOLDER)) {
                 setDragMode(DRAG_MODE_NONE);
@@ -10452,63 +10382,41 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             return;
         }
 
-        final View dragOverView = mDragTargetLayout.getChildAt(mTargetCell[0], mTargetCell[1]);
+        mDragOverView = mDragTargetLayout.getChildAt(mTargetCell[0], mTargetCell[1]);
         ItemInfo info = dragObject.dragInfo;
-        boolean userFolderPending = willCreateUserFolder(info, dragOverView, false);
-        if (userFolderPending) {
-            if (mDragMode == DRAG_MODE_CREATE_FOLDER) {
-                return;
-            }
-            if (mPendingFolderDragOverView != dragOverView) {
-                mPendingFolderDragOverView = dragOverView;
-                mFolderCreationAlarm.cancelAlarm();
-                final int folderCellX = mTargetCell[0];
-                final int folderCellY = mTargetCell[1];
-                final CellLayout targetLayout = mDragTargetLayout;
-                mFolderCreationAlarm.setOnAlarmListener(alarm -> {
-                    if (targetLayout != null && !targetLayout.isItemPlacementDirty()
-                            && mDragMode != DRAG_MODE_REORDER
-                            && mPendingFolderDragOverView != null
-                            && mPendingFolderDragOverView == dragOverView) {
-                        mFolderCreateBg = new PreviewBackground();
-                        mFolderCreateBg.setup(mLauncher, mLauncher, null,
-                                mPendingFolderDragOverView.getMeasuredWidth(),
-                                mPendingFolderDragOverView.getPaddingTop());
+        boolean userFolderPending = willCreateUserFolder(info, mDragOverView, false);
+        if (mDragMode == DRAG_MODE_NONE && userFolderPending) {
+            mFolderCreateBg = new PreviewBackground();
+            mFolderCreateBg.setup(mLauncher, mLauncher, null,
+                    mDragOverView.getMeasuredWidth(), mDragOverView.getPaddingTop());
 
-                        // The full preview background should appear behind the icon
-                        mFolderCreateBg.isClipping = false;
+            // The full preview background should appear behind the icon
+            mFolderCreateBg.isClipping = false;
 
-                        mFolderCreateBg.animateToAccept(targetLayout, folderCellX, folderCellY);
-                        targetLayout.clearDragOutlines();
-                        setDragMode(DRAG_MODE_CREATE_FOLDER);
+            mFolderCreateBg.animateToAccept(mDragTargetLayout, mTargetCell[0], mTargetCell[1]);
+            mDragTargetLayout.clearDragOutlines();
+            setDragMode(DRAG_MODE_CREATE_FOLDER);
 
-                        if (dragObject.stateAnnouncer != null) {
-                            dragObject.stateAnnouncer.announce(
-                                    WorkspaceAccessibilityHelper.getDescriptionForDropOver(
-                                            mPendingFolderDragOverView, getContext()));
-                        }
-                    }
-                });
-                mFolderCreationAlarm.setAlarm(FOLDER_CREATION_TIMEOUT);
+            if (dragObject.stateAnnouncer != null && mDragOverView != null) {
+                dragObject.stateAnnouncer.announce(
+                        WorkspaceAccessibilityHelper.getDescriptionForDropOver(
+                                mDragOverView, getContext()));
             }
             return;
         }
 
-        mFolderCreationAlarm.cancelAlarm();
-        mPendingFolderDragOverView = null;
-
-        boolean willAddToFolder = willAddToExistingUserFolder(info, dragOverView);
+        boolean willAddToFolder = willAddToExistingUserFolder(info, mDragOverView);
         if (willAddToFolder && mDragMode == DRAG_MODE_NONE) {
-            mDragOverFolderIcon = ((FolderIcon) dragOverView);
+            mDragOverFolderIcon = ((FolderIcon) mDragOverView);
             mDragOverFolderIcon.onDragEnter(info);
             if (mDragTargetLayout != null) {
                 mDragTargetLayout.clearDragOutlines();
             }
             setDragMode(DRAG_MODE_ADD_TO_FOLDER);
 
-            if (dragObject.stateAnnouncer != null) {
+            if (dragObject.stateAnnouncer != null && mDragOverView != null) {
                 dragObject.stateAnnouncer.announce(WorkspaceAccessibilityHelper
-                        .getDescriptionForDropOver(dragOverView, getContext()));
+                        .getDescriptionForDropOver(mDragOverView, getContext()));
             }
             return;
         }
@@ -13629,7 +13537,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 # src/com/android/launcher3/CellLayout.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
-**Lines**: 2280 | **Bytes**: 94502
+**Lines**: 2276 | **Bytes**: 93961
 
 ```java
 /*
@@ -14606,17 +14514,31 @@ public class CellLayout extends ViewGroup {
      */
     public float getFolderCreationRadius(int[] targetCell) {
         DeviceProfile grid = mActivity.getDeviceProfile();
-        return 0.35f * grid.iconSizePx;
+        float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
+        // Halfway between reorder radius and icon.
+        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
     }
 
     /**
      * Returns the max distance from the center of a cell that will start to reorder on drag over.
      */
     public float getReorderRadius(int[] targetCell, int spanX, int spanY) {
+        int[] centerPoint = mTmpPoint;
+        getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
+
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
         cellBoundsWithSpacing.inset(-mBorderSpace.x / 2, -mBorderSpace.y / 2);
 
+        if (canCreateFolder(getChildAt(targetCell[0], targetCell[1])) && spanX == 1 && spanY == 1) {
+            // Take only the circle in the smaller dimension, to ensure we don't start reordering
+            // too soon before accepting a folder drop.
+            int minRadius = centerPoint[0] - cellBoundsWithSpacing.left;
+            minRadius = Math.min(minRadius, centerPoint[1] - cellBoundsWithSpacing.top);
+            minRadius = Math.min(minRadius, cellBoundsWithSpacing.right - centerPoint[0]);
+            minRadius = Math.min(minRadius, cellBoundsWithSpacing.bottom - centerPoint[1]);
+            return minRadius;
+        }
         // Take up the entire cell, including space between this cell and the adjacent ones.
         // Multiply by span to scale radius
         return (float) Math.hypot(spanX * cellBoundsWithSpacing.width() / 2f,
@@ -14739,40 +14661,48 @@ public class CellLayout extends ViewGroup {
                 mReorderAnimators.remove(lp);
             }
 
-
             if (adjustOccupied) {
                 GridOccupancy occupied = permanent ? mOccupied : mTmpOccupied;
                 occupied.markCells(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, false);
                 occupied.markCells(cellX, cellY, lp.cellHSpan, lp.cellVSpan, true);
             }
 
-            int[] oldCenter = new int[2];
-            regionToCenterPoint(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, oldCenter);
-            int[] newCenter = new int[2];
-            regionToCenterPoint(cellX, cellY, lp.cellHSpan, lp.cellVSpan, newCenter);
-            final float finalPreviewOffsetX = newCenter[0] - oldCenter[0];
-            final float finalPreviewOffsetY = newCenter[1] - oldCenter[1];
+            // Compute the new x and y position based on the new cellX and cellY
+            // We leverage the actual layout logic in the layout params and hence need to modify
+            // state and revert that state.
+            final int oldX = lp.x;
+            final int oldY = lp.y;
+            lp.isLockedToGrid = true;
+            if (permanent) {
+                lp.setCellX(cellX);
+                lp.setCellY(cellY);
+            } else {
+                lp.setTmpCellX(cellX);
+                lp.setTmpCellY(cellY);
+            }
+            clc.setupLp(child);
+            final int newX = lp.x;
+            final int newY = lp.y;
+            lp.x = oldX;
+            lp.y = oldY;
+            lp.isLockedToGrid = false;
+            // End compute new x and y
 
             MultiTranslateDelegate mtd = item.getTranslateDelegate();
             float initPreviewOffsetX = mtd.getTranslationX(INDEX_REORDER_PREVIEW_OFFSET).getValue();
             float initPreviewOffsetY = mtd.getTranslationY(INDEX_REORDER_PREVIEW_OFFSET).getValue();
+            final float finalPreviewOffsetX = newX - oldX;
+            final float finalPreviewOffsetY = newY - oldY;
 
-            DragTrace.log("animateChildToPosition child=" + (info != null ? info.title : child)
-                    + " init=(" + initPreviewOffsetX + "," + initPreviewOffsetY + ") final=("
-                    + finalPreviewOffsetX + "," + finalPreviewOffsetY + ") perm=" + permanent);
-
-            // Exit early if already at target position
-            if (Math.abs(finalPreviewOffsetX - initPreviewOffsetX) < 1f
-                    && Math.abs(finalPreviewOffsetY - initPreviewOffsetY) < 1f) {
-                item.getTranslateDelegate().setTranslation(INDEX_REORDER_PREVIEW_OFFSET,
-                        finalPreviewOffsetX, finalPreviewOffsetY);
+            // Exit early if we're not actually moving the view
+            if (finalPreviewOffsetX == 0 && finalPreviewOffsetY == 0
+                    && initPreviewOffsetX == 0 && initPreviewOffsetY == 0) {
                 lp.isLockedToGrid = true;
                 return true;
             }
 
             ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
             va.setDuration(duration);
-            va.setInterpolator(Interpolators.DECELERATE_1_5);
             mReorderAnimators.put(lp, va);
 
             va.addUpdateListener(new AnimatorUpdateListener() {
@@ -14792,15 +14722,9 @@ public class CellLayout extends ViewGroup {
                     // place just yet.
                     if (!cancelled) {
                         lp.isLockedToGrid = true;
-                        if (permanent) {
-                            item.getTranslateDelegate()
-                                    .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
-                            child.requestLayout();
-                        } else {
-                            item.getTranslateDelegate()
-                                    .setTranslation(INDEX_REORDER_PREVIEW_OFFSET,
-                                            finalPreviewOffsetX, finalPreviewOffsetY);
-                        }
+                        item.getTranslateDelegate()
+                                .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
+                        child.requestLayout();
                     }
                     if (mReorderAnimators.containsKey(lp)) {
                         mReorderAnimators.remove(lp);
@@ -15216,7 +15140,6 @@ public class CellLayout extends ViewGroup {
         DragTrace.log("CellLayout.revertTempState isDirty=" + isItemPlacementDirty()
                 + " layout=" + System.identityHashCode(this));
         mPreviousSolution = null;        // never let a reverted preview be reused
-        restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
         if (isItemPlacementDirty() && !DESTRUCTIVE_REORDER) {
             final int count = mShortcutsAndWidgets.getChildCount();
@@ -15240,10 +15163,13 @@ public class CellLayout extends ViewGroup {
         }
     }
 
+    public List<View> consumeOverflowViews() {
+        return Collections.emptyList();
+    }
+
     public void revertTempStateImmediately() {
         DragTrace.log("CellLayout.revertTempStateImmediately layout=" + System.identityHashCode(this));
         mPreviousSolution = null;        // never let a reverted preview be reused
-        restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
         for (Animator anim : mReorderAnimators.values()) {
             if (anim != null) anim.cancel();
@@ -15524,80 +15450,39 @@ public class CellLayout extends ViewGroup {
 
     int[] performReorder(int pixelX, int pixelY, int minSpanX, int minSpanY, int spanX, int spanY,
             View dragView, int[] result, int[] resultSpan, int mode) {
-        if (resultSpan == null) resultSpan = new int[]{-1, -1};
-        if (result == null) result = new int[]{-1, -1};
+        if (resultSpan == null) {
+            resultSpan = new int[]{-1, -1};
+        }
+        if (result == null) {
+            result = new int[]{-1, -1};
+        }
 
-        final boolean isDrop = mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL;
-
-        ItemConfiguration finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
-                dragView);
-        mPreviousSolution = finalSolution;
-        if (isDrop) {
-            mPreviousSolution = null;
+        ItemConfiguration finalSolution = null;
+        // We want the solution to match the animation of the preview and to match the drop so we
+        // only recalculate in mode MODE_SHOW_REORDER_HINT because that the first one to run in the
+        // reorder cycle.
+        if (mode == MODE_SHOW_REORDER_HINT || mPreviousSolution == null) {
+            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
+                    dragView);
+            mPreviousSolution = finalSolution;
+        } else {
+            finalSolution = mPreviousSolution;
+            // We reset this vector after drop
+            if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
+                mPreviousSolution = null;
+            }
         }
 
         if (finalSolution == null || !finalSolution.isSolution) {
-            DragTrace.log("CellLayout.performReorder mode=" + mode + " no-solution layout=" + System.identityHashCode(this));
-            restoreOverflowPreview();
-            if (isDrop) mPendingOverflow = null;
             result[0] = result[1] = resultSpan[0] = resultSpan[1] = -1;
         } else {
-            DragTrace.log("CellLayout.performReorder mode=" + mode + " solution=" + System.identityHashCode(finalSolution)
-                    + " target=(" + finalSolution.cellX + "," + finalSolution.cellY + ") layout=" + System.identityHashCode(this));
             result[0] = finalSolution.cellX;
             result[1] = finalSolution.cellY;
             resultSpan[0] = finalSolution.spanX;
             resultSpan[1] = finalSolution.spanY;
-            handleOverflow(finalSolution, isDrop);
             performReorder(finalSolution, dragView, mode);
         }
         return result;
-    }
-
-    /** A cached solution is only valid if it describes exactly the current set of children. */
-    private boolean isSolutionCurrent(ItemConfiguration s, View dragView) {
-        int children = 0;
-        for (int i = 0; i < mShortcutsAndWidgets.getChildCount(); i++) {
-            View c = mShortcutsAndWidgets.getChildAt(i);
-            if (c == dragView) continue;
-            if (!s.map.containsKey(c)) {
-                // Views that were pushed off-screen into overflow are legitimately absent.
-                if (!s.overflowViews.contains(c)) return false;
-            } else {
-                children++;
-            }
-        }
-        int mapped = s.map.size() - (dragView != null && s.map.containsKey(dragView) ? 1 : 0);
-        return mapped == children;
-    }
-
-    private void handleOverflow(ItemConfiguration s, boolean isDrop) {
-        restoreOverflowPreview();
-        ArrayList<View> real = new ArrayList<>();
-        for (View v : s.overflowViews) {
-            if (!s.map.containsKey(v)) real.add(v);   // really removed from the solution
-        }
-        if (isDrop) {
-            mPendingOverflow = real.isEmpty() ? null : real;
-        } else {
-            for (View v : real) {                      // hover preview: dim them
-                v.setAlpha(0.25f);
-                mOverflowPreview.add(v);
-            }
-        }
-    }
-
-    private void restoreOverflowPreview() {
-        for (View v : mOverflowPreview) v.setAlpha(1f);
-        mOverflowPreview.clear();
-    }
-
-    /** Called by Workspace.onDrop right after performReorder(MODE_ON_DROP). */
-    public List<View> consumeOverflowViews() {
-        restoreOverflowPreview();
-        List<View> r = mPendingOverflow;
-        mPendingOverflow = null;
-        return r == null ? Collections.<View>emptyList() : r;
     }
 
     /**
@@ -15614,22 +15499,41 @@ public class CellLayout extends ViewGroup {
      */
     public void performReorder(ItemConfiguration solution, View dragView, int mode) {
         if (mode == MODE_SHOW_REORDER_HINT) {
+            beginOrAdjustReorderPreviewAnimations(solution, dragView,
+                    ReorderPreviewAnimation.MODE_HINT);
             return;
         }
         // If we're just testing for a possible location (MODE_ACCEPT_DROP), we don't bother
         // committing anything or animating anything as we just want to determine if a solution
         // exists
-        if (mode == MODE_DRAG_OVER) {
-            copySolutionToTempState(solution, dragView);
+        if (mode == MODE_DRAG_OVER || mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
+            if (!DESTRUCTIVE_REORDER) {
+                setUseTempCoords(true);
+            }
+
+            if (!DESTRUCTIVE_REORDER) {
+                copySolutionToTempState(solution, dragView);
+            }
             setItemPlacementDirty(true);
-            animateItemsToSolution(solution, dragView, false);
-        } else if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
-            copySolutionToTempState(solution, dragView);
-            commitTempPlacement(solution, dragView);
-            completeAndClearReorderPreviewAnimations();
-            setItemPlacementDirty(false);
-            mShortcutsAndWidgets.requestLayout();
+            animateItemsToSolution(solution, dragView, mode == MODE_ON_DROP);
+
+            if (!DESTRUCTIVE_REORDER
+                    && (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL)) {
+                // Since the temp solution didn't update dragView, don't commit it either
+                commitTempPlacement(solution, dragView);
+                completeAndClearReorderPreviewAnimations();
+                setItemPlacementDirty(false);
+            } else {
+                beginOrAdjustReorderPreviewAnimations(solution, dragView,
+                        ReorderPreviewAnimation.MODE_PREVIEW);
+            }
         }
+
+        if (mode == MODE_ON_DROP && !DESTRUCTIVE_REORDER) {
+            setUseTempCoords(false);
+        }
+
+        mShortcutsAndWidgets.requestLayout();
     }
 
     void setItemPlacementDirty(boolean dirty) {
@@ -17860,7 +17764,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
-**Lines**: 1023 | **Bytes**: 45742
+**Lines**: 649 | **Bytes**: 29213
 
 ```java
 /*
@@ -17880,26 +17784,16 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
  */
 package com.android.launcher3.celllayout;
 
-import static com.android.launcher3.CellLayout.MODE_ON_DROP;
-
 import android.graphics.Rect;
 import android.view.View;
 
 import com.android.launcher3.CellLayout;
-import com.android.launcher3.Launcher;
-import com.android.launcher3.LauncherSettings;
-import com.android.launcher3.Workspace;
-import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.util.CellAndSpan;
 import com.android.launcher3.util.GridOccupancy;
-import com.android.launcher3.views.ActivityContext;
-import com.android.launcher3.widget.LauncherAppWidgetHostView;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -17910,18 +17804,11 @@ import java.util.Map.Entry;
  */
 public class ReorderAlgorithm {
 
-    private static final boolean DEBUG = false;
-
     CellLayout mCellLayout;
-    private boolean mIsWidget;
 
     public ReorderAlgorithm(CellLayout cellLayout) {
         mCellLayout = cellLayout;
     }
-
-    private final ArrayList<View> mIntersectingViews = new ArrayList<>();
-
-    private final Rect mOccupiedRect = new Rect();
 
     /**
      * This method differs from closestEmptySpaceReorder and dropInPlaceSolution because this method
@@ -17955,10 +17842,6 @@ public class ReorderAlgorithm {
      */
     public ItemConfiguration findReorderSolution(ReorderParameters reorderParameters,
             int[] direction, boolean decX) {
-        mIsWidget = Workspace.isWidget
-                || reorderParameters.getSpanX() > 1
-                || reorderParameters.getSpanY() > 1
-                || (reorderParameters.getDragView() instanceof LauncherAppWidgetHostView);
         return findReorderSolutionRecursive(reorderParameters.getPixelX(),
                 reorderParameters.getPixelY(), reorderParameters.getMinSpanX(),
                 reorderParameters.getMinSpanY(), reorderParameters.getSpanX(),
@@ -17971,7 +17854,6 @@ public class ReorderAlgorithm {
             ItemConfiguration solution) {
         // Copy the current state into the solution. This solution will be manipulated as necessary.
         mCellLayout.copyCurrentStateToSolution(solution);
-        solution.overflowViews.clear();
         // Copy the current occupied array into the temporary occupied array. This array will be
         // manipulated as necessary to find a solution.
         mCellLayout.getOccupied().copyTo(mCellLayout.mTmpOccupied);
@@ -17984,164 +17866,37 @@ public class ReorderAlgorithm {
         boolean success;
         // First we try the exact nearest position of the item being dragged,
         // we will then want to try to move this around to other neighbouring positions
-        boolean isWidgetDrag = isWidget() || spanX > 1 || spanY > 1
-                || (dragView instanceof LauncherAppWidgetHostView);
+        success = rearrangementExists(result[0], result[1], spanX, spanY, direction, dragView,
+                solution);
 
-        if (isWidgetDrag && result[0] >= 0 && reflowIconsAroundWidget(result[0], result[1], spanX, spanY,
-                dragView, solution)) {
-            mIntersectingViews.clear();          // rearrangementExists() -> true
-            solution.intersectingViews = new ArrayList<>();
+        if (!success) {
+            // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
+            // x, then 1 in y etc.
+            if (spanX > minSpanX && (minSpanY == spanY || decX)) {
+                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
+                        spanY, direction, dragView, false, solution);
+            } else if (spanY > minSpanY) {
+                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
+                        spanY - 1, direction, dragView, true, solution);
+            }
+            solution.isSolution = false;
+        } else {
             solution.isSolution = true;
             solution.cellX = result[0];
             solution.cellY = result[1];
             solution.spanX = spanX;
             solution.spanY = spanY;
-            return solution;
         }
-
-        // 2D Spatial Grid Reflow Solver
-        SpatialGridSolver.Solution solverSolution = SpatialGridSolver.solve(
-                mCellLayout,
-                result[0], result[1],
-                spanX, spanY,
-                direction,
-                dragView,
-                isWidgetDrag
-        );
-
-        if (solverSolution.isSolution()) {
-            solution.map.clear();
-            for (Map.Entry<View, CellAndSpan> entry : solverSolution.getPlacements().entrySet()) {
-                solution.map.put(entry.getKey(), entry.getValue());
-            }
-            if (dragView != null) {
-                solution.map.put(dragView, new CellAndSpan(result[0], result[1], spanX, spanY));
-            }
-            solution.intersectingViews = new ArrayList<>(solverSolution.getDisplacedViews());
-            mIntersectingViews.clear();
-            mIntersectingViews.addAll(solverSolution.getDisplacedViews());
-            solution.cellX = result[0];
-            solution.cellY = result[1];
-            solution.spanX = spanX;
-            solution.spanY = spanY;
-            solution.isSolution = true;
-            updateTmpOccupiedForReflow(result[0], result[1], spanX, spanY, dragView, solution);
-            return solution;
-        }
-
-        // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
-        // x, then 1 in y etc.
-        if (spanX > minSpanX && (minSpanY == spanY || decX)) {
-            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
-                    spanY, direction, dragView, false, solution);
-        } else if (spanY > minSpanY) {
-            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
-                    spanY - 1, direction, dragView, true, solution);
-        }
-        solution.isSolution = false;
         return solution;
     }
 
-    /**
-     * iOS-style placement of a widget at (cellX, cellY, spanX, spanY).
-     * Icons flow in reading order around widgets / non-reorderable items. Only icons from the first
-     * displaced one onward move. Icons that run off the end of the grid go to solution.overflowViews.
-     *
-     * @return false (solution untouched) if the rect is out of bounds or collides with another
-     *         widget / fixed item. The caller then falls back to the legacy push.
-     */
-    private boolean reflowIconsAroundWidget(int cellX, int cellY, int spanX, int spanY,
-            View dragView, ItemConfiguration solution) {
-        final int countX = mCellLayout.getCountX();
-        final int countY = mCellLayout.getCountY();
-        if (cellX < 0 || cellY < 0 || cellX + spanX > countX || cellY + spanY > countY) {
-            return false;
-        }
-
-        final boolean[][] blocked = new boolean[countX][countY];
-        for (int x = cellX; x < cellX + spanX; x++) {
-            for (int y = cellY; y < cellY + spanY; y++) blocked[x][y] = true;
-        }
-
-        final ArrayList<View> icons = new ArrayList<>();
-        for (Map.Entry<View, CellAndSpan> e : solution.map.entrySet()) {
-            View child = e.getKey();
-            if (child == dragView) continue;
-            CellAndSpan c = e.getValue();
-            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
-            boolean fixed = c.spanX > 1 || c.spanY > 1 || !lp.canReorder
-                    || child instanceof LauncherAppWidgetHostView;
-            if (fixed) {
-                for (int x = c.cellX; x < c.cellX + c.spanX; x++) {
-                    for (int y = c.cellY; y < c.cellY + c.spanY; y++) {
-                        if (x < 0 || y < 0 || x >= countX || y >= countY) continue;
-                        if (blocked[x][y]) return false;   // collides with the dropped widget
-                        blocked[x][y] = true;
-                    }
-                }
-            } else {
-                icons.add(child);
-            }
-        }
-
-        icons.sort(Comparator
-                .comparingInt((View v) -> solution.map.get(v).cellY)
-                .thenComparingInt(v -> solution.map.get(v).cellX));
-
-        // First icon sitting under the widget.
-        int first = -1;
-        for (int i = 0; i < icons.size(); i++) {
-            CellAndSpan c = solution.map.get(icons.get(i));
-            if (blocked[c.cellX][c.cellY]) { first = i; break; }
-        }
-        if (first < 0) {
-            updateTmpOccupiedForReflow(cellX, cellY, spanX, spanY, dragView, solution);
-            return true;   // nothing displaced
-        }
-
-        final int total = countX * countY;
-        CellAndSpan start = solution.map.get(icons.get(first));
-        int cursor = start.cellY * countX + start.cellX;
-
-        for (int i = first; i < icons.size(); i++) {
-            View icon = icons.get(i);
-            while (cursor < total && blocked[cursor % countX][cursor / countX]) cursor++;
-            if (cursor >= total) {
-                // Out of room: this and every following icon overflow, order preserved.
-                for (int j = i; j < icons.size(); j++) {
-                    View o = icons.get(j);
-                    solution.map.remove(o);
-                    solution.overflowViews.add(o);
-                }
-                break;
-            }
-            CellAndSpan c = solution.map.get(icon);
-            c.cellX = cursor % countX;
-            c.cellY = cursor / countX;
-            cursor++;
-        }
-        updateTmpOccupiedForReflow(cellX, cellY, spanX, spanY, dragView, solution);
-        return true;
-    }
-
-    private void updateTmpOccupiedForReflow(int cellX, int cellY, int spanX, int spanY,
-            View dragView, ItemConfiguration solution) {
-        mCellLayout.mTmpOccupied.clear();
-        for (Map.Entry<View, CellAndSpan> entry : solution.map.entrySet()) {
-            if (entry.getKey() != dragView) {
-                CellAndSpan c = entry.getValue();
-                mCellLayout.mTmpOccupied.markCells(c.cellX, c.cellY, c.spanX, c.spanY, true);
-            }
-        }
-        mCellLayout.mTmpOccupied.markCells(cellX, cellY, spanX, spanY, true);
-    }
-
-    private boolean intersectingViewsExists(int cellX, int cellY, int spanX, int spanY, int[] direction,
+    private boolean rearrangementExists(int cellX, int cellY, int spanX, int spanY, int[] direction,
             View ignoreView, ItemConfiguration solution) {
         // Return early if get invalid cell positions
         if (cellX < 0 || cellY < 0) return false;
-        mIntersectingViews.clear();
-        mOccupiedRect.set(cellX, cellY, cellX + spanX, cellY + spanY);
+
+        ArrayList<View> intersectingViews = new ArrayList<>();
+        Rect occupiedRect = new Rect(cellX, cellY, cellX + spanX, cellY + spanY);
 
         // Mark the desired location of the view currently being dragged.
         if (ignoreView != null) {
@@ -18169,68 +17924,37 @@ public class ReorderAlgorithm {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
             r1.set(c.cellX, c.cellY, c.cellX + c.spanX, c.cellY + c.spanY);
             if (Rect.intersects(r0, r1)) {
-                mIntersectingViews.add(child);
+                if (!lp.canReorder) {
+                    return false;
+                }
+                intersectingViews.add(child);
             }
         }
 
-        solution.intersectingViews = new ArrayList<>(mIntersectingViews);
+        solution.intersectingViews = intersectingViews;
 
-        return !mIntersectingViews.isEmpty();
-
-    }
-
-    public boolean rearrangementExists(int[] direction, View ignoreView, ItemConfiguration solution) {
-        if (mIntersectingViews.isEmpty()) return true;
-
-        for (View child : mIntersectingViews) {
-            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
-            if (!lp.canReorder || (!isWidget() && child instanceof LauncherAppWidgetHostView)) {
-                return false;
-            }
-        }
-
-        final Map<View, int[]> snap = snapshot(solution);
-
-        if (mIntersectingViews.size() == 1 || isWidget()) {
-            if (attemptPushInDirection(mIntersectingViews, mOccupiedRect, direction, ignoreView,
-                    solution)) {
-                return true;
-            }
-            restore(solution, snap);
-        }
-        if (addViewsToTempLocation(mIntersectingViews, mOccupiedRect, direction, ignoreView,
+        // First we try to find a solution which respects the push mechanic. That is,
+        // we try to find a solution such that no displaced item travels through another item
+        // without also displacing that item.
+        if (attemptPushInDirection(intersectingViews, occupiedRect, direction, ignoreView,
                 solution)) {
             return true;
         }
-        restore(solution, snap);
 
-        for (View v : mIntersectingViews) {
-            if (!addViewToTempLocation(v, mOccupiedRect, direction, solution)) {
-                restore(solution, snap);
+        // Next we try moving the views as a block, but without requiring the push mechanic.
+        if (addViewsToTempLocation(intersectingViews, occupiedRect, direction, ignoreView,
+                solution)) {
+            return true;
+        }
+
+        // Ok, they couldn't move as a block, let's move them individually
+        for (View v : intersectingViews) {
+            if (!addViewToTempLocation(v, occupiedRect, direction, solution)) {
                 return false;
             }
         }
         return true;
     }
-
-    private static Map<View, int[]> snapshot(ItemConfiguration s) {
-        Map<View, int[]> m = new HashMap<>();
-        for (Map.Entry<View, CellAndSpan> e : s.map.entrySet()) {
-            CellAndSpan c = e.getValue();
-            m.put(e.getKey(), new int[]{c.cellX, c.cellY, c.spanX, c.spanY});
-        }
-        return m;
-    }
-
-    private static void restore(ItemConfiguration s, Map<View, int[]> snap) {
-        for (Map.Entry<View, int[]> e : snap.entrySet()) {
-            CellAndSpan c = s.map.get(e.getKey());
-            if (c == null) continue;
-            int[] v = e.getValue();
-            c.cellX = v[0]; c.cellY = v[1]; c.spanX = v[2]; c.spanY = v[3];
-        }
-    }
-
 
     private boolean addViewToTempLocation(View v, Rect rectOccupiedByPotentialDrop, int[] direction,
             ItemConfiguration currentState) {
@@ -18241,17 +17965,6 @@ public class ReorderAlgorithm {
 
         int[] tmpLocation = findNearestArea(c.cellX, c.cellY, c.spanX, c.spanY, direction,
                 mCellLayout.mTmpOccupied.cells, null, new int[2]);
-
-        // Guard against distant teleportation: for 1x1 icons, only allow displacement
-        // to an immediately adjacent cell (Euclidean distance <= 1.5f, i.e. 1 cell away).
-        // Never allow distant vacant cell hunting that teleports icons across the screen.
-        if (tmpLocation[0] >= 0 && tmpLocation[1] >= 0) {
-            float dist = (float) Math.hypot(tmpLocation[0] - c.cellX, tmpLocation[1] - c.cellY);
-            if (c.spanX == 1 && c.spanY == 1 && dist > 1.5f) {
-                tmpLocation[0] = -1;
-                tmpLocation[1] = -1;
-            }
-        }
 
         if (tmpLocation[0] >= 0 && tmpLocation[1] >= 0) {
             c.cellX = tmpLocation[0];
@@ -18264,9 +17977,6 @@ public class ReorderAlgorithm {
 
     private boolean pushViewsToTempLocation(ArrayList<View> views, Rect rectOccupiedByPotentialDrop,
             int[] direction, View dragView, ItemConfiguration currentState) {
-
-        int countX = mCellLayout.getCountX();
-        int countY = mCellLayout.getCountY();
 
         ViewCluster cluster = new ViewCluster(mCellLayout, views, currentState);
         Rect clusterRect = cluster.getBoundingRect();
@@ -18311,48 +18021,11 @@ public class ReorderAlgorithm {
         // left edge, we consider sort the views by their right edge, from right to left.
         cluster.sortConfigurationForEdgePush(whichEdge);
 
-        if (!isWidget()) {
-            if (whichEdge == ViewCluster.LEFT) {
-                //order by row desc
-                currentState.sortedViews.sort((lhs, rhs) -> {
-                    CellLayoutLayoutParams lplhs = (CellLayoutLayoutParams) lhs.getLayoutParams();
-                    CellLayoutLayoutParams lprhs = (CellLayoutLayoutParams) rhs.getLayoutParams();
-                    if (lprhs.getCellY() + lprhs.cellVSpan == lplhs.getCellY() + lplhs.cellVSpan) {
-                        return lprhs.getCellX() - lplhs.getCellX();
-                    }
-                    return (lprhs.getCellY() + lprhs.cellVSpan) - (lplhs.getCellY() + lplhs.cellVSpan);
-                });
-
-            } else if (whichEdge == ViewCluster.RIGHT) {
-                //order by row asc
-                currentState.sortedViews.sort((lhs, rhs) -> {
-                    CellLayoutLayoutParams lplhs = (CellLayoutLayoutParams) lhs.getLayoutParams();
-                    CellLayoutLayoutParams lprhs = (CellLayoutLayoutParams) rhs.getLayoutParams();
-                    if (lplhs.getCellY() + lplhs.cellVSpan == lprhs.getCellY() + lprhs.cellVSpan) {
-                        return lplhs.getCellX() - lprhs.getCellX();
-                    }
-                    return (lplhs.getCellY() + lplhs.cellVSpan) - (lprhs.getCellY() + lprhs.cellVSpan);
-                });
-            }
-
-            if (cluster.views.size() == 1) {
-                View v = cluster.views.get(0);
-                CellAndSpan c = currentState.map.get(v);
-                mCellLayout.pushIconByRow(c, countX, countY, whichEdge);
-            }
-        }
-
         while (pushDistance > 0 && !fail) {
             for (View v : currentState.sortedViews) {
                 // For each view that isn't in the cluster, we see if the leading edge of the
                 // cluster is contacting the edge of that view. If so, we add that view to the
                 // cluster.
-                if (!isWidget()) {
-                    if (v instanceof LauncherAppWidgetHostView) {
-                        fail = true;
-                        break;
-                    }
-                }
                 if (!cluster.views.contains(v) && v != dragView) {
                     if (cluster.isViewTouchingEdge(v, whichEdge)) {
                         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) v.getLayoutParams();
@@ -18366,9 +18039,6 @@ public class ReorderAlgorithm {
 
                         // Adding view to cluster, mark it as not occupied.
                         mCellLayout.mTmpOccupied.markCells(c, false);
-                        if (!isWidget()) {
-                            mCellLayout.pushIconByRow(c, countX, countY, whichEdge);
-                        }
                     }
                 }
             }
@@ -18409,93 +18079,36 @@ public class ReorderAlgorithm {
     // to push items in each of the cardinal directions, in an order based on the direction vector
     // passed.
     private boolean attemptPushInDirection(ArrayList<View> intersectingViews, Rect occupied,
-                                           int[] direction, View ignoreView, ItemConfiguration solution) {
+            int[] direction, View ignoreView, ItemConfiguration solution) {
         if ((Math.abs(direction[0]) + Math.abs(direction[1])) > 1) {
             // If the direction vector has two non-zero components, we try pushing
             // separately in each of the components.
-            int temp = direction[1];
-            direction[1] = 0;
-
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
+            int temp;
+            for (int j = 0; j < 2; j++) {
+                for (int i = 1; i >= 0; i--) {
+                    temp = direction[i];
+                    direction[i] = 0;
+                    if (pushViewsToTempLocation(intersectingViews, occupied, direction, ignoreView,
+                            solution)) {
+                        return true;
+                    }
+                    direction[i] = temp;
+                }
+                revertDir(direction);
             }
-            direction[1] = temp;
-            temp = direction[0];
-            direction[0] = 0;
-
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // Revert the direction
-            direction[0] = temp;
-
-            // Now we try pushing in each component of the opposite direction
-            direction[0] *= -1;
-            direction[1] *= -1;
-            temp = direction[1];
-            direction[1] = 0;
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-
-            direction[1] = temp;
-            temp = direction[0];
-            direction[0] = 0;
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // revert the direction
-            direction[0] = temp;
-            direction[0] *= -1;
-            direction[1] *= -1;
-
         } else {
             // If the direction vector has a single non-zero component, we push first in the
             // direction of the vector
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // Then we try the opposite direction
-            direction[0] *= -1;
-            direction[1] *= -1;
-            if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                    ignoreView, solution)) {
-                return true;
-            }
-            // Switch the direction back
-            direction[0] *= -1;
-            direction[1] *= -1;
-
-            // If we have failed to find a push solution with the above, then we try
-            // to find a solution by pushing along the perpendicular axis.
-
-            // Swap the components
-            if (isWidget()) {
-                int temp = direction[1];
-                direction[1] = direction[0];
-                direction[0] = temp;
-                if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                        ignoreView, solution)) {
-                    return true;
+            int temp;
+            for (int j = 0; j < 2; j++) {
+                for (int i = 0; i < 2; i++) {
+                    if (pushViewsToTempLocation(intersectingViews, occupied, direction, ignoreView,
+                            solution)) {
+                        return true;
+                    }
+                    revertDir(direction);
                 }
-
-                // Then we try the opposite direction
-                direction[0] *= -1;
-                direction[1] *= -1;
-                if (pushViewsToTempLocation(intersectingViews, occupied, direction,
-                        ignoreView, solution)) {
-                    return true;
-                }
-                // Switch the direction back
-                direction[0] *= -1;
-                direction[1] *= -1;
-
-                // Swap the components back
+                // Swap the components
                 temp = direction[1];
                 direction[1] = direction[0];
                 direction[0] = temp;
@@ -18584,15 +18197,18 @@ public class ReorderAlgorithm {
 
     private boolean isConfigurationRegionOccupied(Rect region, ItemConfiguration configuration,
             View ignoreView) {
-        for (Map.Entry<View, CellAndSpan> entry : configuration.map.entrySet()) {
-            if (entry.getKey() == ignoreView) continue;
-            CellAndSpan cs = entry.getValue();
-            if (Math.max(region.left, cs.cellX) < Math.min(region.right, cs.cellX + cs.spanX)
-                    && Math.max(region.top, cs.cellY) < Math.min(region.bottom, cs.cellY + cs.spanY)) {
-                return true;
-            }
-        }
-        return false;
+        return configuration.map
+                .entrySet()
+                .stream()
+                .filter(entry -> entry.getKey() != ignoreView)
+                .map(Entry::getValue)
+                .anyMatch(cellAndSpan -> region.intersect(
+                        cellAndSpan.cellX,
+                        cellAndSpan.cellY,
+                        cellAndSpan.cellX + cellAndSpan.spanX,
+                        cellAndSpan.cellY + cellAndSpan.spanY
+                        )
+                );
     }
 
     /**
@@ -18631,99 +18247,24 @@ public class ReorderAlgorithm {
      * the locations they should be in the given solution.
      */
     public ItemConfiguration calculateReorder(ReorderParameters reorderParameters) {
-        mIsWidget = Workspace.isWidget
-                || reorderParameters.getSpanX() > 1
-                || reorderParameters.getSpanY() > 1
-                || (reorderParameters.getDragView() instanceof LauncherAppWidgetHostView);
-        if (mCellLayout.mDirectionVector[0] == 0 && mCellLayout.mDirectionVector[1] == 0) {
-            getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
-        }
-
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "calculateReorder START pixelXY=(" +
-                    reorderParameters.getPixelX() + "," + reorderParameters.getPixelY() + ")" +
-                    " span=(" + reorderParameters.getSpanX() + "," + reorderParameters.getSpanY() + ")");
-
-            StringBuilder occupiedLog = new StringBuilder("mOccupied grid:\n");
-            for (int row = 0; row < mCellLayout.getCountY(); row++) {
-                occupiedLog.append("  row").append(row).append(": ");
-                for (int col = 0; col < mCellLayout.getCountX(); col++) {
-                    occupiedLog.append(mCellLayout.isOccupied(col, row) ? "X" : ".").append(" ");
-                }
-                occupiedLog.append("\n");
-            }
-            android.util.Log.d("ReorderDebug", occupiedLog.toString());
-        }
-
-        boolean isInternalDrag = reorderParameters.getDragView() != null
-                && reorderParameters.getDragView().getParent() == mCellLayout.getShortcutsAndWidgets();
-        if (!isInternalDrag && !isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "calculateReorder: NO EMPTY CELL FOUND -> returning no-solution");
-            }
-            ItemConfiguration solution = new ItemConfiguration();
-            solution.cellX = solution.cellY = solution.spanX = solution.spanY = -1;
-            solution.isSolution = false;
-            return solution;
-        }
-
+        getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
 
         ItemConfiguration dropInPlaceSolution = dropInPlaceSolution(reorderParameters);
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "dropInPlaceSolution: isSolution=" + dropInPlaceSolution.isSolution
-                    + " cell=(" + dropInPlaceSolution.cellX + "," + dropInPlaceSolution.cellY + ")");
-        }
-
-        // When the target cell is unoccupied, place the app directly there without rearranging other views
-        if (dropInPlaceSolution.isSolution) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: dropInPlaceSolution -> Cell("
-                        + dropInPlaceSolution.cellX + "," + dropInPlaceSolution.cellY + ")");
-            }
-            return dropInPlaceSolution;
-        }
 
         // Find a solution involving pushing / displacing any items in the way
         ItemConfiguration swapSolution = findReorderSolution(reorderParameters, true);
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "swapSolution:        isSolution=" + swapSolution.isSolution
-                    + " cell=(" + swapSolution.cellX + "," + swapSolution.cellY + ")"
-                    + " area=" + swapSolution.area());
-        }
-
-        // iOS behaviour: a widget dropped on icons pushes them, it does not hop to the nearest hole.
-        if (isWidget() && swapSolution.isSolution) {
-            return swapSolution;
-        }
 
         // We attempt the approach which doesn't shuffle views at all
         ItemConfiguration closestSpaceSolution = closestEmptySpaceReorder(reorderParameters);
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "closestSpaceSolution: isSolution=" + closestSpaceSolution.isSolution
-                    + " cell=(" + closestSpaceSolution.cellX + "," + closestSpaceSolution.cellY + ")"
-                    + " area=" + closestSpaceSolution.area());
-        }
 
         // If the reorder solution requires resizing (shrinking) the item being dropped, we instead
         // favor a solution in which the item is not resized, but
         if (swapSolution.isSolution && swapSolution.area() >= closestSpaceSolution.area()) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: swapSolution -> Cell(" + swapSolution.cellX + "," + swapSolution.cellY + ")");
-            }
             return swapSolution;
         } else if (closestSpaceSolution.isSolution) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: closestSpaceSolution -> Cell(" + closestSpaceSolution.cellX + "," + closestSpaceSolution.cellY + ")");
-            }
             return closestSpaceSolution;
-        } else if (swapSolution.isSolution) {
-            if (DEBUG) {
-                android.util.Log.d("ReorderDebug", "CHOSEN: swapSolution (fallback) -> Cell(" + swapSolution.cellX + "," + swapSolution.cellY + ")");
-            }
-            return swapSolution;
-        }
-        if (DEBUG) {
-            android.util.Log.d("ReorderDebug", "CHOSEN: null (no solution found)");
+        } else if (dropInPlaceSolution.isSolution) {
+            return dropInPlaceSolution;
         }
         return null;
     }
@@ -18873,17 +18414,6 @@ public class ReorderAlgorithm {
         }
         return bestXY;
     }
-
-    public boolean isWidget() {
-        return mIsWidget || Workspace.isWidget || (mOccupiedRect != null && (mOccupiedRect.width() > 1 || mOccupiedRect.height() > 1));
-    }
-
-
-
-    public Workspace<?> getWorkspace() {
-        return Launcher.cast(mCellLayout.mActivity).getWorkspace();
-    }
-
 }
 ```
 
