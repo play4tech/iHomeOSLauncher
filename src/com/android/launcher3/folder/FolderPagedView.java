@@ -213,6 +213,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) view.getLayoutParams();
         lp.setCellXY(mOrganizer.getPosForRank(rank));
+        if (item != null) {
+            item.rank = rank;
+        }
         getPageAt(pageNo).addViewToCellLayout(view, -1, item.getViewId(), lp, true);
     }
 
@@ -358,6 +361,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
                 CellLayoutLayoutParams lp = (CellLayoutLayoutParams) v.getLayoutParams();
                 ItemInfo info = (ItemInfo) v.getTag();
                 lp.setCellXY(mOrganizer.getPosForRank(rank));
+                if (info instanceof WorkspaceItemInfo) {
+                    ((WorkspaceItemInfo) info).rank = rank;
+                }
                 currentPage.addViewToCellLayout(v, -1, info.getViewId(), lp, true);
 
                 if (mOrganizer.isItemInPreview(rank) && v instanceof BubbleTextView) {
@@ -598,7 +604,81 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         if (target == empty) {
             // No animation
             return;
-        } else if (target > empty) {
+        }
+
+        if (pageE == pageToAnimate && pageT == pageToAnimate) {
+            int emptyRow = pagePosE / mGridCountX;
+            int emptyCol = pagePosE % mGridCountX;
+            int targetRow = pagePosT / mGridCountX;
+            int targetCol = pagePosT % mGridCountX;
+
+            CellLayout page = getPageAt(pageToAnimate);
+            if (page == null) {
+                return;
+            }
+
+            if (emptyRow == targetRow) {
+                // Same row: shift items horizontally within this row only
+                int row = emptyRow;
+                if (emptyCol < targetCol) {
+                    for (int col = emptyCol; col < targetCol; col++) {
+                        int nextCol = col + 1;
+                        View v = page.getChildAt(nextCol, row);
+                        if (v != null) {
+                            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                                v.clearAnimation();
+                            }
+                            if (page.animateChildToPosition(v, col, row,
+                                    REORDER_ANIMATION_DURATION, delay, true, true)) {
+                                delay += delayAmount;
+                                delayAmount *= VIEW_REORDER_DELAY_FACTOR;
+                            }
+                            if (v.getTag() instanceof WorkspaceItemInfo) {
+                                ((WorkspaceItemInfo) v.getTag()).rank = pageToAnimate * maxItemsPerPage + row * mGridCountX + col;
+                            }
+                        }
+                    }
+                } else if (emptyCol > targetCol) {
+                    for (int col = emptyCol; col > targetCol; col--) {
+                        int prevCol = col - 1;
+                        View v = page.getChildAt(prevCol, row);
+                        if (v != null) {
+                            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                                v.clearAnimation();
+                            }
+                            if (page.animateChildToPosition(v, col, row,
+                                    REORDER_ANIMATION_DURATION, delay, true, true)) {
+                                delay += delayAmount;
+                                delayAmount *= VIEW_REORDER_DELAY_FACTOR;
+                            }
+                            if (v.getTag() instanceof WorkspaceItemInfo) {
+                                ((WorkspaceItemInfo) v.getTag()).rank = pageToAnimate * maxItemsPerPage + row * mGridCountX + col;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Different rows: 2D direct swap with the target item (no domino ripple across other rows)
+                View targetView = page.getChildAt(targetCol, targetRow);
+                if (targetView != null) {
+                    if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                        targetView.clearAnimation();
+                    }
+                    page.animateChildToPosition(targetView, emptyCol, emptyRow,
+                            REORDER_ANIMATION_DURATION, 0, true, true);
+                    if (targetView.getTag() instanceof WorkspaceItemInfo) {
+                        ((WorkspaceItemInfo) targetView.getTag()).rank = empty;
+                    }
+                }
+            }
+
+            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                ((GridFolder) mFolder).wobbleFolder(true);
+            }
+            return;
+        }
+
+        if (target > empty) {
             // Items will move backwards to make room for the empty cell.
             direction = 1;
 

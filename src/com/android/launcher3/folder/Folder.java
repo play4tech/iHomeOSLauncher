@@ -399,9 +399,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 }
             }
 
-            int index = getIconsInReadingOrder().indexOf(v);
-            mEmptyCellRank = (index >= 0) ? index : item.rank;
+            mEmptyCellRank = item.rank;
             mCurrentDragView = v;
+            mDragInProgress = true;
             DragTrace.log("Folder.startDrag item=" + (item != null ? item.title : "null") + " rank=" + mEmptyCellRank);
 
             mDragController.addDragListener(this);
@@ -1310,6 +1310,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
             try (SuppressInfoChanges s = new SuppressInfoChanges()) {
                 mFolderIcon.onDrop(d, true /* itemReturnedOnFailedDrop */);
+                Collections.sort(mInfo.contents, ITEM_POS_COMPARATOR);
             }
         }
 
@@ -1345,19 +1346,6 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void updateItemLocationsInDatabaseBatch(boolean isBind) {
-        if (!isBind && mContent != null) {
-            ArrayList<View> icons = getIconsInReadingOrder();
-            if (icons.size() == mInfo.contents.size()) {
-                mInfo.contents.clear();
-                for (int i = 0; i < icons.size(); i++) {
-                    View iconView = icons.get(i);
-                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
-                        mInfo.contents.add((WorkspaceItemInfo) iconView.getTag());
-                    }
-                }
-            }
-        }
-
         FolderGridOrganizer verifier = new FolderGridOrganizer(
                 mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
 
@@ -1501,10 +1489,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private boolean isDragActive() {
-        return mDragInProgress || (mLauncherDelegate != null
-                && mLauncherDelegate.getLauncher() != null
-                && mLauncherDelegate.getLauncher().getDragController() != null
-                && mLauncherDelegate.getLauncher().getDragController().isDragging());
+        return mDragInProgress;
     }
 
     // This method keeps track of the first and last item in the folder for the purposes
@@ -1628,21 +1613,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             // Temporarily suppress the listener, as we did all the work already here.
             try (SuppressInfoChanges s = new SuppressInfoChanges()) {
                 mInfo.add(si, mEmptyCellRank, false);
-            }
-
-            ArrayList<View> icons = getIconsInReadingOrder();
-            if (icons.size() == mInfo.contents.size()) {
-                mInfo.contents.clear();
-                FolderGridOrganizer verifier = new FolderGridOrganizer(
-                        mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
-                for (int i = 0; i < icons.size(); i++) {
-                    View iconView = icons.get(i);
-                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
-                        WorkspaceItemInfo itemInfo = (WorkspaceItemInfo) iconView.getTag();
-                        verifier.updateRankAndPos(itemInfo, i);
-                        mInfo.contents.add(itemInfo);
-                    }
-                }
+                Collections.sort(mInfo.contents, ITEM_POS_COMPARATOR);
             }
 
             // We only need to update the locations if it doesn't get handled in
@@ -1759,17 +1730,23 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public List<BubbleTextView> getItemsOnPage(int page) {
         ArrayList<View> allItems = getIconsInReadingOrder();
-        int lastPage = mContent.getPageCount() - 1;
         int totalItemsInFolder = allItems.size();
         int itemsPerPage = mContent.itemsPerPage();
-        int numItemsOnCurrentPage = page == lastPage
-                ? totalItemsInFolder - (itemsPerPage * page)
-                : itemsPerPage;
+        if (page < 0 || itemsPerPage <= 0) {
+            return Collections.emptyList();
+        }
 
-        int startIndex = page * itemsPerPage;
-        int endIndex = Math.min(startIndex + numItemsOnCurrentPage, allItems.size());
+        // The current page can briefly outlive its items while a drag removes the last
+        // shortcuts from it. Derive the range from the live item count and reject a stale
+        // page before calculating an ArrayList capacity.
+        long startIndexLong = (long) page * itemsPerPage;
+        if (startIndexLong >= totalItemsInFolder) {
+            return Collections.emptyList();
+        }
 
-        List<BubbleTextView> itemsOnCurrentPage = new ArrayList<>(numItemsOnCurrentPage);
+        int startIndex = (int) startIndexLong;
+        int endIndex = (int) Math.min(startIndexLong + itemsPerPage, totalItemsInFolder);
+        List<BubbleTextView> itemsOnCurrentPage = new ArrayList<>(endIndex - startIndex);
         for (int i = startIndex; i < endIndex; ++i) {
             itemsOnCurrentPage.add((BubbleTextView) allItems.get(i));
         }
