@@ -2987,9 +2987,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                         distance, false, d)
                         || addToExistingFolderIfNecessary(cell, dropTargetLayout, mTargetCell,
                         distance, d, false)) {
-                    Log.d("ReorderDebug", "dropFinal folderPath=handled cell=(" + mTargetCell[0]
-                            + "," + mTargetCell[1] + ") screenId=" + screenId + " pageIndex="
-                            + getPageIndexForScreenId(screenId));
                     if (dropTargetLayout != null && dropTargetLayout.isItemPlacementDirty()) {
                         dropTargetLayout.revertTempState();
                     }
@@ -3109,10 +3106,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                         }
                     }
                     android.util.Log.d("IconDragLogger", "DROP SUCCESS -> Moved icon '" + (item.title != null ? item.title : "Item") + "' to Cell(" + mTargetCell[0] + ", " + mTargetCell[1] + ")");
-                    Log.d("ReorderDebug", "dropFinal folderPath=none item=" + item.title
-                            + " cell=(" + mTargetCell[0] + "," + mTargetCell[1] + ") screenId="
-                            + screenId + " pageIndex=" + targetScreenIndex + " span=(" + item.spanX
-                            + "," + item.spanY + ")");
                     post(() -> logIconLocations("AFTER DROP FINAL"));
 
                     if (container != LauncherSettings.Favorites.CONTAINER_HOTSEAT &&
@@ -3475,8 +3468,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     void setDragMode(int dragMode) {
         if (dragMode != mDragMode) {
-            Log.d("ReorderDebug", "dragMode transition " + mDragMode + " -> " + dragMode
-                    + " currentPage=" + mCurrentPage + " nextPage=" + mNextPage);
             if (dragMode == DRAG_MODE_NONE) {
                 cleanupAddToFolder();
                 // We don't want to cancel the re-order alarm every time the target cell changes
@@ -3577,19 +3568,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         // Ensure that we have proper spans for the item that we are dropping
         if (item.spanX < 0 || item.spanY < 0) throw new RuntimeException("Improper spans found");
         mDragViewVisualCenter = d.getVisualCenter(mDragViewVisualCenter);
-        int[] workspaceScreenLocation = new int[2];
-        getLocationOnScreen(workspaceScreenLocation);
-        int[] dragLayerScreenLocation = new int[2];
-        mLauncher.getDragLayer().getLocationOnScreen(dragLayerScreenLocation);
-        Log.d("ReorderDebug", "dragGeometry touchWorkspacePx=(" + d.x + "," + d.y
-                + ") touchRawScreenPx=(" + (workspaceScreenLocation[0] + d.x) + ","
-                + (workspaceScreenLocation[1] + d.y) + ") visualCenterDragLayerPx=("
-                + mDragViewVisualCenter[0] + "," + mDragViewVisualCenter[1]
-                + ") visualCenterRawScreenPx=("
-                + (dragLayerScreenLocation[0] + mDragViewVisualCenter[0]) + ","
-                + (dragLayerScreenLocation[1] + mDragViewVisualCenter[1]) + ") density="
-                + getResources().getDisplayMetrics().density + " itemSpan=(" + item.spanX + ","
-                + item.spanY + ") currentPage=" + mCurrentPage + " nextPage=" + mNextPage);
 
         if (mPrevDragViewVisualCenter[0] >= 0 && mPrevDragViewVisualCenter[1] >= 0) {
             float deltaX = mDragViewVisualCenter[0] - mPrevDragViewVisualCenter[0];
@@ -3811,30 +3789,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 || relTouchX <= leftEdgeThreshold);
         boolean isAtRightEdge = (relCenterX >= rightEdgeThreshold
                 || relTouchX >= rightEdgeThreshold);
-        int[] workspaceScreenLocation = new int[2];
-        getLocationOnScreen(workspaceScreenLocation);
-        int[] dragLayerScreenLocation = new int[2];
-        mLauncher.getDragLayer().getLocationOnScreen(dragLayerScreenLocation);
-        int[] leftPageScreenLocation = new int[2];
-        leftLayout.getLocationOnScreen(leftPageScreenLocation);
-        int[] rightPageScreenLocation = new int[2];
-        rightLayout.getLocationOnScreen(rightPageScreenLocation);
-        Log.d("ReorderDebug", "pageFlipGeometry page=" + nextPage + " density="
-                + density + " edgeGutterPx=" + edgeGutter + " minimumBezelPx="
-                + minimumBezelZone + " leftReorderRingOuterX=" + leftReorderRingOuterX
-                + " rightReorderRingOuterX=" + rightReorderRingOuterX
-                + " leftThresholdRawScreenPx="
-                + (leftPageScreenLocation[0] + leftEdgeThreshold)
-                + " rightThresholdRawScreenPx="
-                + (leftPageScreenLocation[0] + rightEdgeThreshold)
-                + " pageBoundsRawScreenPx=[" + leftPageScreenLocation[0] + ","
-                + (rightPageScreenLocation[0] + rightLayout.getWidth()) + "] touchRawScreenPx=("
-                + (workspaceScreenLocation[0] + d.x) + "," + (workspaceScreenLocation[1] + d.y)
-                + ") centerRawScreenPx=(" + (dragLayerScreenLocation[0] + centerX) + ","
-                + (dragLayerScreenLocation[1] + mDragViewVisualCenter[1]) + ") relTouchX="
-                + relTouchX + " relCenterX=" + relCenterX + " leftEdgeThreshold="
-                + leftEdgeThreshold + " rightEdgeThreshold=" + rightEdgeThreshold
-                + " isAtLeftEdge=" + isAtLeftEdge + " isAtRightEdge=" + isAtRightEdge);
 
         IntSet pageIndexesToVerify = IntSet.wrap(nextPage - 1,
                 nextPage + (isTwoPanelEnabled() ? 2 : 1));
@@ -3867,9 +3821,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
             CellLayout layout = verifyInsidePage(pageIndex, touchX, touchY);
             if (layout != null) {
-                Log.d("ReorderDebug", "neighborPageSelected page=" + pageIndex + " side="
-                        + (isLeftNeighbor ? "left" : "right") + " currentPage=" + mCurrentPage
-                        + " nextPage=" + nextPage);
                 return layout;
             }
         }

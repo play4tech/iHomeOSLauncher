@@ -975,9 +975,6 @@ public class CellLayout extends ViewGroup {
         float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
         // Halfway between reorder radius and icon.
         float folderRadius = (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
-        Log.d("ReorderDebug", "folderRadius cell=(" + targetCell[0] + "," + targetCell[1]
-                + ") folderRadiusPx=" + folderRadius + " iconVisibleRadiusPx="
-                + iconVisibleRadius + " density=" + getResources().getDisplayMetrics().density);
         return folderRadius;
     }
 
@@ -988,7 +985,7 @@ public class CellLayout extends ViewGroup {
         int[] centerPoint = mTmpPoint;
         getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
 
-        return calculateReorderRadius(targetCell, spanX, spanY, centerPoint, true);
+        return calculateReorderRadius(targetCell, spanX, spanY, centerPoint);
     }
 
     /** Returns the outer horizontal edge of the first or last column's reorder rings. */
@@ -1002,7 +999,7 @@ public class CellLayout extends ViewGroup {
             if (getChildAt(cellX, cellY) == null) continue;
             targetCell[1] = cellY;
             getWorkspaceCellVisualCenter(cellX, cellY, centerPoint);
-            float radius = calculateReorderRadius(targetCell, 1, 1, centerPoint, false);
+            float radius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
             outerX = firstColumn ? Math.min(outerX, centerPoint[0] - radius)
                     : Math.max(outerX, centerPoint[0] + radius);
         }
@@ -1010,7 +1007,7 @@ public class CellLayout extends ViewGroup {
     }
 
     private float calculateReorderRadius(int[] targetCell, int spanX, int spanY,
-            int[] centerPoint, boolean logGeometry) {
+            int[] centerPoint) {
 
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
@@ -1023,37 +1020,12 @@ public class CellLayout extends ViewGroup {
             minRadius = Math.min(minRadius, centerPoint[1] - cellBoundsWithSpacing.top);
             minRadius = Math.min(minRadius, cellBoundsWithSpacing.right - centerPoint[0]);
             minRadius = Math.min(minRadius, cellBoundsWithSpacing.bottom - centerPoint[1]);
-            if (logGeometry) {
-                logReorderDebugGeometry(targetCell, spanX, spanY, minRadius,
-                        centerPoint[0], centerPoint[1]);
-            }
             return minRadius;
         }
         // Take up the entire cell, including space between this cell and the adjacent ones.
         // Multiply by span to scale radius
-        float radius = (float) Math.hypot(spanX * cellBoundsWithSpacing.width() / 2f,
+        return (float) Math.hypot(spanX * cellBoundsWithSpacing.width() / 2f,
                 spanY * cellBoundsWithSpacing.height() / 2f);
-        if (logGeometry) {
-            logReorderDebugGeometry(targetCell, spanX, spanY, radius,
-                    centerPoint[0], centerPoint[1]);
-        }
-        return radius;
-    }
-
-    private void logReorderDebugGeometry(int[] targetCell, int spanX, int spanY, float radius,
-            int centerX, int centerY) {
-        int[] screenLocation = new int[2];
-        getLocationOnScreen(screenLocation);
-        String boundary = targetCell[0] == 0 ? "first"
-                : targetCell[0] + spanX == mCountX ? "last" : "interior";
-        float density = getResources().getDisplayMetrics().density;
-        float centerRawScreenX = screenLocation[0] + centerX;
-        Log.d("ReorderDebug", "reorderRing boundary=" + boundary + " cell=(" + targetCell[0]
-                + "," + targetCell[1] + ") span=(" + spanX + "," + spanY + ") countX="
-                + mCountX + " density=" + density + " centerLocalPx=(" + centerX + ","
-                + centerY + ") centerRawScreenPx=" + centerRawScreenX + " radiusPx=" + radius
-                + " outerRawScreenX=[" + (centerRawScreenX - radius) + ","
-                + (centerRawScreenX + radius) + "]");
     }
 
     public int getCellWidth() {
@@ -1448,9 +1420,6 @@ public class CellLayout extends ViewGroup {
                 }
                 validRegions.push(currentRect);
                 double distance = Math.hypot(cellXY[0] - relativeXPos,  cellXY[1] - relativeYPos);
-                Log.d("ReorderDebug", "nearestCandidate cell=(" + x + "," + y + ") span=("
-                        + xSize + "," + ySize + ") distancePx=" + distance + " contained="
-                        + contained + " bestDistanceBeforePx=" + bestDistance);
 
                 if ((distance <= bestDistance && !contained) ||
                         currentRect.contains(bestRect)) {
@@ -1471,9 +1440,6 @@ public class CellLayout extends ViewGroup {
             bestXY[0] = -1;
             bestXY[1] = -1;
         }
-        Log.d("ReorderDebug", "nearestResult pointPx=(" + relativeXPos + "," + relativeYPos
-                + ") cell=(" + bestXY[0] + "," + bestXY[1] + ") bestDistancePx="
-                + bestDistance);
         return bestXY;
     }
 

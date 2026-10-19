@@ -476,11 +476,6 @@ public abstract class DragController<T extends ActivityContext>
 
     protected void handleMoveEvent(int x, int y) {
         mDragObject.dragView.move(x, y);
-        int[] dragLayerScreenLocation = new int[2];
-        mActivity.getDragLayer().getLocationOnScreen(dragLayerScreenLocation);
-        android.util.Log.d("ReorderDebug", "touch rawScreenPx=("
-                + (dragLayerScreenLocation[0] + x) + "," + (dragLayerScreenLocation[1] + y)
-                + ") dragLayerPx=(" + x + "," + y + ")");
 
         // Check if we are hovering over the scroll areas
         mDistanceSinceScroll += Math.hypot(mLastTouch.x - x, mLastTouch.y - y);
