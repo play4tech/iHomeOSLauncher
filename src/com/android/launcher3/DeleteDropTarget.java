@@ -31,6 +31,7 @@ import com.android.launcher3.model.data.FolderInfo;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
+import com.android.launcher3.util.DragTrace;
 
 public class DeleteDropTarget extends ButtonDropTarget {
 
@@ -129,6 +130,7 @@ public class DeleteDropTarget extends ButtonDropTarget {
     @Override
     public void completeDrop(DragObject d) {
         ItemInfo item = d.dragInfo;
+        DragTrace.log("DeleteDropTarget.completeDrop item=" + (item != null ? item.title : "null"));
         if (canRemove(item)) {
             onAccessibilityDrop(null, item);
             mDropTargetHandler.onDeleteComplete(item);

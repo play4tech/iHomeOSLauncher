@@ -51,6 +51,7 @@ import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.shortcuts.DeepShortcutView;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.RunnableList;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
@@ -199,6 +200,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
     @Override
     protected void handleClose(boolean animate) {
+        DragTrace.log("ArrowPopup.handleClose view=" + getClass().getSimpleName() + " animate=" + animate);
         if (animate) {
             animateClose();
         } else {

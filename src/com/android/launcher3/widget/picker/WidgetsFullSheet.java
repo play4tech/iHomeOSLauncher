@@ -70,6 +70,7 @@ import com.android.launcher3.LauncherPrefs;
 import com.android.launcher3.LauncherSettings;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.anim.PendingAnimation;
 import com.android.launcher3.compat.AccessibilityManagerCompat;
@@ -724,6 +725,7 @@ public class WidgetsFullSheet extends BaseWidgetSheet
 
     /** Shows the {@link WidgetsFullSheet} on the launcher. */
     public static WidgetsFullSheet show(BaseActivity activity, boolean animate) {
+        DragTrace.log("WidgetsFullSheet.show animate=" + animate);
         WidgetsFullSheet sheet = (WidgetsFullSheet) activity.getLayoutInflater().inflate(
                 getWidgetSheetId(activity),
                 activity.getDragLayer(),

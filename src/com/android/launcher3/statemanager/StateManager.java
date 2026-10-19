@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
+import com.android.launcher3.util.DragTrace;
+
 /**
  * Class to manage transitions between different states for a StatefulActivity based on different
  * states
@@ -239,6 +241,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
     private void goToState(
             STATE_TYPE state, boolean animated, long delay, AnimatorListener listener) {
+        DragTrace.log("StateManager.goToState from=" + mState + " to=" + state + " animated=" + animated);
         if (DEBUG) {
             String stackTrace = Log.getStackTraceString(new Exception("tracing state transition"));
             String truncatedTrace =

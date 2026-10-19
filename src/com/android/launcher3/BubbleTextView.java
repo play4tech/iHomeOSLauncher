@@ -92,6 +92,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.ItemInfoWithIcon;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.popup.PopupContainerWithArrow;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.search.StringMatcherUtility;
 import com.android.launcher3.util.CancellableTask;
 import com.android.launcher3.util.IntArray;
@@ -1231,6 +1232,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             boolean wasDotted = mDotInfo != null;
             mDotInfo = mActivity.getDotInfoForItem(itemInfo);
             boolean isDotted = mDotInfo != null;
+            DragTrace.log("BubbleTextView.applyDotState item=" + (itemInfo != null ? itemInfo.title : "null") + " isDotted=" + isDotted);
             float newDotScale = isDotted ? 1f : 0;
             if (mDisplay == DISPLAY_ALL_APPS) {
                 mDotRenderer = mActivity.getDeviceProfile().mDotRendererAllApps;

@@ -40,6 +40,7 @@ import androidx.annotation.WorkerThread;
 
 import android.os.SystemClock;
 import android.text.format.DateFormat;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.PackageUserKey;
 import com.android.launcher3.util.SettingsCache;
 
@@ -316,6 +317,7 @@ public class NotificationListener extends NotificationListenerService {
 
     @Override
     public void onNotificationPosted(final StatusBarNotification sbn) {
+        DragTrace.log("NotificationListener.onNotificationPosted pkg=" + (sbn != null ? sbn.getPackageName() : "null"));
         if (sbn != null) {
             mWorkerHandler.obtainMessage(MSG_NOTIFICATION_POSTED, sbn).sendToTarget();
         }
@@ -323,6 +325,7 @@ public class NotificationListener extends NotificationListenerService {
 
     @Override
     public void onNotificationRemoved(final StatusBarNotification sbn) {
+        DragTrace.log("NotificationListener.onNotificationRemoved pkg=" + (sbn != null ? sbn.getPackageName() : "null"));
         if (sbn != null) {
             mWorkerHandler.obtainMessage(MSG_NOTIFICATION_REMOVED, sbn).sendToTarget();
         }

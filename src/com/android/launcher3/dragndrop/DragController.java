@@ -37,6 +37,7 @@ import com.android.launcher3.logging.InstanceId;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.ItemInfoWithIcon;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.TouchController;
 import com.android.launcher3.views.ActivityContext;
 
@@ -221,6 +222,7 @@ public abstract class DragController<T extends ActivityContext>
                     .start();
         }
         mDragObject.dragView.onDragStart();
+        DragTrace.log("DragController.callOnDragStart item=" + (mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         android.util.Log.d("DragDebug", "DragController.callOnDragStart() called for: " + (mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         if (mActivity instanceof com.android.launcher3.Launcher) {
             ((com.android.launcher3.Launcher) mActivity).getInteractionController().beginDrag(mDragObject.dragView, mDragObject.dragInfo);
@@ -263,6 +265,8 @@ public abstract class DragController<T extends ActivityContext>
      * Stop dragging without dropping.
      */
     public void cancelDrag() {
+        DragTrace.log("DragController.cancelDrag isDragging=" + isDragging()
+                + " item=" + (mDragObject != null && mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         if (isDragging()) {
             if (mLastDropTarget != null) {
                 mLastDropTarget.onDragExit(mDragObject);
@@ -283,6 +287,8 @@ public abstract class DragController<T extends ActivityContext>
     }
 
     private void dispatchDropComplete(View dropTarget, boolean accepted) {
+        DragTrace.log("DragController.dispatchDropComplete accepted=" + accepted
+                + " target=" + (dropTarget != null ? dropTarget.getClass().getSimpleName() : "null"));
         if (!accepted) {
             // If it was not accepted, cleanup the state. If it was accepted, it is the
             // responsibility of the drop target to cleanup the state.
@@ -306,6 +312,7 @@ public abstract class DragController<T extends ActivityContext>
     }
 
     protected void endDrag() {
+        DragTrace.log("DragController.endDrag isDragging=" + isDragging());
         if (isDragging()) {
             mDragDriver = null;
             boolean isDeferred = false;
@@ -352,6 +359,7 @@ public abstract class DragController<T extends ActivityContext>
     }
 
     protected void callOnDragEnd() {
+        DragTrace.log("DragController.callOnDragEnd");
         if (mIsInPreDrag && mOptions.preDragCondition != null) {
             mOptions.preDragCondition.onPreDragEnd(mDragObject, false /* dragStarted*/);
         }
@@ -566,6 +574,8 @@ public abstract class DragController<T extends ActivityContext>
                 accepted = true;
             }
         }
+        DragTrace.log("DragController.drop dropTarget=" + (dropTarget != null ? dropTarget.getClass().getSimpleName() : "null")
+                + " accepted=" + accepted + " item=" + (mDragObject != null && mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         final View dropTargetAsView = dropTarget instanceof View ? (View) dropTarget : null;
         dispatchDropComplete(dropTargetAsView, accepted);
     }

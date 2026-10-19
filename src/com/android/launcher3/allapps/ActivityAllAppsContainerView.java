@@ -85,6 +85,7 @@ import com.android.launcher3.model.StringCache;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.pm.UserCache;
 import com.android.launcher3.recyclerview.AllAppsRecyclerViewPool;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.ItemInfoMatcher;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
@@ -584,6 +585,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         updateSearchResultsVisibility();
 
         boolean showTabs = shouldShowTabs();
+        DragTrace.log("ActivityAllAppsContainerView.reset showTabs=" + showTabs + " mUsingTabs=" + mUsingTabs);
         if (showTabs == mUsingTabs && !force) {
             return;
         }

@@ -87,8 +87,8 @@ This master document aggregates all 78 core architectural and functional code lo
 
 # src/com/android/launcher3/Launcher.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/Launcher.java`  
-**Lines**: 4127 | **Bytes**: 173165
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
+**Lines**: 4129 | **Bytes**: 173332
 
 ```java
 /*
@@ -238,6 +238,7 @@ import android.util.AttributeSet;
 import android.util.FloatProperty;
 import android.util.Log;
 import android.util.Pair;
+import com.android.launcher3.util.DragTrace;
 import android.util.SparseArray;
 import android.view.KeyEvent;
 import android.view.KeyboardShortcutGroup;
@@ -2817,6 +2818,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             return result;
         }
 
+        DragTrace.log("Launcher.startActivitySafely item=" + (item != null ? item.title : "null") + " intent=" + intent);
         RunnableList result = super.startActivitySafely(v, intent, item);
         if (v instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) v;
@@ -4224,7 +4226,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 # src/com/android/launcher3/LauncherApplication.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherApplication.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
 **Lines**: 132 | **Bytes**: 5504
 
 ```java
@@ -4365,7 +4367,7 @@ public class LauncherApplication extends Application {
 
 # src/com/android/launcher3/LauncherAppState.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherAppState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
 **Lines**: 293 | **Bytes**: 12466
 
 ```java
@@ -4667,8 +4669,8 @@ public class LauncherAppState implements SafeCloseable {
 
 # src/com/android/launcher3/statemanager/StateManager.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/statemanager/StateManager.java`  
-**Lines**: 737 | **Bytes**: 27725
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/statemanager/StateManager.java`  
+**Lines**: 740 | **Bytes**: 27878
 
 ```java
 /*
@@ -4716,6 +4718,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
+
+import com.android.launcher3.util.DragTrace;
 
 /**
  * Class to manage transitions between different states for a StatefulActivity based on different
@@ -4912,6 +4916,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
     private void goToState(
             STATE_TYPE state, boolean animated, long delay, AnimatorListener listener) {
+        DragTrace.log("StateManager.goToState from=" + mState + " to=" + state + " animated=" + animated);
         if (DEBUG) {
             String stackTrace = Log.getStackTraceString(new Exception("tracing state transition"));
             String truncatedTrace =
@@ -5413,7 +5418,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
 # src/com/android/launcher3/LauncherState.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherState.java`  
 **Lines**: 505 | **Bytes**: 19710
 
 ```java
@@ -5927,7 +5932,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
 
 # src/com/android/launcher3/states/RotationHelper.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/states/RotationHelper.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/states/RotationHelper.java`  
 **Lines**: 232 | **Bytes**: 9268
 
 ```java
@@ -6168,7 +6173,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 
 # src/com/android/launcher3/settings/SettingsActivity.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/settings/SettingsActivity.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
 **Lines**: 326 | **Bytes**: 13362
 
 ```java
@@ -6503,8 +6508,8 @@ public class SettingsActivity extends FragmentActivity
 
 # src/com/android/launcher3/Workspace.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/Workspace.java`  
-**Lines**: 5173 | **Bytes**: 223440
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
+**Lines**: 5302 | **Bytes**: 230659
 
 ```java
 /*
@@ -6629,6 +6634,7 @@ import com.android.launcher3.states.StateAnimationConfig;
 import com.android.launcher3.touch.ItemLongClickListener;
 import com.android.launcher3.touch.WorkspaceTouchListener;
 import com.android.launcher3.util.DisplayController;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.EdgeEffectCompat;
 import com.android.launcher3.util.Executors;
 import com.android.launcher3.util.IntArray;
@@ -6777,10 +6783,13 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     final WallpaperOffsetInterpolator mWallpaperOffset;
     private boolean mUnlockWallpaperFromDefaultPageOnLayout;
 
-    public static final int REORDER_TIMEOUT = 250;
+    public static final int REORDER_TIMEOUT = 35;
     protected final Alarm mReorderAlarm = new Alarm();
-    public static final int FOLDER_CREATION_TIMEOUT = 500;
+    public static final int FOLDER_CREATION_TIMEOUT = 650;
     protected final Alarm mFolderCreationAlarm = new Alarm();
+    public static final int REVERT_TIMEOUT = 150;
+    protected final Alarm mRevertAlarm = new Alarm();
+    private final float[] mPrevDragViewVisualCenter = new float[]{-1f, -1f};
     private View mPendingFolderDragOverView = null;
     private PreviewBackground mFolderCreateBg;
     private FolderIcon mDragOverFolderIcon = null;
@@ -7155,6 +7164,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     @Override
     public void onDragEnd() {
+        DragTrace.log("Workspace.onDragEnd");
         if (ENFORCE_DRAG_EVENT_ORDER) {
             enforceDragParity("onDragEnd", 0, 0);
         }
@@ -7173,6 +7183,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             }
         });
 
+        mRevertAlarm.cancelAlarm();
+        mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         mDragInfo = null;
         mDragSourceInternal = null;
         mDragObjectInfo = null;
@@ -7190,6 +7202,18 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     mLauncher.getHotseat().setIconsAlpha(1f);
                 }
             }
+        }
+        for (int i = 0; i < getPageCount(); i++) {
+            View page = getChildAt(i);
+            if (page instanceof CellLayout) {
+                CellLayout cl = (CellLayout) page;
+                if (cl.isItemPlacementDirty()) {
+                    cl.revertTempState();
+                }
+            }
+        }
+        if (mLauncher.getHotseat() != null && mLauncher.getHotseat().isItemPlacementDirty()) {
+            mLauncher.getHotseat().revertTempState();
         }
         dumpFullWorkspaceState("Workspace.onDragEnd");
     }
@@ -7828,6 +7852,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     public void stripEmptyScreens() {
+        DragTrace.log("Workspace.stripEmptyScreens screenCount=" + getPanelCount());
         if (mLauncher.isWorkspaceLoading()) {
             // Don't strip empty screens if the workspace is still loading.
             // This is dangerous and can result in data loss.
@@ -9213,13 +9238,15 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     mTargetCell);
             float distance = dropTargetLayout.getDistanceFromWorkspaceCellVisualCenter(
                     mDragViewVisualCenter[0], mDragViewVisualCenter[1], mTargetCell);
-            if (mCreateUserFolderOnDrop && willCreateUserFolder(d.dragInfo,
-                    dropTargetLayout, mTargetCell, distance, true)) {
-                return true;
-            }
-
-            if (mAddToExistingFolderOnDrop && willAddToExistingUserFolder(d.dragInfo,
-                    dropTargetLayout, mTargetCell, distance)) {
+            View targetView = dropTargetLayout.getChildAt(mTargetCell[0], mTargetCell[1]);
+            boolean withinFolderRadius = distance <= dropTargetLayout.getFolderCreationRadius(mTargetCell);
+            boolean canCreateFolder = (mCreateUserFolderOnDrop || mDragMode == DRAG_MODE_CREATE_FOLDER)
+                    && withinFolderRadius
+                    && willCreateUserFolder(d.dragInfo, targetView, false);
+            boolean canAddToFolder = (mAddToExistingFolderOnDrop || mDragMode == DRAG_MODE_ADD_TO_FOLDER)
+                    && withinFolderRadius
+                    && willAddToExistingUserFolder(d.dragInfo, targetView);
+            if (targetView != null && (canCreateFolder || canAddToFolder)) {
                 return true;
             }
 
@@ -9252,10 +9279,15 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     boolean willCreateUserFolder(ItemInfo info, View dropOverView, boolean considerTimeout) {
+        if (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty()) {
+            return false;
+        }
+        if (mDragMode == DRAG_MODE_REORDER) {
+            return false;
+        }
         if (dropOverView != null) {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) dropOverView.getLayoutParams();
-            if (lp.useTmpCoords && (lp.getTmpCellX() != lp.getCellX()
-                    || lp.getTmpCellY() != lp.getCellY())) {
+            if (lp.getTmpCellX() != lp.getCellX() || lp.getTmpCellY() != lp.getCellY()) {
                 return false;
             }
         }
@@ -9309,13 +9341,31 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             int[] targetCell, float distance, boolean external, DragObject d) {
         if (distance > target.getFolderCreationRadius(targetCell)) return false;
 
+        View v = target.getChildAt(targetCell[0], targetCell[1]);
+        boolean hasntMoved = false;
+        if (mDragInfo != null) {
+            CellLayout cellParent = getParentCellLayoutForView(mDragInfo.cell);
+            hasntMoved = (mDragInfo.cellX == targetCell[0] &&
+                    mDragInfo.cellY == targetCell[1]) && (cellParent == target);
+        }
+
+        if (v == null || hasntMoved) return false;
+
+        boolean aboveShortcut = (v.getTag() instanceof WorkspaceItemInfo);
+        boolean willBecomeShortcut = (newView.getTag() instanceof WorkspaceItemInfo);
+        if (!aboveShortcut || !willBecomeShortcut) return false;
+
+        boolean allowCreateFolder = mCreateUserFolderOnDrop || mDragMode == DRAG_MODE_CREATE_FOLDER;
+        if (!allowCreateFolder) return false;
+
+        DragTrace.log("Workspace.createUserFolder confirmed targetCell=(" + targetCell[0] + "," + targetCell[1] + ")");
+        mCreateUserFolderOnDrop = false;
+
         // Immediately cancel reorder alarm and snap all views in target layout back to true permanent positions
         cleanupReorder(true);
         if (target != null) {
             target.revertTempStateImmediately();
         }
-
-        View v = target.getChildAt(targetCell[0], targetCell[1]);
 
         if (v instanceof BubbleTextView || v instanceof Folder) {
             v.clearAnimation();
@@ -9334,21 +9384,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 target.getShortcutsAndWidgets().layoutChild(v);
             }
         }
-        boolean hasntMoved = false;
-        if (mDragInfo != null) {
-            CellLayout cellParent = getParentCellLayoutForView(mDragInfo.cell);
-            hasntMoved = (mDragInfo.cellX == targetCell[0] &&
-                    mDragInfo.cellY == targetCell[1]) && (cellParent == target);
-        }
-
-        boolean allowCreateFolder = mCreateUserFolderOnDrop || mDragMode == DRAG_MODE_CREATE_FOLDER;
-        if (v == null || hasntMoved || !allowCreateFolder) return false;
-        mCreateUserFolderOnDrop = false;
         final int screenId = getCellLayoutId(target);
-
-        boolean aboveShortcut = (v.getTag() instanceof WorkspaceItemInfo);
-        boolean willBecomeShortcut = (newView.getTag() instanceof WorkspaceItemInfo);
-
         if (aboveShortcut && willBecomeShortcut) {
             WorkspaceItemInfo sourceInfo = (WorkspaceItemInfo) newView.getTag();
             WorkspaceItemInfo destInfo = (WorkspaceItemInfo) v.getTag();
@@ -9400,13 +9436,15 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (distance > target.getFolderCreationRadius(targetCell)) return false;
 
         View dropOverView = target.getChildAt(targetCell[0], targetCell[1]);
-        boolean allowAddToFolder = mAddToExistingFolderOnDrop || mDragMode == DRAG_MODE_ADD_TO_FOLDER;
+        boolean allowAddToFolder = mAddToExistingFolderOnDrop || mDragMode == DRAG_MODE_ADD_TO_FOLDER
+                || willAddToExistingUserFolder(d.dragInfo, dropOverView);
         if (!allowAddToFolder) return false;
         mAddToExistingFolderOnDrop = false;
 
         if (dropOverView instanceof FolderIcon) {
             FolderIcon fi = (FolderIcon) dropOverView;
             if (fi.acceptDrop(d.dragInfo)) {
+                DragTrace.log("Workspace.addToExistingFolder folder=" + fi.mInfo.id + " item=" + (d.dragInfo != null ? d.dragInfo.title : "null"));
                 mStatsLogManager.logger().withItemInfo(fi.mInfo).withInstanceId(d.logInstanceId)
                         .log(LauncherEvent.LAUNCHER_ITEM_DROP_COMPLETED_ON_FOLDER_ICON);
                 fi.onDrop(d, false /* itemReturnedOnFailedDrop */);
@@ -9425,7 +9463,11 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     @Override
     public void onDrop(final DragObject d, DragOptions options) {
+        DragTrace.log("Workspace.onDrop item=" + (d.dragInfo != null ? d.dragInfo.title : "null")
+                + " source=" + (d.dragSource != null ? d.dragSource.getClass().getSimpleName() : "null"));
         isDragWidget(d);
+        mRevertAlarm.cancelAlarm();
+        mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         android.util.Log.d("DropDebug", "onDrop called. d.dragSource==this: " + (d.dragSource == this) + " mDragInfo==null: " + (mDragInfo == null) + " mDropToLayout==null: " + (mDropToLayout == null));
         dumpFullWorkspaceState("Workspace.onDrop");
         mDragViewVisualCenter = d.getVisualCenter(mDragViewVisualCenter);
@@ -9493,6 +9535,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                         distance, false, d)
                         || addToExistingFolderIfNecessary(cell, dropTargetLayout, mTargetCell,
                         distance, d, false)) {
+                    if (dropTargetLayout != null && dropTargetLayout.isItemPlacementDirty()) {
+                        dropTargetLayout.revertTempState();
+                    }
                     if (!mLauncher.isInState(EDIT_MODE)) {
                         mLauncher.getStateManager().goToState(NORMAL, SPRING_LOADED_EXIT_DELAY);
                     }
@@ -9542,6 +9587,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     overflowViews = dropTargetLayout.consumeOverflowViews();
                     mTargetCell[0] = tempTarget[0];
                     mTargetCell[1] = tempTarget[1];
+                    DragTrace.log("Workspace.onDrop performReorder returned targetCell=(" + mTargetCell[0] + "," + mTargetCell[1] + ")");
                     android.util.Log.d("DropDebug", "performReorder returned: " + mTargetCell[0] + ", " + mTargetCell[1]);
                 }
 
@@ -9835,6 +9881,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     @Override
     public void onDragEnter(DragObject d) {
+        DragTrace.log("Workspace.onDragEnter item=" + (d.dragInfo != null ? d.dragInfo.title : "null")
+                + " folderOpen=" + (com.android.launcher3.folder.Folder.getOpen(mLauncher) != null));
         if (com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) {
             setAlpha(1f);
             setVisibility(VISIBLE);
@@ -9890,6 +9938,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     @Override
     public void onDragExit(DragObject d) {
+        DragTrace.log("Workspace.onDragExit dragComplete=" + d.dragComplete + " revertTemp=" + !d.dragComplete);
         if (ENFORCE_DRAG_EVENT_ORDER) {
             enforceDragParity("onDragExit", -1, 0);
         }
@@ -9904,7 +9953,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
 
         // Reset the previous drag target
-        setCurrentDropLayout(null);
+        mRevertAlarm.cancelAlarm();
+        mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
+        setCurrentDropLayout(null, /* revertTemp= */ !d.dragComplete);
         setCurrentDragOverlappingLayout(null);
         isWidget = false;
 
@@ -9930,9 +9981,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     void setCurrentDropLayout(CellLayout layout) {
+        setCurrentDropLayout(layout, true);
+    }
+
+    private void setCurrentDropLayout(CellLayout layout, boolean revertTemp) {
         if (mDragTargetLayout != null) {
-            mDragTargetLayout.revertTempState();
-            mDragTargetLayout.onDragExit();
+            mDragTargetLayout.onDragExit(revertTemp);
         }
         mDragTargetLayout = layout;
         if (mDragTargetLayout != null) {
@@ -10003,6 +10057,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (cancelAlarm) {
             mReorderAlarm.cancelAlarm();
         }
+        mRevertAlarm.cancelAlarm();
         mLastReorderX = -1;
         mLastReorderY = -1;
     }
@@ -10048,9 +10103,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     public void onDragOver(DragObject d) {
         isDragWidget(d);
-        // Skip drag over events while we are dragging over side pages
-        if (!transitionStateShouldAllowDrop()) {
-            android.util.Log.d("DropDebug", "onDragOver: skipped - transitionStateShouldAllowDrop=false");
+        // Skip drag over events while the workspace is actively scrolling between pages
+        if (isPageInTransition() || !transitionStateShouldAllowDrop()) {
             return;
         }
 
@@ -10065,6 +10119,22 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         // Ensure that we have proper spans for the item that we are dropping
         if (item.spanX < 0 || item.spanY < 0) throw new RuntimeException("Improper spans found");
         mDragViewVisualCenter = d.getVisualCenter(mDragViewVisualCenter);
+
+        if (mPrevDragViewVisualCenter[0] >= 0 && mPrevDragViewVisualCenter[1] >= 0) {
+            float deltaX = mDragViewVisualCenter[0] - mPrevDragViewVisualCenter[0];
+            float deltaY = mDragViewVisualCenter[1] - mPrevDragViewVisualCenter[1];
+            if (mDragTargetLayout != null) {
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 2f) {
+                    mDragTargetLayout.mDirectionVector[0] = deltaX > 0 ? 1 : -1;
+                    mDragTargetLayout.mDirectionVector[1] = 0;
+                } else if (Math.abs(deltaY) > 2f) {
+                    mDragTargetLayout.mDirectionVector[0] = 0;
+                    mDragTargetLayout.mDirectionVector[1] = deltaY > 0 ? 1 : -1;
+                }
+            }
+        }
+        mPrevDragViewVisualCenter[0] = mDragViewVisualCenter[0];
+        mPrevDragViewVisualCenter[1] = mDragViewVisualCenter[1];
 
         final View child = (mDragInfo == null) ? null : mDragInfo.cell;
         if (setDropLayoutForDragObject(d, mDragViewVisualCenter[0], mDragViewVisualCenter[1])) {
@@ -10092,6 +10162,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     mDragTargetLayout, mTargetCell);
             int reorderX = mTargetCell[0];
             int reorderY = mTargetCell[1];
+            DragTrace.log("Workspace.onDragOver targetCell=(" + reorderX + "," + reorderY + ") item=" + (item.title != null ? item.title : "item"));
 
             setCurrentDropOverCell(mTargetCell[0], mTargetCell[1]);
 
@@ -10111,12 +10182,34 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             manageReorderOnDragOver(d, targetCellDistance, nearestDropOccupied, minSpanX, minSpanY,
                     reorderX, reorderY);
 
-            if (mDragMode == DRAG_MODE_CREATE_FOLDER || mDragMode == DRAG_MODE_ADD_TO_FOLDER ||
-                    !nearestDropOccupied) {
-                if (mDragTargetLayout != null) {
+            if (mDragMode == DRAG_MODE_CREATE_FOLDER || mDragMode == DRAG_MODE_ADD_TO_FOLDER) {
+                if (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty()) {
                     mDragTargetLayout.revertTempStateImmediately();
                 }
+            } else if (!nearestDropOccupied) {
+                // Debounce reverting when temporarily crossing gutters / empty space
+                if (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty()) {
+                    if (!mRevertAlarm.alarmPending()) {
+                        final CellLayout targetToRevert = mDragTargetLayout;
+                        mRevertAlarm.setOnAlarmListener(alarm -> {
+                            if (targetToRevert != null && targetToRevert.isItemPlacementDirty()) {
+                                DragTrace.log("Workspace.mRevertAlarm fired -> reverting reorder dirty=true");
+                                targetToRevert.revertTempState();
+                                setDragMode(DRAG_MODE_NONE);
+                            }
+                        });
+                        mRevertAlarm.setAlarm(REVERT_TIMEOUT);
+                    }
+                } else {
+                    setDragMode(DRAG_MODE_NONE);
+                }
+            } else {
+                if (mRevertAlarm.alarmPending()) {
+                    mRevertAlarm.cancelAlarm();
+                }
             }
+        } else {
+            DragTrace.log("Workspace.onDragOver null-dragTargetLayout visualCenter=(" + (int) mDragViewVisualCenter[0] + "," + (int) mDragViewVisualCenter[1] + ")");
         }
     }
 
@@ -10132,32 +10225,34 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         final View child = (mDragInfo == null) ? null : mDragInfo.cell;
 
         if (!nearestDropOccupied) {
-            int[] span = new int[2];
+            cleanupReorder(true);
+            int[] span = new int[]{item.spanX, item.spanY};
             int[] hintCell = new int[]{mTargetCell[0], mTargetCell[1]};
-            mDragTargetLayout.performReorder((int) mDragViewVisualCenter[0],
-                    (int) mDragViewVisualCenter[1], minSpanX, minSpanY, item.spanX, item.spanY,
-                    child, hintCell, span, CellLayout.MODE_SHOW_REORDER_HINT);
             mDragTargetLayout.visualizeDropLocation(hintCell[0], hintCell[1], span[0],
                     span[1], d);
-            nearestDropOccupied = mDragTargetLayout.isNearestDropLocationOccupied((int)
-                            mDragViewVisualCenter[0], (int) mDragViewVisualCenter[1], item.spanX,
-                    item.spanY, child, mTargetCell);
-        } else if ((mDragMode == DRAG_MODE_NONE || mDragMode == DRAG_MODE_REORDER)
-                && (mLastReorderX != reorderX || mLastReorderY != reorderY)
-                && targetCellDistance < mDragTargetLayout.getReorderRadius(mTargetCell, item.spanX,
-                item.spanY)) {
-            mReorderAlarm.cancelAlarm();
-            mLastReorderX = reorderX;
-            mLastReorderY = reorderY;
-            mDragTargetLayout.performReorder((int) mDragViewVisualCenter[0],
-                    (int) mDragViewVisualCenter[1], minSpanX, minSpanY, item.spanX, item.spanY,
-                    child, new int[2], new int[2], CellLayout.MODE_SHOW_REORDER_HINT);
-            // Otherwise, if we aren't adding to or creating a folder and there's no pending
-            // reorder, then we schedule a reorder
-            ReorderAlarmListener listener = new ReorderAlarmListener(mDragViewVisualCenter,
-                    minSpanX, minSpanY, item.spanX, item.spanY, d, child);
-            mReorderAlarm.setOnAlarmListener(listener);
-            mReorderAlarm.setAlarm(REORDER_TIMEOUT);
+        } else if (targetCellDistance < mDragTargetLayout.getReorderRadius(mTargetCell, item.spanX, item.spanY)) {
+            if (mRevertAlarm.alarmPending()) {
+                mRevertAlarm.cancelAlarm();
+            }
+            final boolean cellChanged = (mLastReorderX != reorderX || mLastReorderY != reorderY);
+            if (cellChanged) {
+                mReorderAlarm.cancelAlarm();
+                mLastReorderX = reorderX;
+                mLastReorderY = reorderY;
+                ReorderAlarmListener listener = new ReorderAlarmListener(mDragViewVisualCenter,
+                        minSpanX, minSpanY, item.spanX, item.spanY, d, child);
+                mReorderAlarm.setOnAlarmListener(listener);
+                int timeout = (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty())
+                        ? 25 : REORDER_TIMEOUT;
+                DragTrace.log("manageReorderOnDragOver scheduleReorder target=(" + reorderX + "," + reorderY + ") timeout=" + timeout);
+                mReorderAlarm.setAlarm(timeout);
+            } else if (!mReorderAlarm.alarmPending() && (mDragTargetLayout != null && !mDragTargetLayout.isItemPlacementDirty())) {
+                ReorderAlarmListener listener = new ReorderAlarmListener(mDragViewVisualCenter,
+                        minSpanX, minSpanY, item.spanX, item.spanY, d, child);
+                mReorderAlarm.setOnAlarmListener(listener);
+                DragTrace.log("manageReorderOnDragOver scheduleInitialReorder target=(" + reorderX + "," + reorderY + ") timeout=" + REORDER_TIMEOUT);
+                mReorderAlarm.setAlarm(REORDER_TIMEOUT);
+            }
         }
     }
 
@@ -10173,6 +10268,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
      * @return whether the layout is different from the current {@link #mDragTargetLayout}.
      */
     private boolean setDropLayoutForDragObject(DragObject d, float centerX, float centerY) {
+        if (isPageInTransition()) {
+            return false;
+        }
         CellLayout layout = null;
         if (shouldUseHotseatAsDropLayout(d)) {
             layout = mLauncher.getHotseat();
@@ -10189,6 +10287,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     layout = verifyInsidePage(visiblePageIndex, d.x, d.y);
                     if (layout != null) break;
                 }
+            }
+            if (layout == null && mDragTargetLayout != null && !shouldUseHotseatAsDropLayout(d)) {
+                layout = mDragTargetLayout;
             }
         }
 
@@ -10231,36 +10332,63 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             return null;
         }
 
-        // Check the workspace pages whether the object is over any of them
-
-        // Note, centerX represents the center of the object that is being dragged, visually.
-        // d.x represents the location of the finger within the dragged item.
-        float touchX;
-        float touchY = d.y;
-
-        // Go through the pages and check if the dragged item is inside one of them. This block
-        // is responsible for determining whether we need to snap to a different screen.
         int nextPage = getNextPage();
+        CellLayout leftLayout = (CellLayout) getChildAt(nextPage);
+        if (leftLayout == null) {
+            return null;
+        }
+        CellLayout rightLayout = isTwoPanelEnabled()
+                ? (CellLayout) getChildAt(nextPage + 1)
+                : leftLayout;
+        if (rightLayout == null) {
+            rightLayout = leftLayout;
+        }
+
+        int screenLeft = leftLayout.getLeft();
+        int screenRight = rightLayout.getRight();
+        int screenWidth = screenRight - screenLeft;
+
+        // Coordinates relative to the visible screen area
+        float relTouchX = d.x - screenLeft;
+        float relCenterX = centerX - screenLeft;
+
+        // Edge gutter threshold: only trigger neighbor page snap when the user deliberately
+        // pushes into the screen edge gutter (<= 24dp from outer bezel).
+        // Inside Column 0 (center ~57dp, left bound 16dp) or Column 3, neither the finger
+        // nor the icon center can reach <= 24dp, keeping in-page reordering fully responsive.
+        float edgeGutter = getResources().getDisplayMetrics().density * 24f;
+
+        boolean isAtLeftEdge = (relCenterX <= edgeGutter || relTouchX <= edgeGutter);
+        boolean isAtRightEdge = (relCenterX >= screenWidth - edgeGutter || relTouchX >= screenWidth - edgeGutter);
+
         IntSet pageIndexesToVerify = IntSet.wrap(nextPage - 1,
                 nextPage + (isTwoPanelEnabled() ? 2 : 1));
 
-        int iconOffset = (int) Math.round(mLauncher.getDeviceProfile().iconSizePx / 1.5);
         for (int pageIndex : pageIndexesToVerify) {
-            // When deciding whether to perform a page switch, we need to consider the most
-            // extreme X coordinate between the finger location and the center of the object
-            // being dragged. This is either the max or the min of the two depending on whether
-            // dragging to the left / right, respectively.
-            if (((pageIndex < nextPage) && !mIsRtl) || (pageIndex > nextPage && mIsRtl)) {
-                touchX = Math.min(d.x, centerX);
-                if (FeatureFlags.SHOW_HOME_GARDENING.get()) {
-                    touchX -= iconOffset;
+            boolean isLeftNeighbor = ((pageIndex < nextPage) && !mIsRtl) || (pageIndex > nextPage && mIsRtl);
+            if (isLeftNeighbor) {
+                if (!isAtLeftEdge) {
+                    continue;
                 }
             } else {
-                touchX = Math.max(d.x, centerX);
-                if (FeatureFlags.SHOW_HOME_GARDENING.get()) {
-                    touchX += iconOffset;
+                if (!isAtRightEdge) {
+                    continue;
                 }
             }
+
+            CellLayout neighborLayout = (CellLayout) getPageAt(pageIndex);
+            if (neighborLayout == null) {
+                continue;
+            }
+
+            // In verifyInsidePage, the coordinate must fall within the neighbor page's bounds.
+            // Since neighbor pages are completely off-screen in single-layer 1:1 scale mode,
+            // supply a coordinate just inside the neighbor's boundary to pass verifyInsidePage checks.
+            float touchX = isLeftNeighbor
+                    ? (neighborLayout.getRight() - 10)
+                    : (neighborLayout.getLeft() + 10);
+            float touchY = Math.max(neighborLayout.getTop() + 10,
+                    Math.min(d.y, neighborLayout.getBottom() - 10));
 
             CellLayout layout = verifyInsidePage(pageIndex, touchX, touchY);
             if (layout != null) {
@@ -10312,7 +10440,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     private void manageFolderFeedback(float distance, DragObject dragObject) {
-        if (distance > mDragTargetLayout.getFolderCreationRadius(mTargetCell)) {
+        if (distance > mDragTargetLayout.getFolderCreationRadius(mTargetCell)
+                || (mDragTargetLayout != null && mDragTargetLayout.isItemPlacementDirty())
+                || mDragMode == DRAG_MODE_REORDER) {
             mFolderCreationAlarm.cancelAlarm();
             mPendingFolderDragOverView = null;
             if ((mDragMode == DRAG_MODE_ADD_TO_FOLDER
@@ -10336,7 +10466,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 final int folderCellY = mTargetCell[1];
                 final CellLayout targetLayout = mDragTargetLayout;
                 mFolderCreationAlarm.setOnAlarmListener(alarm -> {
-                    if (targetLayout != null && mPendingFolderDragOverView != null
+                    if (targetLayout != null && !targetLayout.isItemPlacementDirty()
+                            && mDragMode != DRAG_MODE_REORDER
+                            && mPendingFolderDragOverView != null
                             && mPendingFolderDragOverView == dragOverView) {
                         mFolderCreateBg = new PreviewBackground();
                         mFolderCreateBg.setup(mLauncher, mLauncher, null,
@@ -10433,10 +10565,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             mTargetCell = mDragTargetLayout.performReorder((int) mDragViewVisualCenter[0],
                     (int) mDragViewVisualCenter[1], minSpanX, minSpanY, spanX, spanY,
                     child, mTargetCell, resultSpan, CellLayout.MODE_DRAG_OVER);
+            DragTrace.log("ReorderAlarmListener.onAlarm targetCell=(" + mTargetCell[0] + "," + mTargetCell[1] + ")");
 
             if (mTargetCell[0] < 0 || mTargetCell[1] < 0) {
                 mDragTargetLayout.revertTempState();
             } else {
+                cleanupFolderCreation();
                 setDragMode(DRAG_MODE_REORDER);
             }
 
@@ -11685,7 +11819,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
 # src/com/android/launcher3/WorkspaceLayoutManager.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/WorkspaceLayoutManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceLayoutManager.java`  
 **Lines**: 185 | **Bytes**: 7843
 
 ```java
@@ -11879,7 +12013,7 @@ public interface WorkspaceLayoutManager {
 
 # src/com/android/launcher3/WorkspaceStateTransitionAnimation.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/WorkspaceStateTransitionAnimation.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceStateTransitionAnimation.java`  
 **Lines**: 337 | **Bytes**: 16681
 
 ```java
@@ -12226,7 +12360,7 @@ public class WorkspaceStateTransitionAnimation {
 
 # src/com/android/launcher3/InsettableFrameLayout.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/InsettableFrameLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/InsettableFrameLayout.java`  
 **Lines**: 149 | **Bytes**: 4953
 
 ```java
@@ -12384,7 +12518,7 @@ public class InsettableFrameLayout extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/touch/WorkspaceTouchListener.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/touch/WorkspaceTouchListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/WorkspaceTouchListener.java`  
 **Lines**: 239 | **Bytes**: 9932
 
 ```java
@@ -12632,7 +12766,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/touch/ItemClickHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
 **Lines**: 498 | **Bytes**: 23466
 
 ```java
@@ -13139,7 +13273,7 @@ public class ItemClickHandler {
 
 # src/com/android/launcher3/touch/ItemLongClickListener.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/touch/ItemLongClickListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemLongClickListener.java`  
 **Lines**: 230 | **Bytes**: 10079
 
 ```java
@@ -13378,7 +13512,7 @@ public class ItemLongClickListener {
 
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
 **Lines**: 107 | **Bytes**: 3647
 
 ```kotlin
@@ -13494,8 +13628,8 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 
 # src/com/android/launcher3/CellLayout.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/CellLayout.java`  
-**Lines**: 2297 | **Bytes**: 94488
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
+**Lines**: 2280 | **Bytes**: 94502
 
 ```java
 /*
@@ -13573,6 +13707,7 @@ import com.android.launcher3.folder.PreviewBackground;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
 import com.android.launcher3.util.CellAndSpan;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.GridOccupancy;
 import com.android.launcher3.util.MultiTranslateDelegate;
 import com.android.launcher3.util.ParcelableSparseArray;
@@ -13704,7 +13839,7 @@ public class CellLayout extends ViewGroup {
     private static final boolean DEBUG_VISUALIZE_OCCUPIED = false;
 
     public static final float REORDER_PREVIEW_MAGNITUDE = 0.12f;
-    public static final int REORDER_ANIMATION_DURATION = 150;
+    public static final int REORDER_ANIMATION_DURATION = 220;
     @Thunk final float mReorderPreviewAnimationMagnitude;
 
     private final ArrayList<View> mIntersectingViews = new ArrayList<>();
@@ -14471,31 +14606,17 @@ public class CellLayout extends ViewGroup {
      */
     public float getFolderCreationRadius(int[] targetCell) {
         DeviceProfile grid = mActivity.getDeviceProfile();
-        float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
-        // Halfway between reorder radius and icon.
-        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
+        return 0.35f * grid.iconSizePx;
     }
 
     /**
      * Returns the max distance from the center of a cell that will start to reorder on drag over.
      */
     public float getReorderRadius(int[] targetCell, int spanX, int spanY) {
-        int[] centerPoint = mTmpPoint;
-        getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
-
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
         cellBoundsWithSpacing.inset(-mBorderSpace.x / 2, -mBorderSpace.y / 2);
 
-        if (canCreateFolder(getChildAt(targetCell[0], targetCell[1])) && spanX == 1 && spanY == 1) {
-            // Take only the circle in the smaller dimension, to ensure we don't start reordering
-            // too soon before accepting a folder drop.
-            int minRadius = centerPoint[0] - cellBoundsWithSpacing.left;
-            minRadius = Math.min(minRadius, centerPoint[1] - cellBoundsWithSpacing.top);
-            minRadius = Math.min(minRadius, cellBoundsWithSpacing.right - centerPoint[0]);
-            minRadius = Math.min(minRadius, cellBoundsWithSpacing.bottom - centerPoint[1]);
-            return minRadius;
-        }
         // Take up the entire cell, including space between this cell and the adjacent ones.
         // Multiply by span to scale radius
         return (float) Math.hypot(spanX * cellBoundsWithSpacing.width() / 2f,
@@ -14625,42 +14746,33 @@ public class CellLayout extends ViewGroup {
                 occupied.markCells(cellX, cellY, lp.cellHSpan, lp.cellVSpan, true);
             }
 
-            // Compute the new x and y position based on the new cellX and cellY
-            // We leverage the actual layout logic in the layout params and hence need to modify
-            // state and revert that state.
-            final int oldX = lp.x;
-            final int oldY = lp.y;
-            lp.isLockedToGrid = true;
-            if (permanent) {
-                lp.setCellX(cellX);
-                lp.setCellY(cellY);
-            } else {
-                lp.setTmpCellX(cellX);
-                lp.setTmpCellY(cellY);
-            }
-            clc.setupLp(child);
-            final int newX = lp.x;
-            final int newY = lp.y;
-            lp.x = oldX;
-            lp.y = oldY;
-            lp.isLockedToGrid = false;
-            // End compute new x and y
+            int[] oldCenter = new int[2];
+            regionToCenterPoint(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, oldCenter);
+            int[] newCenter = new int[2];
+            regionToCenterPoint(cellX, cellY, lp.cellHSpan, lp.cellVSpan, newCenter);
+            final float finalPreviewOffsetX = newCenter[0] - oldCenter[0];
+            final float finalPreviewOffsetY = newCenter[1] - oldCenter[1];
 
             MultiTranslateDelegate mtd = item.getTranslateDelegate();
             float initPreviewOffsetX = mtd.getTranslationX(INDEX_REORDER_PREVIEW_OFFSET).getValue();
             float initPreviewOffsetY = mtd.getTranslationY(INDEX_REORDER_PREVIEW_OFFSET).getValue();
-            final float finalPreviewOffsetX = newX - oldX;
-            final float finalPreviewOffsetY = newY - oldY;
 
-            // Exit early if we're not actually moving the view
-            if (finalPreviewOffsetX == 0 && finalPreviewOffsetY == 0
-                    && initPreviewOffsetX == 0 && initPreviewOffsetY == 0) {
+            DragTrace.log("animateChildToPosition child=" + (info != null ? info.title : child)
+                    + " init=(" + initPreviewOffsetX + "," + initPreviewOffsetY + ") final=("
+                    + finalPreviewOffsetX + "," + finalPreviewOffsetY + ") perm=" + permanent);
+
+            // Exit early if already at target position
+            if (Math.abs(finalPreviewOffsetX - initPreviewOffsetX) < 1f
+                    && Math.abs(finalPreviewOffsetY - initPreviewOffsetY) < 1f) {
+                item.getTranslateDelegate().setTranslation(INDEX_REORDER_PREVIEW_OFFSET,
+                        finalPreviewOffsetX, finalPreviewOffsetY);
                 lp.isLockedToGrid = true;
                 return true;
             }
 
             ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
             va.setDuration(duration);
+            va.setInterpolator(Interpolators.DECELERATE_1_5);
             mReorderAnimators.put(lp, va);
 
             va.addUpdateListener(new AnimatorUpdateListener() {
@@ -14680,9 +14792,15 @@ public class CellLayout extends ViewGroup {
                     // place just yet.
                     if (!cancelled) {
                         lp.isLockedToGrid = true;
-                        item.getTranslateDelegate()
-                                .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
-                        child.requestLayout();
+                        if (permanent) {
+                            item.getTranslateDelegate()
+                                    .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
+                            child.requestLayout();
+                        } else {
+                            item.getTranslateDelegate()
+                                    .setTranslation(INDEX_REORDER_PREVIEW_OFFSET,
+                                            finalPreviewOffsetX, finalPreviewOffsetY);
+                        }
                     }
                     if (mReorderAnimators.containsKey(lp)) {
                         mReorderAnimators.remove(lp);
@@ -14994,6 +15112,8 @@ public class CellLayout extends ViewGroup {
     }
 
     private void commitTempPlacement(ItemConfiguration solution, View dragView) {
+        DragTrace.log("CellLayout.commitTempPlacement solution=" + System.identityHashCode(solution)
+                + " layout=" + System.identityHashCode(this));
         mTmpOccupied.copyTo(mOccupied);
 
         int screenId = mCellLayoutContainer.getCellLayoutId(this);
@@ -15071,6 +15191,13 @@ public class CellLayout extends ViewGroup {
             if (Rect.intersects(region, r1)) {
                 isOverlapping = true;
                 boundingRect.union(r1);
+            } else if (mItemPlacementDirty) {
+                r1.set(lp.getTmpCellX(), lp.getTmpCellY(), lp.getTmpCellX() + lp.cellHSpan,
+                        lp.getTmpCellY() + lp.cellVSpan);
+                if (Rect.intersects(region, r1)) {
+                    isOverlapping = true;
+                    boundingRect.union(r1);
+                }
             }
         }
         return isOverlapping ? boundingRect : null;
@@ -15086,6 +15213,8 @@ public class CellLayout extends ViewGroup {
     }
 
     void revertTempState() {
+        DragTrace.log("CellLayout.revertTempState isDirty=" + isItemPlacementDirty()
+                + " layout=" + System.identityHashCode(this));
         mPreviousSolution = null;        // never let a reverted preview be reused
         restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
@@ -15095,7 +15224,12 @@ public class CellLayout extends ViewGroup {
                 View child = mShortcutsAndWidgets.getChildAt(i);
                 CellLayoutLayoutParams
                         lp = (CellLayoutLayoutParams) child.getLayoutParams();
-                if (lp.getTmpCellX() != lp.getCellX() || lp.getTmpCellY() != lp.getCellY()) {
+                MultiTranslateDelegate mtd = (child instanceof Reorderable)
+                        ? ((Reorderable) child).getTranslateDelegate() : null;
+                boolean hasOffset = mtd != null && (
+                        Math.abs(mtd.getTranslationX(INDEX_REORDER_PREVIEW_OFFSET).getValue()) > 0.5f
+                        || Math.abs(mtd.getTranslationY(INDEX_REORDER_PREVIEW_OFFSET).getValue()) > 0.5f);
+                if (lp.getTmpCellX() != lp.getCellX() || lp.getTmpCellY() != lp.getCellY() || hasOffset) {
                     lp.setTmpCellX(lp.getCellX());
                     lp.setTmpCellY(lp.getCellY());
                     animateChildToPosition(child, lp.getCellX(), lp.getCellY(),
@@ -15107,6 +15241,7 @@ public class CellLayout extends ViewGroup {
     }
 
     public void revertTempStateImmediately() {
+        DragTrace.log("CellLayout.revertTempStateImmediately layout=" + System.identityHashCode(this));
         mPreviousSolution = null;        // never let a reverted preview be reused
         restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
@@ -15160,9 +15295,6 @@ public class CellLayout extends ViewGroup {
                 commitTempPlacement(swapSolution, null);
                 completeAndClearReorderPreviewAnimations();
                 setItemPlacementDirty(false);
-            } else {
-                beginOrAdjustReorderPreviewAnimations(swapSolution, dragView,
-                        ReorderPreviewAnimation.MODE_PREVIEW);
             }
             mShortcutsAndWidgets.requestLayout();
         }
@@ -15397,26 +15529,21 @@ public class CellLayout extends ViewGroup {
 
         final boolean isDrop = mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL;
 
-        ItemConfiguration finalSolution;
-        // Only the alarm (MODE_DRAG_OVER) may reuse the hint, and only if it still matches
-        // the current children. A drop ALWAYS recomputes against the live state.
-        if (mode == MODE_DRAG_OVER && mPreviousSolution != null
-                && isSolutionCurrent(mPreviousSolution, dragView)) {
-            finalSolution = mPreviousSolution;
-        } else {
-            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
-                    dragView);
-            mPreviousSolution = finalSolution;
-        }
+        ItemConfiguration finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
+                dragView);
+        mPreviousSolution = finalSolution;
         if (isDrop) {
             mPreviousSolution = null;
         }
 
         if (finalSolution == null || !finalSolution.isSolution) {
+            DragTrace.log("CellLayout.performReorder mode=" + mode + " no-solution layout=" + System.identityHashCode(this));
             restoreOverflowPreview();
             if (isDrop) mPendingOverflow = null;
             result[0] = result[1] = resultSpan[0] = resultSpan[1] = -1;
         } else {
+            DragTrace.log("CellLayout.performReorder mode=" + mode + " solution=" + System.identityHashCode(finalSolution)
+                    + " target=(" + finalSolution.cellX + "," + finalSolution.cellY + ") layout=" + System.identityHashCode(this));
             result[0] = finalSolution.cellX;
             result[1] = finalSolution.cellY;
             resultSpan[0] = finalSolution.spanX;
@@ -15487,41 +15614,22 @@ public class CellLayout extends ViewGroup {
      */
     public void performReorder(ItemConfiguration solution, View dragView, int mode) {
         if (mode == MODE_SHOW_REORDER_HINT) {
-            beginOrAdjustReorderPreviewAnimations(solution, dragView,
-                    ReorderPreviewAnimation.MODE_HINT);
             return;
         }
         // If we're just testing for a possible location (MODE_ACCEPT_DROP), we don't bother
         // committing anything or animating anything as we just want to determine if a solution
         // exists
-        if (mode == MODE_DRAG_OVER || mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
-            if (!DESTRUCTIVE_REORDER) {
-                setUseTempCoords(true);
-            }
-
-            if (!DESTRUCTIVE_REORDER) {
-                copySolutionToTempState(solution, dragView);
-            }
+        if (mode == MODE_DRAG_OVER) {
+            copySolutionToTempState(solution, dragView);
             setItemPlacementDirty(true);
-            animateItemsToSolution(solution, dragView, mode == MODE_ON_DROP);
-
-            if (!DESTRUCTIVE_REORDER
-                    && (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL)) {
-                // Since the temp solution didn't update dragView, don't commit it either
-                commitTempPlacement(solution, dragView);
-                completeAndClearReorderPreviewAnimations();
-                setItemPlacementDirty(false);
-            } else {
-                beginOrAdjustReorderPreviewAnimations(solution, dragView,
-                        ReorderPreviewAnimation.MODE_PREVIEW);
-            }
+            animateItemsToSolution(solution, dragView, false);
+        } else if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
+            copySolutionToTempState(solution, dragView);
+            commitTempPlacement(solution, dragView);
+            completeAndClearReorderPreviewAnimations();
+            setItemPlacementDirty(false);
+            mShortcutsAndWidgets.requestLayout();
         }
-
-        if ((mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) && !DESTRUCTIVE_REORDER) {
-            setUseTempCoords(false);
-        }
-
-        mShortcutsAndWidgets.requestLayout();
     }
 
     void setItemPlacementDirty(boolean dirty) {
@@ -15586,6 +15694,11 @@ public class CellLayout extends ViewGroup {
      * Called when drag has left this CellLayout or has been completed (successfully or not)
      */
     void onDragExit() {
+        onDragExit(true);
+    }
+
+    void onDragExit(boolean revertTemp) {
+        DragTrace.log("CellLayout.onDragExit revertTemp=" + revertTemp + " layout=" + System.identityHashCode(this));
         // This can actually be called when we aren't in a drag, e.g. when adding a new
         // item to this layout via the customize drawer.
         // Guard against that case.
@@ -15594,12 +15707,16 @@ public class CellLayout extends ViewGroup {
         }
 
         // Invalidate the drag data
-        mPreviousSolution = null;
-        mDragCell[0] = mDragCell[1] = -1;
-        mDragCellSpan[0] = mDragCellSpan[1] = -1;
+        if (revertTemp) {
+            mPreviousSolution = null;
+            mDragCell[0] = mDragCell[1] = -1;
+            mDragCellSpan[0] = mDragCellSpan[1] = -1;
+        }
         mDragOutlineAnims[mDragOutlineCurrent].animateOut();
         mDragOutlineCurrent = (mDragOutlineCurrent + 1) % mDragOutlineAnims.length;
-        revertTempState();
+        if (revertTemp) {
+            revertTempState();
+        }
         setIsDragOverlapping(false);
     }
 
@@ -15800,8 +15917,8 @@ public class CellLayout extends ViewGroup {
 
 # src/com/android/launcher3/ShortcutAndWidgetContainer.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/ShortcutAndWidgetContainer.java`  
-**Lines**: 371 | **Bytes**: 14283
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/ShortcutAndWidgetContainer.java`  
+**Lines**: 387 | **Bytes**: 14893
 
 ```java
 /*
@@ -15828,6 +15945,7 @@ import static com.android.launcher3.CellLayout.FOLDER;
 import static com.android.launcher3.CellLayout.HOTSEAT;
 import static com.android.launcher3.CellLayout.WORKSPACE;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_BUBBLE_ADJUSTMENT_ANIM;
+import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_REORDER_PREVIEW_OFFSET;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_WIDGET_CENTERING;
 
 import android.app.WallpaperManager;
@@ -16134,34 +16252,49 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
         }
     }
 
+    private void cleanupChildBeforeRemoval(View child) {
+        if (child != null) {
+            child.clearAnimation();
+            child.setRotation(0f);
+            child.setTranslationX(0f);
+            child.setTranslationY(0f);
+            child.setScaleX(1f);
+            child.setScaleY(1f);
+            if (child instanceof Reorderable) {
+                ((Reorderable) child).getTranslateDelegate().setTranslation(
+                        INDEX_REORDER_PREVIEW_OFFSET, 0f, 0f);
+            }
+        }
+    }
+
     @Override
     public void removeView(View view) {
-        if (view != null) view.clearAnimation();
+        cleanupChildBeforeRemoval(view);
         super.removeView(view);
     }
 
     @Override
     public void removeViewInLayout(View view) {
-        if (view != null) view.clearAnimation();
+        cleanupChildBeforeRemoval(view);
         super.removeViewInLayout(view);
     }
 
     @Override
     public void removeViewAt(int index) {
         View view = getChildAt(index);
-        if (view != null) view.clearAnimation();
+        cleanupChildBeforeRemoval(view);
         super.removeViewAt(index);
     }
 
     @Override
     public void removeAllViews() {
-        for (int i = 0; i < getChildCount(); i++) getChildAt(i).clearAnimation();
+        for (int i = 0; i < getChildCount(); i++) cleanupChildBeforeRemoval(getChildAt(i));
         super.removeAllViews();
     }
 
     @Override
     public void removeAllViewsInLayout() {
-        for (int i = 0; i < getChildCount(); i++) getChildAt(i).clearAnimation();
+        for (int i = 0; i < getChildCount(); i++) cleanupChildBeforeRemoval(getChildAt(i));
         super.removeAllViewsInLayout();
     }
 
@@ -16180,8 +16313,8 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
 
 # src/com/android/launcher3/BubbleTextView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/BubbleTextView.java`  
-**Lines**: 1535 | **Bytes**: 58991
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/BubbleTextView.java`  
+**Lines**: 1537 | **Bytes**: 59174
 
 ```java
 /*
@@ -16278,6 +16411,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.ItemInfoWithIcon;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.popup.PopupContainerWithArrow;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.search.StringMatcherUtility;
 import com.android.launcher3.util.CancellableTask;
 import com.android.launcher3.util.IntArray;
@@ -17417,6 +17551,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             boolean wasDotted = mDotInfo != null;
             mDotInfo = mActivity.getDotInfoForItem(itemInfo);
             boolean isDotted = mDotInfo != null;
+            DragTrace.log("BubbleTextView.applyDotState item=" + (itemInfo != null ? itemInfo.title : "null") + " isDotted=" + isDotted);
             float newDotScale = isDotted ? 1f : 0;
             if (mDisplay == DISPLAY_ALL_APPS) {
                 mDotRenderer = mActivity.getDeviceProfile().mDotRendererAllApps;
@@ -17724,8 +17859,8 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
-**Lines**: 1023 | **Bytes**: 45820
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
+**Lines**: 1023 | **Bytes**: 45742
 
 ```java
 /*
@@ -17852,63 +17987,58 @@ public class ReorderAlgorithm {
         boolean isWidgetDrag = isWidget() || spanX > 1 || spanY > 1
                 || (dragView instanceof LauncherAppWidgetHostView);
 
-        if (!isWidgetDrag && intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution)) {
-            int[] nearestResult = new int[2];
-            mCellLayout.markCellsAsOccupiedForView(dragView);
-            boolean hasVacant = mCellLayout.findCellForSpan(nearestResult, spanX, spanY);
-            if (hasVacant && (nearestResult[1] < result[1]
-                    || (nearestResult[1] == result[1] && nearestResult[0] < result[0]))) {
-                int candidateX = nearestResult[0] == 0 ? mCellLayout.getCountX() - 1 : nearestResult[0] - 1;
-                int candidateY = nearestResult[0] == 0 ? nearestResult[1] - 1 : nearestResult[1];
-                if (candidateX >= 0 && candidateY >= 0) {
-                    result[0] = candidateX;
-                    result[1] = candidateY;
-                } else {
-                    result[0] = nearestResult[0];
-                    result[1] = nearestResult[1];
-                }
-            }
-            mCellLayout.markCellsAsUnoccupiedForView(dragView);
-            if (result[0] >= 0 && result[1] >= 0) {
-                intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution);
-            }
-            mCellLayout.markCellsAsUnoccupiedForView(dragView);
-        } else if (isWidgetDrag) {
-            if (result[0] >= 0 && reflowIconsAroundWidget(result[0], result[1], spanX, spanY,
-                    dragView, solution)) {
-                mIntersectingViews.clear();          // rearrangementExists() -> true
-                solution.intersectingViews = new ArrayList<>();
-                solution.isSolution = true;
-                solution.cellX = result[0];
-                solution.cellY = result[1];
-                solution.spanX = spanX;
-                solution.spanY = spanY;
-                return solution;
-            }
-            // Legacy rigid push (widget onto widget etc.)
-            intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution);
-        }
-        success = rearrangementExists(direction, dragView, solution);
-
-
-        if (!success) {
-            // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
-            // x, then 1 in y etc.
-            if (spanX > minSpanX && (minSpanY == spanY || decX)) {
-                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
-                        spanY, direction, dragView, false, solution);
-            } else if (spanY > minSpanY) {
-                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
-                        spanY - 1, direction, dragView, true, solution);
-            }
-            solution.isSolution = false;
-        } else {
+        if (isWidgetDrag && result[0] >= 0 && reflowIconsAroundWidget(result[0], result[1], spanX, spanY,
+                dragView, solution)) {
+            mIntersectingViews.clear();          // rearrangementExists() -> true
+            solution.intersectingViews = new ArrayList<>();
             solution.isSolution = true;
             solution.cellX = result[0];
             solution.cellY = result[1];
             solution.spanX = spanX;
             solution.spanY = spanY;
+            return solution;
         }
+
+        // 2D Spatial Grid Reflow Solver
+        SpatialGridSolver.Solution solverSolution = SpatialGridSolver.solve(
+                mCellLayout,
+                result[0], result[1],
+                spanX, spanY,
+                direction,
+                dragView,
+                isWidgetDrag
+        );
+
+        if (solverSolution.isSolution()) {
+            solution.map.clear();
+            for (Map.Entry<View, CellAndSpan> entry : solverSolution.getPlacements().entrySet()) {
+                solution.map.put(entry.getKey(), entry.getValue());
+            }
+            if (dragView != null) {
+                solution.map.put(dragView, new CellAndSpan(result[0], result[1], spanX, spanY));
+            }
+            solution.intersectingViews = new ArrayList<>(solverSolution.getDisplacedViews());
+            mIntersectingViews.clear();
+            mIntersectingViews.addAll(solverSolution.getDisplacedViews());
+            solution.cellX = result[0];
+            solution.cellY = result[1];
+            solution.spanX = spanX;
+            solution.spanY = spanY;
+            solution.isSolution = true;
+            updateTmpOccupiedForReflow(result[0], result[1], spanX, spanY, dragView, solution);
+            return solution;
+        }
+
+        // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
+        // x, then 1 in y etc.
+        if (spanX > minSpanX && (minSpanY == spanY || decX)) {
+            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
+                    spanY, direction, dragView, false, solution);
+        } else if (spanY > minSpanY) {
+            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
+                    spanY - 1, direction, dragView, true, solution);
+        }
+        solution.isSolution = false;
         return solution;
     }
 
@@ -18039,12 +18169,6 @@ public class ReorderAlgorithm {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
             r1.set(c.cellX, c.cellY, c.cellX + c.spanX, c.cellY + c.spanY);
             if (Rect.intersects(r0, r1)) {
-                if (!lp.canReorder) {
-                    return false;
-                }
-                if (!isWidget() && child instanceof LauncherAppWidgetHostView) {
-                    return false;
-                }
                 mIntersectingViews.add(child);
             }
         }
@@ -18057,6 +18181,13 @@ public class ReorderAlgorithm {
 
     public boolean rearrangementExists(int[] direction, View ignoreView, ItemConfiguration solution) {
         if (mIntersectingViews.isEmpty()) return true;
+
+        for (View child : mIntersectingViews) {
+            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
+            if (!lp.canReorder || (!isWidget() && child instanceof LauncherAppWidgetHostView)) {
+                return false;
+            }
+        }
 
         final Map<View, int[]> snap = snapshot(solution);
 
@@ -18111,11 +18242,14 @@ public class ReorderAlgorithm {
         int[] tmpLocation = findNearestArea(c.cellX, c.cellY, c.spanX, c.spanY, direction,
                 mCellLayout.mTmpOccupied.cells, null, new int[2]);
 
-        if (tmpLocation[0] < 0 || tmpLocation[1] < 0) {
-            int[] vacantCell = new int[2];
-            if (mCellLayout.mTmpOccupied.findVacantCell(vacantCell, c.spanX, c.spanY)) {
-                tmpLocation[0] = vacantCell[0];
-                tmpLocation[1] = vacantCell[1];
+        // Guard against distant teleportation: for 1x1 icons, only allow displacement
+        // to an immediately adjacent cell (Euclidean distance <= 1.5f, i.e. 1 cell away).
+        // Never allow distant vacant cell hunting that teleports icons across the screen.
+        if (tmpLocation[0] >= 0 && tmpLocation[1] >= 0) {
+            float dist = (float) Math.hypot(tmpLocation[0] - c.cellX, tmpLocation[1] - c.cellY);
+            if (c.spanX == 1 && c.spanY == 1 && dist > 1.5f) {
+                tmpLocation[0] = -1;
+                tmpLocation[1] = -1;
             }
         }
 
@@ -18215,7 +18349,8 @@ public class ReorderAlgorithm {
                 // cluster.
                 if (!isWidget()) {
                     if (v instanceof LauncherAppWidgetHostView) {
-                        continue;
+                        fail = true;
+                        break;
                     }
                 }
                 if (!cluster.views.contains(v) && v != dragView) {
@@ -18500,7 +18635,9 @@ public class ReorderAlgorithm {
                 || reorderParameters.getSpanX() > 1
                 || reorderParameters.getSpanY() > 1
                 || (reorderParameters.getDragView() instanceof LauncherAppWidgetHostView);
-        getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
+        if (mCellLayout.mDirectionVector[0] == 0 && mCellLayout.mDirectionVector[1] == 0) {
+            getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
+        }
 
         if (DEBUG) {
             android.util.Log.d("ReorderDebug", "calculateReorder START pixelXY=(" +
@@ -18518,7 +18655,9 @@ public class ReorderAlgorithm {
             android.util.Log.d("ReorderDebug", occupiedLog.toString());
         }
 
-        if (!isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
+        boolean isInternalDrag = reorderParameters.getDragView() != null
+                && reorderParameters.getDragView().getParent() == mCellLayout.getShortcutsAndWidgets();
+        if (!isInternalDrag && !isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
             if (DEBUG) {
                 android.util.Log.d("ReorderDebug", "calculateReorder: NO EMPTY CELL FOUND -> returning no-solution");
             }
@@ -18528,10 +18667,6 @@ public class ReorderAlgorithm {
             return solution;
         }
 
-        if (!isWidget()) {
-            mCellLayout.mDirectionVector[0] = -1;
-            mCellLayout.mDirectionVector[1] = 0;
-        }
 
         ItemConfiguration dropInPlaceSolution = dropInPlaceSolution(reorderParameters);
         if (DEBUG) {
@@ -18756,7 +18891,7 @@ public class ReorderAlgorithm {
 
 # src/com/android/launcher3/celllayout/ItemConfiguration.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/celllayout/ItemConfiguration.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ItemConfiguration.kt`  
 **Lines**: 63 | **Bytes**: 2047
 
 ```kotlin
@@ -18828,8 +18963,8 @@ class ItemConfiguration : CellAndSpan() {
 
 # src/com/android/launcher3/dragndrop/DragController.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/dragndrop/DragController.java`  
-**Lines**: 630 | **Bytes**: 22764
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragController.java`  
+**Lines**: 640 | **Bytes**: 23735
 
 ```java
 /*
@@ -18871,6 +19006,7 @@ import com.android.launcher3.logging.InstanceId;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.ItemInfoWithIcon;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.TouchController;
 import com.android.launcher3.views.ActivityContext;
 
@@ -19055,6 +19191,7 @@ public abstract class DragController<T extends ActivityContext>
                     .start();
         }
         mDragObject.dragView.onDragStart();
+        DragTrace.log("DragController.callOnDragStart item=" + (mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         android.util.Log.d("DragDebug", "DragController.callOnDragStart() called for: " + (mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         if (mActivity instanceof com.android.launcher3.Launcher) {
             ((com.android.launcher3.Launcher) mActivity).getInteractionController().beginDrag(mDragObject.dragView, mDragObject.dragInfo);
@@ -19097,6 +19234,8 @@ public abstract class DragController<T extends ActivityContext>
      * Stop dragging without dropping.
      */
     public void cancelDrag() {
+        DragTrace.log("DragController.cancelDrag isDragging=" + isDragging()
+                + " item=" + (mDragObject != null && mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         if (isDragging()) {
             if (mLastDropTarget != null) {
                 mLastDropTarget.onDragExit(mDragObject);
@@ -19117,6 +19256,8 @@ public abstract class DragController<T extends ActivityContext>
     }
 
     private void dispatchDropComplete(View dropTarget, boolean accepted) {
+        DragTrace.log("DragController.dispatchDropComplete accepted=" + accepted
+                + " target=" + (dropTarget != null ? dropTarget.getClass().getSimpleName() : "null"));
         if (!accepted) {
             // If it was not accepted, cleanup the state. If it was accepted, it is the
             // responsibility of the drop target to cleanup the state.
@@ -19140,6 +19281,7 @@ public abstract class DragController<T extends ActivityContext>
     }
 
     protected void endDrag() {
+        DragTrace.log("DragController.endDrag isDragging=" + isDragging());
         if (isDragging()) {
             mDragDriver = null;
             boolean isDeferred = false;
@@ -19186,6 +19328,7 @@ public abstract class DragController<T extends ActivityContext>
     }
 
     protected void callOnDragEnd() {
+        DragTrace.log("DragController.callOnDragEnd");
         if (mIsInPreDrag && mOptions.preDragCondition != null) {
             mOptions.preDragCondition.onPreDragEnd(mDragObject, false /* dragStarted*/);
         }
@@ -19400,6 +19543,8 @@ public abstract class DragController<T extends ActivityContext>
                 accepted = true;
             }
         }
+        DragTrace.log("DragController.drop dropTarget=" + (dropTarget != null ? dropTarget.getClass().getSimpleName() : "null")
+                + " accepted=" + accepted + " item=" + (mDragObject != null && mDragObject.dragInfo != null ? mDragObject.dragInfo.title : "null"));
         final View dropTargetAsView = dropTarget instanceof View ? (View) dropTarget : null;
         dispatchDropComplete(dropTargetAsView, accepted);
     }
@@ -19467,7 +19612,7 @@ public abstract class DragController<T extends ActivityContext>
 
 # src/com/android/launcher3/dragndrop/DragLayer.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/dragndrop/DragLayer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragLayer.java`  
 **Lines**: 498 | **Bytes**: 20395
 
 ```java
@@ -19974,7 +20119,7 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
 
 # src/com/android/launcher3/dragndrop/DragView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/dragndrop/DragView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragView.java`  
 **Lines**: 644 | **Bytes**: 25140
 
 ```java
@@ -20627,7 +20772,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
 
 # src/com/android/launcher3/dragndrop/DragOptions.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/dragndrop/DragOptions.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragOptions.java`  
 **Lines**: 90 | **Bytes**: 3283
 
 ```java
@@ -20726,7 +20871,7 @@ public class DragOptions {
 
 # src/com/android/launcher3/dragndrop/DragDriver.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/dragndrop/DragDriver.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragDriver.java`  
 **Lines**: 219 | **Bytes**: 7190
 
 ```java
@@ -20954,7 +21099,7 @@ public abstract class DragDriver {
 
 # src/com/android/launcher3/DropTarget.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/DropTarget.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/DropTarget.java`  
 **Lines**: 149 | **Bytes**: 5773
 
 ```java
@@ -21112,8 +21257,8 @@ public interface DropTarget {
 
 # src/com/android/launcher3/folder/Folder.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2058 | **Bytes**: 78381
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
+**Lines**: 2070 | **Bytes**: 79885
 
 ```java
 /*
@@ -21144,6 +21289,8 @@ import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCH
 import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCHER_ITEM_DROP_COMPLETED;
 import static com.android.launcher3.testing.shared.TestProtocol.FOLDER_OPENED_MESSAGE;
 import static com.android.launcher3.util.window.RefreshRateTracker.getSingleFrameMs;
+
+import com.android.launcher3.util.DragTrace;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -21518,6 +21665,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             int index = getIconsInReadingOrder().indexOf(v);
             mEmptyCellRank = (index >= 0) ? index : item.rank;
             mCurrentDragView = v;
+            DragTrace.log("Folder.startDrag item=" + (item != null ? item.title : "null") + " rank=" + mEmptyCellRank);
 
             mDragController.addDragListener(this);
             if (options.isAccessibleDrag) {
@@ -21600,6 +21748,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (DEBUG) {
             Log.d(TAG, "onBackKey newTitle=" + newTitle);
         }
+        DragTrace.log("Folder.onTitleChanged newTitle=" + newTitle + " folder=" + mInfo.id);
         mInfo.setTitle(newTitle, mLauncherDelegate.getModelWriter());
         mFolderIcon.onTitleChanged(newTitle);
 
@@ -21924,6 +22073,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         updateTextViewFocus();
 
         mIsOpen = true;
+        DragTrace.log("Folder.animateOpen folder=" + (mInfo != null ? mInfo.id : "null") + " items=" + (items != null ? items.size() : 0));
         onFolderOpenStart();
         registerBackCallback();
 
@@ -22021,6 +22171,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     @Override
     protected void handleClose(boolean animate) {
+        DragTrace.log("Folder.handleClose folder=" + (mInfo != null ? mInfo.id : "null") + " animate=" + animate);
         mIsOpen = false;
 
         if (!animate && mCurrentAnimator != null && mCurrentAnimator.isRunning()) {
@@ -22166,6 +22317,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     public void onDragEnter(DragObject d) {
+        DragTrace.log("Folder.onDragEnter item=" + (d.dragInfo != null ? d.dragInfo.title : "null"));
         mPrevTargetRank = -1;
         mOnExitAlarm.cancelAlarm();
         // Get the area offset such that the folder only closes if half the drag icon width
@@ -22175,8 +22327,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     OnAlarmListener mReorderAlarmListener = new OnAlarmListener() {
         public void onAlarm(Alarm alarm) {
+            DragTrace.log("Folder.reorderAlarm emptyRank=" + mEmptyCellRank + " -> targetRank=" + mTargetRank);
             mContent.realTimeReorder(mEmptyCellRank, mTargetRank);
             mEmptyCellRank = mTargetRank;
+            mItemsInvalidated = true;
         }
     };
 
@@ -22184,31 +22338,29 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         return (getLayoutDirection() == LAYOUT_DIRECTION_RTL);
     }
 
+    private final float[] mTargetRankCoord = new float[2];
+
     private int getTargetRank(DragObject d, float[] recycle) {
-        float[] visualCenter = d.getVisualCenter(null);
-        if (recycle != null) {
-            recycle[0] = visualCenter[0];
-            recycle[1] = visualCenter[1];
-            if (mActivityContext != null && mActivityContext.getDragLayer() != null) {
-                mActivityContext.getDragLayer().mapCoordInSelfToDescendant(this, recycle);
-            }
-        }
+        float[] visualCenter = d.getVisualCenter(recycle);
         if (mContent != null) {
             int pageIndex = mContent.getNextPage();
             com.android.launcher3.CellLayout page = mContent.getPageAt(pageIndex);
             if (page != null) {
-                float[] coord = new float[] { visualCenter[0], visualCenter[1] };
-                if (mActivityContext != null && mActivityContext.getDragLayer() != null) {
-                    mActivityContext.getDragLayer().mapCoordInSelfToDescendant(page, coord);
-                } else {
-                    com.android.launcher3.Utilities.mapCoordInSelfToDescendant(page, this, coord);
-                }
-                return mContent.findNearestArea((int) coord[0], (int) coord[1]);
+                mTargetRankCoord[0] = visualCenter[0];
+                mTargetRankCoord[1] = visualCenter[1];
+                com.android.launcher3.Utilities.mapCoordInSelfToDescendant(page, this, mTargetRankCoord);
+                int rank = mContent.findNearestArea((int) mTargetRankCoord[0], (int) mTargetRankCoord[1]);
+                DragTrace.log("Folder.getTargetRank visualCenter=(" + (int) visualCenter[0] + "," + (int) visualCenter[1]
+                        + ") local=(" + (int) mTargetRankCoord[0] + "," + (int) mTargetRankCoord[1]
+                        + ") rank=" + rank + " page=" + pageIndex);
+                return rank;
             }
         }
-        return mContent.findNearestArea(
+        int fallback = mContent != null ? mContent.findNearestArea(
                 (int) visualCenter[0] - getPaddingLeft(),
-                (int) visualCenter[1] - getPaddingTop());
+                (int) visualCenter[1] - getPaddingTop()) : 0;
+        DragTrace.log("Folder.getTargetRank fallback rank=" + fallback);
+        return fallback;
     }
 
     @Override
@@ -22220,6 +22372,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mTargetRank = getTargetRank(d, r);
 
         if (mTargetRank != mPrevTargetRank) {
+            DragTrace.log("Folder.onDragOver targetRankChanged: " + mPrevTargetRank + " -> " + mTargetRank);
             mReorderAlarm.cancelAlarm();
             mReorderAlarm.setOnAlarmListener(mReorderAlarmListener);
             mReorderAlarm.setAlarm(REORDER_DELAY);
@@ -22260,6 +22413,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void showScrollHint(int direction, DragObject d) {
+        DragTrace.log("Folder.showScrollHint dir=" + direction + " currentPage=" + (mContent != null ? mContent.getNextPage() : -1));
         // Show scroll hint on the right
         if (mScrollHintDir != direction) {
             mContent.showScrollHint(direction);
@@ -22285,8 +22439,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     };
 
     public void completeDragExit() {
+        DragTrace.log("Folder.completeDragExit closing folder=" + mInfo.id + " restoring dock/workspace alphas");
         if (mIsOpen) {
             close(true);
+            mIsOpen = false;
             mRearrangeOnClose = true;
         } else if (mState == STATE_ANIMATING) {
             mRearrangeOnClose = true;
@@ -22357,6 +22513,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     public void onDragExit(DragObject d) {
+        DragTrace.log("Folder.onDragExit dragComplete=" + d.dragComplete);
         // We only close the folder if this is a true drag exit, ie. not because
         // a drop has occurred above the folder.
         if (!d.dragComplete) {
@@ -22394,7 +22551,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     public void onDropCompleted(final View target, final DragObject d,
             final boolean success) {
         if (success) {
-            Log.d("ICON_TRACE", "onDropCompleted folder=" + mInfo.id
+            DragTrace.log("Folder.onDropCompleted folder=" + mInfo.id
                     + " itemCount=" + getItemCount() + " target=" + target
                     + " thisFolder=" + (target == this));
             if (getItemCount() <= 1) {
@@ -22497,7 +22654,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     public boolean isDropEnabled() {
-        return mState != STATE_ANIMATING;
+        return mIsOpen && mState != STATE_ANIMATING;
     }
 
     protected void centerAboutIcon() {
@@ -22651,15 +22808,15 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     @Override
     public void onDrop(DragObject d, DragOptions options) {
-        // If the icon was dropped while the page was being scrolled, we need to compute
-        // the target location again such that the icon is placed of the final page.
-        if (!mContent.rankOnCurrentPage(mEmptyCellRank)) {
-            // Reorder again.
-            mTargetRank = getTargetRank(d, null);
-
-            // Rearrange items immediately.
+        // If the icon was dropped while the page was being scrolled, or if a target
+        // change occurred within the reorder delay, compute target location and flush reorder.
+        int dropRank = getTargetRank(d, null);
+        boolean flushAlarm = !mContent.rankOnCurrentPage(mEmptyCellRank) || dropRank != mEmptyCellRank;
+        DragTrace.log("Folder.onDrop dropRank=" + dropRank + " emptyRank=" + mEmptyCellRank
+                + " flushAlarm=" + flushAlarm + " item=" + (d.dragInfo != null ? d.dragInfo.title : "null"));
+        if (flushAlarm) {
+            mTargetRank = dropRank;
             mReorderAlarmListener.onAlarm(mReorderAlarm);
-
             mOnScrollHintAlarm.cancelAlarm();
             mScrollPauseAlarm.cancelAlarm();
         }
@@ -23179,7 +23336,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
 # src/com/android/launcher3/folder/FolderAnimationManager.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderAnimationManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderAnimationManager.java`  
 **Lines**: 669 | **Bytes**: 31395
 
 ```java
@@ -23857,8 +24014,8 @@ public class FolderAnimationManager {
 
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 569 | **Bytes**: 22131
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
+**Lines**: 566 | **Bytes**: 21934
 
 ```java
 /*
@@ -24140,9 +24297,6 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 mActivityContext.getDragLayer().getDescendantRectRelativeToSelf(mFolderTab, tabRect);
                 outRect.union(tabRect);
             }
-            int offset = Math.max(mScrollAreaOffset, (int) (getContext().getResources().getDisplayMetrics().density * 48));
-            outRect.left -= offset;
-            outRect.right += offset;
         } else {
             super.getHitRectRelativeToDragLayer(outRect);
         }
@@ -24435,8 +24589,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
 # src/com/android/launcher3/folder/FolderIcon.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderIcon.java`  
-**Lines**: 1069 | **Bytes**: 41610
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
+**Lines**: 1073 | **Bytes**: 41923
 
 ```java
 /*
@@ -24502,6 +24656,7 @@ import com.android.launcher3.OnAlarmListener;
 import com.android.launcher3.R;
 import com.android.launcher3.Reorderable;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.allapps.ActivityAllAppsContainerView;
 import com.android.launcher3.celllayout.CellLayoutLayoutParams;
@@ -25344,6 +25499,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     @Override
     public void onAdd(WorkspaceItemInfo item, int rank) {
+        DragTrace.log("FolderIcon.onAdd item=" + (item != null ? item.title : "null") + " rank=" + rank);
         updatePreviewItems(false);
         boolean wasDotted = mDotInfo.hasDot();
         mDotInfo.addDotInfo(mActivity.getDotInfoForItem(item));
@@ -25356,6 +25512,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     @Override
     public void onRemove(List<WorkspaceItemInfo> items) {
+        DragTrace.log("FolderIcon.onRemove itemsCount=" + (items != null ? items.size() : 0));
         updatePreviewItems(false);
         boolean wasDotted = mDotInfo.hasDot();
         items.stream().map(mActivity::getDotInfoForItem).forEach(mDotInfo::subtractDotInfo);
@@ -25367,6 +25524,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     }
 
     public void onTitleChanged(CharSequence title) {
+        DragTrace.log("FolderIcon.onTitleChanged title=" + title);
         mFolderName.setText(title);
         setContentDescription(getAccessiblityTitle(title));
     }
@@ -25513,7 +25671,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
 # src/com/android/launcher3/folder/FolderPagedView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderPagedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
 **Lines**: 743 | **Bytes**: 26112
 
 ```java
@@ -26265,7 +26423,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
 # src/com/android/launcher3/folder/LauncherDelegate.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/LauncherDelegate.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/LauncherDelegate.java`  
 **Lines**: 220 | **Bytes**: 8277
 
 ```java
@@ -26494,7 +26652,7 @@ public class LauncherDelegate {
 
 # src/com/android/launcher3/Hotseat.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/Hotseat.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Hotseat.java`  
 **Lines**: 387 | **Bytes**: 14453
 
 ```java
@@ -26891,7 +27049,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
 **Lines**: 929 | **Bytes**: 35629
 
 ```java
@@ -27829,7 +27987,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
 # src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
 **Lines**: 283 | **Bytes**: 10259
 
 ```java
@@ -28121,7 +28279,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
 **Lines**: 346 | **Bytes**: 13331
 
 ```kotlin
@@ -28476,7 +28634,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
 **Lines**: 395 | **Bytes**: 14194
 
 ```kotlin
@@ -28880,7 +29038,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # src/com/android/launcher3/util/RemovedAppStore.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/util/RemovedAppStore.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
 **Lines**: 69 | **Bytes**: 2877
 
 ```java
@@ -28958,7 +29116,7 @@ public class RemovedAppStore {
 
 # src/com/android/launcher3/applibrary/model/CategoryProvider.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
 **Lines**: 494 | **Bytes**: 24803
 
 ```kotlin
@@ -29461,7 +29619,7 @@ class CategoryProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryModel.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/model/AppLibraryModel.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryModel.kt`  
 **Lines**: 140 | **Bytes**: 4889
 
 ```kotlin
@@ -29610,7 +29768,7 @@ class AppLibraryModel(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt`  
 **Lines**: 20 | **Bytes**: 542
 
 ```kotlin
@@ -29639,7 +29797,7 @@ enum class AppLibraryCategory(val title: String) {
 
 # src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt`  
 **Lines**: 105 | **Bytes**: 3965
 
 ```kotlin
@@ -29753,7 +29911,7 @@ class SuggestionsProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
 **Lines**: 758 | **Bytes**: 29342
 
 ```java
@@ -30520,7 +30678,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
 **Lines**: 358 | **Bytes**: 13139
 
 ```java
@@ -30887,7 +31045,7 @@ public class AppLibraryDashboardView extends RecyclerView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryPage.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
 **Lines**: 1033 | **Bytes**: 44770
 
 ```java
@@ -31929,7 +32087,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
 **Lines**: 50 | **Bytes**: 1578
 
 ```java
@@ -31988,7 +32146,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
 **Lines**: 310 | **Bytes**: 12587
 
 ```java
@@ -32307,7 +32465,7 @@ public class CategoryCardView extends ViewGroup {
 
 # src/com/android/launcher3/applibrary/view/MiniClusterView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/MiniClusterView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/MiniClusterView.java`  
 **Lines**: 144 | **Bytes**: 4488
 
 ```java
@@ -32460,7 +32618,7 @@ public class MiniClusterView extends View {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
 **Lines**: 341 | **Bytes**: 12945
 
 ```java
@@ -32810,7 +32968,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
 # src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
 **Lines**: 137 | **Bytes**: 4749
 
 ```java
@@ -32956,7 +33114,7 @@ public class AppLibraryIndexScrollerView extends View {
 
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
 **Lines**: 469 | **Bytes**: 18610
 
 ```kotlin
@@ -33434,7 +33592,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
 **Lines**: 520 | **Bytes**: 19678
 
 ```kotlin
@@ -33963,7 +34121,7 @@ class AppLibraryFolderTransition(
 
 # src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
 **Lines**: 88 | **Bytes**: 3065
 
 ```java
@@ -34060,7 +34218,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
 
 # src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
 **Lines**: 189 | **Bytes**: 6712
 
 ```java
@@ -34258,8 +34416,8 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
 
 # src/com/android/launcher3/popup/PopupContainerWithArrow.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/PopupContainerWithArrow.java`  
-**Lines**: 1632 | **Bytes**: 74793
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/PopupContainerWithArrow.java`  
+**Lines**: 1634 | **Bytes**: 74985
 
 ```java
 /*
@@ -34325,6 +34483,7 @@ import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.shortcuts.DeepShortcutView;
 import com.android.launcher3.shortcuts.ShortcutDragPreviewProvider;
 import com.android.launcher3.touch.ItemLongClickListener;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.PackageUserKey;
 import com.android.launcher3.util.ShortcutUtil;
 import com.android.launcher3.views.ActivityContext;
@@ -34493,6 +34652,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         launcher.refreshAndBindWidgetsForPackageUser(PackageUserKey.fromItemInfo(item));
         launcher.getInteractionController().beginPopup(container, icon, item);
         container.requestFocus();
+        DragTrace.log("PopupContainerWithArrow.showForIcon item=" + (item != null ? item.title : "null") + " deepShortcuts=" + deepShortcutCount);
         return container;
     }
 
@@ -35899,8 +36059,8 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/ArrowPopup.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/ArrowPopup.java`  
-**Lines**: 787 | **Bytes**: 31732
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/ArrowPopup.java`  
+**Lines**: 789 | **Bytes**: 31885
 
 ```java
 /*
@@ -35956,6 +36116,7 @@ import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.shortcuts.DeepShortcutView;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.RunnableList;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
@@ -36104,6 +36265,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
     @Override
     protected void handleClose(boolean animate) {
+        DragTrace.log("ArrowPopup.handleClose view=" + getClass().getSimpleName() + " animate=" + animate);
         if (animate) {
             animateClose();
         } else {
@@ -36695,7 +36857,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java`  
 **Lines**: 94 | **Bytes**: 4314
 
 ```java
@@ -36798,7 +36960,7 @@ public class LauncherPopupLiveUpdateHandler extends PopupLiveUpdateHandler<Launc
 
 # src/com/android/launcher3/popup/SystemShortcut.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/SystemShortcut.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/SystemShortcut.java`  
 **Lines**: 613 | **Bytes**: 28795
 
 ```java
@@ -37420,7 +37582,7 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
 
 # src/com/android/launcher3/shortcuts/DeepShortcutView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/shortcuts/DeepShortcutView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/shortcuts/DeepShortcutView.java`  
 **Lines**: 195 | **Bytes**: 7087
 
 ```java
@@ -37624,7 +37786,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 
 # src/com/android/launcher3/LauncherModel.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherModel.java`  
 **Lines**: 719 | **Bytes**: 28410
 
 ```java
@@ -38352,7 +38514,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
 
 # src/com/android/launcher3/model/ModelWriter.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/ModelWriter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/ModelWriter.java`  
 **Lines**: 581 | **Bytes**: 23312
 
 ```java
@@ -38942,7 +39104,7 @@ public class ModelWriter {
 
 # src/com/android/launcher3/model/BgDataModel.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/BgDataModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/BgDataModel.java`  
 **Lines**: 566 | **Bytes**: 22683
 
 ```java
@@ -39517,7 +39679,7 @@ public class BgDataModel {
 
 # src/com/android/launcher3/model/LoaderTask.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/LoaderTask.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/LoaderTask.java`  
 **Lines**: 790 | **Bytes**: 34901
 
 ```java
@@ -40316,7 +40478,7 @@ public class LoaderTask implements Runnable {
 
 # src/com/android/launcher3/model/data/ItemInfo.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/data/ItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/ItemInfo.java`  
 **Lines**: 551 | **Bytes**: 21360
 
 ```java
@@ -40876,7 +41038,7 @@ public class ItemInfo {
 
 # src/com/android/launcher3/model/data/FolderInfo.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/data/FolderInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/FolderInfo.java`  
 **Lines**: 394 | **Bytes**: 13502
 
 ```java
@@ -41279,7 +41441,7 @@ public class FolderInfo extends ItemInfo {
 
 # src/com/android/launcher3/model/data/WorkspaceItemInfo.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/data/WorkspaceItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/WorkspaceItemInfo.java`  
 **Lines**: 246 | **Bytes**: 8258
 
 ```java
@@ -41534,7 +41696,7 @@ public class WorkspaceItemInfo extends ItemInfoWithIcon {
 
 # bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
 **Lines**: 554 | **Bytes**: 22353
 
 ```kotlin
@@ -42097,7 +42259,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
 
 # bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java`  
 **Lines**: 192 | **Bytes**: 6494
 
 ```java
@@ -42298,7 +42460,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
 
 # bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt`  
 **Lines**: 153 | **Bytes**: 5412
 
 ```kotlin
@@ -42460,7 +42622,7 @@ class WidgetsDbHelper(context: Context) :
 
 # bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
 **Lines**: 40 | **Bytes**: 1459
 
 ```kotlin
@@ -42509,7 +42671,7 @@ object DefaultWidgets {
 
 # bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt`  
 **Lines**: 26 | **Bytes**: 1002
 
 ```kotlin
@@ -42544,7 +42706,7 @@ object BlissPrefs {
 
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
 **Lines**: 569 | **Bytes**: 22921
 
 ```kotlin
@@ -43122,7 +43284,7 @@ object DefaultHomeLayoutResolver {
 
 # AndroidManifest-common.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/AndroidManifest-common.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
 **Lines**: 209 | **Bytes**: 9429
 
 ```xml
@@ -43340,7 +43502,7 @@ object DefaultHomeLayoutResolver {
 
 # AndroidManifest.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest.xml`  
 **Lines**: 78 | **Bytes**: 3308
 
 ```xml
@@ -43427,7 +43589,7 @@ object DefaultHomeLayoutResolver {
 
 # bliss/AndroidManifest.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
 **Lines**: 59 | **Bytes**: 2263
 
 ```xml
@@ -43495,7 +43657,7 @@ object DefaultHomeLayoutResolver {
 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/AndroidManifest-withoutQuickstep.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
 **Lines**: 74 | **Bytes**: 3185
 
 ```xml
@@ -43578,7 +43740,7 @@ object DefaultHomeLayoutResolver {
 
 # quickstep/AndroidManifest.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/quickstep/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest.xml`  
 **Lines**: 165 | **Bytes**: 7841
 
 ```xml
@@ -43752,7 +43914,7 @@ object DefaultHomeLayoutResolver {
 
 # quickstep/AndroidManifest-launcher.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/quickstep/AndroidManifest-launcher.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest-launcher.xml`  
 **Lines**: 73 | **Bytes**: 3071
 
 ```xml

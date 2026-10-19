@@ -58,6 +58,7 @@ import com.android.launcher3.provider.RestoreDbTask;
 import com.android.launcher3.testing.shared.ResourceUtils;
 import com.android.launcher3.util.DisplayController;
 import com.android.launcher3.util.DisplayController.Info;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.LockedUserState;
 import com.android.launcher3.util.MainThreadInitializedObject;
 import com.android.launcher3.util.Partner;
@@ -401,6 +402,7 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
         numFolderRows = closestProfile.numFolderRows;
         numFolderColumns = closestProfile.numFolderColumns;
         folderStyle = closestProfile.folderStyle;
+        DragTrace.log("InvariantDeviceProfile.initGrid numRows=" + numRows + " numColumns=" + numColumns + " numFolderRows=" + numFolderRows + " numFolderColumns=" + numFolderColumns);
 
         cellStyle = closestProfile.cellStyle;
 

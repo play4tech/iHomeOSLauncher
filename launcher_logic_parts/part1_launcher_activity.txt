@@ -16,8 +16,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/Launcher.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/Launcher.java`  
-**Lines**: 4127 | **Bytes**: 173165
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
+**Lines**: 4129 | **Bytes**: 173332
 
 ```java
 /*
@@ -167,6 +167,7 @@ import android.util.AttributeSet;
 import android.util.FloatProperty;
 import android.util.Log;
 import android.util.Pair;
+import com.android.launcher3.util.DragTrace;
 import android.util.SparseArray;
 import android.view.KeyEvent;
 import android.view.KeyboardShortcutGroup;
@@ -2746,6 +2747,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             return result;
         }
 
+        DragTrace.log("Launcher.startActivitySafely item=" + (item != null ? item.title : "null") + " intent=" + intent);
         RunnableList result = super.startActivitySafely(v, intent, item);
         if (v instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) v;
@@ -4153,7 +4155,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 # src/com/android/launcher3/LauncherApplication.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherApplication.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
 **Lines**: 132 | **Bytes**: 5504
 
 ```java
@@ -4294,7 +4296,7 @@ public class LauncherApplication extends Application {
 
 # src/com/android/launcher3/LauncherAppState.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherAppState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
 **Lines**: 293 | **Bytes**: 12466
 
 ```java
@@ -4596,8 +4598,8 @@ public class LauncherAppState implements SafeCloseable {
 
 # src/com/android/launcher3/statemanager/StateManager.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/statemanager/StateManager.java`  
-**Lines**: 737 | **Bytes**: 27725
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/statemanager/StateManager.java`  
+**Lines**: 740 | **Bytes**: 27878
 
 ```java
 /*
@@ -4645,6 +4647,8 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.stream.Collectors;
+
+import com.android.launcher3.util.DragTrace;
 
 /**
  * Class to manage transitions between different states for a StatefulActivity based on different
@@ -4841,6 +4845,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
     private void goToState(
             STATE_TYPE state, boolean animated, long delay, AnimatorListener listener) {
+        DragTrace.log("StateManager.goToState from=" + mState + " to=" + state + " animated=" + animated);
         if (DEBUG) {
             String stackTrace = Log.getStackTraceString(new Exception("tracing state transition"));
             String truncatedTrace =
@@ -5342,7 +5347,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
 # src/com/android/launcher3/LauncherState.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherState.java`  
 **Lines**: 505 | **Bytes**: 19710
 
 ```java
@@ -5856,7 +5861,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
 
 # src/com/android/launcher3/states/RotationHelper.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/states/RotationHelper.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/states/RotationHelper.java`  
 **Lines**: 232 | **Bytes**: 9268
 
 ```java
@@ -6097,7 +6102,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 
 # src/com/android/launcher3/settings/SettingsActivity.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/settings/SettingsActivity.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
 **Lines**: 326 | **Bytes**: 13362
 
 ```java

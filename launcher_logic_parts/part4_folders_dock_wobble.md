@@ -21,8 +21,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/folder/Folder.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2058 | **Bytes**: 78381
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
+**Lines**: 2070 | **Bytes**: 79885
 
 ```java
 /*
@@ -53,6 +53,8 @@ import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCH
 import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCHER_ITEM_DROP_COMPLETED;
 import static com.android.launcher3.testing.shared.TestProtocol.FOLDER_OPENED_MESSAGE;
 import static com.android.launcher3.util.window.RefreshRateTracker.getSingleFrameMs;
+
+import com.android.launcher3.util.DragTrace;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -427,6 +429,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             int index = getIconsInReadingOrder().indexOf(v);
             mEmptyCellRank = (index >= 0) ? index : item.rank;
             mCurrentDragView = v;
+            DragTrace.log("Folder.startDrag item=" + (item != null ? item.title : "null") + " rank=" + mEmptyCellRank);
 
             mDragController.addDragListener(this);
             if (options.isAccessibleDrag) {
@@ -509,6 +512,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (DEBUG) {
             Log.d(TAG, "onBackKey newTitle=" + newTitle);
         }
+        DragTrace.log("Folder.onTitleChanged newTitle=" + newTitle + " folder=" + mInfo.id);
         mInfo.setTitle(newTitle, mLauncherDelegate.getModelWriter());
         mFolderIcon.onTitleChanged(newTitle);
 
@@ -833,6 +837,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         updateTextViewFocus();
 
         mIsOpen = true;
+        DragTrace.log("Folder.animateOpen folder=" + (mInfo != null ? mInfo.id : "null") + " items=" + (items != null ? items.size() : 0));
         onFolderOpenStart();
         registerBackCallback();
 
@@ -930,6 +935,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     @Override
     protected void handleClose(boolean animate) {
+        DragTrace.log("Folder.handleClose folder=" + (mInfo != null ? mInfo.id : "null") + " animate=" + animate);
         mIsOpen = false;
 
         if (!animate && mCurrentAnimator != null && mCurrentAnimator.isRunning()) {
@@ -1075,6 +1081,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     public void onDragEnter(DragObject d) {
+        DragTrace.log("Folder.onDragEnter item=" + (d.dragInfo != null ? d.dragInfo.title : "null"));
         mPrevTargetRank = -1;
         mOnExitAlarm.cancelAlarm();
         // Get the area offset such that the folder only closes if half the drag icon width
@@ -1084,8 +1091,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     OnAlarmListener mReorderAlarmListener = new OnAlarmListener() {
         public void onAlarm(Alarm alarm) {
+            DragTrace.log("Folder.reorderAlarm emptyRank=" + mEmptyCellRank + " -> targetRank=" + mTargetRank);
             mContent.realTimeReorder(mEmptyCellRank, mTargetRank);
             mEmptyCellRank = mTargetRank;
+            mItemsInvalidated = true;
         }
     };
 
@@ -1093,31 +1102,29 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         return (getLayoutDirection() == LAYOUT_DIRECTION_RTL);
     }
 
+    private final float[] mTargetRankCoord = new float[2];
+
     private int getTargetRank(DragObject d, float[] recycle) {
-        float[] visualCenter = d.getVisualCenter(null);
-        if (recycle != null) {
-            recycle[0] = visualCenter[0];
-            recycle[1] = visualCenter[1];
-            if (mActivityContext != null && mActivityContext.getDragLayer() != null) {
-                mActivityContext.getDragLayer().mapCoordInSelfToDescendant(this, recycle);
-            }
-        }
+        float[] visualCenter = d.getVisualCenter(recycle);
         if (mContent != null) {
             int pageIndex = mContent.getNextPage();
             com.android.launcher3.CellLayout page = mContent.getPageAt(pageIndex);
             if (page != null) {
-                float[] coord = new float[] { visualCenter[0], visualCenter[1] };
-                if (mActivityContext != null && mActivityContext.getDragLayer() != null) {
-                    mActivityContext.getDragLayer().mapCoordInSelfToDescendant(page, coord);
-                } else {
-                    com.android.launcher3.Utilities.mapCoordInSelfToDescendant(page, this, coord);
-                }
-                return mContent.findNearestArea((int) coord[0], (int) coord[1]);
+                mTargetRankCoord[0] = visualCenter[0];
+                mTargetRankCoord[1] = visualCenter[1];
+                com.android.launcher3.Utilities.mapCoordInSelfToDescendant(page, this, mTargetRankCoord);
+                int rank = mContent.findNearestArea((int) mTargetRankCoord[0], (int) mTargetRankCoord[1]);
+                DragTrace.log("Folder.getTargetRank visualCenter=(" + (int) visualCenter[0] + "," + (int) visualCenter[1]
+                        + ") local=(" + (int) mTargetRankCoord[0] + "," + (int) mTargetRankCoord[1]
+                        + ") rank=" + rank + " page=" + pageIndex);
+                return rank;
             }
         }
-        return mContent.findNearestArea(
+        int fallback = mContent != null ? mContent.findNearestArea(
                 (int) visualCenter[0] - getPaddingLeft(),
-                (int) visualCenter[1] - getPaddingTop());
+                (int) visualCenter[1] - getPaddingTop()) : 0;
+        DragTrace.log("Folder.getTargetRank fallback rank=" + fallback);
+        return fallback;
     }
 
     @Override
@@ -1129,6 +1136,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mTargetRank = getTargetRank(d, r);
 
         if (mTargetRank != mPrevTargetRank) {
+            DragTrace.log("Folder.onDragOver targetRankChanged: " + mPrevTargetRank + " -> " + mTargetRank);
             mReorderAlarm.cancelAlarm();
             mReorderAlarm.setOnAlarmListener(mReorderAlarmListener);
             mReorderAlarm.setAlarm(REORDER_DELAY);
@@ -1169,6 +1177,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void showScrollHint(int direction, DragObject d) {
+        DragTrace.log("Folder.showScrollHint dir=" + direction + " currentPage=" + (mContent != null ? mContent.getNextPage() : -1));
         // Show scroll hint on the right
         if (mScrollHintDir != direction) {
             mContent.showScrollHint(direction);
@@ -1194,8 +1203,10 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     };
 
     public void completeDragExit() {
+        DragTrace.log("Folder.completeDragExit closing folder=" + mInfo.id + " restoring dock/workspace alphas");
         if (mIsOpen) {
             close(true);
+            mIsOpen = false;
             mRearrangeOnClose = true;
         } else if (mState == STATE_ANIMATING) {
             mRearrangeOnClose = true;
@@ -1266,6 +1277,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     public void onDragExit(DragObject d) {
+        DragTrace.log("Folder.onDragExit dragComplete=" + d.dragComplete);
         // We only close the folder if this is a true drag exit, ie. not because
         // a drop has occurred above the folder.
         if (!d.dragComplete) {
@@ -1303,7 +1315,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     public void onDropCompleted(final View target, final DragObject d,
             final boolean success) {
         if (success) {
-            Log.d("ICON_TRACE", "onDropCompleted folder=" + mInfo.id
+            DragTrace.log("Folder.onDropCompleted folder=" + mInfo.id
                     + " itemCount=" + getItemCount() + " target=" + target
                     + " thisFolder=" + (target == this));
             if (getItemCount() <= 1) {
@@ -1406,7 +1418,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     public boolean isDropEnabled() {
-        return mState != STATE_ANIMATING;
+        return mIsOpen && mState != STATE_ANIMATING;
     }
 
     protected void centerAboutIcon() {
@@ -1560,15 +1572,15 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     @Override
     public void onDrop(DragObject d, DragOptions options) {
-        // If the icon was dropped while the page was being scrolled, we need to compute
-        // the target location again such that the icon is placed of the final page.
-        if (!mContent.rankOnCurrentPage(mEmptyCellRank)) {
-            // Reorder again.
-            mTargetRank = getTargetRank(d, null);
-
-            // Rearrange items immediately.
+        // If the icon was dropped while the page was being scrolled, or if a target
+        // change occurred within the reorder delay, compute target location and flush reorder.
+        int dropRank = getTargetRank(d, null);
+        boolean flushAlarm = !mContent.rankOnCurrentPage(mEmptyCellRank) || dropRank != mEmptyCellRank;
+        DragTrace.log("Folder.onDrop dropRank=" + dropRank + " emptyRank=" + mEmptyCellRank
+                + " flushAlarm=" + flushAlarm + " item=" + (d.dragInfo != null ? d.dragInfo.title : "null"));
+        if (flushAlarm) {
+            mTargetRank = dropRank;
             mReorderAlarmListener.onAlarm(mReorderAlarm);
-
             mOnScrollHintAlarm.cancelAlarm();
             mScrollPauseAlarm.cancelAlarm();
         }
@@ -2088,7 +2100,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
 # src/com/android/launcher3/folder/FolderAnimationManager.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderAnimationManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderAnimationManager.java`  
 **Lines**: 669 | **Bytes**: 31395
 
 ```java
@@ -2766,8 +2778,8 @@ public class FolderAnimationManager {
 
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 569 | **Bytes**: 22131
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
+**Lines**: 566 | **Bytes**: 21934
 
 ```java
 /*
@@ -3049,9 +3061,6 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 mActivityContext.getDragLayer().getDescendantRectRelativeToSelf(mFolderTab, tabRect);
                 outRect.union(tabRect);
             }
-            int offset = Math.max(mScrollAreaOffset, (int) (getContext().getResources().getDisplayMetrics().density * 48));
-            outRect.left -= offset;
-            outRect.right += offset;
         } else {
             super.getHitRectRelativeToDragLayer(outRect);
         }
@@ -3344,8 +3353,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
 # src/com/android/launcher3/folder/FolderIcon.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderIcon.java`  
-**Lines**: 1069 | **Bytes**: 41610
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
+**Lines**: 1073 | **Bytes**: 41923
 
 ```java
 /*
@@ -3411,6 +3420,7 @@ import com.android.launcher3.OnAlarmListener;
 import com.android.launcher3.R;
 import com.android.launcher3.Reorderable;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.allapps.ActivityAllAppsContainerView;
 import com.android.launcher3.celllayout.CellLayoutLayoutParams;
@@ -4253,6 +4263,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     @Override
     public void onAdd(WorkspaceItemInfo item, int rank) {
+        DragTrace.log("FolderIcon.onAdd item=" + (item != null ? item.title : "null") + " rank=" + rank);
         updatePreviewItems(false);
         boolean wasDotted = mDotInfo.hasDot();
         mDotInfo.addDotInfo(mActivity.getDotInfoForItem(item));
@@ -4265,6 +4276,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     @Override
     public void onRemove(List<WorkspaceItemInfo> items) {
+        DragTrace.log("FolderIcon.onRemove itemsCount=" + (items != null ? items.size() : 0));
         updatePreviewItems(false);
         boolean wasDotted = mDotInfo.hasDot();
         items.stream().map(mActivity::getDotInfoForItem).forEach(mDotInfo::subtractDotInfo);
@@ -4276,6 +4288,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     }
 
     public void onTitleChanged(CharSequence title) {
+        DragTrace.log("FolderIcon.onTitleChanged title=" + title);
         mFolderName.setText(title);
         setContentDescription(getAccessiblityTitle(title));
     }
@@ -4422,7 +4435,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
 # src/com/android/launcher3/folder/FolderPagedView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/FolderPagedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
 **Lines**: 743 | **Bytes**: 26112
 
 ```java
@@ -5174,7 +5187,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
 # src/com/android/launcher3/folder/LauncherDelegate.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/folder/LauncherDelegate.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/LauncherDelegate.java`  
 **Lines**: 220 | **Bytes**: 8277
 
 ```java
@@ -5403,7 +5416,7 @@ public class LauncherDelegate {
 
 # src/com/android/launcher3/Hotseat.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/Hotseat.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Hotseat.java`  
 **Lines**: 387 | **Bytes**: 14453
 
 ```java
@@ -5800,7 +5813,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
 **Lines**: 929 | **Bytes**: 35629
 
 ```java
@@ -6738,7 +6751,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
 # src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
 **Lines**: 283 | **Bytes**: 10259
 
 ```java
@@ -7030,7 +7043,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
 **Lines**: 346 | **Bytes**: 13331
 
 ```kotlin
@@ -7385,7 +7398,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
 **Lines**: 395 | **Bytes**: 14194
 
 ```kotlin
@@ -7789,7 +7802,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # src/com/android/launcher3/util/RemovedAppStore.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/util/RemovedAppStore.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
 **Lines**: 69 | **Bytes**: 2877
 
 ```java

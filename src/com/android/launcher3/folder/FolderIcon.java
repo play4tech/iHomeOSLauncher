@@ -61,6 +61,7 @@ import com.android.launcher3.OnAlarmListener;
 import com.android.launcher3.R;
 import com.android.launcher3.Reorderable;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.allapps.ActivityAllAppsContainerView;
 import com.android.launcher3.celllayout.CellLayoutLayoutParams;
@@ -903,6 +904,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     @Override
     public void onAdd(WorkspaceItemInfo item, int rank) {
+        DragTrace.log("FolderIcon.onAdd item=" + (item != null ? item.title : "null") + " rank=" + rank);
         updatePreviewItems(false);
         boolean wasDotted = mDotInfo.hasDot();
         mDotInfo.addDotInfo(mActivity.getDotInfoForItem(item));
@@ -915,6 +917,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     @Override
     public void onRemove(List<WorkspaceItemInfo> items) {
+        DragTrace.log("FolderIcon.onRemove itemsCount=" + (items != null ? items.size() : 0));
         updatePreviewItems(false);
         boolean wasDotted = mDotInfo.hasDot();
         items.stream().map(mActivity::getDotInfoForItem).forEach(mDotInfo::subtractDotInfo);
@@ -926,6 +929,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
     }
 
     public void onTitleChanged(CharSequence title) {
+        DragTrace.log("FolderIcon.onTitleChanged title=" + title);
         mFolderName.setText(title);
         setContentDescription(getAccessiblityTitle(title));
     }

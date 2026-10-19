@@ -22,6 +22,7 @@ import static com.android.launcher3.CellLayout.FOLDER;
 import static com.android.launcher3.CellLayout.HOTSEAT;
 import static com.android.launcher3.CellLayout.WORKSPACE;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_BUBBLE_ADJUSTMENT_ANIM;
+import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_REORDER_PREVIEW_OFFSET;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_WIDGET_CENTERING;
 
 import android.app.WallpaperManager;
@@ -328,34 +329,49 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
         }
     }
 
+    private void cleanupChildBeforeRemoval(View child) {
+        if (child != null) {
+            child.clearAnimation();
+            child.setRotation(0f);
+            child.setTranslationX(0f);
+            child.setTranslationY(0f);
+            child.setScaleX(1f);
+            child.setScaleY(1f);
+            if (child instanceof Reorderable) {
+                ((Reorderable) child).getTranslateDelegate().setTranslation(
+                        INDEX_REORDER_PREVIEW_OFFSET, 0f, 0f);
+            }
+        }
+    }
+
     @Override
     public void removeView(View view) {
-        if (view != null) view.clearAnimation();
+        cleanupChildBeforeRemoval(view);
         super.removeView(view);
     }
 
     @Override
     public void removeViewInLayout(View view) {
-        if (view != null) view.clearAnimation();
+        cleanupChildBeforeRemoval(view);
         super.removeViewInLayout(view);
     }
 
     @Override
     public void removeViewAt(int index) {
         View view = getChildAt(index);
-        if (view != null) view.clearAnimation();
+        cleanupChildBeforeRemoval(view);
         super.removeViewAt(index);
     }
 
     @Override
     public void removeAllViews() {
-        for (int i = 0; i < getChildCount(); i++) getChildAt(i).clearAnimation();
+        for (int i = 0; i < getChildCount(); i++) cleanupChildBeforeRemoval(getChildAt(i));
         super.removeAllViews();
     }
 
     @Override
     public void removeAllViewsInLayout() {
-        for (int i = 0; i < getChildCount(); i++) getChildAt(i).clearAnimation();
+        for (int i = 0; i < getChildCount(); i++) cleanupChildBeforeRemoval(getChildAt(i));
         super.removeAllViewsInLayout();
     }
 

@@ -41,6 +41,7 @@ import com.android.launcher3.allapps.AllAppsStore;
 import com.android.launcher3.allapps.BaseAllAppsAdapter.AdapterItem;
 import com.android.launcher3.allapps.SearchUiManager;
 import com.android.launcher3.search.SearchCallback;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.views.ActivityContext;
 
 import java.util.ArrayList;
@@ -165,6 +166,7 @@ public class AppsSearchContainerLayout extends ExtendedEditText
 
     @Override
     public void onSearchResult(String query, ArrayList<AdapterItem> items) {
+        DragTrace.log("AllApps.onSearchResult query='" + query + "' count=" + (items != null ? items.size() : 0));
         if (items != null) {
             mAppsView.setSearchResults(items);
         }

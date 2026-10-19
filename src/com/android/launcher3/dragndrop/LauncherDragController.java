@@ -36,6 +36,7 @@ import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.accessibility.DragViewStateAnnouncer;
 import com.android.launcher3.model.data.ItemInfo;
+import com.android.launcher3.util.DragTrace;
 
 /**
  * Drag controller for Launcher activity
@@ -67,6 +68,10 @@ public class LauncherDragController extends DragController<Launcher> {
         if (PROFILE_DRAWING_DURING_DRAG) {
             android.os.Debug.startMethodTracing("Launcher");
         }
+
+        DragTrace.log("DragController.startDrag item=" + (dragInfo != null ? dragInfo.title : "null")
+                + " source=" + (source != null ? source.getClass().getSimpleName() : "null")
+                + " at=(" + dragLayerX + "," + dragLayerY + ")");
 
         mActivity.hideKeyboard();
         AbstractFloatingView.closeOpenViews(mActivity, false, TYPE_DISCOVERY_BOUNCE);

@@ -27,8 +27,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/popup/PopupContainerWithArrow.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/PopupContainerWithArrow.java`  
-**Lines**: 1632 | **Bytes**: 74793
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/PopupContainerWithArrow.java`  
+**Lines**: 1634 | **Bytes**: 74985
 
 ```java
 /*
@@ -94,6 +94,7 @@ import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.shortcuts.DeepShortcutView;
 import com.android.launcher3.shortcuts.ShortcutDragPreviewProvider;
 import com.android.launcher3.touch.ItemLongClickListener;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.PackageUserKey;
 import com.android.launcher3.util.ShortcutUtil;
 import com.android.launcher3.views.ActivityContext;
@@ -262,6 +263,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         launcher.refreshAndBindWidgetsForPackageUser(PackageUserKey.fromItemInfo(item));
         launcher.getInteractionController().beginPopup(container, icon, item);
         container.requestFocus();
+        DragTrace.log("PopupContainerWithArrow.showForIcon item=" + (item != null ? item.title : "null") + " deepShortcuts=" + deepShortcutCount);
         return container;
     }
 
@@ -1668,8 +1670,8 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/ArrowPopup.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/ArrowPopup.java`  
-**Lines**: 787 | **Bytes**: 31732
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/ArrowPopup.java`  
+**Lines**: 789 | **Bytes**: 31885
 
 ```java
 /*
@@ -1725,6 +1727,7 @@ import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.shortcuts.DeepShortcutView;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.RunnableList;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.ActivityContext;
@@ -1873,6 +1876,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
     @Override
     protected void handleClose(boolean animate) {
+        DragTrace.log("ArrowPopup.handleClose view=" + getClass().getSimpleName() + " animate=" + animate);
         if (animate) {
             animateClose();
         } else {
@@ -2464,7 +2468,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java`  
 **Lines**: 94 | **Bytes**: 4314
 
 ```java
@@ -2567,7 +2571,7 @@ public class LauncherPopupLiveUpdateHandler extends PopupLiveUpdateHandler<Launc
 
 # src/com/android/launcher3/popup/SystemShortcut.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/popup/SystemShortcut.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/SystemShortcut.java`  
 **Lines**: 613 | **Bytes**: 28795
 
 ```java
@@ -3189,7 +3193,7 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
 
 # src/com/android/launcher3/shortcuts/DeepShortcutView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/shortcuts/DeepShortcutView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/shortcuts/DeepShortcutView.java`  
 **Lines**: 195 | **Bytes**: 7087
 
 ```java
@@ -3393,7 +3397,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 
 # src/com/android/launcher3/LauncherModel.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/LauncherModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherModel.java`  
 **Lines**: 719 | **Bytes**: 28410
 
 ```java
@@ -4121,7 +4125,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
 
 # src/com/android/launcher3/model/ModelWriter.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/ModelWriter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/ModelWriter.java`  
 **Lines**: 581 | **Bytes**: 23312
 
 ```java
@@ -4711,7 +4715,7 @@ public class ModelWriter {
 
 # src/com/android/launcher3/model/BgDataModel.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/BgDataModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/BgDataModel.java`  
 **Lines**: 566 | **Bytes**: 22683
 
 ```java
@@ -5286,7 +5290,7 @@ public class BgDataModel {
 
 # src/com/android/launcher3/model/LoaderTask.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/LoaderTask.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/LoaderTask.java`  
 **Lines**: 790 | **Bytes**: 34901
 
 ```java
@@ -6085,7 +6089,7 @@ public class LoaderTask implements Runnable {
 
 # src/com/android/launcher3/model/data/ItemInfo.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/data/ItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/ItemInfo.java`  
 **Lines**: 551 | **Bytes**: 21360
 
 ```java
@@ -6645,7 +6649,7 @@ public class ItemInfo {
 
 # src/com/android/launcher3/model/data/FolderInfo.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/data/FolderInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/FolderInfo.java`  
 **Lines**: 394 | **Bytes**: 13502
 
 ```java
@@ -7048,7 +7052,7 @@ public class FolderInfo extends ItemInfo {
 
 # src/com/android/launcher3/model/data/WorkspaceItemInfo.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/src/com/android/launcher3/model/data/WorkspaceItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/WorkspaceItemInfo.java`  
 **Lines**: 246 | **Bytes**: 8258
 
 ```java
@@ -7303,7 +7307,7 @@ public class WorkspaceItemInfo extends ItemInfoWithIcon {
 
 # bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
 **Lines**: 554 | **Bytes**: 22353
 
 ```kotlin
@@ -7866,7 +7870,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
 
 # bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java`  
 **Lines**: 192 | **Bytes**: 6494
 
 ```java
@@ -8067,7 +8071,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
 
 # bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt`  
 **Lines**: 153 | **Bytes**: 5412
 
 ```kotlin
@@ -8229,7 +8233,7 @@ class WidgetsDbHelper(context: Context) :
 
 # bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
 **Lines**: 40 | **Bytes**: 1459
 
 ```kotlin
@@ -8278,7 +8282,7 @@ object DefaultWidgets {
 
 # bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt`  
 **Lines**: 26 | **Bytes**: 1002
 
 ```kotlin
@@ -8313,7 +8317,7 @@ object BlissPrefs {
 
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
 **Lines**: 569 | **Bytes**: 22921
 
 ```kotlin

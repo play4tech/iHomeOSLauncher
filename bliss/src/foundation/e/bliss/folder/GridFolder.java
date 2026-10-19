@@ -277,9 +277,6 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 mActivityContext.getDragLayer().getDescendantRectRelativeToSelf(mFolderTab, tabRect);
                 outRect.union(tabRect);
             }
-            int offset = Math.max(mScrollAreaOffset, (int) (getContext().getResources().getDisplayMetrics().density * 48));
-            outRect.left -= offset;
-            outRect.right += offset;
         } else {
             super.getHitRectRelativeToDragLayer(outRect);
         }

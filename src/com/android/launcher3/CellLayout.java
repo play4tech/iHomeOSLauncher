@@ -73,6 +73,7 @@ import com.android.launcher3.folder.PreviewBackground;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.LauncherAppWidgetInfo;
 import com.android.launcher3.util.CellAndSpan;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.GridOccupancy;
 import com.android.launcher3.util.MultiTranslateDelegate;
 import com.android.launcher3.util.ParcelableSparseArray;
@@ -204,7 +205,7 @@ public class CellLayout extends ViewGroup {
     private static final boolean DEBUG_VISUALIZE_OCCUPIED = false;
 
     public static final float REORDER_PREVIEW_MAGNITUDE = 0.12f;
-    public static final int REORDER_ANIMATION_DURATION = 150;
+    public static final int REORDER_ANIMATION_DURATION = 220;
     @Thunk final float mReorderPreviewAnimationMagnitude;
 
     private final ArrayList<View> mIntersectingViews = new ArrayList<>();
@@ -971,31 +972,17 @@ public class CellLayout extends ViewGroup {
      */
     public float getFolderCreationRadius(int[] targetCell) {
         DeviceProfile grid = mActivity.getDeviceProfile();
-        float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
-        // Halfway between reorder radius and icon.
-        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
+        return 0.35f * grid.iconSizePx;
     }
 
     /**
      * Returns the max distance from the center of a cell that will start to reorder on drag over.
      */
     public float getReorderRadius(int[] targetCell, int spanX, int spanY) {
-        int[] centerPoint = mTmpPoint;
-        getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
-
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
         cellBoundsWithSpacing.inset(-mBorderSpace.x / 2, -mBorderSpace.y / 2);
 
-        if (canCreateFolder(getChildAt(targetCell[0], targetCell[1])) && spanX == 1 && spanY == 1) {
-            // Take only the circle in the smaller dimension, to ensure we don't start reordering
-            // too soon before accepting a folder drop.
-            int minRadius = centerPoint[0] - cellBoundsWithSpacing.left;
-            minRadius = Math.min(minRadius, centerPoint[1] - cellBoundsWithSpacing.top);
-            minRadius = Math.min(minRadius, cellBoundsWithSpacing.right - centerPoint[0]);
-            minRadius = Math.min(minRadius, cellBoundsWithSpacing.bottom - centerPoint[1]);
-            return minRadius;
-        }
         // Take up the entire cell, including space between this cell and the adjacent ones.
         // Multiply by span to scale radius
         return (float) Math.hypot(spanX * cellBoundsWithSpacing.width() / 2f,
@@ -1125,42 +1112,33 @@ public class CellLayout extends ViewGroup {
                 occupied.markCells(cellX, cellY, lp.cellHSpan, lp.cellVSpan, true);
             }
 
-            // Compute the new x and y position based on the new cellX and cellY
-            // We leverage the actual layout logic in the layout params and hence need to modify
-            // state and revert that state.
-            final int oldX = lp.x;
-            final int oldY = lp.y;
-            lp.isLockedToGrid = true;
-            if (permanent) {
-                lp.setCellX(cellX);
-                lp.setCellY(cellY);
-            } else {
-                lp.setTmpCellX(cellX);
-                lp.setTmpCellY(cellY);
-            }
-            clc.setupLp(child);
-            final int newX = lp.x;
-            final int newY = lp.y;
-            lp.x = oldX;
-            lp.y = oldY;
-            lp.isLockedToGrid = false;
-            // End compute new x and y
+            int[] oldCenter = new int[2];
+            regionToCenterPoint(lp.getCellX(), lp.getCellY(), lp.cellHSpan, lp.cellVSpan, oldCenter);
+            int[] newCenter = new int[2];
+            regionToCenterPoint(cellX, cellY, lp.cellHSpan, lp.cellVSpan, newCenter);
+            final float finalPreviewOffsetX = newCenter[0] - oldCenter[0];
+            final float finalPreviewOffsetY = newCenter[1] - oldCenter[1];
 
             MultiTranslateDelegate mtd = item.getTranslateDelegate();
             float initPreviewOffsetX = mtd.getTranslationX(INDEX_REORDER_PREVIEW_OFFSET).getValue();
             float initPreviewOffsetY = mtd.getTranslationY(INDEX_REORDER_PREVIEW_OFFSET).getValue();
-            final float finalPreviewOffsetX = newX - oldX;
-            final float finalPreviewOffsetY = newY - oldY;
 
-            // Exit early if we're not actually moving the view
-            if (finalPreviewOffsetX == 0 && finalPreviewOffsetY == 0
-                    && initPreviewOffsetX == 0 && initPreviewOffsetY == 0) {
+            DragTrace.log("animateChildToPosition child=" + (info != null ? info.title : child)
+                    + " init=(" + initPreviewOffsetX + "," + initPreviewOffsetY + ") final=("
+                    + finalPreviewOffsetX + "," + finalPreviewOffsetY + ") perm=" + permanent);
+
+            // Exit early if already at target position
+            if (Math.abs(finalPreviewOffsetX - initPreviewOffsetX) < 1f
+                    && Math.abs(finalPreviewOffsetY - initPreviewOffsetY) < 1f) {
+                item.getTranslateDelegate().setTranslation(INDEX_REORDER_PREVIEW_OFFSET,
+                        finalPreviewOffsetX, finalPreviewOffsetY);
                 lp.isLockedToGrid = true;
                 return true;
             }
 
             ValueAnimator va = ValueAnimator.ofFloat(0f, 1f);
             va.setDuration(duration);
+            va.setInterpolator(Interpolators.DECELERATE_1_5);
             mReorderAnimators.put(lp, va);
 
             va.addUpdateListener(new AnimatorUpdateListener() {
@@ -1180,9 +1158,15 @@ public class CellLayout extends ViewGroup {
                     // place just yet.
                     if (!cancelled) {
                         lp.isLockedToGrid = true;
-                        item.getTranslateDelegate()
-                                .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
-                        child.requestLayout();
+                        if (permanent) {
+                            item.getTranslateDelegate()
+                                    .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
+                            child.requestLayout();
+                        } else {
+                            item.getTranslateDelegate()
+                                    .setTranslation(INDEX_REORDER_PREVIEW_OFFSET,
+                                            finalPreviewOffsetX, finalPreviewOffsetY);
+                        }
                     }
                     if (mReorderAnimators.containsKey(lp)) {
                         mReorderAnimators.remove(lp);
@@ -1494,6 +1478,8 @@ public class CellLayout extends ViewGroup {
     }
 
     private void commitTempPlacement(ItemConfiguration solution, View dragView) {
+        DragTrace.log("CellLayout.commitTempPlacement solution=" + System.identityHashCode(solution)
+                + " layout=" + System.identityHashCode(this));
         mTmpOccupied.copyTo(mOccupied);
 
         int screenId = mCellLayoutContainer.getCellLayoutId(this);
@@ -1571,6 +1557,13 @@ public class CellLayout extends ViewGroup {
             if (Rect.intersects(region, r1)) {
                 isOverlapping = true;
                 boundingRect.union(r1);
+            } else if (mItemPlacementDirty) {
+                r1.set(lp.getTmpCellX(), lp.getTmpCellY(), lp.getTmpCellX() + lp.cellHSpan,
+                        lp.getTmpCellY() + lp.cellVSpan);
+                if (Rect.intersects(region, r1)) {
+                    isOverlapping = true;
+                    boundingRect.union(r1);
+                }
             }
         }
         return isOverlapping ? boundingRect : null;
@@ -1586,6 +1579,8 @@ public class CellLayout extends ViewGroup {
     }
 
     void revertTempState() {
+        DragTrace.log("CellLayout.revertTempState isDirty=" + isItemPlacementDirty()
+                + " layout=" + System.identityHashCode(this));
         mPreviousSolution = null;        // never let a reverted preview be reused
         restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
@@ -1595,7 +1590,12 @@ public class CellLayout extends ViewGroup {
                 View child = mShortcutsAndWidgets.getChildAt(i);
                 CellLayoutLayoutParams
                         lp = (CellLayoutLayoutParams) child.getLayoutParams();
-                if (lp.getTmpCellX() != lp.getCellX() || lp.getTmpCellY() != lp.getCellY()) {
+                MultiTranslateDelegate mtd = (child instanceof Reorderable)
+                        ? ((Reorderable) child).getTranslateDelegate() : null;
+                boolean hasOffset = mtd != null && (
+                        Math.abs(mtd.getTranslationX(INDEX_REORDER_PREVIEW_OFFSET).getValue()) > 0.5f
+                        || Math.abs(mtd.getTranslationY(INDEX_REORDER_PREVIEW_OFFSET).getValue()) > 0.5f);
+                if (lp.getTmpCellX() != lp.getCellX() || lp.getTmpCellY() != lp.getCellY() || hasOffset) {
                     lp.setTmpCellX(lp.getCellX());
                     lp.setTmpCellY(lp.getCellY());
                     animateChildToPosition(child, lp.getCellX(), lp.getCellY(),
@@ -1607,6 +1607,7 @@ public class CellLayout extends ViewGroup {
     }
 
     public void revertTempStateImmediately() {
+        DragTrace.log("CellLayout.revertTempStateImmediately layout=" + System.identityHashCode(this));
         mPreviousSolution = null;        // never let a reverted preview be reused
         restoreOverflowPreview();
         completeAndClearReorderPreviewAnimations();
@@ -1660,9 +1661,6 @@ public class CellLayout extends ViewGroup {
                 commitTempPlacement(swapSolution, null);
                 completeAndClearReorderPreviewAnimations();
                 setItemPlacementDirty(false);
-            } else {
-                beginOrAdjustReorderPreviewAnimations(swapSolution, dragView,
-                        ReorderPreviewAnimation.MODE_PREVIEW);
             }
             mShortcutsAndWidgets.requestLayout();
         }
@@ -1897,26 +1895,21 @@ public class CellLayout extends ViewGroup {
 
         final boolean isDrop = mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL;
 
-        ItemConfiguration finalSolution;
-        // Only the alarm (MODE_DRAG_OVER) may reuse the hint, and only if it still matches
-        // the current children. A drop ALWAYS recomputes against the live state.
-        if (mode == MODE_DRAG_OVER && mPreviousSolution != null
-                && isSolutionCurrent(mPreviousSolution, dragView)) {
-            finalSolution = mPreviousSolution;
-        } else {
-            finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
-                    dragView);
-            mPreviousSolution = finalSolution;
-        }
+        ItemConfiguration finalSolution = calculateReorder(pixelX, pixelY, minSpanX, minSpanY, spanX, spanY,
+                dragView);
+        mPreviousSolution = finalSolution;
         if (isDrop) {
             mPreviousSolution = null;
         }
 
         if (finalSolution == null || !finalSolution.isSolution) {
+            DragTrace.log("CellLayout.performReorder mode=" + mode + " no-solution layout=" + System.identityHashCode(this));
             restoreOverflowPreview();
             if (isDrop) mPendingOverflow = null;
             result[0] = result[1] = resultSpan[0] = resultSpan[1] = -1;
         } else {
+            DragTrace.log("CellLayout.performReorder mode=" + mode + " solution=" + System.identityHashCode(finalSolution)
+                    + " target=(" + finalSolution.cellX + "," + finalSolution.cellY + ") layout=" + System.identityHashCode(this));
             result[0] = finalSolution.cellX;
             result[1] = finalSolution.cellY;
             resultSpan[0] = finalSolution.spanX;
@@ -1987,41 +1980,22 @@ public class CellLayout extends ViewGroup {
      */
     public void performReorder(ItemConfiguration solution, View dragView, int mode) {
         if (mode == MODE_SHOW_REORDER_HINT) {
-            beginOrAdjustReorderPreviewAnimations(solution, dragView,
-                    ReorderPreviewAnimation.MODE_HINT);
             return;
         }
         // If we're just testing for a possible location (MODE_ACCEPT_DROP), we don't bother
         // committing anything or animating anything as we just want to determine if a solution
         // exists
-        if (mode == MODE_DRAG_OVER || mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
-            if (!DESTRUCTIVE_REORDER) {
-                setUseTempCoords(true);
-            }
-
-            if (!DESTRUCTIVE_REORDER) {
-                copySolutionToTempState(solution, dragView);
-            }
+        if (mode == MODE_DRAG_OVER) {
+            copySolutionToTempState(solution, dragView);
             setItemPlacementDirty(true);
-            animateItemsToSolution(solution, dragView, mode == MODE_ON_DROP);
-
-            if (!DESTRUCTIVE_REORDER
-                    && (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL)) {
-                // Since the temp solution didn't update dragView, don't commit it either
-                commitTempPlacement(solution, dragView);
-                completeAndClearReorderPreviewAnimations();
-                setItemPlacementDirty(false);
-            } else {
-                beginOrAdjustReorderPreviewAnimations(solution, dragView,
-                        ReorderPreviewAnimation.MODE_PREVIEW);
-            }
+            animateItemsToSolution(solution, dragView, false);
+        } else if (mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) {
+            copySolutionToTempState(solution, dragView);
+            commitTempPlacement(solution, dragView);
+            completeAndClearReorderPreviewAnimations();
+            setItemPlacementDirty(false);
+            mShortcutsAndWidgets.requestLayout();
         }
-
-        if ((mode == MODE_ON_DROP || mode == MODE_ON_DROP_EXTERNAL) && !DESTRUCTIVE_REORDER) {
-            setUseTempCoords(false);
-        }
-
-        mShortcutsAndWidgets.requestLayout();
     }
 
     void setItemPlacementDirty(boolean dirty) {
@@ -2086,6 +2060,11 @@ public class CellLayout extends ViewGroup {
      * Called when drag has left this CellLayout or has been completed (successfully or not)
      */
     void onDragExit() {
+        onDragExit(true);
+    }
+
+    void onDragExit(boolean revertTemp) {
+        DragTrace.log("CellLayout.onDragExit revertTemp=" + revertTemp + " layout=" + System.identityHashCode(this));
         // This can actually be called when we aren't in a drag, e.g. when adding a new
         // item to this layout via the customize drawer.
         // Guard against that case.
@@ -2094,12 +2073,16 @@ public class CellLayout extends ViewGroup {
         }
 
         // Invalidate the drag data
-        mPreviousSolution = null;
-        mDragCell[0] = mDragCell[1] = -1;
-        mDragCellSpan[0] = mDragCellSpan[1] = -1;
+        if (revertTemp) {
+            mPreviousSolution = null;
+            mDragCell[0] = mDragCell[1] = -1;
+            mDragCellSpan[0] = mDragCellSpan[1] = -1;
+        }
         mDragOutlineAnims[mDragOutlineCurrent].animateOut();
         mDragOutlineCurrent = (mDragOutlineCurrent + 1) % mDragOutlineAnims.length;
-        revertTempState();
+        if (revertTemp) {
+            revertTempState();
+        }
         setIsDragOverlapping(false);
     }
 

@@ -69,14 +69,8 @@ class ReorderPreviewAnimation<T>(
         ObjectAnimator.ofFloat(0f, 1f).also {
             it.addUpdateListener(this)
             it.setDuration((if (mode == MODE_HINT) HINT_DURATION else PREVIEW_DURATION).toLong())
-            it.startDelay = (Math.random() * 60).toLong()
-            // Animations are disabled in power save mode, causing the repeated animation to jump
-            // spastically between beginning and end states. Since this looks bad, we don't repeat
-            // the animation in power save mode.
-            if (areAnimatorsEnabled() && mode == MODE_PREVIEW) {
-                it.repeatCount = ValueAnimator.INFINITE
-                it.repeatMode = ValueAnimator.REVERSE
-            }
+            it.interpolator = DECELERATE_1_5
+            it.startDelay = 0L
         }
 
     init {
@@ -159,7 +153,7 @@ class ReorderPreviewAnimation<T>(
     }
 
     companion object {
-        const val PREVIEW_DURATION = 300
+        const val PREVIEW_DURATION = 220
         const val HINT_DURATION = Workspace.REORDER_TIMEOUT
         private const val CHILD_DIVIDEND = 4.0f
         const val MODE_HINT = 0

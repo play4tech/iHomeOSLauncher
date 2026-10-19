@@ -66,19 +66,19 @@ object GlassConfig {
     const val DEFAULT_BORDER_WIDTH: Float = 0.25f        // in dp (ultra-thin hairline)
     const val DEFAULT_BORDER_OPACITY: Float = 55f        // 55% peak opacity (subtle)
     const val DEFAULT_BORDER_FADE: Float = 100f          // 100% fade at ends
-    const val DEFAULT_BORDER_POSITION: Int = POSITION_TOP_BOTTOM
+    const val DEFAULT_BORDER_POSITION: Int = POSITION_SIDES
     const val DEFAULT_BORDER_FADE_SPREAD: Float = 35f    // 35% fade transition distance
 
     const val DEFAULT_WHITE_BORDER_ENABLED: Boolean = false
     const val DEFAULT_WHITE_BORDER_WIDTH: Float = 0.25f
     const val DEFAULT_WHITE_BORDER_OPACITY: Float = 80f
     const val DEFAULT_WHITE_BORDER_FADE: Float = 100f
-    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_TOP_BOTTOM
+    const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_SIDES
     const val DEFAULT_WHITE_BORDER_FADE_SPREAD: Float = 35f
 
     // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
     const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
-    const val CURRENT_CONFIG_VERSION: Int = 9
+    const val CURRENT_CONFIG_VERSION: Int = 10
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH

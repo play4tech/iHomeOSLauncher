@@ -57,6 +57,7 @@ import com.android.launcher3.config.FeatureFlags;
 import com.android.launcher3.pageindicators.PageIndicator;
 import com.android.launcher3.touch.PagedOrientationHandler;
 import com.android.launcher3.touch.PagedOrientationHandler.ChildBounds;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.EdgeEffectCompat;
 import com.android.launcher3.util.IntSet;
 import com.android.launcher3.util.NavigationMode;
@@ -1883,6 +1884,7 @@ public abstract class PagedView<T extends View & PageIndicator> extends ViewGrou
     }
 
     protected boolean snapToPage(int whichPage, int delta, int duration, boolean immediate) {
+        DragTrace.log("PagedView.snapToPage whichPage=" + whichPage + " current=" + getNextPage());
         if (mFirstLayout) {
             setCurrentPage(whichPage);
             return false;

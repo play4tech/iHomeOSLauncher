@@ -235,6 +235,10 @@ android {
             }
         }
 
+        test {
+            java.srcDirs = ['tests/unit/src']
+        }
+
         aosp {
             java.srcDirs = ['src_flags', 'src_shortcuts_overrides']
         }
@@ -356,6 +360,8 @@ dependencies {
     implementation project(':IconLoader')
 
     implementation fileTree(dir: "prebuilts", include: 'Launcher3QuickStepLib.jar')
+
+    testImplementation 'junit:junit:4.13.2'
 }
 
 protobuf {

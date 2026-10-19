@@ -1,3 +1,31 @@
+# 1. Hierarchy of Truth & Skill Routing
+This repository uses the Android MCP Server (`android-mcp`) and platform skills.
+1. **`AGENTS.md` Outranks `SKILL.md`:** Installed skills provide general platform guidance. If a loaded skill (e.g., `navigation`, `system`, `testing-setup`) suggests Jetpack Compose (`@Composable`) or Compose APIs, **ignore the Compose path** and apply the AOSP Launcher3 Android View / XML equivalent.
+2. **Never Generate Jetpack Compose:** All UI in this launcher is built on the Android View system (`Launcher.java`, `Workspace`, `CellLayout`, `BubbleTextView`, `Folder`, custom views, and XML layouts). Do NOT introduce `@Composable` dependencies or code.
+
+---
+
+# 1B. AOSP Launcher3 Architecture & Custom View Rules
+When modifying UI or behavior, follow Launcher3's internal architecture rather than standard Android app patterns:
+
+1. **View Lookup & Inflation:**
+   - `viewBinding` and `dataBinding` are **disabled**. Use standard `findViewById` and `LayoutInflater.from(context).inflate(...)`.
+   - Views are heavily pooled and recycled across `Workspace`, `Hotseat`, `Folder`, and `AllAppsContainerView`. Always reset transient view properties (alpha, scale, translation, animations) when binding or removing views.
+2. **State Machine (`LauncherState` & `StateManager`):**
+   - Screen transitions (Normal, SpringLoaded, Folder, Overview, AllApps) are driven by `Launcher.getStateManager().goToState(...)` and `StateManager.StateHandler`, **never** by Activity/Fragment transactions or Navigation graphs.
+   - When animating properties during state changes, hook into `StateAnimationConfig` and `PropertySetter` so both animated and non-animated state transitions stay in sync.
+3. **Data Binding & Persistence (`LauncherModel` & `ItemInfo`):**
+   - Workspace items are represented by `ItemInfo` subclasses (`WorkspaceItemInfo`, `FolderInfo`, `LauncherAppWidgetInfo`).
+   - Any position, container, or cell change (`container`, `screenId`, `cellX`, `cellY`) must go through `ModelWriter` (`launcher.getModelWriter().modifyItemInDatabase(...)` / `addOrMoveItemInDatabase(...)`) on `Executors.MODEL_EXECUTOR`.
+4. **Touch & Drag Pipeline (`DragLayer` & `DragController`):**
+   - Touch interception flows through `DragLayer` -> `TouchController` implementations -> child `CellLayout` / `BubbleTextView`.
+   - Never block touch events in child views with naive `OnTouchListener` overrides that starve `DragLayer` gesture detectors or long-press drag initiation (`DragOptions`).
+5. **Sizing & Grid Math (`DeviceProfile` & `InvariantDeviceProfile`):**
+   - Icon sizes, cell dimensions, hotseat padding, and folder bounds are computed dynamically in `DeviceProfile` (`getDeviceProfile()`).
+   - Avoid hardcoding dimensions in XML when `DeviceProfile` dynamically overrides margins/padding in `onMeasure` or `setInsets(Rect)`.
+
+---
+
 # Rule: Target Build Variant (`withoutQuickstep` vs `withQuickstep`)
 
 Always use the **`withoutQuickstep`** variant for development, testing on real OEM devices (e.g., Realme, Samsung, Pixel), emulators, and Google Play Store releases:
@@ -7,6 +35,10 @@ Always use the **`withoutQuickstep`** variant for development, testing on real O
   # or for release:
   ./gradlew assembleBlissWithoutQuickstepRelease
   ```
+- **Install command**:
+  ```bash
+  ./gradlew installBlissWithoutQuickstepDebug
+  ```
 - **Why**:
   - `withoutQuickstep` uses standard launcher permissions (`com.android.launcher3.Launcher`) and is compliant with Google Play Store policies.
   - On non-rooted retail OEM ROMs (Realme UI, One UI, MIUI, etc.), Android restricts the Quickstep recents provider to system-privileged apps; third-party launchers cannot take over the system recents switcher anyway.
@@ -14,7 +46,7 @@ Always use the **`withoutQuickstep`** variant for development, testing on real O
 
 ---
 
-# Rule: Real Device & Emulator Screenshot Verification
+# Rule: Real Device & Emulator Verification via Android MCP
 
 When taking screenshots or bringing the launcher to the foreground on an emulator or real device to verify UI changes, do not rely on `adb shell input keyevent KEYCODE_HOME` alone. `KEYCODE_HOME` may launch the device's default system launcher (e.g., Nexus Launcher / Realme UI Launcher) instead of the freshly compiled iHome Launcher, resulting in inaccurate screenshots of the wrong launcher.
 
@@ -32,6 +64,7 @@ After running the command, wait a few seconds (e.g., `sleep 2`) to ensure the la
 ```bash
 adb exec-out screencap -p > screenshot.png
 ```
+Or use `android-mcp` tools (`Snapshot`, `Click`, `Drag`, `Swipe`) to interact with and verify the live UI hierarchy and visual state.
 
 ---
 
@@ -94,6 +127,3 @@ Any future modification to this codebase MUST NOT unfix or regress any previousl
 Every time the codebase is updated, modified, or refactored:
 - **Rule**: `launcher_important_logic.md` MUST also be updated to ensure that all core code logic remains completely synchronized with the codebase for Gemini analysis.
 - **How to update**: Run `python3 scripts/update_launcher_logic_md.py` after code changes to regenerate `launcher_important_logic.md`.
-
-
-

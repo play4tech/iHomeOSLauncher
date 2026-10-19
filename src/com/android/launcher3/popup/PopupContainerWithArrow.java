@@ -61,6 +61,7 @@ import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.shortcuts.DeepShortcutView;
 import com.android.launcher3.shortcuts.ShortcutDragPreviewProvider;
 import com.android.launcher3.touch.ItemLongClickListener;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.PackageUserKey;
 import com.android.launcher3.util.ShortcutUtil;
 import com.android.launcher3.views.ActivityContext;
@@ -229,6 +230,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
         launcher.refreshAndBindWidgetsForPackageUser(PackageUserKey.fromItemInfo(item));
         launcher.getInteractionController().beginPopup(container, icon, item);
         container.requestFocus();
+        DragTrace.log("PopupContainerWithArrow.showForIcon item=" + (item != null ? item.title : "null") + " deepShortcuts=" + deepShortcutCount);
         return container;
     }
 

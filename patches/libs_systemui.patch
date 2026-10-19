@@ -1,19 +1,70 @@
 diff --git a/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java b/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java
-index 9c04b0bb..d9bdf1e1 100644
+index 7c112dab..13c2a528 100644
 --- a/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java
 +++ b/iconloaderlib/src/com/android/launcher3/icons/BaseIconFactory.java
-@@ -29,6 +29,7 @@ import android.graphics.RectF;
- import android.graphics.Path;
- import android.graphics.Shader;
- import android.graphics.BitmapShader;
+@@ -26,6 +26,10 @@ import android.graphics.Paint;
+ import android.graphics.PaintFlagsDrawFilter;
+ import android.graphics.Rect;
+ import android.graphics.RectF;
++import android.graphics.Path;
++import android.graphics.Shader;
++import android.graphics.BitmapShader;
 +import android.graphics.LinearGradient;
  import android.graphics.drawable.AdaptiveIconDrawable;
  import android.graphics.drawable.BitmapDrawable;
  import android.graphics.drawable.ColorDrawable;
-@@ -452,6 +453,126 @@ public class BaseIconFactory implements AutoCloseable {
-         return mCachedSquirclePath;
+@@ -129,6 +133,15 @@ public class BaseIconFactory implements AutoCloseable {
+ 
+     protected void clear() {
+         mWrapperBackgroundColor = DEFAULT_WRAPPER_BACKGROUND;
++        mCachedSquirclePath = null;
++        mCachedSquircleWidth = -1;
++        mCachedSquircleHeight = -1;
++        mCachedTopSpecularPath = null;
++        mCachedBottomSpecularPath = null;
++        mCachedTopSpecularPaint = null;
++        mCachedBottomSpecularPaint = null;
++        mCachedSpecularWidth = -1;
++        mCachedSpecularHeight = -1;
      }
  
+     @NonNull
+@@ -416,6 +429,158 @@ public class BaseIconFactory implements AutoCloseable {
+         return bitmap;
+     }
+ 
++    private Path mCachedSquirclePath = null;
++    private int mCachedSquircleWidth = -1;
++    private int mCachedSquircleHeight = -1;
++
++    public Path getSquirclePath(int width, int height) {
++        if (mCachedSquircleWidth == width && mCachedSquircleHeight == height && mCachedSquirclePath != null) {
++            return mCachedSquirclePath;
++        }
++        mCachedSquircleWidth = width;
++        mCachedSquircleHeight = height;
++        mCachedSquirclePath = new Path();
++        float rx = width / 2.0f;
++        float ry = height / 2.0f;
++        float n = 4.0f;
++        for (int i = 0; i <= 360; i++) {
++            double t = Math.toRadians(i);
++            double cosT = Math.cos(t);
++            double sinT = Math.sin(t);
++            float sgnX = cosT < 0 ? -1f : (cosT > 0 ? 1f : 0f);
++            float sgnY = sinT < 0 ? -1f : (sinT > 0 ? 1f : 0f);
++            float px = rx + (float) (Math.pow(Math.abs(cosT), 2.0 / n) * rx * sgnX);
++            float py = ry + (float) (Math.pow(Math.abs(sinT), 2.0 / n) * ry * sgnY);
++            if (i == 0) {
++                mCachedSquirclePath.moveTo(px, py);
++            } else {
++                mCachedSquirclePath.lineTo(px, py);
++            }
++        }
++        mCachedSquirclePath.close();
++        return mCachedSquirclePath;
++    }
++
 +    private Path mCachedTopSpecularPath = null;
 +    private Path mCachedBottomSpecularPath = null;
 +    private Paint mCachedTopSpecularPaint = null;
@@ -137,29 +188,56 @@ index 9c04b0bb..d9bdf1e1 100644
      private void drawIconBitmap(@NonNull Canvas canvas, @Nullable final Drawable icon,
              final float scale, @BitmapGenerationMode int bitmapGenerationMode,
              @Nullable Bitmap targetBitmap) {
-@@ -517,6 +638,7 @@ public class BaseIconFactory implements AutoCloseable {
-             paint.setShader(shader);
+@@ -426,21 +591,42 @@ public class BaseIconFactory implements AutoCloseable {
+             // We are ignoring KEY_SHADOW_DISTANCE because regular icons ignore this at the moment b/298203449
+             int offset = Math.max((int) Math.ceil(BLUR_FACTOR * size),
+                     Math.round(size * (1 - scale) / 2));
++            int iconWidth = size - offset - offset;
++            int iconHeight = size - offset - offset;
+             // b/211896569: AdaptiveIconDrawable do not work properly for non top-left bounds
+-            icon.setBounds(0, 0, size - offset - offset, size - offset - offset);
++            icon.setBounds(0, 0, iconWidth, iconHeight);
+             int count = canvas.save();
+             canvas.translate(offset, offset);
++
++            Path squirclePath = getSquirclePath(iconWidth, iconHeight);
++
+             if (bitmapGenerationMode == MODE_WITH_SHADOW
+                     || bitmapGenerationMode == MODE_HARDWARE_WITH_SHADOW) {
+-                getShadowGenerator().addPathShadow(
+-                        ((AdaptiveIconDrawable) icon).getIconMask(), canvas);
++                getShadowGenerator().addPathShadow(squirclePath, canvas);
+             }
  
-             canvas.drawPath(squirclePath, paint);
++            Bitmap tempBitmap = Bitmap.createBitmap(iconWidth, iconHeight, Bitmap.Config.ARGB_8888);
++            Canvas tempCanvas = new Canvas(tempBitmap);
+             if (icon instanceof BitmapInfo.Extender) {
+-                ((Extender) icon).drawForPersistence(canvas);
++                ((Extender) icon).drawForPersistence(tempCanvas);
+             } else {
+-                icon.draw(canvas);
++                AdaptiveIconDrawable aid = (AdaptiveIconDrawable) icon;
++                Drawable bg = aid.getBackground();
++                if (bg != null) {
++                    bg.draw(tempCanvas);
++                }
++                Drawable fg = aid.getForeground();
++                if (fg != null) {
++                    fg.draw(tempCanvas);
++                }
+             }
++
++            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
++            BitmapShader shader = new BitmapShader(tempBitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
++            paint.setShader(shader);
++
++            canvas.drawPath(squirclePath, paint);
 +            drawSpecularHighlight(canvas, squirclePath, iconWidth, iconHeight);
              canvas.restoreToCount(count);
          } else {
              if (icon instanceof BitmapDrawable) {
-@@ -582,6 +704,12 @@ public class BaseIconFactory implements AutoCloseable {
-         clear();
-         mScratchBitmap = null;
-         mScratchCanvas = null;
-+        mCachedTopSpecularPath = null;
-+        mCachedBottomSpecularPath = null;
-+        mCachedTopSpecularPaint = null;
-+        mCachedBottomSpecularPaint = null;
-+        mCachedSpecularWidth = -1;
-+        mCachedSpecularHeight = -1;
-     }
- 
-     @NonNull
 diff --git a/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java b/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
-index 31179ab5..9a7ae39b 100644
+index 94f0402b..677f2ea1 100644
 --- a/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
 +++ b/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
 @@ -138,21 +138,16 @@ public class DotRenderer {
@@ -248,7 +326,7 @@ index e6668d1e..6a94551b 100644
      protected boolean onStateChange(int[] state) {
          boolean isPressed = false;
 diff --git a/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java b/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java
-index 072bcbfd..1bf003a8 100644
+index 072bcbfd..471c3ce4 100644
 --- a/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java
 +++ b/iconloaderlib/src/com/android/launcher3/icons/cache/BaseIconCache.java
 @@ -700,7 +700,7 @@ public abstract class BaseIconCache {
@@ -256,7 +334,7 @@ index 072bcbfd..1bf003a8 100644
       */
      public static final class IconDB extends SQLiteCacheHelper {
 -        private static final int RELEASE_VERSION = 34;
-+        private static final int RELEASE_VERSION = 35;
++        private static final int RELEASE_VERSION = 36;
  
          public static final String TABLE_NAME = "icons";
          public static final String COLUMN_ROWID = "rowid";

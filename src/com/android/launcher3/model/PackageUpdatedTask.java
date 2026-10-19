@@ -54,6 +54,7 @@ import com.android.launcher3.util.IntSet;
 import com.android.launcher3.util.ItemInfoMatcher;
 import com.android.launcher3.util.PackageManagerHelper;
 import com.android.launcher3.util.PackageUserKey;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.SafeCloseable;
 
 import java.util.ArrayList;
@@ -104,6 +105,7 @@ public class PackageUpdatedTask extends BaseModelUpdateTask {
     @Override
     public void execute(@NonNull final LauncherAppState app, @NonNull final BgDataModel dataModel,
             @NonNull final AllAppsList appsList) {
+        DragTrace.log("PackageUpdatedTask.execute op=" + mOp + " pkgs=" + Arrays.toString(mPackages));
         final Context context = app.getContext();
         final IconCache iconCache = app.getIconCache();
 

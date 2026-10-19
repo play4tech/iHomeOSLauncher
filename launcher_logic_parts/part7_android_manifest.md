@@ -15,7 +15,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # AndroidManifest-common.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/AndroidManifest-common.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
 **Lines**: 209 | **Bytes**: 9429
 
 ```xml
@@ -233,7 +233,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # AndroidManifest.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest.xml`  
 **Lines**: 78 | **Bytes**: 3308
 
 ```xml
@@ -320,7 +320,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # bliss/AndroidManifest.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
 **Lines**: 59 | **Bytes**: 2263
 
 ```xml
@@ -388,7 +388,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/bliss/AndroidManifest-withoutQuickstep.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
 **Lines**: 74 | **Bytes**: 3185
 
 ```xml
@@ -471,7 +471,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # quickstep/AndroidManifest.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/quickstep/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest.xml`  
 **Lines**: 165 | **Bytes**: 7841
 
 ```xml
@@ -645,7 +645,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # quickstep/AndroidManifest-launcher.xml
 
-**Absolute Path**: `/Users/sandhiya/Documents/iOSLauncher/quickstep/AndroidManifest-launcher.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest-launcher.xml`  
 **Lines**: 73 | **Bytes**: 3071
 
 ```xml

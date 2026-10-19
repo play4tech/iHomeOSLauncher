@@ -145,6 +145,7 @@ import android.util.AttributeSet;
 import android.util.FloatProperty;
 import android.util.Log;
 import android.util.Pair;
+import com.android.launcher3.util.DragTrace;
 import android.util.SparseArray;
 import android.view.KeyEvent;
 import android.view.KeyboardShortcutGroup;
@@ -2724,6 +2725,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             return result;
         }
 
+        DragTrace.log("Launcher.startActivitySafely item=" + (item != null ? item.title : "null") + " intent=" + intent);
         RunnableList result = super.startActivitySafely(v, intent, item);
         if (v instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) v;

@@ -31,6 +31,7 @@ import androidx.annotation.Nullable;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.touch.ItemClickHandler;
 import com.android.launcher3.util.ActivityOptionsWrapper;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.util.DisplayController;
 import com.android.launcher3.util.DisplayController.DisplayInfoChangeListener;
 import com.android.launcher3.util.DisplayController.Info;
@@ -78,6 +79,7 @@ public abstract class BaseDraggingActivity extends BaseActivity
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
+        DragTrace.log("BaseDraggingActivity.onConfigurationChanged uiMode=" + newConfig.uiMode);
         super.onConfigurationChanged(newConfig);
         updateTheme();
     }

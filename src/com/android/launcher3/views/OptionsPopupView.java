@@ -53,6 +53,7 @@ import com.android.launcher3.popup.ArrowPopup;
 import com.android.launcher3.shortcuts.DeepShortcutView;
 import com.android.launcher3.testing.TestLogging;
 import com.android.launcher3.testing.shared.TestProtocol;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.widget.picker.WidgetsFullSheet;
 
 import java.util.ArrayList;
@@ -193,6 +194,7 @@ public class OptionsPopupView<T extends Context & ActivityContext> extends Arrow
             popup.mItemMap.put(view, item);
         }
 
+        DragTrace.log("OptionsPopupView.show targetRect=" + targetRect);
         popup.show();
         return popup;
     }

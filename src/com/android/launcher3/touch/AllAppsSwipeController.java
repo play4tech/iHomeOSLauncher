@@ -48,6 +48,7 @@ import com.android.launcher3.AbstractFloatingView;
 import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.LauncherState;
+import com.android.launcher3.util.DragTrace;
 import com.android.launcher3.states.StateAnimationConfig;
 
 import foundation.e.bliss.multimode.MultiModeController;

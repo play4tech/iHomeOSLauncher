@@ -122,63 +122,58 @@ public class ReorderAlgorithm {
         boolean isWidgetDrag = isWidget() || spanX > 1 || spanY > 1
                 || (dragView instanceof LauncherAppWidgetHostView);
 
-        if (!isWidgetDrag && intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution)) {
-            int[] nearestResult = new int[2];
-            mCellLayout.markCellsAsOccupiedForView(dragView);
-            boolean hasVacant = mCellLayout.findCellForSpan(nearestResult, spanX, spanY);
-            if (hasVacant && (nearestResult[1] < result[1]
-                    || (nearestResult[1] == result[1] && nearestResult[0] < result[0]))) {
-                int candidateX = nearestResult[0] == 0 ? mCellLayout.getCountX() - 1 : nearestResult[0] - 1;
-                int candidateY = nearestResult[0] == 0 ? nearestResult[1] - 1 : nearestResult[1];
-                if (candidateX >= 0 && candidateY >= 0) {
-                    result[0] = candidateX;
-                    result[1] = candidateY;
-                } else {
-                    result[0] = nearestResult[0];
-                    result[1] = nearestResult[1];
-                }
-            }
-            mCellLayout.markCellsAsUnoccupiedForView(dragView);
-            if (result[0] >= 0 && result[1] >= 0) {
-                intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution);
-            }
-            mCellLayout.markCellsAsUnoccupiedForView(dragView);
-        } else if (isWidgetDrag) {
-            if (result[0] >= 0 && reflowIconsAroundWidget(result[0], result[1], spanX, spanY,
-                    dragView, solution)) {
-                mIntersectingViews.clear();          // rearrangementExists() -> true
-                solution.intersectingViews = new ArrayList<>();
-                solution.isSolution = true;
-                solution.cellX = result[0];
-                solution.cellY = result[1];
-                solution.spanX = spanX;
-                solution.spanY = spanY;
-                return solution;
-            }
-            // Legacy rigid push (widget onto widget etc.)
-            intersectingViewsExists(result[0], result[1], spanX, spanY, direction, dragView, solution);
-        }
-        success = rearrangementExists(direction, dragView, solution);
-
-
-        if (!success) {
-            // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
-            // x, then 1 in y etc.
-            if (spanX > minSpanX && (minSpanY == spanY || decX)) {
-                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
-                        spanY, direction, dragView, false, solution);
-            } else if (spanY > minSpanY) {
-                return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
-                        spanY - 1, direction, dragView, true, solution);
-            }
-            solution.isSolution = false;
-        } else {
+        if (isWidgetDrag && result[0] >= 0 && reflowIconsAroundWidget(result[0], result[1], spanX, spanY,
+                dragView, solution)) {
+            mIntersectingViews.clear();          // rearrangementExists() -> true
+            solution.intersectingViews = new ArrayList<>();
             solution.isSolution = true;
             solution.cellX = result[0];
             solution.cellY = result[1];
             solution.spanX = spanX;
             solution.spanY = spanY;
+            return solution;
         }
+
+        // 2D Spatial Grid Reflow Solver
+        SpatialGridSolver.Solution solverSolution = SpatialGridSolver.solve(
+                mCellLayout,
+                result[0], result[1],
+                spanX, spanY,
+                direction,
+                dragView,
+                isWidgetDrag
+        );
+
+        if (solverSolution.isSolution()) {
+            solution.map.clear();
+            for (Map.Entry<View, CellAndSpan> entry : solverSolution.getPlacements().entrySet()) {
+                solution.map.put(entry.getKey(), entry.getValue());
+            }
+            if (dragView != null) {
+                solution.map.put(dragView, new CellAndSpan(result[0], result[1], spanX, spanY));
+            }
+            solution.intersectingViews = new ArrayList<>(solverSolution.getDisplacedViews());
+            mIntersectingViews.clear();
+            mIntersectingViews.addAll(solverSolution.getDisplacedViews());
+            solution.cellX = result[0];
+            solution.cellY = result[1];
+            solution.spanX = spanX;
+            solution.spanY = spanY;
+            solution.isSolution = true;
+            updateTmpOccupiedForReflow(result[0], result[1], spanX, spanY, dragView, solution);
+            return solution;
+        }
+
+        // We try shrinking the widget down to size in an alternating pattern, shrink 1 in
+        // x, then 1 in y etc.
+        if (spanX > minSpanX && (minSpanY == spanY || decX)) {
+            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX - 1,
+                    spanY, direction, dragView, false, solution);
+        } else if (spanY > minSpanY) {
+            return findReorderSolutionRecursive(pixelX, pixelY, minSpanX, minSpanY, spanX,
+                    spanY - 1, direction, dragView, true, solution);
+        }
+        solution.isSolution = false;
         return solution;
     }
 
@@ -309,12 +304,6 @@ public class ReorderAlgorithm {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
             r1.set(c.cellX, c.cellY, c.cellX + c.spanX, c.cellY + c.spanY);
             if (Rect.intersects(r0, r1)) {
-                if (!lp.canReorder) {
-                    return false;
-                }
-                if (!isWidget() && child instanceof LauncherAppWidgetHostView) {
-                    return false;
-                }
                 mIntersectingViews.add(child);
             }
         }
@@ -327,6 +316,13 @@ public class ReorderAlgorithm {
 
     public boolean rearrangementExists(int[] direction, View ignoreView, ItemConfiguration solution) {
         if (mIntersectingViews.isEmpty()) return true;
+
+        for (View child : mIntersectingViews) {
+            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
+            if (!lp.canReorder || (!isWidget() && child instanceof LauncherAppWidgetHostView)) {
+                return false;
+            }
+        }
 
         final Map<View, int[]> snap = snapshot(solution);
 
@@ -381,11 +377,14 @@ public class ReorderAlgorithm {
         int[] tmpLocation = findNearestArea(c.cellX, c.cellY, c.spanX, c.spanY, direction,
                 mCellLayout.mTmpOccupied.cells, null, new int[2]);
 
-        if (tmpLocation[0] < 0 || tmpLocation[1] < 0) {
-            int[] vacantCell = new int[2];
-            if (mCellLayout.mTmpOccupied.findVacantCell(vacantCell, c.spanX, c.spanY)) {
-                tmpLocation[0] = vacantCell[0];
-                tmpLocation[1] = vacantCell[1];
+        // Guard against distant teleportation: for 1x1 icons, only allow displacement
+        // to an immediately adjacent cell (Euclidean distance <= 1.5f, i.e. 1 cell away).
+        // Never allow distant vacant cell hunting that teleports icons across the screen.
+        if (tmpLocation[0] >= 0 && tmpLocation[1] >= 0) {
+            float dist = (float) Math.hypot(tmpLocation[0] - c.cellX, tmpLocation[1] - c.cellY);
+            if (c.spanX == 1 && c.spanY == 1 && dist > 1.5f) {
+                tmpLocation[0] = -1;
+                tmpLocation[1] = -1;
             }
         }
 
@@ -485,7 +484,8 @@ public class ReorderAlgorithm {
                 // cluster.
                 if (!isWidget()) {
                     if (v instanceof LauncherAppWidgetHostView) {
-                        continue;
+                        fail = true;
+                        break;
                     }
                 }
                 if (!cluster.views.contains(v) && v != dragView) {
@@ -770,7 +770,9 @@ public class ReorderAlgorithm {
                 || reorderParameters.getSpanX() > 1
                 || reorderParameters.getSpanY() > 1
                 || (reorderParameters.getDragView() instanceof LauncherAppWidgetHostView);
-        getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
+        if (mCellLayout.mDirectionVector[0] == 0 && mCellLayout.mDirectionVector[1] == 0) {
+            getDirectionVectorForDrop(reorderParameters, mCellLayout.mDirectionVector);
+        }
 
         if (DEBUG) {
             android.util.Log.d("ReorderDebug", "calculateReorder START pixelXY=(" +
@@ -788,7 +790,9 @@ public class ReorderAlgorithm {
             android.util.Log.d("ReorderDebug", occupiedLog.toString());
         }
 
-        if (!isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
+        boolean isInternalDrag = reorderParameters.getDragView() != null
+                && reorderParameters.getDragView().getParent() == mCellLayout.getShortcutsAndWidgets();
+        if (!isInternalDrag && !isWidget() && !mCellLayout.findCellForSpan(null, reorderParameters.getMinSpanX(), reorderParameters.getMinSpanY())) {
             if (DEBUG) {
                 android.util.Log.d("ReorderDebug", "calculateReorder: NO EMPTY CELL FOUND -> returning no-solution");
             }
@@ -798,10 +802,6 @@ public class ReorderAlgorithm {
             return solution;
         }
 
-        if (!isWidget()) {
-            mCellLayout.mDirectionVector[0] = -1;
-            mCellLayout.mDirectionVector[1] = 0;
-        }
 
         ItemConfiguration dropInPlaceSolution = dropInPlaceSolution(reorderParameters);
         if (DEBUG) {
