@@ -1346,6 +1346,25 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void updateItemLocationsInDatabaseBatch(boolean isBind) {
+        if (!isBind && mContent != null && mContent.areViewsBound()) {
+            // Reordering updates the visible child positions, while mInfo.contents can retain
+            // its pre-reorder list order. Persist in the live reading order so a successful
+            // drag out does not write the old folder order back to the database.
+            ArrayList<WorkspaceItemInfo> orderedItems = new ArrayList<>();
+            for (View iconView : getIconsInReadingOrder()) {
+                Object tag = iconView.getTag();
+                if (!(tag instanceof WorkspaceItemInfo)) {
+                    orderedItems.clear();
+                    break;
+                }
+                orderedItems.add((WorkspaceItemInfo) tag);
+            }
+            if (orderedItems.size() == mInfo.contents.size()) {
+                mInfo.contents.clear();
+                mInfo.contents.addAll(orderedItems);
+            }
+        }
+
         FolderGridOrganizer verifier = new FolderGridOrganizer(
                 mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
 
