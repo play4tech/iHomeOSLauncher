@@ -233,6 +233,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     private View mCurrentDragView;
     private boolean mIsExternalDrag;
     private boolean mDragInProgress = false;
+    private boolean mDragListenerRegistered = false;
     private boolean mDeleteFolderOnDropCompleted = false;
     private boolean mSuppressFolderDeletion = false;
     private boolean mItemAddedBackToSelfViaIcon = false;
@@ -404,7 +405,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             mDragInProgress = true;
             DragTrace.log("Folder.startDrag item=" + (item != null ? item.title : "null") + " rank=" + mEmptyCellRank);
 
-            mDragController.addDragListener(this);
+            registerDragListener();
             if (options.isAccessibleDrag) {
                 mDragController.addDragListener(new AccessibleDragListenerAdapter(
                         mContent, FolderAccessibilityHelper::new) {
@@ -451,7 +452,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             completeDragExit();
         }
         mDragInProgress = false;
-        mDragController.removeDragListener(this);
+        unregisterDragListener();
         if (mContent != null) {
             mContent.cleanupEmptyPages();
         }
@@ -769,13 +770,27 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         // Since this folder opened by another controller, it might not get onDrop or
         // onDropComplete. Perform cleanup once drag-n-drop ends.
-        mDragController.addDragListener(this);
+        registerDragListener();
 
         ArrayList<WorkspaceItemInfo> items = new ArrayList<>(mInfo.contents);
         mEmptyCellRank = items.size();
         items.add(null);    // Add an empty spot at the end
 
         animateOpen(items, mEmptyCellRank / mContent.itemsPerPage());
+    }
+
+    private void registerDragListener() {
+        if (!mDragListenerRegistered) {
+            mDragController.addDragListener(this);
+            mDragListenerRegistered = true;
+        }
+    }
+
+    private void unregisterDragListener() {
+        if (mDragListenerRegistered) {
+            mDragController.removeDragListener(this);
+            mDragListenerRegistered = false;
+        }
     }
 
     /**
