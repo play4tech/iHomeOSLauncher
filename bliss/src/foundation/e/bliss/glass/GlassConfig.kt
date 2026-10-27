@@ -37,14 +37,13 @@ import com.example.liquidglass.LiquidGlassView
  * with support for live parameter customization and persistence.
  */
 object GlassConfig {
-
     // --- Default Parameter Constants (User fine-tuned liquid glass defaults) ---
     const val DEFAULT_REFRACTION_HEIGHT: Float = 143f
-    const val DEFAULT_BEVEL_WIDTH: Float = 49f
+    const val DEFAULT_BEVEL_WIDTH: Float = 65f
     const val DEFAULT_REFRACTION_FALLOFF: Float = 2.94f
     const val DEFAULT_DISPERSION_STRENGTH: Float = 0.0f
-    const val DEFAULT_BLUR_AMOUNT: Float = 0.14f
-    const val DEFAULT_SATURATION: Float = 140f
+    const val DEFAULT_BLUR_AMOUNT: Float = 0.25f
+    const val DEFAULT_SATURATION: Float = 120f
     const val DEFAULT_ABERRATION_INTENSITY: Float = 2f
     const val DEFAULT_DISPLACEMENT_SCALE: Float = 43f
     const val DEFAULT_ELASTICITY: Float = 0.15f
@@ -78,7 +77,7 @@ object GlassConfig {
 
     // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
     const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
-    const val CURRENT_CONFIG_VERSION: Int = 10
+    const val CURRENT_CONFIG_VERSION: Int = 13
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH
@@ -388,6 +387,9 @@ object GlassConfig {
             .putFloat(PREF_KEY_WHITE_BORDER_FADE_SPREAD, settings.whiteBorderFadeSpread)
             .apply()
         notifyAllViews(context, settings)
+        try {
+            foundation.e.bliss.wallpaper.WallpaperBlurRenderer.INSTANCE.get(context).regenerateBlur()
+        } catch (_: Throwable) {}
     }
 
     @JvmStatic
@@ -422,7 +424,11 @@ object GlassConfig {
         } catch (_: Throwable) {}
 
         // --- Optical blur, saturation, aberration & physics defaults ---
-        glassView.blurAmount = settings.blurAmount
+        if (glassView is PopupGlassView) {
+            glassView.blurAmount = PopupGlassView.POPUP_BLUR_AMOUNT
+        } else {
+            glassView.blurAmount = settings.blurAmount
+        }
         glassView.saturation = settings.saturation
         glassView.aberrationIntensity = settings.aberrationIntensity
         glassView.displacementScale = settings.displacementScale
@@ -437,7 +443,7 @@ object GlassConfig {
         glassView.edgeSoftness = settings.edgeSoftness
 
         glassView.enablePressEffect = false
-        glassView.enableDynamicBackground = true
+        glassView.enableDynamicBackground = false
         glassView.collectFrameStats = false
         glassView.accessibilityMode = GlassAccessibilityMode.AUTO
 
@@ -457,6 +463,91 @@ object GlassConfig {
             glassView.whiteBorderFadeSpread = settings.whiteBorderFadeSpread
         }
         glassView.invalidate()
+    }
+
+    private val shaderCache = android.util.LongSparseArray<Shader>(16)
+
+    private fun createBorderShader(
+        borderPosition: Int,
+        isWhite: Boolean,
+        peakAlpha: Int,
+        edgeAlpha: Int,
+        spreadRatio: Float,
+        viewHeight: Float
+    ): Shader? {
+        val r = if (isWhite) 255 else 0
+        val g = if (isWhite) 255 else 0
+        val b = if (isWhite) 255 else 0
+
+        when (borderPosition) {
+            POSITION_ALL -> return null
+            POSITION_TOP -> {
+                if (edgeAlpha >= peakAlpha) return null
+                val solidStop = (spreadRatio * 0.5f).coerceIn(0f, 0.98f)
+                val fadeStop = spreadRatio.coerceIn(solidStop + 0.01f, 1.0f)
+                val colors = intArrayOf(
+                    Color.argb(peakAlpha, r, g, b),
+                    Color.argb(peakAlpha, r, g, b),
+                    Color.argb(edgeAlpha, r, g, b),
+                    Color.argb(edgeAlpha, r, g, b)
+                )
+                val positions = floatArrayOf(0f, solidStop, fadeStop, 1.0f)
+                return LinearGradient(
+                    0f, 0f, 0f, viewHeight,
+                    colors, positions,
+                    Shader.TileMode.CLAMP
+                )
+            }
+            POSITION_BOTTOM -> {
+                if (edgeAlpha >= peakAlpha) return null
+                val fadeStart = (1.0f - spreadRatio).coerceIn(0f, 0.98f)
+                val solidStart = (1.0f - spreadRatio * 0.5f).coerceIn(fadeStart + 0.01f, 1.0f)
+                val colors = intArrayOf(
+                    Color.argb(edgeAlpha, r, g, b),
+                    Color.argb(edgeAlpha, r, g, b),
+                    Color.argb(peakAlpha, r, g, b),
+                    Color.argb(peakAlpha, r, g, b)
+                )
+                val positions = floatArrayOf(0f, fadeStart, solidStart, 1.0f)
+                return LinearGradient(
+                    0f, 0f, 0f, viewHeight,
+                    colors, positions,
+                    Shader.TileMode.CLAMP
+                )
+            }
+            POSITION_TOP_BOTTOM -> {
+                if (edgeAlpha >= peakAlpha) return null
+                val clampedSpread = (spreadRatio * 0.35f).coerceIn(0.04f, 0.16f)
+                val colors = intArrayOf(
+                    Color.argb(peakAlpha, r, g, b),
+                    Color.argb(edgeAlpha, r, g, b),
+                    Color.argb(edgeAlpha, r, g, b),
+                    Color.argb(peakAlpha, r, g, b)
+                )
+                val positions = floatArrayOf(0f, clampedSpread, 1f - clampedSpread, 1.0f)
+                return LinearGradient(
+                    0f, 0f, 0f, viewHeight,
+                    colors, positions,
+                    Shader.TileMode.CLAMP
+                )
+            }
+            else -> {
+                if (edgeAlpha >= peakAlpha) return null
+                val clampedSpread = spreadRatio.coerceIn(0.05f, 0.48f)
+                val colors = intArrayOf(
+                    Color.argb(edgeAlpha, r, g, b),
+                    Color.argb(peakAlpha, r, g, b),
+                    Color.argb(peakAlpha, r, g, b),
+                    Color.argb(edgeAlpha, r, g, b)
+                )
+                val positions = floatArrayOf(0f, clampedSpread, 1f - clampedSpread, 1.0f)
+                return LinearGradient(
+                    0f, 0f, 0f, viewHeight,
+                    colors, positions,
+                    Shader.TileMode.CLAMP
+                )
+            }
+        }
     }
 
     /**
@@ -483,98 +574,33 @@ object GlassConfig {
         val r = if (isWhite) 255 else 0
         val g = if (isWhite) 255 else 0
         val b = if (isWhite) 255 else 0
-
         val spreadRatio = (borderFadeSpread / 100f).coerceIn(0.05f, 0.80f)
 
-        when (borderPosition) {
-            POSITION_ALL -> {
-                paint.shader = null
+        if (borderPosition == POSITION_ALL || edgeAlpha >= peakAlpha) {
+            paint.shader = null
+            paint.color = Color.argb(peakAlpha, r, g, b)
+        } else {
+            val spreadInt = (spreadRatio * 1000f).toInt()
+            val cacheKey = (viewHeight.toInt().toLong() shl 36) or
+                    (borderPosition.toLong() shl 32) or
+                    (if (isWhite) 1L shl 31 else 0L) or
+                    (peakAlpha.toLong() shl 20) or
+                    (edgeAlpha.toLong() shl 10) or
+                    (spreadInt.toLong() and 0x3FFL)
+
+            var shader = shaderCache.get(cacheKey)
+            if (shader == null) {
+                shader = createBorderShader(borderPosition, isWhite, peakAlpha, edgeAlpha, spreadRatio, viewHeight)
+                if (shaderCache.size() > 64) {
+                    shaderCache.clear()
+                }
+                if (shader != null) {
+                    shaderCache.put(cacheKey, shader)
+                }
+            }
+            paint.shader = shader
+            if (shader == null) {
                 paint.color = Color.argb(peakAlpha, r, g, b)
-            }
-            POSITION_TOP -> {
-                if (edgeAlpha >= peakAlpha) {
-                    paint.shader = null
-                    paint.color = Color.argb(peakAlpha, r, g, b)
-                } else {
-                    val solidStop = (spreadRatio * 0.5f).coerceIn(0f, 0.98f)
-                    val fadeStop = spreadRatio.coerceIn(solidStop + 0.01f, 1.0f)
-                    val colors = intArrayOf(
-                        Color.argb(peakAlpha, r, g, b),
-                        Color.argb(peakAlpha, r, g, b),
-                        Color.argb(edgeAlpha, r, g, b),
-                        Color.argb(edgeAlpha, r, g, b)
-                    )
-                    val positions = floatArrayOf(0f, solidStop, fadeStop, 1.0f)
-                    paint.shader = LinearGradient(
-                        0f, 0f, 0f, viewHeight,
-                        colors, positions,
-                        Shader.TileMode.CLAMP
-                    )
-                }
-            }
-            POSITION_BOTTOM -> {
-                if (edgeAlpha >= peakAlpha) {
-                    paint.shader = null
-                    paint.color = Color.argb(peakAlpha, r, g, b)
-                } else {
-                    val fadeStart = (1.0f - spreadRatio).coerceIn(0f, 0.98f)
-                    val solidStart = (1.0f - spreadRatio * 0.5f).coerceIn(fadeStart + 0.01f, 1.0f)
-                    val colors = intArrayOf(
-                        Color.argb(edgeAlpha, r, g, b),
-                        Color.argb(edgeAlpha, r, g, b),
-                        Color.argb(peakAlpha, r, g, b),
-                        Color.argb(peakAlpha, r, g, b)
-                    )
-                    val positions = floatArrayOf(0f, fadeStart, solidStart, 1.0f)
-                    paint.shader = LinearGradient(
-                        0f, 0f, 0f, viewHeight,
-                        colors, positions,
-                        Shader.TileMode.CLAMP
-                    )
-                }
-            }
-            POSITION_TOP_BOTTOM -> {
-                if (edgeAlpha >= peakAlpha) {
-                    paint.shader = null
-                    paint.color = Color.argb(peakAlpha, r, g, b)
-                } else {
-                    // In Top & Bottom mode, confine the gradient strictly near the top and bottom rims
-                    // so the vertical sides (middle 80%+) are completely clear of any border.
-                    val clampedSpread = (spreadRatio * 0.35f).coerceIn(0.04f, 0.16f)
-                    val colors = intArrayOf(
-                        Color.argb(peakAlpha, r, g, b),
-                        Color.argb(edgeAlpha, r, g, b),
-                        Color.argb(edgeAlpha, r, g, b),
-                        Color.argb(peakAlpha, r, g, b)
-                    )
-                    val positions = floatArrayOf(0f, clampedSpread, 1f - clampedSpread, 1.0f)
-                    paint.shader = LinearGradient(
-                        0f, 0f, 0f, viewHeight,
-                        colors, positions,
-                        Shader.TileMode.CLAMP
-                    )
-                }
-            }
-            else -> {
-                // POSITION_SIDES: Top and bottom edges fade, sides (middle) solid
-                if (edgeAlpha >= peakAlpha) {
-                    paint.shader = null
-                    paint.color = Color.argb(peakAlpha, r, g, b)
-                } else {
-                    val clampedSpread = spreadRatio.coerceIn(0.05f, 0.48f)
-                    val colors = intArrayOf(
-                        Color.argb(edgeAlpha, r, g, b),
-                        Color.argb(peakAlpha, r, g, b),
-                        Color.argb(peakAlpha, r, g, b),
-                        Color.argb(edgeAlpha, r, g, b)
-                    )
-                    val positions = floatArrayOf(0f, clampedSpread, 1f - clampedSpread, 1.0f)
-                    paint.shader = LinearGradient(
-                        0f, 0f, 0f, viewHeight,
-                        colors, positions,
-                        Shader.TileMode.CLAMP
-                    )
-                }
             }
         }
         paint.style = Paint.Style.STROKE

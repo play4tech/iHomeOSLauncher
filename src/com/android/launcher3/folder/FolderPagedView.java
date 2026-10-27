@@ -48,6 +48,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.pageindicators.PageIndicatorDots;
 import com.android.launcher3.util.LauncherBindableItemsContainer.ItemOperator;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.util.Thunk;
 import com.android.launcher3.util.ViewCache;
 import com.android.launcher3.views.ActivityContext;
@@ -232,8 +233,8 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         textView.setOnFocusChangeListener(mFocusIndicatorHelper);
 
         if (MultiModeController.isSingleLayerMode()) {
-            textView.setTextColor(ContextCompat.getColor(getContext(),
-                    R.color.workspace_text_color_light));
+            int textColor = Themes.getAttrColor(getContext(), R.attr.workspaceTextColor);
+            textView.setTextColor(textColor);
         }
 
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) textView.getLayoutParams();

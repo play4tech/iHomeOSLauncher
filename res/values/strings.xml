@@ -488,7 +488,16 @@
     <!-- content description for the overflow bubble [CHAR_LIMIT=none] -->
     <string name="bubble_bar_overflow_description">Overflow</string>
 
-    <!-- iOS 2x2 Analog Clock Widget -->
+    <!-- iOS 2x2 Clock Widgets -->
     <string name="clock_widget_label">Clock</string>
-    <string name="clock_widget_description">Analog Clock</string>
+    <string name="clock_widget_description">Clock</string>
+    <string name="digital_clock_widget_label">Clock</string>
+    <string name="digital_clock_widget_description">Digital Seconds Clock</string>
+
+    <!-- iOS 2x2 Calendar Widgets -->
+    <string name="calendar_widget_label">Calendar</string>
+    <string name="calendar_day_widget_label">Calendar</string>
+    <string name="calendar_day_widget_description">Current day and date</string>
+    <string name="calendar_month_widget_label">Month</string>
+    <string name="calendar_month_widget_description">Monthly calendar</string>
 </resources>

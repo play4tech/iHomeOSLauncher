@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Rect;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -21,6 +22,7 @@ import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.window.BackEvent;
 import android.window.OnBackAnimationCallback;
@@ -32,6 +34,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,6 +43,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.applibrary.model.AppLibraryModel;
 import com.android.launcher3.model.data.AppInfo;
@@ -59,6 +63,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private View mSearchContainer;
     private View mSearchContent;
     private ExtendedEditText mSearchInput;
+    private TextView mSearchQueryOverlay;
     private TextView mSearchCancel;
     private AppLibraryDashboardView mDashboardView;
     private AppLibraryDashboardAdapter mDashboardAdapter;
@@ -72,7 +77,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private AppLibrarySearchGlassView mSearchGlass;
 
     private AppLibraryModel mAppLibraryModel;
-    private int mSavedScrollY = 0;
+    private int mSavedScrollPos = RecyclerView.NO_POSITION;
+    private int mSavedScrollOffset = 0;
+    private final int[] mTempWindowPos = new int[2];
+    private static int sDoseResponseOverride = -1;
     private boolean mInSearchMode = false;
     private boolean mIsClearingSearch = false;
     private boolean mAppsStoreListenerRegistered = false;
@@ -115,6 +123,8 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mDashboardView != null) mDashboardView.animate().cancel();
         if (mSearchResultsContainer != null) mSearchResultsContainer.animate().cancel();
         if (mSearchBackdrop != null) mSearchBackdrop.animate().cancel();
+        if (mSearchQueryOverlay != null) mSearchQueryOverlay.animate().cancel();
+        if (mSearchInput != null) mSearchInput.animate().cancel();
     }
 
     /** The one place that guarantees the category grid is shown. */
@@ -131,9 +141,20 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private void applySearchSteadyState() {
         if (mSearchContent != null) mSearchContent.setTranslationX(0f);
 
-        ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-        mSearchCancel.setLayoutParams(lp);
+        if (mSearchQueryOverlay != null) {
+            mSearchQueryOverlay.setVisibility(GONE);
+            mSearchQueryOverlay.setText("");
+        }
+        if (mSearchInput != null) {
+            mSearchInput.setAlpha(1f);
+        }
+
+        if (mSearchCancel.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+            mlp.setMarginEnd(0);
+            mlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mSearchCancel.setLayoutParams(mlp);
+        }
         mSearchCancel.setVisibility(VISIBLE);
         mSearchCancel.setAlpha(1f);
         mSearchCancel.setTranslationX(0f);
@@ -160,6 +181,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mSearchResultsView != null) {
             mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
         }
+        if (mSearchQueryOverlay != null) {
+            mSearchQueryOverlay.setVisibility(GONE);
+            mSearchQueryOverlay.setText("");
+        }
         mIsClearingSearch = true;
         try {
             mSearchInput.setText("");
@@ -167,12 +192,20 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         } finally {
             mIsClearingSearch = false;
         }
+        if (mSearchInput != null) {
+            mSearchInput.setAlpha(1f);
+            boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
+        }
         if (mSearchContent != null) mSearchContent.setTranslationX(targetShift);
 
         mSearchCancel.setVisibility(GONE);
-        ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-        mSearchCancel.setLayoutParams(lp);
+        if (mSearchCancel.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+            mlp.setMarginEnd(0);
+            mlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mSearchCancel.setLayoutParams(mlp);
+        }
         mSearchCancel.setAlpha(1f);
         mSearchCancel.setTranslationX(0f);
 
@@ -217,7 +250,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mSearchContainer = findViewById(R.id.app_library_search_container);
         mSearchContent = findViewById(R.id.app_library_search_content);
         mSearchInput = findViewById(R.id.app_library_search_input);
+        mSearchQueryOverlay = findViewById(R.id.app_library_search_query_overlay);
         mSearchCancel = findViewById(R.id.app_library_search_cancel);
+        android.widget.ImageView searchIcon = findViewById(R.id.app_library_search_icon);
+        boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        int textColor = Themes.getAttrColor(getContext(), R.attr.workspaceTextColor);
+        if (mSearchInput != null) {
+            mSearchInput.setTextColor(textColor);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
+        }
+        if (mSearchCancel != null) {
+            mSearchCancel.setTextColor(textColor);
+        }
+        if (searchIcon != null) {
+            searchIcon.setImageTintList(android.content.res.ColorStateList.valueOf(isDarkText ? 0x99000000 : 0xD9FFFFFF));
+        }
         mSearchGlass = findViewById(R.id.app_library_search_glass);
         mDashboardView = findViewById(R.id.app_library_dashboard);
         mSearchResultsContainer = findViewById(R.id.app_library_search_results_container);
@@ -239,13 +286,39 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             mDashboardAdapter.updateData(initialData);
         }
         mDashboardView.setOnOverscrollListener(translationY -> {
-            invalidateGlassSurfaces();
+            invalidateCategoryPodsOnly();
+        });
+        mDashboardView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (dy != 0) {
+                    invalidateCategoryPodsOnly();
+                }
+            }
+
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    invalidateCategoryPodsOnly();
+                }
+            }
         });
 
         Launcher launcher = Launcher.getLauncher(getContext());
         mSearchAdapter = new AppLibrarySearchAdapter(launcher);
         mSearchResultsView.setLayoutManager(new LinearLayoutManager(getContext()));
+        mSearchResultsView.setHasFixedSize(true);
+        mSearchResultsView.setItemViewCacheSize(20);
+        mSearchResultsView.setItemAnimator(null);
         mSearchResultsView.setAdapter(mSearchAdapter);
+        mSearchResultsView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    hideKeyboard();
+                }
+            }
+        });
 
         ViewCompat.setOnApplyWindowInsetsListener(mSearchResultsView, (v, windowInsets) -> {
             handleImeVisibility(windowInsets.isVisible(WindowInsetsCompat.Type.ime()));
@@ -397,12 +470,29 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mInSearchMode) return;
         mInSearchMode = true;
         cancelViewAnimators();
+        if (mSearchQueryOverlay != null) {
+            mSearchQueryOverlay.setVisibility(GONE);
+            mSearchQueryOverlay.setText("");
+        }
+        if (mSearchInput != null) {
+            mSearchInput.setAlpha(1f);
+        }
         if (mSearchResultsView != null) mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
         refreshApps();
         registerBackCallback();
+        showKeyboard();
         Launcher launcher = Launcher.getLauncher(getContext());
         if (launcher != null) {
             launcher.onDragLayerHierarchyChanged();
+            boolean isDarkText = Themes.getAttrBoolean(launcher, R.attr.isWorkspaceDarkText);
+            int textColor = Themes.getAttrColor(launcher, R.attr.workspaceTextColor);
+            mSearchInput.setTextColor(textColor);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0x99FFFFFF);
+            mSearchCancel.setTextColor(textColor);
+            ImageView searchIcon = findViewById(R.id.app_library_search_icon);
+            if (searchIcon != null) {
+                searchIcon.setImageTintList(ColorStateList.valueOf(textColor));
+            }
         }
 
         if (mTransitionAnimator != null) {
@@ -428,15 +518,19 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mSearchAdapter.filter(query);
         mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
 
-        // Prepare Cancel Button
+        // Prepare Cancel Button with negative end margin so search bar starts at 100% full width
         mSearchCancel.setVisibility(VISIBLE);
         mSearchCancel.measure(
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         final int targetCancelWidth = Math.max(mSearchCancel.getMeasuredWidth(),
                 (int) (60 * getResources().getDisplayMetrics().density));
+        final ViewGroup.MarginLayoutParams cancelEnterLp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+        cancelEnterLp.width = targetCancelWidth;
+        cancelEnterLp.setMarginEnd(-targetCancelWidth);
+        mSearchCancel.setLayoutParams(cancelEnterLp);
         mSearchCancel.setAlpha(0f);
-        mSearchCancel.setTranslationX(targetCancelWidth * 0.4f);
+        mSearchCancel.setTranslationX(0f);
 
         // Setup Dashboard for exit transition (scale downwards from top)
         mDashboardView.setVisibility(VISIBLE);
@@ -456,9 +550,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 mSearchContent.setTranslationX((1f - progress) * startShift);
             }
 
-            // Cancel button alpha and translation
+            // Cancel button alpha and margin animation (smoothly shrinks search bar length)
             mSearchCancel.setAlpha(progress);
-            mSearchCancel.setTranslationX((1f - progress) * (targetCancelWidth * 0.4f));
+            cancelEnterLp.setMarginEnd((int) (-targetCancelWidth * (1f - progress)));
+            mSearchCancel.setLayoutParams(cancelEnterLp);
 
             // Search Backdrop fade-in
             if (mSearchBackdrop != null) {
@@ -516,18 +611,31 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             cancelViewAnimators();     // kill any onBackCancelled / onBackProgressed leftovers
 
             final float targetShift = calculateSearchCenteredShift();
+            final String outgoingQuery = mSearchInput != null && mSearchInput.getText() != null
+                    ? mSearchInput.getText().toString() : "";
+            final boolean hasOutgoingQuery = !outgoingQuery.isEmpty();
 
             if (!animate) {
+                if (mSearchQueryOverlay != null) {
+                    mSearchQueryOverlay.setVisibility(GONE);
+                    mSearchQueryOverlay.setText("");
+                }
                 mSearchInput.setText("");
+                mSearchInput.setAlpha(1f);
                 mSearchInput.clearFocus();
+                boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+                mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
                 if (mSearchContent != null) {
                     mSearchContent.setTranslationX(targetShift);
                 }
 
                 mSearchCancel.setVisibility(GONE);
-                ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-                lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-                mSearchCancel.setLayoutParams(lp);
+                if (mSearchCancel.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+                    mlp.setMarginEnd(0);
+                    mlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    mSearchCancel.setLayoutParams(mlp);
+                }
                 mSearchCancel.setAlpha(1f);
                 mSearchCancel.setTranslationX(0f);
 
@@ -542,6 +650,34 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
                 settleDashboardVisible();
                 return;
+            }
+
+            // Prepare cross-fade: outgoing typed query starts on overlay at 100% alpha;
+            // mSearchInput is immediately cleared to reveal the centered "App Library" hint,
+            // starting at 0% alpha and cross-fading smoothly in.
+            if (hasOutgoingQuery && mSearchQueryOverlay != null) {
+                mSearchQueryOverlay.setText(outgoingQuery);
+                mSearchQueryOverlay.setTextColor(mSearchInput.getCurrentTextColor());
+                mSearchQueryOverlay.setPaddingRelative(
+                        mSearchInput.getPaddingStart(),
+                        mSearchInput.getPaddingTop(),
+                        mSearchInput.getPaddingEnd(),
+                        mSearchInput.getPaddingBottom()
+                );
+                mSearchQueryOverlay.setTypeface(mSearchInput.getTypeface());
+                mSearchQueryOverlay.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, mSearchInput.getTextSize());
+                mSearchQueryOverlay.setVisibility(VISIBLE);
+                mSearchQueryOverlay.setAlpha(1f);
+            }
+
+            mSearchInput.setText("");
+            mSearchInput.clearFocus();
+            boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
+            if (hasOutgoingQuery) {
+                mSearchInput.setAlpha(0f);
+            } else {
+                mSearchInput.setAlpha(1f);
             }
 
             if (mSearchResultsView != null) {
@@ -570,6 +706,12 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                     ? mSearchCancel.getWidth()
                     : (int) (60 * getResources().getDisplayMetrics().density);
 
+            final ViewGroup.MarginLayoutParams cancelExitLp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+            cancelExitLp.width = startCancelWidth;
+            cancelExitLp.setMarginEnd(0);
+            mSearchCancel.setLayoutParams(cancelExitLp);
+            mSearchCancel.setTranslationX(0f);
+
             final float exitStartShift = mSearchContent != null ? mSearchContent.getTranslationX() : 0f;
 
             mTransitionAnimator = ValueAnimator.ofFloat(0f, 1f);
@@ -579,14 +721,15 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 float p = (float) animation.getAnimatedValue();
                 float inv = 1f - p;
 
+                // Smoothly expand search bar length back to full width by collapsing Cancel button margin
+                cancelExitLp.setMarginEnd((int) (-startCancelWidth * p));
+                mSearchCancel.setLayoutParams(cancelExitLp);
+                mSearchCancel.setAlpha(inv);
+
                 // Search Content slide back to center
                 if (mSearchContent != null) {
                     mSearchContent.setTranslationX(exitStartShift + (targetShift - exitStartShift) * p);
                 }
-
-                // Cancel button alpha and translation
-                mSearchCancel.setAlpha(inv);
-                mSearchCancel.setTranslationX(p * (startCancelWidth * 0.4f));
 
                 // Search Backdrop fade-out
                 if (mSearchBackdrop != null) {
@@ -602,10 +745,25 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 // Search Results fade-out
                 mSearchResultsContainer.setAlpha(startResultsAlpha * inv);
                 mSearchResultsContainer.setTranslationY(startResultsTy + (slideOffsetPx - startResultsTy) * p);
+
+                // Smooth cross-fade between outgoing typed query and incoming "App Library" hint
+                if (hasOutgoingQuery && mSearchQueryOverlay != null) {
+                    float queryAlpha = Math.max(0f, 1f - p * 1.8f);
+                    mSearchQueryOverlay.setAlpha(queryAlpha);
+                    float hintAlpha = Math.min(1f, p * 1.5f);
+                    mSearchInput.setAlpha(hintAlpha);
+                }
             });
             mTransitionAnimator.addListener(new EndOnlyListener() {
                 @Override
                 void onFinished() {
+                    if (mSearchQueryOverlay != null) {
+                        mSearchQueryOverlay.setVisibility(GONE);
+                        mSearchQueryOverlay.setText("");
+                    }
+                    if (mSearchInput != null) {
+                        mSearchInput.setAlpha(1f);
+                    }
                     applyBrowseSteadyState(targetShift);
                 }
             });
@@ -786,6 +944,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     private void checkRootImeVisibility() {
+        if (!mInSearchMode) return;
         WindowInsets rootInsets = getRootWindowInsets();
         if (rootInsets != null) {
             handleImeVisibility(rootInsets.isVisible(WindowInsets.Type.ime()));
@@ -837,17 +996,92 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     public void saveScrollState() {
-        if (mDashboardView != null) {
-            mSavedScrollY = mDashboardView.computeVerticalScrollOffset();
+        if (mDashboardView != null && mDashboardView.getLayoutManager() instanceof GridLayoutManager) {
+            GridLayoutManager glm = (GridLayoutManager) mDashboardView.getLayoutManager();
+            mSavedScrollPos = glm.findFirstVisibleItemPosition();
+            View firstChild = glm.findViewByPosition(mSavedScrollPos);
+            mSavedScrollOffset = (firstChild != null) ? (firstChild.getTop() - mDashboardView.getPaddingTop()) : 0;
         }
     }
 
     public void restoreScrollState() {
-        if (mDashboardView != null) {
-            int currentOffset = mDashboardView.computeVerticalScrollOffset();
-            int deltaY = mSavedScrollY - currentOffset;
-            if (deltaY != 0) {
-                mDashboardView.scrollBy(0, deltaY);
+        if (mDashboardView != null && mSavedScrollPos != RecyclerView.NO_POSITION
+                && mDashboardView.getLayoutManager() instanceof GridLayoutManager) {
+            GridLayoutManager glm = (GridLayoutManager) mDashboardView.getLayoutManager();
+            glm.scrollToPositionWithOffset(mSavedScrollPos, mSavedScrollOffset);
+        }
+    }
+
+    public static void setDoseResponseOverride(int count) {
+        sDoseResponseOverride = count;
+    }
+
+    public void invalidateCategoryPodsOnly() {
+        if (mDashboardView == null) return;
+
+        Launcher launcher = Launcher.getLauncher(getContext());
+        int windowWidth = launcher != null ? launcher.getDeviceProfile().widthPx : getWidth();
+        int windowHeight = launcher != null ? launcher.getDeviceProfile().heightPx : getHeight();
+        int margin = (int) (120 * getResources().getDisplayMetrics().density / 2.75f); // ~120px pre-reveal lead margin
+
+        mDashboardView.getLocationInWindow(mTempWindowPos);
+        int dashX = mTempWindowPos[0];
+        int dashY = mTempWindowPos[1];
+
+        int podCountLimit = sDoseResponseOverride;
+        int activePodCount = 0;
+
+        for (int i = 0; i < mDashboardView.getChildCount(); i++) {
+            View child = mDashboardView.getChildAt(i);
+            if (child == null) continue;
+
+            CategoryCardView cardView = null;
+            if (child instanceof CategoryCardView) {
+                cardView = (CategoryCardView) child;
+            } else if (child instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) child;
+                for (int j = 0; j < vg.getChildCount(); j++) {
+                    View subChild = vg.getChildAt(j);
+                    if (subChild instanceof CategoryCardView) {
+                        cardView = (CategoryCardView) subChild;
+                        break;
+                    }
+                }
+            }
+            if (cardView == null) continue;
+
+            AppLibraryCategoryGlassView gv = cardView.getGlassView();
+            if (gv == null) continue;
+
+            int x = dashX + child.getLeft() + (int) child.getTranslationX();
+            int y = dashY + child.getTop() + (int) child.getTranslationY();
+            int w = cardView.getWidth();
+            int h = cardView.getHeight();
+            if (w == 0 || h == 0) continue;
+
+            int dashW = mDashboardView.getWidth() > 0 ? mDashboardView.getWidth() : windowWidth;
+            boolean isHorizontallyVisible = (dashX + dashW > -margin) && (dashX < windowWidth + margin);
+            boolean isVerticallyVisible = (y + h > -margin) && (y < windowHeight + margin);
+            boolean shouldBeVisible = (isHorizontallyVisible && isVerticallyVisible);
+
+            if (podCountLimit >= 0) {
+                if (activePodCount >= podCountLimit) {
+                    shouldBeVisible = false;
+                }
+            }
+
+            if (shouldBeVisible) {
+                activePodCount++;
+                if (gv.getVisibility() != View.VISIBLE) {
+                    gv.setVisibility(View.VISIBLE);
+                    gv.invalidate(); // warm backdrop immediately upon reveal
+                } else {
+                    gv.invalidate();
+                }
+            } else {
+                if (gv.getVisibility() != View.INVISIBLE) {
+                    gv.setVisibility(View.INVISIBLE);
+                }
             }
         }
     }
@@ -859,28 +1093,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mSearchBackdropGlass != null && mSearchBackdropGlass.getVisibility() == VISIBLE) {
             mSearchBackdropGlass.invalidate();
         }
-        if (mDashboardView != null) {
-            for (int i = 0; i < mDashboardView.getChildCount(); i++) {
-                View child = mDashboardView.getChildAt(i);
-                if (child instanceof CategoryCardView) {
-                    AppLibraryCategoryGlassView gv = ((CategoryCardView) child).getGlassView();
-                    if (gv != null) {
-                        gv.invalidate();
-                    }
-                } else if (child instanceof ViewGroup) {
-                    ViewGroup vg = (ViewGroup) child;
-                    for (int j = 0; j < vg.getChildCount(); j++) {
-                        View subChild = vg.getChildAt(j);
-                        if (subChild instanceof CategoryCardView) {
-                            AppLibraryCategoryGlassView gv = ((CategoryCardView) subChild).getGlassView();
-                            if (gv != null) {
-                                gv.invalidate();
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        invalidateCategoryPodsOnly();
     }
 
     public void updateNotificationDots(Predicate<PackageUserKey> updatedDots) {
@@ -954,10 +1167,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
     private float calculateSearchCenteredShift() {
         if (mSearchContainer == null || mSearchInput == null) return 0f;
-        int containerWidth = mSearchContainer.getWidth();
-        if (containerWidth <= 0 && mSearchRow != null) {
-            containerWidth = mSearchRow.getWidth();
-        }
+        int containerWidth = mSearchRow != null && mSearchRow.getWidth() > 0
+                ? mSearchRow.getWidth()
+                : mSearchContainer.getWidth();
         if (containerWidth <= 0) return 0f;
 
         float density = getResources().getDisplayMetrics().density;

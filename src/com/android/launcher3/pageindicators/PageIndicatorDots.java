@@ -117,6 +117,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         public void setValue(PageIndicatorDots obj, int alpha) {
             obj.mPaginationAlpha = Utilities.boundToRange(alpha, INVISIBLE_ALPHA, VISIBLE_ALPHA);
             obj.invalidate();
+            obj.invalidateOutline();
             obj.syncPillGlassAlpha();
         }
     };
@@ -130,8 +131,11 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     private int mActivePage;
     private int mTotalScroll;
     private boolean mShouldAutoHide = true;
-    private int mPaginationAlpha = VISIBLE_ALPHA;
-    private int mToAlpha = VISIBLE_ALPHA;
+    private int mPaginationAlpha = INVISIBLE_ALPHA;
+    private int mToAlpha = INVISIBLE_ALPHA;
+    private boolean mForceDotsMode = false;
+    private int mLastScrollX = -1;
+    private boolean mIsDarkText = false;
 
     private float mCurrentPosition;
     private float mFinalPosition;
@@ -141,6 +145,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     private @Nullable ObjectAnimator mAlphaAnimator;
 
     private float[] mEntryAnimationRadiusFactors;
+    private static final boolean ENABLE_SEARCH_PILL_GLASS = true;
     private SearchPillGlassView mPillGlassView;
     private boolean mTouchDownOnPill = false;
 
@@ -158,7 +163,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private final Runnable mHidePaginationRunnable = () -> {
-        android.util.Log.d("PageIndicatorDots", "mHidePaginationRunnable executed, animating to INVISIBLE_ALPHA");
         animatePaginationToAlpha(INVISIBLE_ALPHA);
     };
 
@@ -175,7 +179,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
         mPaginationPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaginationPaint.setStyle(Style.FILL);
-        mPaginationPaint.setColor(Themes.getAttrColor(context, R.attr.folderPaginationColor));
+        updateThemeColors();
         mDotRadius = getResources().getDimension(R.dimen.page_indicator_dot_size) / 2;
         mCircleGap = DOT_GAP_FACTOR * mDotRadius;
         setOutlineProvider(new MyOutlineProver());
@@ -187,6 +191,35 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPillIconPaint.setStyle(Style.STROKE);
         mPillIconPaint.setStrokeCap(Paint.Cap.ROUND);
         mPillTextPaint.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+    }
+
+    private void updateThemeColors() {
+        mIsDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        if (mPaginationPaint != null) {
+            boolean useWhiteInGlassPill = isWorkspaceIndicator()
+                    && MultiModeController.isSingleLayerMode();
+            mPaginationPaint.setColor((!useWhiteInGlassPill && mIsDarkText)
+                    ? Color.BLACK : Color.WHITE);
+        }
+    }
+
+    @Override
+    protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        updateThemeColors();
+        invalidate();
+    }
+
+    public void setForceDotsMode(boolean forceDots) {
+        if (mForceDotsMode != forceDots) {
+            mForceDotsMode = forceDots;
+            mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+            if (forceDots) {
+                animatePaginationToAlpha(VISIBLE_ALPHA);
+            } else if (mShouldAutoHide) {
+                animatePaginationToAlpha(INVISIBLE_ALPHA);
+            }
+        }
     }
 
     private float getPillWidth() {
@@ -222,7 +255,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (mPillRect.contains(event.getX(), event.getY())) {
+                    if (!mForceDotsMode && mPillRect.contains(event.getX(), event.getY())) {
                         mTouchDownOnPill = true;
                         return true;
                     }
@@ -250,11 +283,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                         mTouchDownOnPill = false;
                         if (mPillRect.contains(event.getX(), event.getY())) {
                             Launcher launcher = Launcher.getLauncher(getContext());
-                            if (launcher != null && launcher.getWorkspace() != null && !launcher.getWorkspace().isWobbling()) {
+                            if (launcher != null && launcher.getWorkspace() != null
+                                    && !launcher.getWorkspace().isWobbling() && !mForceDotsMode) {
+                                android.util.Log.d("SearchPillDebug", "PageIndicatorDots: Opening Spotlight search");
                                 com.android.launcher3.applibrary.view.SpotlightSearchOverlay.show(launcher);
                                 playSoundEffect(android.view.SoundEffectConstants.CLICK);
                                 return true;
                             }
+                            return true; // Consume touch so it never leaks to underlying views
                         }
                     }
                     return false;
@@ -269,26 +305,35 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setScroll(int currentScroll, int totalScroll) {
-        android.util.Log.d("PageIndicatorDots", "setScroll: current=" + currentScroll + " total=" + totalScroll
-                + " numPages=" + mNumPages + " shouldAutoHide=" + mShouldAutoHide);
         if (currentScroll == 0 && totalScroll == 0) {
             CURRENT_POSITION.set(this, (float) mActivePage);
-            if (mShouldAutoHide) {
+            mLastScrollX = currentScroll;
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
             return;
         }
 
         if (mNumPages <= 1) {
+            mLastScrollX = currentScroll;
             return;
         }
 
         // Skip scroll update during binding. We will update it when binding completes.
         if (mIsScrollPaused) {
+            mLastScrollX = currentScroll;
             return;
         }
 
-        if (mShouldAutoHide) {
+        boolean isFirstScrollSeed = (mLastScrollX == -1);
+        boolean scrollPositionChanged = !isFirstScrollSeed && (mLastScrollX != currentScroll);
+        mLastScrollX = currentScroll;
+
+        if (mForceDotsMode) {
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+        } else if (scrollPositionChanged && mShouldAutoHide) {
             animatePaginationToAlpha(VISIBLE_ALPHA);
         }
 
@@ -308,19 +353,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll < pageToLeftScroll + scrollThreshold) {
             // scroll is within the left page's threshold
             animateToPosition(pageToLeft);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else if (currentScroll > pageToRightScroll - scrollThreshold) {
             // scroll is far enough from left page to go to the right page
             animateToPosition(pageToLeft + 1);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else {
             // scroll is between left and right page
             animateToPosition(pageToLeft + SHIFT_PER_ANIMATION);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
             }
         }
@@ -328,11 +373,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
-        android.util.Log.d("PageIndicatorDots", "setShouldAutoHide called: " + shouldAutoHide);
         mShouldAutoHide = shouldAutoHide;
-        if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA) {
+        if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA && !mForceDotsMode) {
             hideAfterDelay();
-        } else if (!shouldAutoHide) {
+        } else if (!shouldAutoHide || mForceDotsMode) {
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
         }
     }
@@ -343,14 +387,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void hideAfterDelay() {
-        android.util.Log.d("PageIndicatorDots", "hideAfterDelay() called, posting runnable for " + PAGINATION_FADE_DELAY + "ms");
+        if (mForceDotsMode) {
+            return;
+        }
         mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
         mDelayedPaginationFadeHandler.postDelayed(mHidePaginationRunnable, PAGINATION_FADE_DELAY);
     }
 
     private void animatePaginationToAlpha(int alpha) {
-        android.util.Log.d("PageIndicatorDots", "animatePaginationToAlpha() targetAlpha=" + alpha
-                + " currentAlpha=" + mPaginationAlpha + " mToAlpha=" + mToAlpha);
         if (alpha == mToAlpha && mPaginationAlpha == alpha) {
             // Ignore the new animation if it is going to the same alpha as the current animation.
             return;
@@ -370,7 +414,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mAlphaAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                android.util.Log.d("PageIndicatorDots", "mAlphaAnimator ended, alpha=" + mPaginationAlpha);
                 mAlphaAnimator = null;
             }
         });
@@ -525,6 +568,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             mToAlpha = INVISIBLE_ALPHA;
         }
         attachPillGlassIfNeeded();
+        post(this::syncPillGlassBounds);
     }
 
     public void resetToIdle() {
@@ -534,8 +578,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                 mAlphaAnimator.cancel();
                 mAlphaAnimator = null;
             }
+            if (mAnimator != null) {
+                mAnimator.cancel();
+                mAnimator = null;
+            }
+            mForceDotsMode = false;
             mPaginationAlpha = INVISIBLE_ALPHA;
             mToAlpha = INVISIBLE_ALPHA;
+            syncPillGlassBounds();
             syncPillGlassAlpha();
             invalidate();
         }
@@ -557,6 +607,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void attachPillGlassIfNeeded() {
+        if (!ENABLE_SEARCH_PILL_GLASS) {
+            return;
+        }
         if (!isWorkspaceIndicator() || !MultiModeController.isSingleLayerMode()) {
             return;
         }
@@ -571,11 +624,28 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
         mPillGlassView = new SearchPillGlassView(getContext());
+        float density = getResources().getDisplayMetrics().density;
+        int pillWidth = Math.round(getPillWidth());
+        int pillHeight = Math.round(26f * density);
+        mPillGlassView.setCornerRadius(pillHeight / 2f);
+        View proxy = parent.findViewById(R.id.glass_wallpaper_proxy);
+        if (proxy == null) {
+            proxy = parent.findViewById(R.id.glass_source);
+        }
+        if (proxy != null) {
+            mPillGlassView.setBackdropSource(proxy);
+        }
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(pillWidth, pillHeight);
+        lp.gravity = Gravity.TOP | Gravity.LEFT;
+        int pillLeftInSelf = (getWidth() > 0 ? (getWidth() - pillWidth) / 2 : 0);
+        int pillTopInSelf = (getHeight() > 0 ? (getHeight() - pillHeight) / 2 : 0);
+        lp.leftMargin = getLeft() + pillLeftInSelf;
+        lp.topMargin = getTop() + pillTopInSelf;
         int myIndex = parent.indexOfChild(this);
         if (myIndex >= 0) {
-            parent.addView(mPillGlassView, myIndex);
+            parent.addView(mPillGlassView, myIndex, lp);
         } else {
-            parent.addView(mPillGlassView);
+            parent.addView(mPillGlassView, lp);
         }
         syncPillGlassBounds();
         syncPillGlassAlpha();
@@ -600,44 +670,46 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        if (mPillGlassView != null) {
-            float density = getResources().getDisplayMetrics().density;
-            int pillWidth = (int) getPillWidth();
-            int pillHeight = (int) (26f * density);
-            int pillLeftInSelf = (getWidth() - pillWidth) / 2;
-            int pillTopInSelf = (getHeight() - pillHeight) / 2;
-            int pillX = left + pillLeftInSelf;
-            int pillY = top + pillTopInSelf;
-            mPillGlassView.layout(pillX, pillY, pillX + pillWidth, pillY + pillHeight);
-            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
-            if (lp == null || lp.leftMargin != pillX || lp.topMargin != pillY
-                    || lp.width != pillWidth || lp.height != pillHeight) {
-                post(this::syncPillGlassBounds);
-            }
-        }
+        layoutPillGlassView();
     }
 
-    private void syncPillGlassBounds() {
-        if (mPillGlassView == null) return;
+    private void layoutPillGlassView() {
+        if (mPillGlassView == null || getWidth() <= 0 || getHeight() <= 0) return;
         float density = getResources().getDisplayMetrics().density;
-        int pillWidth = (int) getPillWidth();
-        int pillHeight = (int) (26f * density);
+        int pillWidth = Math.round(getPillWidth());
+        int pillHeight = Math.round(26f * density);
         int pillLeftInSelf = (getWidth() - pillWidth) / 2;
         int pillTopInSelf = (getHeight() - pillHeight) / 2;
         int pillX = getLeft() + pillLeftInSelf;
         int pillY = getTop() + pillTopInSelf;
 
+        if (mPillGlassView.getLeft() == pillX && mPillGlassView.getTop() == pillY
+                && mPillGlassView.getWidth() == pillWidth && mPillGlassView.getHeight() == pillHeight) {
+            return;
+        }
+
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
         if (lp != null) {
-            if (lp.leftMargin != pillX || lp.topMargin != pillY
-                    || lp.width != pillWidth || lp.height != pillHeight) {
-                lp.width = pillWidth;
-                lp.height = pillHeight;
-                lp.gravity = Gravity.TOP | Gravity.LEFT;
-                lp.leftMargin = pillX;
-                lp.topMargin = pillY;
-                mPillGlassView.setLayoutParams(lp);
-            }
+            lp.gravity = Gravity.TOP | Gravity.LEFT;
+            lp.leftMargin = pillX;
+            lp.topMargin = pillY;
+            lp.width = pillWidth;
+            lp.height = pillHeight;
+        }
+
+        mPillGlassView.measure(
+                MeasureSpec.makeMeasureSpec(pillWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(pillHeight, MeasureSpec.EXACTLY));
+        mPillGlassView.layout(pillX, pillY, pillX + pillWidth, pillY + pillHeight);
+        mPillGlassView.invalidate();
+    }
+
+    private void syncPillGlassBounds() {
+        if (mPillGlassView == null || getWidth() <= 0 || getHeight() <= 0) return;
+        layoutPillGlassView();
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
+        if (lp != null) {
+            mPillGlassView.setLayoutParams(lp);
         }
     }
 
@@ -648,12 +720,16 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
         float effectiveAlpha = getAlpha();
-        if (effectiveAlpha <= 0.02f || getVisibility() != View.VISIBLE) {
-            mPillGlassView.setVisibility(View.GONE);
+        if (effectiveAlpha <= 0f || getVisibility() != View.VISIBLE) {
+            mPillGlassView.setVisibility(View.INVISIBLE);
         } else {
             mPillGlassView.setVisibility(View.VISIBLE);
             mPillGlassView.setAlpha(effectiveAlpha);
         }
+    }
+
+    public SearchPillGlassView getPillGlassView() {
+        return mPillGlassView;
     }
 
     @Override
@@ -678,22 +754,18 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         boolean isSingleLayerWorkspace = isWorkspaceIndicator()
                 && MultiModeController.isSingleLayerMode();
 
-        // Two-phase non-overlapping transition between "Search" label and page dots:
-        // [0..115]: "Search" fades out (1 -> 0), dots alpha = 0
-        // [115..140]: clean transition gap (neither drawn on top of the glass pill)
-        // [140..255]: dots fade in (0 -> 255), "Search" alpha = 0
+        // Zero-deadband gamma-corrected crossfade at midpoint 128:
         float pillAlpha;
         int dotAlpha;
         if (isSingleLayerWorkspace) {
-            if (mPaginationAlpha <= 115) {
-                pillAlpha = (115f - mPaginationAlpha) / 115f;
-                dotAlpha = 0;
-            } else if (mPaginationAlpha < 140) {
-                pillAlpha = 0f;
+            if (mPaginationAlpha < 128) {
+                float t = (128f - mPaginationAlpha) / 128f;
+                pillAlpha = (float) Math.sqrt(t);
                 dotAlpha = 0;
             } else {
+                float t = (mPaginationAlpha - 128f) / 127f;
                 pillAlpha = 0f;
-                dotAlpha = Math.round(((mPaginationAlpha - 140f) / 115f) * PAGE_INDICATOR_ALPHA);
+                dotAlpha = Math.round((float) Math.sqrt(t) * PAGE_INDICATOR_ALPHA);
             }
         } else {
             pillAlpha = 0f;
@@ -707,21 +779,20 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
 
-        // Draw all page indicators;
+        // Draw all page indicators
         float circleGap = getEffectiveCircleGap();
-        float startX = ((float) getWidth() / 2)
-                - (circleGap * (((float) mNumPages - 1) / 2))
+        float startX = ((float) getWidth() / 2f)
+                - (circleGap * (((float) mNumPages - 1) / 2f))
                 - mDotRadius;
 
         float x = startX + mDotRadius;
-        float y = getHeight() / 2;
+        float y = getHeight() / 2f;
 
-        if (isSingleLayerWorkspace) {
-            mPaginationPaint.setColor(Color.WHITE);
-        }
+        // Always use bright WHITE dots inside the Single Layer glass pill
+        mPaginationPaint.setColor((!isSingleLayerWorkspace && mIsDarkText)
+                ? Color.BLACK : Color.WHITE);
 
         if (mEntryAnimationRadiusFactors != null) {
-            // During entry animation, only draw the circles
             if (mIsRtl) {
                 x = getWidth() - x;
                 circleGap = -circleGap;
@@ -735,21 +806,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                 x += circleGap;
             }
         } else {
-            // Here we draw the dots
             mPaginationPaint.setAlpha((int) (dotAlpha * DOT_ALPHA_FRACTION));
             for (int i = 0; i < mNumPages; i++) {
                 canvas.drawCircle(x, y, mDotRadius, mPaginationPaint);
                 x += circleGap;
             }
 
-            // Here we draw the current page indicator
             mPaginationPaint.setAlpha(dotAlpha);
             canvas.drawRoundRect(getActiveRect(), mDotRadius, mDotRadius, mPaginationPaint);
         }
     }
 
     private void drawSearchPillIfSingleLayer(Canvas canvas, float pillAlpha) {
-        if (!isWorkspaceIndicator() || !foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+        if (!isWorkspaceIndicator() || !MultiModeController.isSingleLayerMode()) {
             return;
         }
         float density = getResources().getDisplayMetrics().density;
@@ -764,31 +833,34 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
 
-        // Glass frosted pill background - only draw fallback if glass view is absent/hidden
-        if (mPillGlassView == null || mPillGlassView.getVisibility() != View.VISIBLE) {
-            mPillBgPaint.setColor(android.graphics.Color.argb((int) (55 * viewAlpha), 255, 255, 255));
-            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillBgPaint);
-        }
+        // Always use white foreground inside the frosted glass pill
+        int pillFgRgb = 255;
 
-        // Rim stroke - always visible around the pill
-        mPillStrokePaint.setStrokeWidth(0.8f * density);
-        mPillStrokePaint.setColor(android.graphics.Color.argb((int) (40 * viewAlpha), 255, 255, 255));
-        canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillStrokePaint);
+        // Draw fallback frosted background and rim only when SearchPillGlassView is absent/not ready
+        boolean glassReady = (mPillGlassView != null && mPillGlassView.getParent() != null
+                && mPillGlassView.getWidth() > 0 && mPillGlassView.getHeight() > 0
+                && mPillGlassView.getVisibility() == View.VISIBLE);
+        if (!glassReady) {
+            mPillBgPaint.setColor(Color.argb((int) (55 * viewAlpha), 255, 255, 255));
+            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillBgPaint);
+
+            mPillStrokePaint.setStrokeWidth(0.8f * density);
+            mPillStrokePaint.setColor(Color.argb((int) (40 * viewAlpha), 255, 255, 255));
+            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillStrokePaint);
+        }
 
         float contentAlpha = pillAlpha * viewAlpha;
         if (contentAlpha <= 0.02f) {
             return;
         }
 
-        // "Search" text paint (measured first so icon + text can be centered together as one unit)
         String label = "Search";
-        mPillTextPaint.setColor(android.graphics.Color.argb((int) (225 * contentAlpha), 255, 255, 255));
+        mPillTextPaint.setColor(Color.argb((int) (235 * contentAlpha), pillFgRgb, pillFgRgb, pillFgRgb));
         mPillTextPaint.setTextSize(12f * density);
         float textWidth = mPillTextPaint.measureText(label);
 
-        // Magnifying glass icon dimensions
         mPillIconPaint.setStrokeWidth(1.4f * density);
-        mPillIconPaint.setColor(android.graphics.Color.argb((int) (225 * contentAlpha), 255, 255, 255));
+        mPillIconPaint.setColor(Color.argb((int) (235 * contentAlpha), pillFgRgb, pillFgRgb, pillFgRgb));
 
         float iconRadius = 3.5f * density;
         float handleExtent = iconRadius * 0.707f + 3f * density;
@@ -852,28 +924,31 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
         @Override
         public void getOutline(View view, Outline outline) {
-            if (mEntryAnimationRadiusFactors == null) {
-                RectF activeRect = getActiveRect();
-                outline.setRoundRect(
-                        (int) activeRect.left,
-                        (int) activeRect.top,
-                        (int) activeRect.right,
-                        (int) activeRect.bottom,
-                        mDotRadius
-                );
-            }
+            float density = getResources().getDisplayMetrics().density;
+            float pillWidth = getPillWidth();
+            float pillHeight = 26f * density;
+            float pillLeft = (getWidth() - pillWidth) / 2f;
+            float pillTop = (getHeight() - pillHeight) / 2f;
+            outline.setRoundRect(
+                    (int) pillLeft,
+                    (int) pillTop,
+                    (int) (pillLeft + pillWidth),
+                    (int) (pillTop + pillHeight),
+                    pillHeight / 2f
+            );
         }
     }
 
     @Override
     public void setTranslationY(float translationY) {
-    }
-
-    public void setForcedTranslationY(float translationY) {
         super.setTranslationY(translationY);
         if (mPillGlassView != null) {
             mPillGlassView.setTranslationY(translationY);
         }
+    }
+
+    public void setForcedTranslationY(float translationY) {
+        setTranslationY(translationY);
     }
 
     /**
@@ -924,5 +999,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             lp.bottomMargin = insets.bottom + grid.hotseatBarSizePx + gapPx;
         }
         setLayoutParams(lp);
+        post(this::syncPillGlassBounds);
     }
 }

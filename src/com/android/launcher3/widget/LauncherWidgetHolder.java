@@ -331,14 +331,13 @@ public class LauncherWidgetHolder {
             return lahv;
         }
 
-        if (foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.isClockWidget(appWidget.provider)) {
-            foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView =
-                    new foundation.e.bliss.widgets.clock.ClockWidgetHostView(mContext);
-            clockView.setAppWidget(appWidgetId, appWidget);
+        LauncherAppWidgetHostView glassView =
+                foundation.e.bliss.widgets.GlassWidgetFactory.createHostView(mContext, appWidgetId, appWidget);
+        if (glassView != null) {
             if (!enableWorkspaceInflation() || Looper.myLooper() == Looper.getMainLooper()) {
-                mViews.put(appWidgetId, clockView);
+                mViews.put(appWidgetId, glassView);
             }
-            return clockView;
+            return glassView;
         }
 
         LauncherAppWidgetHostView view = createViewInternal(appWidgetId, appWidget);
@@ -375,7 +374,7 @@ public class LauncherWidgetHolder {
      *      as a result of using the same flow.
      */
     protected LauncherAppWidgetHostView recycleExistingView(LauncherAppWidgetHostView view) {
-        if (view instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
+        if (view instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
             return view;
         }
         if ((mFlags & FLAG_LISTENING) == 0) {
@@ -400,11 +399,10 @@ public class LauncherWidgetHolder {
     @NonNull
     protected LauncherAppWidgetHostView createViewInternal(
             int appWidgetId, @NonNull LauncherAppWidgetProviderInfo appWidget) {
-        if (foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.isClockWidget(appWidget.provider)) {
-            foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView =
-                    new foundation.e.bliss.widgets.clock.ClockWidgetHostView(mContext);
-            clockView.setAppWidget(appWidgetId, appWidget);
-            return clockView;
+        LauncherAppWidgetHostView glassView =
+                foundation.e.bliss.widgets.GlassWidgetFactory.createHostView(mContext, appWidgetId, appWidget);
+        if (glassView != null) {
+            return glassView;
         }
         if ((mFlags & FLAG_LISTENING) == 0) {
             // Since the launcher hasn't started listening to widget updates, we can't simply call

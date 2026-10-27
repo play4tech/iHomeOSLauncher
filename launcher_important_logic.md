@@ -88,7 +88,7 @@ This master document aggregates all 78 core architectural and functional code lo
 # src/com/android/launcher3/Launcher.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4129 | **Bytes**: 173332
+**Lines**: 4146 | **Bytes**: 175056
 
 ```java
 /*
@@ -1399,8 +1399,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         mAppWidgetHolder.setActivityStarted(false);
         NotificationListener.removeNotificationsChangedListener(getPopupDataProvider());
         FloatingIconView.resetIconLoadResult();
+        long nowStop = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.onStop at t=" + nowStop + ", mLastLaunchedIcon=" + (mLastLaunchedIcon != null ? mLastLaunchedIcon.getText() : "null"));
         if (mLastLaunchedIcon != null) {
-            mLastLaunchedIcon.clearPressedBackground();
+            mLastLaunchedIcon.clearPressedBackground("Launcher.onStop");
             mLastLaunchedIcon = null;
         }
         AccessibilityManagerCompat.sendTestProtocolEventToTest(
@@ -1439,8 +1441,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
 
+        long nowResume = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.onDeferredResumed at t=" + nowResume + ", mLastLaunchedIcon=" + (mLastLaunchedIcon != null ? mLastLaunchedIcon.getText() : "null"));
         if (mLastLaunchedIcon != null) {
-            mLastLaunchedIcon.clearPressedBackground();
+            mLastLaunchedIcon.clearPressedBackground("Launcher.onDeferredResumed");
             mLastLaunchedIcon = null;
         }
 
@@ -1537,8 +1541,15 @@ public class Launcher extends StatefulActivity<LauncherState>
             ItemInstallQueue.INSTANCE.get(this).pauseModelPush(FLAG_DRAG_AND_DROP);
             getRotationHelper().setCurrentStateRequest(REQUEST_LOCK);
 
-            mWorkspace.showPageIndicatorAtCurrentScroll();
             mWorkspace.setClipChildren(false);
+            if (mWorkspace.getPageIndicator() instanceof com.android.launcher3.pageindicators.PageIndicatorDots) {
+                ((com.android.launcher3.pageindicators.PageIndicatorDots) mWorkspace.getPageIndicator()).setForceDotsMode(true);
+            }
+        } else {
+            if (mWorkspace != null && mWorkspace.getPageIndicator() instanceof com.android.launcher3.pageindicators.PageIndicatorDots
+                    && !mWorkspace.isWobbling()) {
+                ((com.android.launcher3.pageindicators.PageIndicatorDots) mWorkspace.getPageIndicator()).setForceDotsMode(false);
+            }
         }
         // Always auto-hide the page indicator after a brief delay (iOS-style fade away)
         mWorkspace.getPageIndicator().setShouldAutoHide(true);
@@ -2819,13 +2830,19 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         DragTrace.log("Launcher.startActivitySafely item=" + (item != null ? item.title : "null") + " intent=" + intent);
+        long tStart = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.startActivitySafely BEGIN at t=" + tStart + " item=" + (item != null ? item.title : "null"));
         RunnableList result = super.startActivitySafely(v, intent, item);
+        long tAfter = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.startActivitySafely END at t=" + tAfter + " (took " + (tAfter - tStart) + "ms)");
         if (v instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) v;
             btv.setStayPressed(true);
             mLastLaunchedIcon = btv;
             if (result != null) {
                 result.add(() -> {
+                    long tCallback = android.os.SystemClock.elapsedRealtime();
+                    android.util.Log.d("StayPressedTrace", "EVENT_RESUMED callback fired for [" + btv.getText() + "] at t=" + tCallback);
                     btv.setStayPressed(false);
                     if (mLastLaunchedIcon == btv) {
                         mLastLaunchedIcon = null;
@@ -6509,7 +6526,7 @@ public class SettingsActivity extends FragmentActivity
 # src/com/android/launcher3/Workspace.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
-**Lines**: 5210 | **Bytes**: 226416
+**Lines**: 5362 | **Bytes**: 234470
 
 ```java
 /*
@@ -6529,6 +6546,8 @@ public class SettingsActivity extends FragmentActivity
  */
 
 package com.android.launcher3;
+
+import android.graphics.Canvas;
 
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_EXIT_DELAY;
 import static com.android.launcher3.LauncherSettings.Favorites.ITEM_TYPE_APPLICATION;
@@ -7167,17 +7186,29 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
         updateChildrenLayersEnabled();
         StateManager<LauncherState> stateManager = mLauncher.getStateManager();
-        stateManager.addStateListener(new StateManager.StateListener<LauncherState>() {
-            @Override
-            public void onStateTransitionComplete(LauncherState finalState) {
-                if (finalState == NORMAL) {
-                    if (!mDeferRemoveExtraEmptyScreen) {
-                        removeExtraEmptyScreen(true /* stripEmptyScreens */);
+        if (!mDeferRemoveExtraEmptyScreen) {
+            if (!stateManager.isInTransition()) {
+                removeExtraEmptyScreen(true /* stripEmptyScreens */);
+            } else {
+                stateManager.addStateListener(new StateManager.StateListener<LauncherState>() {
+                    @Override
+                    public void onStateTransitionComplete(LauncherState finalState) {
+                        if (finalState == NORMAL || finalState == EDIT_MODE) {
+                            if (!mDeferRemoveExtraEmptyScreen) {
+                                removeExtraEmptyScreen(true /* stripEmptyScreens */);
+                            }
+                            stateManager.removeStateListener(this);
+                        }
                     }
-                    stateManager.removeStateListener(this);
-                }
+                });
             }
-        });
+            // Safety fallback: ensure extra empty screen is never leaked if transition was cancelled or interrupted
+            postDelayed(() -> {
+                if (!mDeferRemoveExtraEmptyScreen && hasExtraEmptyScreens()) {
+                    removeExtraEmptyScreen(true /* stripEmptyScreens */);
+                }
+            }, 500);
+        }
 
         mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         mDragInfo = null;
@@ -8229,6 +8260,21 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
     }
 
+    public static int sFolderDrawCount = 0;
+    public static int sWidgetDrawCount = 0;
+    public static int sWorkspaceFrames = 0;
+
+    private static int getWidgetDoseLimit() {
+        try {
+            Class<?> sp = Class.forName("android.os.SystemProperties");
+            String val = (String) sp.getMethod("get", String.class, String.class)
+                    .invoke(null, "debug.launcher.widget_glass", "-1");
+            return Integer.parseInt(val);
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
     /**
      * Invalidates all active Liquid Glass surfaces across visible pages and the dock so that
      * refraction updates live in real-time during user drags, scrolling, and page flings.
@@ -8250,20 +8296,37 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 for (int p = leftScreen; p <= rightScreen; p++) {
                     if (p < 0 || p >= pageCount) continue;
                     View page = getChildAt(p);
+                    if (page == mAppLibraryCellLayout) {
+                        if (mAppLibraryPinnedItem instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
+                            ((com.android.launcher3.applibrary.view.AppLibraryPage) mAppLibraryPinnedItem).invalidateGlassSurfaces();
+                        }
+                        continue;
+                    }
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
+                            sWorkspaceFrames++;
+                            int widgetLimit = getWidgetDoseLimit();
+                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
-                                    if (gv != null) {
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
-                                } else if (child instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
-                                    FolderGlassView gv = ((foundation.e.bliss.widgets.clock.ClockWidgetHostView) child).getGlassView();
+                                } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                                    FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
                                     if (gv != null) {
-                                        gv.invalidate();
+                                        if (widgetLimit >= 0) {
+                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
+                                        }
+                                        if (gv.getVisibility() == VISIBLE) {
+                                            sWidgetDrawCount++;
+                                            gv.invalidate();
+                                        }
+                                        widgetIdx++;
                                     }
                                 }
                             }
@@ -8293,11 +8356,51 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     }
                 }
             }
+
+            View pageIndicator = getPageIndicator();
+            if (pageIndicator instanceof PageIndicatorDots) {
+                foundation.e.bliss.glass.SearchPillGlassView pillGlass =
+                        ((PageIndicatorDots) pageIndicator).getPillGlassView();
+                if (pillGlass != null && pillGlass.getVisibility() == VISIBLE) {
+                    pillGlass.invalidate();
+                }
+            }
+
+            if (isWobbling()) {
+                View topBar = mLauncher.findViewById(R.id.jiggle_top_bar);
+                if (topBar instanceof foundation.e.bliss.wobble.JiggleTopBarView
+                        && topBar.getVisibility() == VISIBLE) {
+                    ((foundation.e.bliss.wobble.JiggleTopBarView) topBar).invalidateGlassButtons();
+                }
+            }
         } catch (Throwable ignored) {}
     }
 
     public void invalidateScrollingPageGlassSurfaces() {
         try {
+            if (mCachedDockGlass == null) {
+                mCachedDockGlass = mLauncher.findViewById(R.id.dock_glass);
+            }
+            if (mCachedDockGlass != null && mCachedDockGlass.getVisibility() == VISIBLE) {
+                mCachedDockGlass.invalidate();
+            }
+
+            View pageIndicator = getPageIndicator();
+            if (pageIndicator instanceof PageIndicatorDots) {
+                foundation.e.bliss.glass.SearchPillGlassView pillGlass =
+                        ((PageIndicatorDots) pageIndicator).getPillGlassView();
+                if (pillGlass != null && pillGlass.getVisibility() == VISIBLE) {
+                    pillGlass.invalidate();
+                }
+            }
+
+            if (isWobbling()) {
+                View topBar = mLauncher.findViewById(R.id.jiggle_top_bar);
+                if (topBar instanceof foundation.e.bliss.wobble.JiggleTopBarView
+                        && topBar.getVisibility() == VISIBLE) {
+                    ((foundation.e.bliss.wobble.JiggleTopBarView) topBar).invalidateGlassButtons();
+                }
+            }
             final int[] visibleScreens = getVisibleChildrenRange();
             if (visibleScreens != null && visibleScreens.length >= 2 && visibleScreens[0] >= 0) {
                 int leftScreen = visibleScreens[0];
@@ -8306,32 +8409,58 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 for (int p = leftScreen; p <= rightScreen; p++) {
                     if (p < 0 || p >= pageCount) continue;
                     View page = getChildAt(p);
+                    if (page == mAppLibraryCellLayout) {
+                        if (mAppLibraryPinnedItem instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
+                            ((com.android.launcher3.applibrary.view.AppLibraryPage) mAppLibraryPinnedItem).invalidateGlassSurfaces();
+                        }
+                        continue;
+                    }
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
+                            sWorkspaceFrames++;
+                            int widgetLimit = getWidgetDoseLimit();
+                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
-                                    if (gv != null) {
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
-                                } else if (child instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
-                                    FolderGlassView gv = ((foundation.e.bliss.widgets.clock.ClockWidgetHostView) child).getGlassView();
+                                } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                                    FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
                                     if (gv != null) {
-                                        gv.invalidate();
+                                        if (widgetLimit >= 0) {
+                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
+                                        }
+                                        if (gv.getVisibility() == VISIBLE) {
+                                            sWidgetDrawCount++;
+                                            gv.invalidate();
+                                        }
+                                        widgetIdx++;
                                     }
                                 }
                             }
                         }
                     }
                 }
+                int appLibIndex = (mAppLibraryCellLayout != null)
+                        ? indexOfChild(mAppLibraryCellLayout)
+                        : mScreenOrder.indexOf(APP_LIBRARY_SCREEN_ID);
+                if (appLibIndex >= 0 && appLibIndex >= leftScreen && appLibIndex <= rightScreen
+                        && mAppLibraryPinnedItem instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
+                    ((com.android.launcher3.applibrary.view.AppLibraryPage) mAppLibraryPinnedItem).invalidateGlassSurfaces();
+                }
             }
         } catch (Throwable ignored) {}
     }
 
     private boolean isNearAppLibrary() {
-        int appLibIndex = mScreenOrder.indexOf(APP_LIBRARY_SCREEN_ID);
+        int appLibIndex = (mAppLibraryCellLayout != null)
+                ? indexOfChild(mAppLibraryCellLayout)
+                : mScreenOrder.indexOf(APP_LIBRARY_SCREEN_ID);
         if (appLibIndex < 0) return false;
         int scrollForAppLib = getScrollForPage(appLibIndex);
         int pageWidth = getWidth();
@@ -8511,7 +8640,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     dockGlass.setAlpha(1f);
                 }
             }
-            if (mLauncher.mBlurLayer != null && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) mLauncher.mBlurLayer.setAlpha(0);
+            if (mLauncher.mBlurLayer != null && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) {
+                mLauncher.mBlurLayer.setAlpha(0);
+            }
             return;
         }
 
@@ -8542,7 +8673,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             dockGlass.setAlpha(dockAlpha);
         }
 
-        if (mLauncher.mBlurLayer != null) mLauncher.mBlurLayer.setAlpha(progress);
+        if (mLauncher.mBlurLayer != null) {
+            float currentAlpha = mLauncher.mBlurLayer.getAlpha();
+            if (Math.abs(progress - currentAlpha) >= 0.02f || progress <= 0f || progress >= 1f) {
+                mLauncher.mBlurLayer.setAlpha(progress);
+            }
+        }
     }
 
     public void showPageIndicatorAtCurrentScroll() {
@@ -9705,11 +9841,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 final ItemInfo info = (ItemInfo) cell.getTag();
                 boolean isWidget = info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET
                         || info.itemType == LauncherSettings.Favorites.ITEM_TYPE_CUSTOM_APPWIDGET;
-                if (isWidget && dropTargetLayout != null) {
-                    // animate widget to a valid place
-                    int animationType = resizeOnDrop ? ANIMATE_INTO_POSITION_AND_RESIZE :
-                            ANIMATE_INTO_POSITION_AND_DISAPPEAR;
-                    animateWidgetDrop(info, parent, d.dragView, null, animationType, cell, false);
+                if (isWidget && resizeOnDrop && dropTargetLayout != null) {
+                    // animate widget to a valid place when resized on drop
+                    animateWidgetDrop(info, parent, d.dragView, null, ANIMATE_INTO_POSITION_AND_RESIZE, cell, false);
                 } else {
                     int duration = snappedToNewPage ? ADJACENT_SCREEN_DROP_DURATION : -1;
                     mLauncher.getDragLayer().animateViewIntoPosition(d.dragView, cell, duration,
@@ -10136,6 +10270,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 child.clearAnimation();
             }
             manageFolderFeedback(targetCellDistance, d);
+            invalidateGlassSurfaces();
 
             boolean nearestDropOccupied = mDragTargetLayout.isNearestDropLocationOccupied((int)
                             mDragViewVisualCenter[0], (int) mDragViewVisualCenter[1], item.spanX,
@@ -10286,14 +10421,36 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         float relTouchX = d.x - screenLeft;
         float relCenterX = centerX - screenLeft;
 
-        // Edge gutter threshold: only trigger neighbor page snap when the user deliberately
-        // pushes into the screen edge gutter (<= 24dp from outer bezel).
-        // Inside Column 0 (center ~57dp, left bound 16dp) or Column 3, neither the finger
-        // nor the icon center can reach <= 24dp, keeping in-page reordering fully responsive.
-        float edgeGutter = getResources().getDisplayMetrics().density * 24f;
+        float density = getResources().getDisplayMetrics().density;
+        // Dynamic grid-relative page-flip gutter: scales with layout padding and cell width
+        // plus a 2px expansion, clamped with ergonomic safety bounds.
+        float dynamicGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.10f) + 2f;
+        float minGutter = density * 12f;
+        float maxGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.25f);
+        float edgeGutter = Math.max(minGutter, Math.min(maxGutter, dynamicGutter));
 
-        boolean isAtLeftEdge = (relCenterX <= edgeGutter || relTouchX <= edgeGutter);
-        boolean isAtRightEdge = (relCenterX >= screenWidth - edgeGutter || relTouchX >= screenWidth - edgeGutter);
+        // Dynamic minimum bezel zone: scaled to half padding + 2px, clamped to at least 8dp + 2px
+        float minimumBezelZone = Math.max(density * 8f + 2f, (leftLayout.getPaddingLeft() * 0.5f) + 2f);
+
+        // Dynamic reorder edge clearance: proportional to cell width
+        float reorderEdgeClearance = leftLayout.getCellWidth() * 0.10f;
+
+        float leftReorderRingOuterX = leftLayout.getBoundaryReorderRingOuterX(true);
+        float rightReorderRingOuterX = rightLayout.getLeft() - screenLeft
+                + rightLayout.getBoundaryReorderRingOuterX(false);
+        // Keep a full edge-clearance beyond boundary reorder rings so a slightly shaky drag can
+        // still show the reorder preview before it enters the page-flip zone. If the rings leave
+        // less room, retain a dynamic bezel strip for deliberate paging.
+        float leftEdgeThreshold = Math.max(minimumBezelZone,
+                Math.min(edgeGutter, leftReorderRingOuterX - reorderEdgeClearance));
+        float rightEdgeThreshold = Math.min(screenWidth - minimumBezelZone,
+                Math.max(screenWidth - edgeGutter,
+                        rightReorderRingOuterX + reorderEdgeClearance));
+
+        boolean isAtLeftEdge = (relCenterX <= leftEdgeThreshold
+                || relTouchX <= leftEdgeThreshold);
+        boolean isAtRightEdge = (relCenterX >= rightEdgeThreshold
+                || relTouchX >= rightEdgeThreshold);
 
         IntSet pageIndexesToVerify = IntSet.wrap(nextPage - 1,
                 nextPage + (isTwoPanelEnabled() ? 2 : 1));
@@ -10794,8 +10951,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         getFinalPositionForDropAnimation(finalPos, scaleXY, dragView, cellLayout, info, mTargetCell,
                 scalePreview, finalView);
 
+        if (finalView != null) {
+            finalView.setVisibility(INVISIBLE);
+        }
+
         Resources res = mLauncher.getResources();
-        final int duration = res.getInteger(R.integer.config_dropAnimMaxDuration) - 200;
+        final int duration = -1;
 
         boolean isWidget = info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET ||
                 info.itemType == LauncherSettings.Favorites.ITEM_TYPE_CUSTOM_APPWIDGET;
@@ -10803,7 +10964,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 && finalView != null
                 && dragView.getContentView() != finalView) {
             Drawable crossFadeDrawable = createWidgetDrawable(info, finalView);
-            dragView.crossFadeContent(crossFadeDrawable, (int) (duration * 0.8f));
+            int crossFadeDuration = (int) (res.getInteger(R.integer.config_dropAnimMinDuration) * 1.2f);
+            dragView.crossFadeContent(crossFadeDrawable, crossFadeDuration);
         } else if (isWidget && external) {
             scaleXY[0] = scaleXY[1] = Math.min(scaleXY[0], scaleXY[1]);
         }
@@ -10825,6 +10987,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 public void run() {
                     if (finalView != null) {
                         finalView.setVisibility(VISIBLE);
+                        if (isWobbling()) {
+                            wobbleSingleChild(finalView);
+                        }
                     }
                     if (onCompleteRunnable != null) {
                         onCompleteRunnable.run();
@@ -11443,6 +11608,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             animate().translationY(wobbleY)
                     .setDuration(250)
                     .setInterpolator(com.android.app.animation.Interpolators.EMPHASIZED_DECELERATE)
+                    .setUpdateListener(animation -> invalidateGlassSurfaces())
+                    .withEndAction(this::invalidateGlassSurfaces)
                     .start();
             if (mAppLibraryCellLayout != null) {
                 mAppLibraryCellLayout.animate().translationY(-wobbleY)
@@ -11459,6 +11626,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             animate().translationY(0f)
                     .setDuration(200)
                     .setInterpolator(com.android.app.animation.Interpolators.EMPHASIZED_ACCELERATE)
+                    .setUpdateListener(animation -> invalidateGlassSurfaces())
+                    .withEndAction(this::invalidateGlassSurfaces)
                     .start();
             if (mAppLibraryCellLayout != null) {
                 mAppLibraryCellLayout.animate().translationY(0f)
@@ -12675,7 +12844,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
-**Lines**: 498 | **Bytes**: 23466
+**Lines**: 553 | **Bytes**: 25658
 
 ```java
 /*
@@ -12796,6 +12965,14 @@ public class ItemClickHandler {
             }
         }
 
+        if (v instanceof foundation.e.bliss.widgets.calendar.CalendarDayWidgetHostView
+                || v instanceof foundation.e.bliss.widgets.calendar.CalendarMonthWidgetHostView) {
+            if (!workspace.isWobbling()) {
+                onClickCalendarWidget(v.getContext());
+                return;
+            }
+        }
+
         Object tag = v.getTag();
         if (tag instanceof WorkspaceItemInfo) {
             Folder folder = Folder.getOpen(launcher);
@@ -12911,6 +13088,53 @@ public class ItemClickHandler {
             "com.miui.clock"
         };
         for (String pkg : clockPackages) {
+            try {
+                Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(launchIntent);
+                    return;
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    /**
+     * Event handler for the iOS Calendar widgets click.
+     * Launches the user's default Calendar app.
+     */
+    private static void onClickCalendarWidget(Context context) {
+        try {
+            android.net.Uri uri = android.net.Uri.parse("content://com.android.calendar/time/" + System.currentTimeMillis());
+            Intent intent = new Intent(Intent.ACTION_VIEW).setData(uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_APP_CALENDAR);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        String[] calendarPackages = new String[] {
+            "com.google.android.calendar",
+            "com.android.calendar",
+            "com.samsung.android.calendar",
+            "com.coloros.calendar",
+            "com.oplus.calendar",
+            "com.bbk.calendar",
+            "com.vivo.calendar",
+            "com.miui.calendar"
+        };
+        for (String pkg : calendarPackages) {
             try {
                 Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
                 if (launchIntent != null) {
@@ -13421,7 +13645,7 @@ public class ItemLongClickListener {
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
-**Lines**: 107 | **Bytes**: 3647
+**Lines**: 115 | **Bytes**: 3885
 
 ```kotlin
 /*
@@ -13522,12 +13746,20 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
         private lateinit var prefs: LauncherPrefs
 
         @JvmStatic
-        val isSingleLayerMode
-            get() = prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
+        val isSingleLayerMode: Boolean
+            get() = if (Companion::prefs.isInitialized) {
+                prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
+            } else {
+                true
+            }
 
         @JvmStatic
-        val isNotifCountEnabled
-            get() = prefs.get(LauncherPrefs.IS_NOTIF_COUNT_ENABLED)
+        val isNotifCountEnabled: Boolean
+            get() = if (Companion::prefs.isInitialized) {
+                prefs.get(LauncherPrefs.IS_NOTIF_COUNT_ENABLED)
+            } else {
+                true
+            }
     }
 }
 ```
@@ -13537,7 +13769,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 # src/com/android/launcher3/CellLayout.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
-**Lines**: 2276 | **Bytes**: 93961
+**Lines**: 2370 | **Bytes**: 99252
 
 ```java
 /*
@@ -14487,10 +14719,20 @@ public class CellLayout extends ViewGroup {
 
     /**
      * Returns the distance between the given coordinate and the visual center of the given cell.
+     * For squircle app icons (and folders), uses superellipse (n=4) distance metric to ensure
+     * uniform folder creation and move-aside trigger margins across flat edges and corners alike.
      */
     public float getDistanceFromWorkspaceCellVisualCenter(float x, float y, int[] cell) {
         getWorkspaceCellVisualCenter(cell[0], cell[1], mTmpPoint);
-        return (float) Math.hypot(x - mTmpPoint[0], y - mTmpPoint[1]);
+        float dx = x - mTmpPoint[0];
+        float dy = y - mTmpPoint[1];
+        View child = getChildAt(cell[0], cell[1]);
+        if (canCreateFolder(child) || child instanceof com.android.launcher3.folder.FolderIcon) {
+            double dx2 = dx * dx;
+            double dy2 = dy * dy;
+            return (float) Math.sqrt(Math.sqrt(dx2 * dx2 + dy2 * dy2));
+        }
+        return (float) Math.hypot(dx, dy);
     }
 
     private void getWorkspaceCellVisualCenter(int cellX, int cellY, int[] outPoint) {
@@ -14510,13 +14752,35 @@ public class CellLayout extends ViewGroup {
     }
 
     /**
-     * Returns the max distance from the center of a cell that can accept a drop to create a folder.
+     * Returns the max distance from the center of a cell that can accept a drop to create a folder
+     * (or add to an existing folder). Uses a concentric 65% squircle core matching the app icon trigger,
+     * leaving the outer 35% margin for reordering (move aside).
      */
     public float getFolderCreationRadius(int[] targetCell) {
+        View child = getChildAt(targetCell[0], targetCell[1]);
+        if (child instanceof com.android.launcher3.folder.FolderIcon) {
+            com.android.launcher3.folder.FolderIcon fi = (com.android.launcher3.folder.FolderIcon) child;
+            if (fi.getGlassView() != null && fi.getGlassView().getWidth() > 0) {
+                return (fi.getGlassView().getWidth() / 2f) * 0.65f;
+            }
+            DeviceProfile grid = mActivity.getDeviceProfile();
+            if (grid != null && grid.folderIconSizePx > 0) {
+                return (grid.folderIconSizePx / 2f) * 0.65f;
+            }
+            fi.getWorkspaceVisualDragBounds(mTempRect);
+            float folderHalfWidth = mTempRect.width() / 2f;
+            if (folderHalfWidth > 0) {
+                return folderHalfWidth * 0.65f;
+            }
+        } else if (child instanceof DraggableView) {
+            ((DraggableView) child).getWorkspaceVisualDragBounds(mTempRect);
+            float iconHalfWidth = mTempRect.width() / 2f;
+            if (iconHalfWidth > 0) {
+                return iconHalfWidth * 0.65f;
+            }
+        }
         DeviceProfile grid = mActivity.getDeviceProfile();
-        float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
-        // Halfway between reorder radius and icon.
-        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
+        return (grid.iconSizePx / 2f) * 0.65f;
     }
 
     /**
@@ -14525,6 +14789,54 @@ public class CellLayout extends ViewGroup {
     public float getReorderRadius(int[] targetCell, int spanX, int spanY) {
         int[] centerPoint = mTmpPoint;
         getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
+        float radius = calculateReorderRadius(targetCell, spanX, spanY, centerPoint);
+        return radius + getBoundaryReorderRadiusExtension(targetCell, spanX, spanY,
+                centerPoint, radius);
+    }
+
+    /** Returns the outer horizontal edge of the first or last column's reorder rings. */
+    float getBoundaryReorderRingOuterX(boolean firstColumn) {
+        int cellX = firstColumn ? 0 : mCountX - 1;
+        float outerX = firstColumn ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
+        int[] targetCell = new int[]{cellX, 0};
+        int[] centerPoint = mTmpPoint;
+        for (int cellY = 0; cellY < mCountY; cellY++) {
+            // Empty cells have no active reorder ring and must not narrow the bezel zone.
+            if (getChildAt(cellX, cellY) == null) continue;
+            targetCell[1] = cellY;
+            getWorkspaceCellVisualCenter(cellX, cellY, centerPoint);
+            float baseRadius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
+            float radius = baseRadius + getBoundaryReorderRadiusExtension(targetCell, 1, 1,
+                    centerPoint, baseRadius);
+            outerX = firstColumn ? Math.min(outerX, centerPoint[0] - radius)
+                    : Math.max(outerX, centerPoint[0] + radius);
+        }
+        return outerX;
+    }
+
+    /**
+     * Extends reorder hit targets for folderable icons at the workspace edges. The folder hit
+     * radius stays unchanged, preserving a clear center target for folder creation.
+     */
+    private float getBoundaryReorderRadiusExtension(int[] targetCell, int spanX, int spanY,
+            int[] centerPoint, float baseRadius) {
+        if (spanX != 1 || spanY != 1
+                || (targetCell[0] != 0 && targetCell[0] != mCountX - 1)
+                || !canCreateFolder(getChildAt(targetCell[0], targetCell[1]))) {
+            return 0;
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        float desiredExtension = 12f * density;
+        float minimumEdgeInset = 8f * density;
+        float spaceToScreenEdge = targetCell[0] == 0
+                ? centerPoint[0] - baseRadius
+                : getWidth() - centerPoint[0] - baseRadius;
+        return Math.max(0, Math.min(desiredExtension, spaceToScreenEdge - minimumEdgeInset));
+    }
+
+    private float calculateReorderRadius(int[] targetCell, int spanX, int spanY,
+            int[] centerPoint) {
 
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
@@ -14712,6 +15024,13 @@ public class CellLayout extends ViewGroup {
                     float x = (1 - r) * initPreviewOffsetX + r * finalPreviewOffsetX;
                     float y = (1 - r) * initPreviewOffsetY + r * finalPreviewOffsetY;
                     item.getTranslateDelegate().setTranslation(INDEX_REORDER_PREVIEW_OFFSET, x, y);
+                    if (child instanceof com.android.launcher3.folder.FolderIcon) {
+                        foundation.e.bliss.glass.FolderGlassView gv = ((com.android.launcher3.folder.FolderIcon) child).getGlassView();
+                        if (gv != null) gv.invalidate();
+                    } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                        foundation.e.bliss.glass.FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
+                        if (gv != null) gv.invalidate();
+                    }
                 }
             });
             va.addListener(new AnimatorListenerAdapter() {
@@ -14725,6 +15044,13 @@ public class CellLayout extends ViewGroup {
                         item.getTranslateDelegate()
                                 .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
                         child.requestLayout();
+                        if (child instanceof com.android.launcher3.folder.FolderIcon) {
+                            foundation.e.bliss.glass.FolderGlassView gv = ((com.android.launcher3.folder.FolderIcon) child).getGlassView();
+                            if (gv != null) gv.invalidate();
+                        } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                            foundation.e.bliss.glass.FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
+                            if (gv != null) gv.invalidate();
+                        }
                     }
                     if (mReorderAnimators.containsKey(lp)) {
                         mReorderAnimators.remove(lp);
@@ -16218,7 +16544,7 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
 # src/com/android/launcher3/BubbleTextView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/BubbleTextView.java`  
-**Lines**: 1537 | **Bytes**: 59174
+**Lines**: 1550 | **Bytes**: 60500
 
 ```java
 /*
@@ -16864,16 +17190,21 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                 || x > getWidth() - getPaddingRight();
     }
 
-    private final Runnable mResetStayPressedRunnable = this::clearPressedBackground;
+    private final Runnable mResetStayPressedRunnable = () -> {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] WATCHDOG fired (2000ms) at t=" + now + ", mStayPressed=" + mStayPressed);
+        clearPressedBackground("watchdog");
+    };
 
     void setStayPressed(boolean stayPressed) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] setStayPressed(" + stayPressed + ") at t=" + now);
         mStayPressed = stayPressed;
         refreshDrawableState();
         removeCallbacks(mResetStayPressedRunnable);
         if (stayPressed) {
-            // Guarantee that the icon never remains stuck enlarged if remote transition
-            // callbacks are dropped (e.g. OEM ROMs like ColorOS / Realme UI).
-            postDelayed(mResetStayPressedRunnable, 400);
+            // Safety backstop against aborted launches or dropped lifecycle callbacks
+            postDelayed(mResetStayPressedRunnable, 2000);
         }
     }
 
@@ -16883,28 +17214,36 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         if (mIcon != null) {
             mIcon.setVisible(isVisible, false);
         }
-        if (!isVisible && mStayPressed) {
-            clearPressedBackground();
-        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onVisibilityAggregated(" + isVisible + ") at t=" + now + ", mStayPressed=" + mStayPressed);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
-        if (mStayPressed) {
-            clearPressedBackground();
-        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onWindowFocusChanged(" + hasWindowFocus + ") at t=" + now + ", mStayPressed=" + mStayPressed);
+        // Do not clear mStayPressed on window focus loss.
+        // Clearing is managed by Launcher.onStop() and EVENT_RESUMED, with the 2000ms watchdog as safety backstop.
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onDetachedFromWindow at t=" + now + ", mStayPressed=" + mStayPressed);
         if (mStayPressed) {
-            clearPressedBackground();
+            clearPressedBackground("detached");
         }
     }
 
     public void clearPressedBackground() {
+        clearPressedBackground("unspecified");
+    }
+
+    public void clearPressedBackground(String reason) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] clearPressedBackground(" + reason + ") at t=" + now + ", wasStayPressed=" + mStayPressed);
         removeCallbacks(mResetStayPressedRunnable);
         setPressed(false);
         if (mStayPressed) {
@@ -17764,7 +18103,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
-**Lines**: 649 | **Bytes**: 29213
+**Lines**: 715 | **Bytes**: 32346
 
 ```java
 /*
@@ -17933,6 +18272,8 @@ public class ReorderAlgorithm {
 
         solution.intersectingViews = intersectingViews;
 
+        applyBoundaryHorizontalPreference(intersectingViews, occupiedRect, direction, solution);
+
         // First we try to find a solution which respects the push mechanic. That is,
         // we try to find a solution such that no displaced item travels through another item
         // without also displacing that item.
@@ -17954,6 +18295,70 @@ public class ReorderAlgorithm {
             }
         }
         return true;
+    }
+
+    /**
+     * Prefer shifting a displaced boundary item back into the same row when the proposed
+     * configuration contains a real contiguous slot for its full span. A full row keeps the
+     * existing vertical/cross-row fallback.
+     */
+    private void applyBoundaryHorizontalPreference(ArrayList<View> intersectingViews,
+            Rect dropRegion, int[] direction, ItemConfiguration solution) {
+        if (direction[0] == 0) return;
+
+        int countX = mCellLayout.getCountX();
+        for (View displacedView : intersectingViews) {
+            CellAndSpan displaced = solution.map.get(displacedView);
+            if (displaced == null) continue;
+
+            boolean rightBoundaryPush = direction[0] > 0
+                    && displaced.cellX + displaced.spanX == countX;
+            boolean leftBoundaryPush = direction[0] < 0 && displaced.cellX == 0;
+            if (!rightBoundaryPush && !leftBoundaryPush) continue;
+
+            int horizontalShift = rightBoundaryPush ? -1 : 1;
+            int availableCellX = findSameRowSlot(displacedView, displaced, horizontalShift,
+                    dropRegion, solution);
+            if (availableCellX >= 0) {
+                mCellLayout.mTmpOccupied.markCells(displaced, false);
+                displaced.cellX = availableCellX;
+                mCellLayout.mTmpOccupied.markCells(displaced, true);
+                mCellLayout.mTmpOccupied.markCells(dropRegion, true);
+                intersectingViews.remove(displacedView);
+                direction[0] = horizontalShift;
+                direction[1] = 0;
+                return;
+            }
+        }
+    }
+
+    /** Returns a fitting free cell start on the same row, or -1 if none is available. */
+    private int findSameRowSlot(View displacedView, CellAndSpan displaced, int horizontalShift,
+            Rect dropRegion, ItemConfiguration solution) {
+        int firstCellX = horizontalShift < 0 ? 0 : displaced.cellX + 1;
+        int lastCellX = horizontalShift < 0 ? displaced.cellX - 1
+                : mCellLayout.getCountX() - displaced.spanX;
+
+        for (int candidateX = firstCellX; candidateX <= lastCellX; candidateX++) {
+            Rect candidate = new Rect(candidateX, displaced.cellY,
+                    candidateX + displaced.spanX, displaced.cellY + displaced.spanY);
+            if (Rect.intersects(candidate, dropRegion)) continue;
+
+            boolean occupied = false;
+            for (Entry<View, CellAndSpan> entry : solution.map.entrySet()) {
+                View otherView = entry.getKey();
+                if (otherView == displacedView) continue;
+                CellAndSpan other = entry.getValue();
+                Rect otherRect = new Rect(other.cellX, other.cellY,
+                        other.cellX + other.spanX, other.cellY + other.spanY);
+                if (Rect.intersects(candidate, otherRect)) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied) return candidateX;
+        }
+        return -1;
     }
 
     private boolean addViewToTempLocation(View v, Rect rectOccupiedByPotentialDrop, int[] direction,
@@ -18494,7 +18899,7 @@ class ItemConfiguration : CellAndSpan() {
 # src/com/android/launcher3/dragndrop/DragController.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragController.java`  
-**Lines**: 640 | **Bytes**: 23735
+**Lines**: 646 | **Bytes**: 24015
 
 ```java
 /*
@@ -18975,6 +19380,12 @@ public abstract class DragController<T extends ActivityContext>
 
     protected void handleMoveEvent(int x, int y) {
         mDragObject.dragView.move(x, y);
+        if (mActivity instanceof com.android.launcher3.Launcher) {
+            com.android.launcher3.Workspace<?> ws = ((com.android.launcher3.Launcher) mActivity).getWorkspace();
+            if (ws != null) {
+                ws.invalidateGlassSurfaces();
+            }
+        }
 
         // Check if we are hovering over the scroll areas
         mDistanceSinceScroll += Math.hypot(mLastTouch.x - x, mLastTouch.y - y);
@@ -19143,7 +19554,7 @@ public abstract class DragController<T extends ActivityContext>
 # src/com/android/launcher3/dragndrop/DragLayer.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragLayer.java`  
-**Lines**: 498 | **Bytes**: 20395
+**Lines**: 513 | **Bytes**: 21145
 
 ```java
 
@@ -19423,10 +19834,17 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
             Rect destRect = new Rect();
             d.getWorkspaceVisualDragBounds(destRect);
 
-            // In most cases this additional scale factor should be a no-op (1). It mainly accounts
-            // for alternate grids where the source and destination icon sizes are different
-            toScale *= ((1f * destRect.width())
-                    / (dragView.getMeasuredWidth() - dragView.getBlurSizeOutline()));
+            if (child instanceof com.android.launcher3.widget.LauncherAppWidgetHostView) {
+                // Widget drag view was created from child's unscaled measured dimensions;
+                // childScale already accounts for child.getScaleX() (mScaleToFit).
+                // Ensure toScale represents the exact final visual scale without double-counting.
+                toScale = scale;
+            } else {
+                // In most cases this additional scale factor should be a no-op (1). It mainly accounts
+                // for alternate grids where the source and destination icon sizes are different
+                toScale *= ((1f * destRect.width())
+                        / (dragView.getMeasuredWidth() - dragView.getBlurSizeOutline()));
+            }
 
             // This accounts for the offset of the DragView created by scaling it about its
             // center as it animates into place.
@@ -19438,7 +19856,15 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
         }
 
         child.setVisibility(INVISIBLE);
-        Runnable onCompleteRunnable = () -> child.setVisibility(VISIBLE);
+        Runnable onCompleteRunnable = () -> {
+            child.setVisibility(VISIBLE);
+            if (mActivity instanceof Launcher) {
+                Launcher l = (Launcher) mActivity;
+                if (l.getWorkspace() != null && l.getWorkspace().isWobbling()) {
+                    l.getWorkspace().wobbleSingleChild(child);
+                }
+            }
+        };
         animateViewIntoPosition(dragView, toX, toY, 1, toScale, toScale,
                 onCompleteRunnable, ANIMATION_END_DISAPPEAR, duration, anchorView);
     }
@@ -20788,7 +21214,7 @@ public interface DropTarget {
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2070 | **Bytes**: 79885
+**Lines**: 2113 | **Bytes**: 81683
 
 ```java
 /*
@@ -20813,6 +21239,7 @@ import static android.text.TextUtils.isEmpty;
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_EXIT_DELAY;
 import static com.android.launcher3.LauncherState.EDIT_MODE;
 import static com.android.launcher3.LauncherState.NORMAL;
+import static com.android.launcher3.LauncherState.SPRING_LOADED;
 import static com.android.launcher3.compat.AccessibilityManagerCompat.sendCustomAccessibilityEvent;
 import static com.android.launcher3.config.FeatureFlags.ALWAYS_USE_HARDWARE_OPTIMIZATION_FOR_FOLDER_ANIMATIONS;
 import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCHER_FOLDER_LABEL_UPDATED;
@@ -20821,6 +21248,7 @@ import static com.android.launcher3.testing.shared.TestProtocol.FOLDER_OPENED_ME
 import static com.android.launcher3.util.window.RefreshRateTracker.getSingleFrameMs;
 
 import com.android.launcher3.util.DragTrace;
+import com.android.launcher3.util.Themes;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -21026,6 +21454,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     private View mCurrentDragView;
     private boolean mIsExternalDrag;
     private boolean mDragInProgress = false;
+    private boolean mDragListenerRegistered = false;
     private boolean mDeleteFolderOnDropCompleted = false;
     private boolean mSuppressFolderDeletion = false;
     private boolean mItemAddedBackToSelfViaIcon = false;
@@ -21093,7 +21522,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mFolderName = findViewById(R.id.folder_name);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
         mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         mFolderName.setShadowLayer(0, 0, 0, 0);
         mFolderName.setOnBackKeyListener(this);
@@ -21192,12 +21621,12 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 }
             }
 
-            int index = getIconsInReadingOrder().indexOf(v);
-            mEmptyCellRank = (index >= 0) ? index : item.rank;
+            mEmptyCellRank = item.rank;
             mCurrentDragView = v;
+            mDragInProgress = true;
             DragTrace.log("Folder.startDrag item=" + (item != null ? item.title : "null") + " rank=" + mEmptyCellRank);
 
-            mDragController.addDragListener(this);
+            registerDragListener();
             if (options.isAccessibleDrag) {
                 mDragController.addDragListener(new AccessibleDragListenerAdapter(
                         mContent, FolderAccessibilityHelper::new) {
@@ -21244,7 +21673,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             completeDragExit();
         }
         mDragInProgress = false;
-        mDragController.removeDragListener(this);
+        unregisterDragListener();
         if (mContent != null) {
             mContent.cleanupEmptyPages();
         }
@@ -21451,6 +21880,8 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             mFolderName.setText(R.string.untitled_folder);
             mFolderName.setHint(R.string.untitled_folder);
         }
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        mFolderName.setHintTextColor(Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText) ? 0x99000000 : 0x99FFFFFF);
         // In case any children didn't come across during loading, clean up the folder accordingly
         mFolderIcon.post(() -> {
             if (!isDragActive() && getItemCount() <= 1) {
@@ -21562,13 +21993,27 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         // Since this folder opened by another controller, it might not get onDrop or
         // onDropComplete. Perform cleanup once drag-n-drop ends.
-        mDragController.addDragListener(this);
+        registerDragListener();
 
         ArrayList<WorkspaceItemInfo> items = new ArrayList<>(mInfo.contents);
         mEmptyCellRank = items.size();
         items.add(null);    // Add an empty spot at the end
 
         animateOpen(items, mEmptyCellRank / mContent.itemsPerPage());
+    }
+
+    private void registerDragListener() {
+        if (!mDragListenerRegistered) {
+            mDragController.addDragListener(this);
+            mDragListenerRegistered = true;
+        }
+    }
+
+    private void unregisterDragListener() {
+        if (mDragListenerRegistered) {
+            mDragController.removeDragListener(this);
+            mDragListenerRegistered = false;
+        }
     }
 
     /**
@@ -21794,6 +22239,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     private void closeComplete(boolean wasAnimated) {
         Log.d("ICON_TRACE", "closeComplete folder=" + mInfo.id + " mDragInProgress=" + mDragInProgress + " itemCount=" + getItemCount());
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
         unregisterBackCallback();
         // TODO: Clear all active animations.
         BaseDragLayer parent = (BaseDragLayer) getParent();
@@ -21893,6 +22341,21 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         return fallback;
     }
 
+    /**
+     * Returns the dynamic page-flip trigger width at the folder card edges.
+     * Confined strictly within the card's outer gutter padding so it never overlaps
+     * or interferes with the side column icons during rearrangement.
+     */
+    private float getPageFlipTriggerWidth() {
+        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
+                ? mContent.getPaddingLeft()
+                : mActivityContext.getDeviceProfile().folderContentPaddingLeftRight;
+        float density = getResources().getDisplayMetrics().density;
+        // Keep trigger zone confined to the card gutter (up to 16dp / contentPadding)
+        // so it never overlaps the side column icons or blocks cell placement.
+        return Math.max(density * 10f, Math.min(contentPadding, density * 16f));
+    }
+
     @Override
     public void onDragOver(DragObject d) {
         if (mScrollPauseAlarm.alarmPending()) {
@@ -21917,8 +22380,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         float x = r[0];
         int currentPage = mContent.getNextPage();
 
-        float cellOverlap = mContent.getCurrentCellLayout().getCellWidth()
-                * ICON_OVERSCROLL_WIDTH_FACTOR;
+        float cellOverlap = getPageFlipTriggerWidth();
         boolean isOutsideLeftEdge = x < cellOverlap;
         boolean isOutsideRightEdge = x > (getWidth() - cellOverlap);
 
@@ -21938,6 +22400,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             if (mScrollHintDir != SCROLL_NONE) {
                 mContent.clearScrollHint();
                 mScrollHintDir = SCROLL_NONE;
+                if (mContent != null) {
+                    mContent.cleanupEmptyPages();
+                }
             }
         }
     }
@@ -21970,6 +22435,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public void completeDragExit() {
         DragTrace.log("Folder.completeDragExit closing folder=" + mInfo.id + " restoring dock/workspace alphas");
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
         if (mIsOpen) {
             close(true);
             mIsOpen = false;
@@ -22010,7 +22478,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                                 ((PageIndicatorDots) pi).setForcedTranslationY(0f);
                                 ((PageIndicatorDots) pi).resetToIdle();
                             }
-                            workspace.showPageIndicatorAtCurrentScroll();
+                            if (launcher.isInState(SPRING_LOADED)) {
+                                workspace.showPageIndicatorAtCurrentScroll();
+                            }
                         }
                     }
                 }
@@ -22062,6 +22532,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (mScrollHintDir != SCROLL_NONE) {
             mContent.clearScrollHint();
             mScrollHintDir = SCROLL_NONE;
+            if (mContent != null) {
+                mContent.cleanupEmptyPages();
+            }
         }
     }
 
@@ -22103,6 +22576,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
             try (SuppressInfoChanges s = new SuppressInfoChanges()) {
                 mFolderIcon.onDrop(d, true /* itemReturnedOnFailedDrop */);
+                Collections.sort(mInfo.contents, ITEM_POS_COMPARATOR);
             }
         }
 
@@ -22138,16 +22612,22 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void updateItemLocationsInDatabaseBatch(boolean isBind) {
-        if (!isBind && mContent != null) {
-            ArrayList<View> icons = getIconsInReadingOrder();
-            if (icons.size() == mInfo.contents.size()) {
-                mInfo.contents.clear();
-                for (int i = 0; i < icons.size(); i++) {
-                    View iconView = icons.get(i);
-                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
-                        mInfo.contents.add((WorkspaceItemInfo) iconView.getTag());
-                    }
+        if (!isBind && mContent != null && mContent.areViewsBound()) {
+            // Reordering updates the visible child positions, while mInfo.contents can retain
+            // its pre-reorder list order. Persist in the live reading order so a successful
+            // drag out does not write the old folder order back to the database.
+            ArrayList<WorkspaceItemInfo> orderedItems = new ArrayList<>();
+            for (View iconView : getIconsInReadingOrder()) {
+                Object tag = iconView.getTag();
+                if (!(tag instanceof WorkspaceItemInfo)) {
+                    orderedItems.clear();
+                    break;
                 }
+                orderedItems.add((WorkspaceItemInfo) tag);
+            }
+            if (orderedItems.size() == mInfo.contents.size()) {
+                mInfo.contents.clear();
+                mInfo.contents.addAll(orderedItems);
             }
         }
 
@@ -22294,10 +22774,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private boolean isDragActive() {
-        return mDragInProgress || (mLauncherDelegate != null
-                && mLauncherDelegate.getLauncher() != null
-                && mLauncherDelegate.getLauncher().getDragController() != null
-                && mLauncherDelegate.getLauncher().getDragController().isDragging());
+        return mDragInProgress;
     }
 
     // This method keeps track of the first and last item in the folder for the purposes
@@ -22421,21 +22898,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             // Temporarily suppress the listener, as we did all the work already here.
             try (SuppressInfoChanges s = new SuppressInfoChanges()) {
                 mInfo.add(si, mEmptyCellRank, false);
-            }
-
-            ArrayList<View> icons = getIconsInReadingOrder();
-            if (icons.size() == mInfo.contents.size()) {
-                mInfo.contents.clear();
-                FolderGridOrganizer verifier = new FolderGridOrganizer(
-                        mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
-                for (int i = 0; i < icons.size(); i++) {
-                    View iconView = icons.get(i);
-                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
-                        WorkspaceItemInfo itemInfo = (WorkspaceItemInfo) iconView.getTag();
-                        verifier.updateRankAndPos(itemInfo, i);
-                        mInfo.contents.add(itemInfo);
-                    }
-                }
+                Collections.sort(mInfo.contents, ITEM_POS_COMPARATOR);
             }
 
             // We only need to update the locations if it doesn't get handled in
@@ -22552,17 +23015,23 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public List<BubbleTextView> getItemsOnPage(int page) {
         ArrayList<View> allItems = getIconsInReadingOrder();
-        int lastPage = mContent.getPageCount() - 1;
         int totalItemsInFolder = allItems.size();
         int itemsPerPage = mContent.itemsPerPage();
-        int numItemsOnCurrentPage = page == lastPage
-                ? totalItemsInFolder - (itemsPerPage * page)
-                : itemsPerPage;
+        if (page < 0 || itemsPerPage <= 0) {
+            return Collections.emptyList();
+        }
 
-        int startIndex = page * itemsPerPage;
-        int endIndex = Math.min(startIndex + numItemsOnCurrentPage, allItems.size());
+        // The current page can briefly outlive its items while a drag removes the last
+        // shortcuts from it. Derive the range from the live item count and reject a stale
+        // page before calculating an ArrayList capacity.
+        long startIndexLong = (long) page * itemsPerPage;
+        if (startIndexLong >= totalItemsInFolder) {
+            return Collections.emptyList();
+        }
 
-        List<BubbleTextView> itemsOnCurrentPage = new ArrayList<>(numItemsOnCurrentPage);
+        int startIndex = (int) startIndexLong;
+        int endIndex = (int) Math.min(startIndexLong + itemsPerPage, totalItemsInFolder);
+        List<BubbleTextView> itemsOnCurrentPage = new ArrayList<>(endIndex - startIndex);
         for (int i = startIndex; i < endIndex; ++i) {
             itemsOnCurrentPage.add((BubbleTextView) allItems.get(i));
         }
@@ -23545,7 +24014,7 @@ public class FolderAnimationManager {
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 566 | **Bytes**: 21934
+**Lines**: 568 | **Bytes**: 22154
 
 ```java
 /*
@@ -23598,6 +24067,7 @@ import com.android.launcher3.OnAlarmListener;
 import com.android.launcher3.R;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.dragndrop.DragLayer;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.dragndrop.DragOptions;
 import com.android.launcher3.folder.Folder;
 import com.android.launcher3.model.data.ItemInfo;
@@ -23647,7 +24117,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
         mFolderName.setSelectAllOnFocus(false);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        mFolderName.setHintTextColor(Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText) ? 0x99000000 : 0x99FFFFFF);
         mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         mFolderName.setShadowLayer(0, 0, 0, 0);
         mFooterHeight = getResources().getDimensionPixelSize(R.dimen.grid_folder_footer_height);
@@ -24120,7 +24591,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
 # src/com/android/launcher3/folder/FolderIcon.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
-**Lines**: 1073 | **Bytes**: 41923
+**Lines**: 1072 | **Bytes**: 41875
 
 ```java
 /*
@@ -24459,7 +24930,6 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     public void onDragEnter(ItemInfo dragInfo) {
         if (mFolder.isDestroyed() || !willAcceptItem(dragInfo)) return;
-        if (mFolder.isDragInProgress()) return;
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) getLayoutParams();
         CellLayout cl = (CellLayout) getParent().getParent();
 
@@ -25202,7 +25672,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 # src/com/android/launcher3/folder/FolderPagedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
-**Lines**: 743 | **Bytes**: 26112
+**Lines**: 824 | **Bytes**: 30045
 
 ```java
 /*
@@ -25255,6 +25725,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.pageindicators.PageIndicatorDots;
 import com.android.launcher3.util.LauncherBindableItemsContainer.ItemOperator;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.util.Thunk;
 import com.android.launcher3.util.ViewCache;
 import com.android.launcher3.views.ActivityContext;
@@ -25420,6 +25891,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) view.getLayoutParams();
         lp.setCellXY(mOrganizer.getPosForRank(rank));
+        if (item != null) {
+            item.rank = rank;
+        }
         getPageAt(pageNo).addViewToCellLayout(view, -1, item.getViewId(), lp, true);
     }
 
@@ -25436,8 +25910,8 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         textView.setOnFocusChangeListener(mFocusIndicatorHelper);
 
         if (MultiModeController.isSingleLayerMode()) {
-            textView.setTextColor(ContextCompat.getColor(getContext(),
-                    R.color.workspace_text_color_light));
+            int textColor = Themes.getAttrColor(getContext(), R.attr.workspaceTextColor);
+            textView.setTextColor(textColor);
         }
 
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) textView.getLayoutParams();
@@ -25565,6 +26039,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
                 CellLayoutLayoutParams lp = (CellLayoutLayoutParams) v.getLayoutParams();
                 ItemInfo info = (ItemInfo) v.getTag();
                 lp.setCellXY(mOrganizer.getPosForRank(rank));
+                if (info instanceof WorkspaceItemInfo) {
+                    ((WorkspaceItemInfo) info).rank = rank;
+                }
                 currentPage.addViewToCellLayout(v, -1, info.getViewId(), lp, true);
 
                 if (mOrganizer.isItemInPreview(rank) && v instanceof BubbleTextView) {
@@ -25805,7 +26282,81 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         if (target == empty) {
             // No animation
             return;
-        } else if (target > empty) {
+        }
+
+        if (pageE == pageToAnimate && pageT == pageToAnimate) {
+            int emptyRow = pagePosE / mGridCountX;
+            int emptyCol = pagePosE % mGridCountX;
+            int targetRow = pagePosT / mGridCountX;
+            int targetCol = pagePosT % mGridCountX;
+
+            CellLayout page = getPageAt(pageToAnimate);
+            if (page == null) {
+                return;
+            }
+
+            if (emptyRow == targetRow) {
+                // Same row: shift items horizontally within this row only
+                int row = emptyRow;
+                if (emptyCol < targetCol) {
+                    for (int col = emptyCol; col < targetCol; col++) {
+                        int nextCol = col + 1;
+                        View v = page.getChildAt(nextCol, row);
+                        if (v != null) {
+                            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                                v.clearAnimation();
+                            }
+                            if (page.animateChildToPosition(v, col, row,
+                                    REORDER_ANIMATION_DURATION, delay, true, true)) {
+                                delay += delayAmount;
+                                delayAmount *= VIEW_REORDER_DELAY_FACTOR;
+                            }
+                            if (v.getTag() instanceof WorkspaceItemInfo) {
+                                ((WorkspaceItemInfo) v.getTag()).rank = pageToAnimate * maxItemsPerPage + row * mGridCountX + col;
+                            }
+                        }
+                    }
+                } else if (emptyCol > targetCol) {
+                    for (int col = emptyCol; col > targetCol; col--) {
+                        int prevCol = col - 1;
+                        View v = page.getChildAt(prevCol, row);
+                        if (v != null) {
+                            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                                v.clearAnimation();
+                            }
+                            if (page.animateChildToPosition(v, col, row,
+                                    REORDER_ANIMATION_DURATION, delay, true, true)) {
+                                delay += delayAmount;
+                                delayAmount *= VIEW_REORDER_DELAY_FACTOR;
+                            }
+                            if (v.getTag() instanceof WorkspaceItemInfo) {
+                                ((WorkspaceItemInfo) v.getTag()).rank = pageToAnimate * maxItemsPerPage + row * mGridCountX + col;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Different rows: 2D direct swap with the target item (no domino ripple across other rows)
+                View targetView = page.getChildAt(targetCol, targetRow);
+                if (targetView != null) {
+                    if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                        targetView.clearAnimation();
+                    }
+                    page.animateChildToPosition(targetView, emptyCol, emptyRow,
+                            REORDER_ANIMATION_DURATION, 0, true, true);
+                    if (targetView.getTag() instanceof WorkspaceItemInfo) {
+                        ((WorkspaceItemInfo) targetView.getTag()).rank = empty;
+                    }
+                }
+            }
+
+            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                ((GridFolder) mFolder).wobbleFolder(true);
+            }
+            return;
+        }
+
+        if (target > empty) {
             // Items will move backwards to make room for the empty cell.
             direction = 1;
 
@@ -26580,7 +27131,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
-**Lines**: 929 | **Bytes**: 35629
+**Lines**: 1005 | **Bytes**: 38176
 
 ```java
 /*
@@ -26702,6 +27253,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         public void setValue(PageIndicatorDots obj, int alpha) {
             obj.mPaginationAlpha = Utilities.boundToRange(alpha, INVISIBLE_ALPHA, VISIBLE_ALPHA);
             obj.invalidate();
+            obj.invalidateOutline();
             obj.syncPillGlassAlpha();
         }
     };
@@ -26715,8 +27267,11 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     private int mActivePage;
     private int mTotalScroll;
     private boolean mShouldAutoHide = true;
-    private int mPaginationAlpha = VISIBLE_ALPHA;
-    private int mToAlpha = VISIBLE_ALPHA;
+    private int mPaginationAlpha = INVISIBLE_ALPHA;
+    private int mToAlpha = INVISIBLE_ALPHA;
+    private boolean mForceDotsMode = false;
+    private int mLastScrollX = -1;
+    private boolean mIsDarkText = false;
 
     private float mCurrentPosition;
     private float mFinalPosition;
@@ -26726,6 +27281,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     private @Nullable ObjectAnimator mAlphaAnimator;
 
     private float[] mEntryAnimationRadiusFactors;
+    private static final boolean ENABLE_SEARCH_PILL_GLASS = true;
     private SearchPillGlassView mPillGlassView;
     private boolean mTouchDownOnPill = false;
 
@@ -26743,7 +27299,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private final Runnable mHidePaginationRunnable = () -> {
-        android.util.Log.d("PageIndicatorDots", "mHidePaginationRunnable executed, animating to INVISIBLE_ALPHA");
         animatePaginationToAlpha(INVISIBLE_ALPHA);
     };
 
@@ -26760,7 +27315,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
         mPaginationPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaginationPaint.setStyle(Style.FILL);
-        mPaginationPaint.setColor(Themes.getAttrColor(context, R.attr.folderPaginationColor));
+        updateThemeColors();
         mDotRadius = getResources().getDimension(R.dimen.page_indicator_dot_size) / 2;
         mCircleGap = DOT_GAP_FACTOR * mDotRadius;
         setOutlineProvider(new MyOutlineProver());
@@ -26772,6 +27327,35 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPillIconPaint.setStyle(Style.STROKE);
         mPillIconPaint.setStrokeCap(Paint.Cap.ROUND);
         mPillTextPaint.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+    }
+
+    private void updateThemeColors() {
+        mIsDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        if (mPaginationPaint != null) {
+            boolean useWhiteInGlassPill = isWorkspaceIndicator()
+                    && MultiModeController.isSingleLayerMode();
+            mPaginationPaint.setColor((!useWhiteInGlassPill && mIsDarkText)
+                    ? Color.BLACK : Color.WHITE);
+        }
+    }
+
+    @Override
+    protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        updateThemeColors();
+        invalidate();
+    }
+
+    public void setForceDotsMode(boolean forceDots) {
+        if (mForceDotsMode != forceDots) {
+            mForceDotsMode = forceDots;
+            mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+            if (forceDots) {
+                animatePaginationToAlpha(VISIBLE_ALPHA);
+            } else if (mShouldAutoHide) {
+                animatePaginationToAlpha(INVISIBLE_ALPHA);
+            }
+        }
     }
 
     private float getPillWidth() {
@@ -26807,7 +27391,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (mPillRect.contains(event.getX(), event.getY())) {
+                    if (!mForceDotsMode && mPillRect.contains(event.getX(), event.getY())) {
                         mTouchDownOnPill = true;
                         return true;
                     }
@@ -26835,11 +27419,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                         mTouchDownOnPill = false;
                         if (mPillRect.contains(event.getX(), event.getY())) {
                             Launcher launcher = Launcher.getLauncher(getContext());
-                            if (launcher != null && launcher.getWorkspace() != null && !launcher.getWorkspace().isWobbling()) {
+                            if (launcher != null && launcher.getWorkspace() != null
+                                    && !launcher.getWorkspace().isWobbling() && !mForceDotsMode) {
+                                android.util.Log.d("SearchPillDebug", "PageIndicatorDots: Opening Spotlight search");
                                 com.android.launcher3.applibrary.view.SpotlightSearchOverlay.show(launcher);
                                 playSoundEffect(android.view.SoundEffectConstants.CLICK);
                                 return true;
                             }
+                            return true; // Consume touch so it never leaks to underlying views
                         }
                     }
                     return false;
@@ -26854,26 +27441,35 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setScroll(int currentScroll, int totalScroll) {
-        android.util.Log.d("PageIndicatorDots", "setScroll: current=" + currentScroll + " total=" + totalScroll
-                + " numPages=" + mNumPages + " shouldAutoHide=" + mShouldAutoHide);
         if (currentScroll == 0 && totalScroll == 0) {
             CURRENT_POSITION.set(this, (float) mActivePage);
-            if (mShouldAutoHide) {
+            mLastScrollX = currentScroll;
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
             return;
         }
 
         if (mNumPages <= 1) {
+            mLastScrollX = currentScroll;
             return;
         }
 
         // Skip scroll update during binding. We will update it when binding completes.
         if (mIsScrollPaused) {
+            mLastScrollX = currentScroll;
             return;
         }
 
-        if (mShouldAutoHide) {
+        boolean isFirstScrollSeed = (mLastScrollX == -1);
+        boolean scrollPositionChanged = !isFirstScrollSeed && (mLastScrollX != currentScroll);
+        mLastScrollX = currentScroll;
+
+        if (mForceDotsMode) {
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+        } else if (scrollPositionChanged && mShouldAutoHide) {
             animatePaginationToAlpha(VISIBLE_ALPHA);
         }
 
@@ -26893,19 +27489,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll < pageToLeftScroll + scrollThreshold) {
             // scroll is within the left page's threshold
             animateToPosition(pageToLeft);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else if (currentScroll > pageToRightScroll - scrollThreshold) {
             // scroll is far enough from left page to go to the right page
             animateToPosition(pageToLeft + 1);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else {
             // scroll is between left and right page
             animateToPosition(pageToLeft + SHIFT_PER_ANIMATION);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
             }
         }
@@ -26913,11 +27509,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
-        android.util.Log.d("PageIndicatorDots", "setShouldAutoHide called: " + shouldAutoHide);
         mShouldAutoHide = shouldAutoHide;
-        if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA) {
+        if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA && !mForceDotsMode) {
             hideAfterDelay();
-        } else if (!shouldAutoHide) {
+        } else if (!shouldAutoHide || mForceDotsMode) {
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
         }
     }
@@ -26928,14 +27523,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void hideAfterDelay() {
-        android.util.Log.d("PageIndicatorDots", "hideAfterDelay() called, posting runnable for " + PAGINATION_FADE_DELAY + "ms");
+        if (mForceDotsMode) {
+            return;
+        }
         mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
         mDelayedPaginationFadeHandler.postDelayed(mHidePaginationRunnable, PAGINATION_FADE_DELAY);
     }
 
     private void animatePaginationToAlpha(int alpha) {
-        android.util.Log.d("PageIndicatorDots", "animatePaginationToAlpha() targetAlpha=" + alpha
-                + " currentAlpha=" + mPaginationAlpha + " mToAlpha=" + mToAlpha);
         if (alpha == mToAlpha && mPaginationAlpha == alpha) {
             // Ignore the new animation if it is going to the same alpha as the current animation.
             return;
@@ -26955,7 +27550,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mAlphaAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                android.util.Log.d("PageIndicatorDots", "mAlphaAnimator ended, alpha=" + mPaginationAlpha);
                 mAlphaAnimator = null;
             }
         });
@@ -27110,6 +27704,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             mToAlpha = INVISIBLE_ALPHA;
         }
         attachPillGlassIfNeeded();
+        post(this::syncPillGlassBounds);
     }
 
     public void resetToIdle() {
@@ -27119,8 +27714,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                 mAlphaAnimator.cancel();
                 mAlphaAnimator = null;
             }
+            if (mAnimator != null) {
+                mAnimator.cancel();
+                mAnimator = null;
+            }
+            mForceDotsMode = false;
             mPaginationAlpha = INVISIBLE_ALPHA;
             mToAlpha = INVISIBLE_ALPHA;
+            syncPillGlassBounds();
             syncPillGlassAlpha();
             invalidate();
         }
@@ -27142,6 +27743,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void attachPillGlassIfNeeded() {
+        if (!ENABLE_SEARCH_PILL_GLASS) {
+            return;
+        }
         if (!isWorkspaceIndicator() || !MultiModeController.isSingleLayerMode()) {
             return;
         }
@@ -27156,11 +27760,28 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
         mPillGlassView = new SearchPillGlassView(getContext());
+        float density = getResources().getDisplayMetrics().density;
+        int pillWidth = Math.round(getPillWidth());
+        int pillHeight = Math.round(26f * density);
+        mPillGlassView.setCornerRadius(pillHeight / 2f);
+        View proxy = parent.findViewById(R.id.glass_wallpaper_proxy);
+        if (proxy == null) {
+            proxy = parent.findViewById(R.id.glass_source);
+        }
+        if (proxy != null) {
+            mPillGlassView.setBackdropSource(proxy);
+        }
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(pillWidth, pillHeight);
+        lp.gravity = Gravity.TOP | Gravity.LEFT;
+        int pillLeftInSelf = (getWidth() > 0 ? (getWidth() - pillWidth) / 2 : 0);
+        int pillTopInSelf = (getHeight() > 0 ? (getHeight() - pillHeight) / 2 : 0);
+        lp.leftMargin = getLeft() + pillLeftInSelf;
+        lp.topMargin = getTop() + pillTopInSelf;
         int myIndex = parent.indexOfChild(this);
         if (myIndex >= 0) {
-            parent.addView(mPillGlassView, myIndex);
+            parent.addView(mPillGlassView, myIndex, lp);
         } else {
-            parent.addView(mPillGlassView);
+            parent.addView(mPillGlassView, lp);
         }
         syncPillGlassBounds();
         syncPillGlassAlpha();
@@ -27185,44 +27806,46 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        if (mPillGlassView != null) {
-            float density = getResources().getDisplayMetrics().density;
-            int pillWidth = (int) getPillWidth();
-            int pillHeight = (int) (26f * density);
-            int pillLeftInSelf = (getWidth() - pillWidth) / 2;
-            int pillTopInSelf = (getHeight() - pillHeight) / 2;
-            int pillX = left + pillLeftInSelf;
-            int pillY = top + pillTopInSelf;
-            mPillGlassView.layout(pillX, pillY, pillX + pillWidth, pillY + pillHeight);
-            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
-            if (lp == null || lp.leftMargin != pillX || lp.topMargin != pillY
-                    || lp.width != pillWidth || lp.height != pillHeight) {
-                post(this::syncPillGlassBounds);
-            }
-        }
+        layoutPillGlassView();
     }
 
-    private void syncPillGlassBounds() {
-        if (mPillGlassView == null) return;
+    private void layoutPillGlassView() {
+        if (mPillGlassView == null || getWidth() <= 0 || getHeight() <= 0) return;
         float density = getResources().getDisplayMetrics().density;
-        int pillWidth = (int) getPillWidth();
-        int pillHeight = (int) (26f * density);
+        int pillWidth = Math.round(getPillWidth());
+        int pillHeight = Math.round(26f * density);
         int pillLeftInSelf = (getWidth() - pillWidth) / 2;
         int pillTopInSelf = (getHeight() - pillHeight) / 2;
         int pillX = getLeft() + pillLeftInSelf;
         int pillY = getTop() + pillTopInSelf;
 
+        if (mPillGlassView.getLeft() == pillX && mPillGlassView.getTop() == pillY
+                && mPillGlassView.getWidth() == pillWidth && mPillGlassView.getHeight() == pillHeight) {
+            return;
+        }
+
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
         if (lp != null) {
-            if (lp.leftMargin != pillX || lp.topMargin != pillY
-                    || lp.width != pillWidth || lp.height != pillHeight) {
-                lp.width = pillWidth;
-                lp.height = pillHeight;
-                lp.gravity = Gravity.TOP | Gravity.LEFT;
-                lp.leftMargin = pillX;
-                lp.topMargin = pillY;
-                mPillGlassView.setLayoutParams(lp);
-            }
+            lp.gravity = Gravity.TOP | Gravity.LEFT;
+            lp.leftMargin = pillX;
+            lp.topMargin = pillY;
+            lp.width = pillWidth;
+            lp.height = pillHeight;
+        }
+
+        mPillGlassView.measure(
+                MeasureSpec.makeMeasureSpec(pillWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(pillHeight, MeasureSpec.EXACTLY));
+        mPillGlassView.layout(pillX, pillY, pillX + pillWidth, pillY + pillHeight);
+        mPillGlassView.invalidate();
+    }
+
+    private void syncPillGlassBounds() {
+        if (mPillGlassView == null || getWidth() <= 0 || getHeight() <= 0) return;
+        layoutPillGlassView();
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
+        if (lp != null) {
+            mPillGlassView.setLayoutParams(lp);
         }
     }
 
@@ -27233,12 +27856,16 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
         float effectiveAlpha = getAlpha();
-        if (effectiveAlpha <= 0.02f || getVisibility() != View.VISIBLE) {
-            mPillGlassView.setVisibility(View.GONE);
+        if (effectiveAlpha <= 0f || getVisibility() != View.VISIBLE) {
+            mPillGlassView.setVisibility(View.INVISIBLE);
         } else {
             mPillGlassView.setVisibility(View.VISIBLE);
             mPillGlassView.setAlpha(effectiveAlpha);
         }
+    }
+
+    public SearchPillGlassView getPillGlassView() {
+        return mPillGlassView;
     }
 
     @Override
@@ -27263,22 +27890,18 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         boolean isSingleLayerWorkspace = isWorkspaceIndicator()
                 && MultiModeController.isSingleLayerMode();
 
-        // Two-phase non-overlapping transition between "Search" label and page dots:
-        // [0..115]: "Search" fades out (1 -> 0), dots alpha = 0
-        // [115..140]: clean transition gap (neither drawn on top of the glass pill)
-        // [140..255]: dots fade in (0 -> 255), "Search" alpha = 0
+        // Zero-deadband gamma-corrected crossfade at midpoint 128:
         float pillAlpha;
         int dotAlpha;
         if (isSingleLayerWorkspace) {
-            if (mPaginationAlpha <= 115) {
-                pillAlpha = (115f - mPaginationAlpha) / 115f;
-                dotAlpha = 0;
-            } else if (mPaginationAlpha < 140) {
-                pillAlpha = 0f;
+            if (mPaginationAlpha < 128) {
+                float t = (128f - mPaginationAlpha) / 128f;
+                pillAlpha = (float) Math.sqrt(t);
                 dotAlpha = 0;
             } else {
+                float t = (mPaginationAlpha - 128f) / 127f;
                 pillAlpha = 0f;
-                dotAlpha = Math.round(((mPaginationAlpha - 140f) / 115f) * PAGE_INDICATOR_ALPHA);
+                dotAlpha = Math.round((float) Math.sqrt(t) * PAGE_INDICATOR_ALPHA);
             }
         } else {
             pillAlpha = 0f;
@@ -27292,21 +27915,20 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
 
-        // Draw all page indicators;
+        // Draw all page indicators
         float circleGap = getEffectiveCircleGap();
-        float startX = ((float) getWidth() / 2)
-                - (circleGap * (((float) mNumPages - 1) / 2))
+        float startX = ((float) getWidth() / 2f)
+                - (circleGap * (((float) mNumPages - 1) / 2f))
                 - mDotRadius;
 
         float x = startX + mDotRadius;
-        float y = getHeight() / 2;
+        float y = getHeight() / 2f;
 
-        if (isSingleLayerWorkspace) {
-            mPaginationPaint.setColor(Color.WHITE);
-        }
+        // Always use bright WHITE dots inside the Single Layer glass pill
+        mPaginationPaint.setColor((!isSingleLayerWorkspace && mIsDarkText)
+                ? Color.BLACK : Color.WHITE);
 
         if (mEntryAnimationRadiusFactors != null) {
-            // During entry animation, only draw the circles
             if (mIsRtl) {
                 x = getWidth() - x;
                 circleGap = -circleGap;
@@ -27320,21 +27942,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                 x += circleGap;
             }
         } else {
-            // Here we draw the dots
             mPaginationPaint.setAlpha((int) (dotAlpha * DOT_ALPHA_FRACTION));
             for (int i = 0; i < mNumPages; i++) {
                 canvas.drawCircle(x, y, mDotRadius, mPaginationPaint);
                 x += circleGap;
             }
 
-            // Here we draw the current page indicator
             mPaginationPaint.setAlpha(dotAlpha);
             canvas.drawRoundRect(getActiveRect(), mDotRadius, mDotRadius, mPaginationPaint);
         }
     }
 
     private void drawSearchPillIfSingleLayer(Canvas canvas, float pillAlpha) {
-        if (!isWorkspaceIndicator() || !foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+        if (!isWorkspaceIndicator() || !MultiModeController.isSingleLayerMode()) {
             return;
         }
         float density = getResources().getDisplayMetrics().density;
@@ -27349,31 +27969,34 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
 
-        // Glass frosted pill background - only draw fallback if glass view is absent/hidden
-        if (mPillGlassView == null || mPillGlassView.getVisibility() != View.VISIBLE) {
-            mPillBgPaint.setColor(android.graphics.Color.argb((int) (55 * viewAlpha), 255, 255, 255));
-            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillBgPaint);
-        }
+        // Always use white foreground inside the frosted glass pill
+        int pillFgRgb = 255;
 
-        // Rim stroke - always visible around the pill
-        mPillStrokePaint.setStrokeWidth(0.8f * density);
-        mPillStrokePaint.setColor(android.graphics.Color.argb((int) (40 * viewAlpha), 255, 255, 255));
-        canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillStrokePaint);
+        // Draw fallback frosted background and rim only when SearchPillGlassView is absent/not ready
+        boolean glassReady = (mPillGlassView != null && mPillGlassView.getParent() != null
+                && mPillGlassView.getWidth() > 0 && mPillGlassView.getHeight() > 0
+                && mPillGlassView.getVisibility() == View.VISIBLE);
+        if (!glassReady) {
+            mPillBgPaint.setColor(Color.argb((int) (55 * viewAlpha), 255, 255, 255));
+            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillBgPaint);
+
+            mPillStrokePaint.setStrokeWidth(0.8f * density);
+            mPillStrokePaint.setColor(Color.argb((int) (40 * viewAlpha), 255, 255, 255));
+            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillStrokePaint);
+        }
 
         float contentAlpha = pillAlpha * viewAlpha;
         if (contentAlpha <= 0.02f) {
             return;
         }
 
-        // "Search" text paint (measured first so icon + text can be centered together as one unit)
         String label = "Search";
-        mPillTextPaint.setColor(android.graphics.Color.argb((int) (225 * contentAlpha), 255, 255, 255));
+        mPillTextPaint.setColor(Color.argb((int) (235 * contentAlpha), pillFgRgb, pillFgRgb, pillFgRgb));
         mPillTextPaint.setTextSize(12f * density);
         float textWidth = mPillTextPaint.measureText(label);
 
-        // Magnifying glass icon dimensions
         mPillIconPaint.setStrokeWidth(1.4f * density);
-        mPillIconPaint.setColor(android.graphics.Color.argb((int) (225 * contentAlpha), 255, 255, 255));
+        mPillIconPaint.setColor(Color.argb((int) (235 * contentAlpha), pillFgRgb, pillFgRgb, pillFgRgb));
 
         float iconRadius = 3.5f * density;
         float handleExtent = iconRadius * 0.707f + 3f * density;
@@ -27437,28 +28060,31 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
         @Override
         public void getOutline(View view, Outline outline) {
-            if (mEntryAnimationRadiusFactors == null) {
-                RectF activeRect = getActiveRect();
-                outline.setRoundRect(
-                        (int) activeRect.left,
-                        (int) activeRect.top,
-                        (int) activeRect.right,
-                        (int) activeRect.bottom,
-                        mDotRadius
-                );
-            }
+            float density = getResources().getDisplayMetrics().density;
+            float pillWidth = getPillWidth();
+            float pillHeight = 26f * density;
+            float pillLeft = (getWidth() - pillWidth) / 2f;
+            float pillTop = (getHeight() - pillHeight) / 2f;
+            outline.setRoundRect(
+                    (int) pillLeft,
+                    (int) pillTop,
+                    (int) (pillLeft + pillWidth),
+                    (int) (pillTop + pillHeight),
+                    pillHeight / 2f
+            );
         }
     }
 
     @Override
     public void setTranslationY(float translationY) {
-    }
-
-    public void setForcedTranslationY(float translationY) {
         super.setTranslationY(translationY);
         if (mPillGlassView != null) {
             mPillGlassView.setTranslationY(translationY);
         }
+    }
+
+    public void setForcedTranslationY(float translationY) {
+        setTranslationY(translationY);
     }
 
     /**
@@ -27509,6 +28135,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             lp.bottomMargin = insets.bottom + grid.hotseatBarSizePx + gapPx;
         }
         setLayoutParams(lp);
+        post(this::syncPillGlassBounds);
     }
 }
 ```
@@ -27810,7 +28437,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
-**Lines**: 346 | **Bytes**: 13331
+**Lines**: 359 | **Bytes**: 13877
 
 ```kotlin
 /*
@@ -28108,16 +28735,29 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val anim = ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
             duration = 250
             interpolator = Interpolators.EMPHASIZED_DECELERATE
+            addUpdateListener { invalidateGlassButtons() }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     if (currentAnimator === animation) {
                         currentAnimator = null
                     }
+                    invalidateGlassButtons()
                 }
             })
             start()
         }
         currentAnimator = anim
+    }
+
+    fun invalidateGlassButtons() {
+        for (i in 0 until editButtonContainer.childCount) {
+            (editButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
+                ?.invalidate()
+        }
+        for (i in 0 until doneButtonContainer.childCount) {
+            (doneButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
+                ?.invalidate()
+        }
     }
 
     fun hide() {
@@ -28165,7 +28805,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
-**Lines**: 395 | **Bytes**: 14194
+**Lines**: 395 | **Bytes**: 14198
 
 ```kotlin
 /*
@@ -28307,10 +28947,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         rowsColumn.addView(createDivider(density, dividerHeight))
 
-        // --- Row 3: Edit Wallpaper ---
+        // --- Row 3: Change Wallpaper ---
         val rowEditWallpaper = createRow(
             iconRes = R.drawable.ic_edit_wallpaper,
-            label = "Edit Wallpaper",
+            label = "Change Wallpaper",
             density = density,
             rowHeight = rowHeight
         ) {
@@ -29442,7 +30082,7 @@ class SuggestionsProvider(private val context: Context) {
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
-**Lines**: 758 | **Bytes**: 29342
+**Lines**: 803 | **Bytes**: 31034
 
 ```java
 /*
@@ -29467,6 +30107,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
@@ -29502,6 +30143,7 @@ import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.model.data.AppInfo;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.BaseDragLayer;
 
 import java.util.Arrays;
@@ -29517,6 +30159,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
     private final Launcher mLauncher;
     private AppLibraryOverlayGlassView mBackdropGlass;
+    private AppLibrarySearchGlassView mSearchGlass;
     private View mSearchContent;
     private View mSearchRow;
     private ExtendedEditText mSearchInput;
@@ -29554,6 +30197,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     protected void onFinishInflate() {
         super.onFinishInflate();
         mBackdropGlass = findViewById(R.id.spotlight_search_backdrop_glass);
+        mSearchGlass = findViewById(R.id.spotlight_search_glass);
         mSearchContent = findViewById(R.id.spotlight_search_content);
         mSearchRow = findViewById(R.id.spotlight_search_row);
         mSearchInput = findViewById(R.id.spotlight_search_input);
@@ -29644,6 +30288,30 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         if (mBackdropGlass != null) {
             mBackdropGlass.setOnClickListener(v -> close(true));
         }
+
+        applyThemeColors();
+    }
+
+    private void applyThemeColors() {
+        if (mLauncher == null) return;
+        boolean isDarkText = Themes.getAttrBoolean(mLauncher, R.attr.isWorkspaceDarkText);
+        int textColor = Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor);
+        int hintColor = isDarkText ? 0x99000000 : 0x99FFFFFF;
+
+        if (mSearchInput != null) {
+            mSearchInput.setTextColor(textColor);
+            mSearchInput.setHintTextColor(hintColor);
+        }
+        if (mSearchCancel != null) {
+            mSearchCancel.setTextColor(textColor);
+        }
+        ImageView searchIcon = findViewById(R.id.spotlight_search_icon);
+        if (searchIcon != null) {
+            searchIcon.setImageTintList(ColorStateList.valueOf(textColor));
+        }
+        if (mSearchClear != null) {
+            mSearchClear.setImageTintList(ColorStateList.valueOf(hintColor));
+        }
     }
 
     public static SpotlightSearchOverlay getOpen(Launcher launcher) {
@@ -29679,6 +30347,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         overlay.mIsOpen = true;
         overlay.mIsClosing = false;
         overlay.mKeyboardHiddenForClose = false;
+        com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(true);
         launcher.getDragLayer().addView(overlay);
         launcher.onDragLayerHierarchyChanged();
 
@@ -29689,15 +30358,16 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             overlay.mSearchAdapter.setApps(Arrays.asList(apps));
         }
 
-        // Animate entrance
+        // Animate entrance and immediately request soft keyboard
+        overlay.showKeyboard();
         overlay.post(overlay::animateOpen);
         return overlay;
     }
 
     public void prepareForEntrance() {
+        applyThemeColors();
         final float density = getResources().getDisplayMetrics().density;
         final float contentSlidePx = 40f * density;
-        final float rowSlidePx = -24f * density;
         final float cancelSlidePx = 20f * density;
 
         setAlpha(0f);
@@ -29711,9 +30381,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             mSearchContent.setScaleY(1f);
         }
         if (mSearchRow != null) {
-            mSearchRow.setTranslationY(rowSlidePx);
-            mSearchRow.setScaleX(0.92f);
-            mSearchRow.setScaleY(0.92f);
+            mSearchRow.setTranslationY(0f);
+            mSearchRow.setScaleX(1f);
+            mSearchRow.setScaleY(1f);
             mSearchRow.setAlpha(0f);
         }
         if (mSearchCancel != null) {
@@ -29741,7 +30411,6 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
         final float density = getResources().getDisplayMetrics().density;
         final float contentSlidePx = 40f * density;
-        final float rowSlidePx = -24f * density;
         final float cancelSlidePx = 20f * density;
 
         prepareForEntrance();
@@ -29758,10 +30427,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                 mBackdropGlass.setAlpha(progress);
             }
             if (mSearchRow != null) {
-                mSearchRow.setTranslationY((1f - progress) * rowSlidePx);
-                float rowScale = 0.92f + 0.08f * progress;
-                mSearchRow.setScaleX(rowScale);
-                mSearchRow.setScaleY(rowScale);
+                mSearchRow.setTranslationY(0f);
+                mSearchRow.setScaleX(1f);
+                mSearchRow.setScaleY(1f);
                 mSearchRow.setAlpha(Math.min(1f, progress * 1.5f));
             }
             if (mSearchCancel != null) {
@@ -29822,9 +30490,13 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                     ws.setScaleX(0.95f);
                     ws.setScaleY(0.95f);
                 }
+                if (mSearchGlass != null) {
+                    mSearchGlass.invalidate();
+                }
                 showKeyboard();
             }
         });
+        showKeyboard();
         mOpenCloseAnimator.start();
     }
 
@@ -29836,15 +30508,22 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mKeyboardHiddenForClose = false;
         if (mSearchInput != null) {
             mSearchInput.requestFocus();
-            postDelayed(() -> {
-                if (mIsClosing || !mIsOpen) {
-                    return;
-                }
-                InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
-                }
-            }, 60);
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
+            }
+        }
+    }
+
+    public void hideKeyboardOnScroll() {
+        if (!mIsOpen || mIsClosing) {
+            return;
+        }
+        if (mSearchInput != null) {
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(mSearchInput.getWindowToken(), 0);
+            }
         }
     }
 
@@ -29869,6 +30548,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         }
         mIsClosing = true;
         mIsOpen = false;
+        com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
         hideKeyboard();
 
@@ -29974,6 +30654,12 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             mSearchContent.setTranslationY(0f);
             mSearchContent.setScaleX(1f);
             mSearchContent.setScaleY(1f);
+        }
+        if (mSearchRow != null) {
+            mSearchRow.setAlpha(1f);
+            mSearchRow.setTranslationY(0f);
+            mSearchRow.setScaleX(1f);
+            mSearchRow.setScaleY(1f);
         }
         if (ws != null) {
             ws.setScaleX(1f);
@@ -30104,7 +30790,6 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             checkRootImeVisibility();
             return v.onApplyWindowInsets(insets);
         });
-        getViewTreeObserver().addOnGlobalLayoutListener(mImeLayoutListener);
 
         if (mLauncher != null && mLauncher.getAppsView() != null
                 && mLauncher.getAppsView().getAppsStore() != null) {
@@ -30169,7 +30854,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                 && mLauncher.getAppsView().getAppsStore() != null) {
             mLauncher.getAppsView().getAppsStore().removeUpdateListener(mAppsUpdateListener);
         }
-        getViewTreeObserver().removeOnGlobalLayoutListener(mImeLayoutListener);
+        com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
     }
 
@@ -30209,41 +30894,55 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 # src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
-**Lines**: 358 | **Bytes**: 13139
+**Lines**: 285 | **Bytes**: 9833
 
 ```java
 package com.android.launcher3.applibrary.view;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.ViewConfiguration;
-import android.view.animation.PathInterpolator;
+import android.view.View;
 import android.widget.EdgeEffect;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+/**
+ * App Library grid with iOS-style rubber-band overscroll.
+ *
+ * RecyclerView keeps full ownership of touch handling, nested scrolling, recycling, and fling.
+ * A custom EdgeEffect translates child item views with the iOS rubber-band curve on pull,
+ * and rebounds / absorbs fling velocity using a critically damped SpringAnimation.
+ */
 public class AppLibraryDashboardView extends RecyclerView {
 
     public interface OnOverscrollListener {
         void onOverscrollChanged(float translationY);
     }
 
+    // Rubber band: offset = d * (1 - 1 / (x * C / d + 1))
+    // x = raw finger pull in px, d = RUBBER_RANGE * view height (asymptote).
+    private static final float RUBBER_C = 0.55f;
+    private static final float RUBBER_RANGE = 0.5f;
+
+    // Critically damped spring (DAMPING_RATIO_NO_BOUNCY): natural deceleration without oscillation.
+    private static final float SPRING_STIFFNESS = 280f;
+
+    // Spring start velocity (px/s) per px/s of fling velocity absorbed at an edge.
+    private static final float ABSORB_SCALE = 0.35f;
+
     private OnOverscrollListener mOverscrollListener;
-    private float mLastTouchY = 0f;
-    private float mInitialDownY = 0f;
+    // Signed translation currently applied to every child (+ at top edge, - at bottom edge).
     private float mOverscrollY = 0f;
-    private boolean mIsOverscrolling = false;
-    private int mTouchSlop;
-    private ValueAnimator mReboundAnimator;
+    private ElasticEdgeEffect mTopEdgeEffect;
+    private ElasticEdgeEffect mBottomEdgeEffect;
 
     public AppLibraryDashboardView(@NonNull Context context) {
         this(context, null);
@@ -30253,7 +30952,8 @@ public class AppLibraryDashboardView extends RecyclerView {
         this(context, attrs, 0);
     }
 
-    public AppLibraryDashboardView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public AppLibraryDashboardView(@NonNull Context context, @Nullable AttributeSet attrs,
+            int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
@@ -30263,139 +30963,44 @@ public class AppLibraryDashboardView extends RecyclerView {
     }
 
     private void init() {
-        // iOS App Library uses a 2-column grid
-        GridLayoutManager layoutManager =
-                new GridLayoutManager(getContext(), 2);
-        setLayoutManager(layoutManager);
+        setLayoutManager(new GridLayoutManager(getContext(), 2));
         setHasFixedSize(true);
         setItemViewCacheSize(14);
-
-        // Disable default item animations for a smoother iOS-like feel when updating
         setItemAnimator(null);
         setClipToPadding(false);
         setClipChildren(false);
 
-        // Enable EdgeEffect and drive physical translationY rubber-band stretch via custom EdgeEffectFactory
+        // Required so RecyclerView routes boundary touches to the EdgeEffect
         setOverScrollMode(OVER_SCROLL_ALWAYS);
+
         setEdgeEffectFactory(new EdgeEffectFactory() {
             @NonNull
             @Override
             protected EdgeEffect createEdgeEffect(@NonNull RecyclerView view, int direction) {
-                return new DashboardRubberBandEdgeEffect(getContext(), direction);
+                if (direction == DIRECTION_TOP) {
+                    mTopEdgeEffect = new ElasticEdgeEffect(view.getContext(), 1f);
+                    return mTopEdgeEffect;
+                } else if (direction == DIRECTION_BOTTOM) {
+                    mBottomEdgeEffect = new ElasticEdgeEffect(view.getContext(), -1f);
+                    return mBottomEdgeEffect;
+                }
+                return super.createEdgeEffect(view, direction);
             }
         });
-        mTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
-    }
 
-    private class DashboardRubberBandEdgeEffect extends EdgeEffect {
-        private final int mDirection;
-
-        DashboardRubberBandEdgeEffect(Context context, int direction) {
-            super(context);
-            mDirection = direction;
-        }
-
-        @Override
-        public void onPull(float deltaDistance) {
-            handlePull(deltaDistance);
-        }
-
-        @Override
-        public void onPull(float deltaDistance, float displacement) {
-            handlePull(deltaDistance);
-        }
-
-        @Override
-        public float onPullDistance(float deltaDistance, float displacement) {
-            handlePull(deltaDistance);
-            return deltaDistance;
-        }
-
-        @Override
-        public float getDistance() {
-            if (getHeight() <= 0) return 0f;
-            if (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) {
-                return mOverscrollY < -0.5f ? -mOverscrollY / getHeight() : 0f;
-            } else if (mDirection == EdgeEffectFactory.DIRECTION_TOP) {
-                return mOverscrollY > 0.5f ? mOverscrollY / getHeight() : 0f;
-            }
-            return 0f;
-        }
-
-        private void handlePull(float deltaDistance) {
-            if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                mReboundAnimator.cancel();
-            }
-            mIsOverscrolling = true;
-            if (getParent() != null) {
-                getParent().requestDisallowInterceptTouchEvent(true);
+        // Children bound/attached mid-overscroll must pick up the current offset, and
+        // recycled children must not carry a stale one into their next bind.
+        addOnChildAttachStateChangeListener(new OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                view.setTranslationY(mOverscrollY);
             }
 
-            // deltaDistance is relative to view height.
-            // DIRECTION_BOTTOM: dragging up beyond bottom -> negative translationY
-            // DIRECTION_TOP: dragging down beyond top -> positive translationY
-            float sign = (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) ? -1f : 1f;
-            float pixelDelta = deltaDistance * (getHeight() > 0 ? getHeight() : 1000f);
-
-            float maxPull = getHeight() > 0 ? getHeight() * 0.45f : 600f;
-            float progress = Math.min(1f, Math.abs(mOverscrollY) / maxPull);
-            float damping = 0.42f * (1f - progress * 0.65f);
-
-            // If pulling back toward zero, reduce resistance
-            if ((mOverscrollY > 0 && sign * deltaDistance < 0) || (mOverscrollY < 0 && sign * deltaDistance > 0)) {
-                damping = 0.75f;
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+                view.setTranslationY(0f);
             }
-
-            mOverscrollY += sign * pixelDelta * damping;
-
-            // Clamp to zero if crossing back
-            if (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM && mOverscrollY > 0f) {
-                mOverscrollY = 0f;
-            } else if (mDirection == EdgeEffectFactory.DIRECTION_TOP && mOverscrollY < 0f) {
-                mOverscrollY = 0f;
-            }
-
-            setTranslationY(mOverscrollY);
-            notifyOverscroll(mOverscrollY);
-        }
-
-        @Override
-        public void onRelease() {
-            if (getParent() != null) {
-                getParent().requestDisallowInterceptTouchEvent(false);
-            }
-            boolean isOverscrolledInMyDirection = (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM && mOverscrollY < -0.5f)
-                    || (mDirection == EdgeEffectFactory.DIRECTION_TOP && mOverscrollY > 0.5f);
-            if (isOverscrolledInMyDirection) {
-                animateRebound();
-            } else if (Math.abs(mOverscrollY) <= 0.5f) {
-                mIsOverscrolling = false;
-            }
-        }
-
-        @Override
-        public void onAbsorb(int velocity) {
-            int signedVelocity = (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) ? velocity : -velocity;
-            playFlingBounce(signedVelocity);
-        }
-
-        @Override
-        public boolean draw(Canvas canvas) {
-            return false;
-        }
-
-        @Override
-        public boolean isFinished() {
-            if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                return false;
-            }
-            if (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) {
-                return mOverscrollY >= -0.5f;
-            } else if (mDirection == EdgeEffectFactory.DIRECTION_TOP) {
-                return mOverscrollY <= 0.5f;
-            }
-            return true;
-        }
+        });
     }
 
     @Override
@@ -30406,166 +31011,173 @@ public class AppLibraryDashboardView extends RecyclerView {
         }
     }
 
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent e) {
-        if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
-            if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                mReboundAnimator.cancel();
-            }
-            mLastTouchY = e.getY();
-            mInitialDownY = e.getY();
-            if (Math.abs(mOverscrollY) > 0.5f) {
-                mIsOverscrolling = true;
-                return true;
-            }
+    /**
+     * Translate the CHILDREN, not this view. RecyclerView reads touch coordinates in its own
+     * local space, so translating the RecyclerView itself feeds motion back into the
+     * next dy and distorts effective drag.
+     */
+    private void applyOverscroll(float translationY) {
+        mOverscrollY = translationY;
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            getChildAt(i).setTranslationY(translationY);
         }
-        return super.onInterceptTouchEvent(e);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent e) {
-        int action = e.getActionMasked();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                    mReboundAnimator.cancel();
-                }
-                mLastTouchY = e.getY();
-                mInitialDownY = e.getY();
-                break;
-
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                if (getParent() != null) {
-                    getParent().requestDisallowInterceptTouchEvent(false);
-                }
-                if (Math.abs(mOverscrollY) > 0.5f && (mReboundAnimator == null || !mReboundAnimator.isRunning())) {
-                    animateRebound();
-                }
-                break;
-        }
-        return super.onTouchEvent(e);
-    }
-
-    @Override
-    public boolean fling(int velocityX, int velocityY) {
-        boolean canScroll = canScrollVertically(velocityY > 0 ? 1 : -1);
-        if (!canScroll && Math.abs(velocityY) > 250) {
-            playFlingBounce(velocityY);
-            return true;
-        }
-        return super.fling(velocityX, velocityY);
-    }
-
-    private void playFlingBounce(int velocityY) {
-        if (Math.abs(velocityY) < 250) return;
-        if (mReboundAnimator != null) {
-            mReboundAnimator.cancel();
-        }
-        mIsOverscrolling = true;
-        float density = getResources().getDisplayMetrics().density;
-        float maxBounce = 55f * density;
-        float distance = Math.min(Math.abs(velocityY) * 0.045f, maxBounce);
-        float peakY = (velocityY > 0 ? -1f : 1f) * distance;
-        float startY = mOverscrollY;
-
-        // Phase 1: Decelerate outward to peak (iOS spring compression)
-        ValueAnimator outwardAnim = ValueAnimator.ofFloat(startY, peakY);
-        mReboundAnimator = outwardAnim;
-        outwardAnim.setDuration(160);
-        outwardAnim.setInterpolator(new android.view.animation.DecelerateInterpolator(1.2f));
-        outwardAnim.addUpdateListener(a -> {
-            mOverscrollY = (float) a.getAnimatedValue();
-            setTranslationY(mOverscrollY);
-            notifyOverscroll(mOverscrollY);
-        });
-        outwardAnim.addListener(new AnimatorListenerAdapter() {
-            private boolean mCancelled = false;
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                mCancelled = true;
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (mCancelled) return;
-                // Phase 2: Spring back from peak to 0 (smooth iOS recovery)
-                ValueAnimator reboundAnim = ValueAnimator.ofFloat(peakY, 0f);
-                mReboundAnimator = reboundAnim;
-                reboundAnim.setDuration(280);
-                reboundAnim.setInterpolator(new PathInterpolator(0.25f, 1f, 0.5f, 1f));
-                reboundAnim.addUpdateListener(ra -> {
-                    mOverscrollY = (float) ra.getAnimatedValue();
-                    setTranslationY(mOverscrollY);
-                    notifyOverscroll(mOverscrollY);
-                });
-                reboundAnim.addListener(new AnimatorListenerAdapter() {
-                    private boolean mReboundCancelled = false;
-
-                    @Override
-                    public void onAnimationCancel(Animator animation) {
-                        mReboundCancelled = true;
-                    }
-
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (!mReboundCancelled) {
-                            mOverscrollY = 0f;
-                            setTranslationY(0f);
-                            notifyOverscroll(0f);
-                            mIsOverscrolling = false;
-                        }
-                    }
-                });
-                reboundAnim.start();
-            }
-        });
-        outwardAnim.start();
-    }
-
-    private void animateRebound() {
-        if (mReboundAnimator != null) {
-            mReboundAnimator.cancel();
-        }
-        mReboundAnimator = ValueAnimator.ofFloat(mOverscrollY, 0f);
-        mReboundAnimator.setDuration(280);
-        mReboundAnimator.setInterpolator(new PathInterpolator(0.25f, 1f, 0.5f, 1f));
-        mReboundAnimator.addUpdateListener(animation -> {
-            mOverscrollY = (float) animation.getAnimatedValue();
-            setTranslationY(mOverscrollY);
-            notifyOverscroll(mOverscrollY);
-        });
-        mReboundAnimator.addListener(new AnimatorListenerAdapter() {
-            private boolean mCancelled = false;
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                mCancelled = true;
-            }
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (!mCancelled) {
-                    mOverscrollY = 0f;
-                    setTranslationY(0f);
-                    notifyOverscroll(0f);
-                    mIsOverscrolling = false;
-                }
-            }
-        });
-        mReboundAnimator.start();
-    }
-
-    private void notifyOverscroll(float translationY) {
         if (mOverscrollListener != null) {
             mOverscrollListener.onOverscrollChanged(translationY);
         }
     }
 
+    private void claimTouch() {
+        if (getParent() != null) {
+            getParent().requestDisallowInterceptTouchEvent(true);
+        }
+    }
+
+    private void releaseTouch() {
+        if (getParent() != null) {
+            getParent().requestDisallowInterceptTouchEvent(false);
+        }
+    }
+
+    private float pullRangePx() {
+        return getHeight() * RUBBER_RANGE;
+    }
+
+    /** Raw finger pull (px) -> displayed offset (px). */
+    private float toOffset(float rawPx) {
+        float d = pullRangePx();
+        if (d <= 0f) return 0f;
+        return d * (1f - 1f / (rawPx * RUBBER_C / d + 1f));
+    }
+
+    /** Displayed offset (px) -> raw finger pull (px). Inverse of toOffset. */
+    private float toRawPull(float offsetPx) {
+        float d = pullRangePx();
+        if (d <= 0f) return 0f;
+        float y = Math.min(offsetPx, d * 0.999f);
+        return y / (RUBBER_C * (1f - y / d));
+    }
+
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        if (mReboundAnimator != null) {
-            mReboundAnimator.cancel();
+        if (mTopEdgeEffect != null) {
+            mTopEdgeEffect.finish();
+        }
+        if (mBottomEdgeEffect != null) {
+            mBottomEdgeEffect.finish();
+        }
+    }
+
+    /**
+     * One instance per vertical edge. Single source of truth is mOffsetPx (>= 0); both the
+     * drag path and the spring write it through setOffset().
+     */
+    private class ElasticEdgeEffect extends EdgeEffect {
+        private final float mSign;
+        private float mOffsetPx = 0f;
+        private SpringAnimation mSpring;
+
+        ElasticEdgeEffect(Context context, float sign) {
+            super(context);
+            mSign = sign;
+        }
+
+        @Override
+        public void onPull(float deltaDistance) {
+            onPullDistance(deltaDistance, 0.5f);
+        }
+
+        @Override
+        public void onPull(float deltaDistance, float displacement) {
+            onPullDistance(deltaDistance, displacement);
+        }
+
+        /**
+         * deltaDistance is finger movement / view height; positive = further into overscroll,
+         * negative = retracting. Returns how much of it was consumed; RecyclerView scrolls
+         * the content with whatever is left (handoff when pull crosses zero).
+         * deltaDistance == 0 is RecyclerView's "finger went down on an active effect" call:
+         * stopping the spring here is what makes the rebound interruptible.
+         */
+        @Override
+        public float onPullDistance(float deltaDistance, float displacement) {
+            stopSpring();
+            float h = getHeight();
+            if (h <= 0f) return 0f;
+            if (deltaDistance > 0f) {
+                claimTouch();
+            }
+
+            float oldRaw = toRawPull(mOffsetPx);
+            float newRaw = Math.max(0f, oldRaw + deltaDistance * h);
+            setOffset(toOffset(newRaw));
+            return (newRaw - oldRaw) / h;
+        }
+
+        /** RecyclerView tests this against 0, so it remains non-zero during spring motion. */
+        @Override
+        public float getDistance() {
+            float h = getHeight();
+            return h > 0f ? mOffsetPx / h : 0f;
+        }
+
+        @Override
+        public void onRelease() {
+            if (mOffsetPx > 0f) {
+                startSpring(0f);
+            }
+        }
+
+        /** Fling reached the edge with this much velocity (px/s, positive). */
+        @Override
+        public void onAbsorb(int velocity) {
+            startSpring(velocity * ABSORB_SCALE);
+        }
+
+        @Override
+        public boolean isFinished() {
+            return mOffsetPx == 0f && (mSpring == null || !mSpring.isRunning());
+        }
+
+        @Override
+        public void finish() {
+            stopSpring();
+            setOffset(0f);
+            releaseTouch();
+        }
+
+        @Override
+        public boolean draw(Canvas canvas) {
+            return false; // Visual motion is handled by child view translation
+        }
+
+        private void setOffset(float px) {
+            mOffsetPx = px;
+            applyOverscroll(mSign * px);
+        }
+
+        private void stopSpring() {
+            if (mSpring != null && mSpring.isRunning()) {
+                mSpring.cancel();
+            }
+        }
+
+        private void startSpring(float velocity) {
+            stopSpring();
+
+            mSpring = new SpringAnimation(new FloatValueHolder(mOffsetPx));
+            mSpring.setSpring(new SpringForce(0f)
+                    .setStiffness(SPRING_STIFFNESS)
+                    .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+            mSpring.setStartVelocity(velocity);
+            mSpring.addUpdateListener((anim, value, vel) -> setOffset(Math.max(0f, value)));
+            mSpring.addEndListener((anim, canceled, value, vel) -> {
+                if (!canceled) {
+                    setOffset(0f);
+                    releaseTouch();
+                }
+            });
+            mSpring.start();
         }
     }
 }
@@ -30576,7 +31188,7 @@ public class AppLibraryDashboardView extends RecyclerView {
 # src/com/android/launcher3/applibrary/view/AppLibraryPage.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
-**Lines**: 1033 | **Bytes**: 44770
+**Lines**: 1245 | **Bytes**: 55464
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -30585,6 +31197,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.graphics.Rect;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -30602,6 +31215,7 @@ import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.window.BackEvent;
 import android.window.OnBackAnimationCallback;
@@ -30613,6 +31227,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -30621,6 +31236,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.applibrary.model.AppLibraryModel;
 import com.android.launcher3.model.data.AppInfo;
@@ -30640,6 +31256,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private View mSearchContainer;
     private View mSearchContent;
     private ExtendedEditText mSearchInput;
+    private TextView mSearchQueryOverlay;
     private TextView mSearchCancel;
     private AppLibraryDashboardView mDashboardView;
     private AppLibraryDashboardAdapter mDashboardAdapter;
@@ -30653,7 +31270,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private AppLibrarySearchGlassView mSearchGlass;
 
     private AppLibraryModel mAppLibraryModel;
-    private int mSavedScrollY = 0;
+    private int mSavedScrollPos = RecyclerView.NO_POSITION;
+    private int mSavedScrollOffset = 0;
+    private final int[] mTempWindowPos = new int[2];
+    private static int sDoseResponseOverride = -1;
     private boolean mInSearchMode = false;
     private boolean mIsClearingSearch = false;
     private boolean mAppsStoreListenerRegistered = false;
@@ -30696,6 +31316,8 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mDashboardView != null) mDashboardView.animate().cancel();
         if (mSearchResultsContainer != null) mSearchResultsContainer.animate().cancel();
         if (mSearchBackdrop != null) mSearchBackdrop.animate().cancel();
+        if (mSearchQueryOverlay != null) mSearchQueryOverlay.animate().cancel();
+        if (mSearchInput != null) mSearchInput.animate().cancel();
     }
 
     /** The one place that guarantees the category grid is shown. */
@@ -30712,9 +31334,20 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     private void applySearchSteadyState() {
         if (mSearchContent != null) mSearchContent.setTranslationX(0f);
 
-        ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-        mSearchCancel.setLayoutParams(lp);
+        if (mSearchQueryOverlay != null) {
+            mSearchQueryOverlay.setVisibility(GONE);
+            mSearchQueryOverlay.setText("");
+        }
+        if (mSearchInput != null) {
+            mSearchInput.setAlpha(1f);
+        }
+
+        if (mSearchCancel.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+            mlp.setMarginEnd(0);
+            mlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mSearchCancel.setLayoutParams(mlp);
+        }
         mSearchCancel.setVisibility(VISIBLE);
         mSearchCancel.setAlpha(1f);
         mSearchCancel.setTranslationX(0f);
@@ -30741,6 +31374,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mSearchResultsView != null) {
             mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
         }
+        if (mSearchQueryOverlay != null) {
+            mSearchQueryOverlay.setVisibility(GONE);
+            mSearchQueryOverlay.setText("");
+        }
         mIsClearingSearch = true;
         try {
             mSearchInput.setText("");
@@ -30748,12 +31385,20 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         } finally {
             mIsClearingSearch = false;
         }
+        if (mSearchInput != null) {
+            mSearchInput.setAlpha(1f);
+            boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
+        }
         if (mSearchContent != null) mSearchContent.setTranslationX(targetShift);
 
         mSearchCancel.setVisibility(GONE);
-        ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-        lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-        mSearchCancel.setLayoutParams(lp);
+        if (mSearchCancel.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+            ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+            mlp.setMarginEnd(0);
+            mlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+            mSearchCancel.setLayoutParams(mlp);
+        }
         mSearchCancel.setAlpha(1f);
         mSearchCancel.setTranslationX(0f);
 
@@ -30798,7 +31443,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mSearchContainer = findViewById(R.id.app_library_search_container);
         mSearchContent = findViewById(R.id.app_library_search_content);
         mSearchInput = findViewById(R.id.app_library_search_input);
+        mSearchQueryOverlay = findViewById(R.id.app_library_search_query_overlay);
         mSearchCancel = findViewById(R.id.app_library_search_cancel);
+        android.widget.ImageView searchIcon = findViewById(R.id.app_library_search_icon);
+        boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        int textColor = Themes.getAttrColor(getContext(), R.attr.workspaceTextColor);
+        if (mSearchInput != null) {
+            mSearchInput.setTextColor(textColor);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
+        }
+        if (mSearchCancel != null) {
+            mSearchCancel.setTextColor(textColor);
+        }
+        if (searchIcon != null) {
+            searchIcon.setImageTintList(android.content.res.ColorStateList.valueOf(isDarkText ? 0x99000000 : 0xD9FFFFFF));
+        }
         mSearchGlass = findViewById(R.id.app_library_search_glass);
         mDashboardView = findViewById(R.id.app_library_dashboard);
         mSearchResultsContainer = findViewById(R.id.app_library_search_results_container);
@@ -30820,13 +31479,39 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             mDashboardAdapter.updateData(initialData);
         }
         mDashboardView.setOnOverscrollListener(translationY -> {
-            invalidateGlassSurfaces();
+            invalidateCategoryPodsOnly();
+        });
+        mDashboardView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                if (dy != 0) {
+                    invalidateCategoryPodsOnly();
+                }
+            }
+
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    invalidateCategoryPodsOnly();
+                }
+            }
         });
 
         Launcher launcher = Launcher.getLauncher(getContext());
         mSearchAdapter = new AppLibrarySearchAdapter(launcher);
         mSearchResultsView.setLayoutManager(new LinearLayoutManager(getContext()));
+        mSearchResultsView.setHasFixedSize(true);
+        mSearchResultsView.setItemViewCacheSize(20);
+        mSearchResultsView.setItemAnimator(null);
         mSearchResultsView.setAdapter(mSearchAdapter);
+        mSearchResultsView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    hideKeyboard();
+                }
+            }
+        });
 
         ViewCompat.setOnApplyWindowInsetsListener(mSearchResultsView, (v, windowInsets) -> {
             handleImeVisibility(windowInsets.isVisible(WindowInsetsCompat.Type.ime()));
@@ -30978,12 +31663,29 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mInSearchMode) return;
         mInSearchMode = true;
         cancelViewAnimators();
+        if (mSearchQueryOverlay != null) {
+            mSearchQueryOverlay.setVisibility(GONE);
+            mSearchQueryOverlay.setText("");
+        }
+        if (mSearchInput != null) {
+            mSearchInput.setAlpha(1f);
+        }
         if (mSearchResultsView != null) mSearchResultsView.setLayerType(LAYER_TYPE_NONE, null);
         refreshApps();
         registerBackCallback();
+        showKeyboard();
         Launcher launcher = Launcher.getLauncher(getContext());
         if (launcher != null) {
             launcher.onDragLayerHierarchyChanged();
+            boolean isDarkText = Themes.getAttrBoolean(launcher, R.attr.isWorkspaceDarkText);
+            int textColor = Themes.getAttrColor(launcher, R.attr.workspaceTextColor);
+            mSearchInput.setTextColor(textColor);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0x99FFFFFF);
+            mSearchCancel.setTextColor(textColor);
+            ImageView searchIcon = findViewById(R.id.app_library_search_icon);
+            if (searchIcon != null) {
+                searchIcon.setImageTintList(ColorStateList.valueOf(textColor));
+            }
         }
 
         if (mTransitionAnimator != null) {
@@ -31009,15 +31711,19 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mSearchAdapter.filter(query);
         mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
 
-        // Prepare Cancel Button
+        // Prepare Cancel Button with negative end margin so search bar starts at 100% full width
         mSearchCancel.setVisibility(VISIBLE);
         mSearchCancel.measure(
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                 View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         final int targetCancelWidth = Math.max(mSearchCancel.getMeasuredWidth(),
                 (int) (60 * getResources().getDisplayMetrics().density));
+        final ViewGroup.MarginLayoutParams cancelEnterLp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+        cancelEnterLp.width = targetCancelWidth;
+        cancelEnterLp.setMarginEnd(-targetCancelWidth);
+        mSearchCancel.setLayoutParams(cancelEnterLp);
         mSearchCancel.setAlpha(0f);
-        mSearchCancel.setTranslationX(targetCancelWidth * 0.4f);
+        mSearchCancel.setTranslationX(0f);
 
         // Setup Dashboard for exit transition (scale downwards from top)
         mDashboardView.setVisibility(VISIBLE);
@@ -31037,9 +31743,10 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 mSearchContent.setTranslationX((1f - progress) * startShift);
             }
 
-            // Cancel button alpha and translation
+            // Cancel button alpha and margin animation (smoothly shrinks search bar length)
             mSearchCancel.setAlpha(progress);
-            mSearchCancel.setTranslationX((1f - progress) * (targetCancelWidth * 0.4f));
+            cancelEnterLp.setMarginEnd((int) (-targetCancelWidth * (1f - progress)));
+            mSearchCancel.setLayoutParams(cancelEnterLp);
 
             // Search Backdrop fade-in
             if (mSearchBackdrop != null) {
@@ -31097,18 +31804,31 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             cancelViewAnimators();     // kill any onBackCancelled / onBackProgressed leftovers
 
             final float targetShift = calculateSearchCenteredShift();
+            final String outgoingQuery = mSearchInput != null && mSearchInput.getText() != null
+                    ? mSearchInput.getText().toString() : "";
+            final boolean hasOutgoingQuery = !outgoingQuery.isEmpty();
 
             if (!animate) {
+                if (mSearchQueryOverlay != null) {
+                    mSearchQueryOverlay.setVisibility(GONE);
+                    mSearchQueryOverlay.setText("");
+                }
                 mSearchInput.setText("");
+                mSearchInput.setAlpha(1f);
                 mSearchInput.clearFocus();
+                boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+                mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
                 if (mSearchContent != null) {
                     mSearchContent.setTranslationX(targetShift);
                 }
 
                 mSearchCancel.setVisibility(GONE);
-                ViewGroup.LayoutParams lp = mSearchCancel.getLayoutParams();
-                lp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
-                mSearchCancel.setLayoutParams(lp);
+                if (mSearchCancel.getLayoutParams() instanceof ViewGroup.MarginLayoutParams) {
+                    ViewGroup.MarginLayoutParams mlp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+                    mlp.setMarginEnd(0);
+                    mlp.width = ViewGroup.LayoutParams.WRAP_CONTENT;
+                    mSearchCancel.setLayoutParams(mlp);
+                }
                 mSearchCancel.setAlpha(1f);
                 mSearchCancel.setTranslationX(0f);
 
@@ -31123,6 +31843,34 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
                 settleDashboardVisible();
                 return;
+            }
+
+            // Prepare cross-fade: outgoing typed query starts on overlay at 100% alpha;
+            // mSearchInput is immediately cleared to reveal the centered "App Library" hint,
+            // starting at 0% alpha and cross-fading smoothly in.
+            if (hasOutgoingQuery && mSearchQueryOverlay != null) {
+                mSearchQueryOverlay.setText(outgoingQuery);
+                mSearchQueryOverlay.setTextColor(mSearchInput.getCurrentTextColor());
+                mSearchQueryOverlay.setPaddingRelative(
+                        mSearchInput.getPaddingStart(),
+                        mSearchInput.getPaddingTop(),
+                        mSearchInput.getPaddingEnd(),
+                        mSearchInput.getPaddingBottom()
+                );
+                mSearchQueryOverlay.setTypeface(mSearchInput.getTypeface());
+                mSearchQueryOverlay.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, mSearchInput.getTextSize());
+                mSearchQueryOverlay.setVisibility(VISIBLE);
+                mSearchQueryOverlay.setAlpha(1f);
+            }
+
+            mSearchInput.setText("");
+            mSearchInput.clearFocus();
+            boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+            mSearchInput.setHintTextColor(isDarkText ? 0x99000000 : 0xD9FFFFFF);
+            if (hasOutgoingQuery) {
+                mSearchInput.setAlpha(0f);
+            } else {
+                mSearchInput.setAlpha(1f);
             }
 
             if (mSearchResultsView != null) {
@@ -31151,6 +31899,12 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                     ? mSearchCancel.getWidth()
                     : (int) (60 * getResources().getDisplayMetrics().density);
 
+            final ViewGroup.MarginLayoutParams cancelExitLp = (ViewGroup.MarginLayoutParams) mSearchCancel.getLayoutParams();
+            cancelExitLp.width = startCancelWidth;
+            cancelExitLp.setMarginEnd(0);
+            mSearchCancel.setLayoutParams(cancelExitLp);
+            mSearchCancel.setTranslationX(0f);
+
             final float exitStartShift = mSearchContent != null ? mSearchContent.getTranslationX() : 0f;
 
             mTransitionAnimator = ValueAnimator.ofFloat(0f, 1f);
@@ -31160,14 +31914,15 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 float p = (float) animation.getAnimatedValue();
                 float inv = 1f - p;
 
+                // Smoothly expand search bar length back to full width by collapsing Cancel button margin
+                cancelExitLp.setMarginEnd((int) (-startCancelWidth * p));
+                mSearchCancel.setLayoutParams(cancelExitLp);
+                mSearchCancel.setAlpha(inv);
+
                 // Search Content slide back to center
                 if (mSearchContent != null) {
                     mSearchContent.setTranslationX(exitStartShift + (targetShift - exitStartShift) * p);
                 }
-
-                // Cancel button alpha and translation
-                mSearchCancel.setAlpha(inv);
-                mSearchCancel.setTranslationX(p * (startCancelWidth * 0.4f));
 
                 // Search Backdrop fade-out
                 if (mSearchBackdrop != null) {
@@ -31183,10 +31938,25 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
                 // Search Results fade-out
                 mSearchResultsContainer.setAlpha(startResultsAlpha * inv);
                 mSearchResultsContainer.setTranslationY(startResultsTy + (slideOffsetPx - startResultsTy) * p);
+
+                // Smooth cross-fade between outgoing typed query and incoming "App Library" hint
+                if (hasOutgoingQuery && mSearchQueryOverlay != null) {
+                    float queryAlpha = Math.max(0f, 1f - p * 1.8f);
+                    mSearchQueryOverlay.setAlpha(queryAlpha);
+                    float hintAlpha = Math.min(1f, p * 1.5f);
+                    mSearchInput.setAlpha(hintAlpha);
+                }
             });
             mTransitionAnimator.addListener(new EndOnlyListener() {
                 @Override
                 void onFinished() {
+                    if (mSearchQueryOverlay != null) {
+                        mSearchQueryOverlay.setVisibility(GONE);
+                        mSearchQueryOverlay.setText("");
+                    }
+                    if (mSearchInput != null) {
+                        mSearchInput.setAlpha(1f);
+                    }
                     applyBrowseSteadyState(targetShift);
                 }
             });
@@ -31367,6 +32137,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     private void checkRootImeVisibility() {
+        if (!mInSearchMode) return;
         WindowInsets rootInsets = getRootWindowInsets();
         if (rootInsets != null) {
             handleImeVisibility(rootInsets.isVisible(WindowInsets.Type.ime()));
@@ -31418,17 +32189,92 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     }
 
     public void saveScrollState() {
-        if (mDashboardView != null) {
-            mSavedScrollY = mDashboardView.computeVerticalScrollOffset();
+        if (mDashboardView != null && mDashboardView.getLayoutManager() instanceof GridLayoutManager) {
+            GridLayoutManager glm = (GridLayoutManager) mDashboardView.getLayoutManager();
+            mSavedScrollPos = glm.findFirstVisibleItemPosition();
+            View firstChild = glm.findViewByPosition(mSavedScrollPos);
+            mSavedScrollOffset = (firstChild != null) ? (firstChild.getTop() - mDashboardView.getPaddingTop()) : 0;
         }
     }
 
     public void restoreScrollState() {
-        if (mDashboardView != null) {
-            int currentOffset = mDashboardView.computeVerticalScrollOffset();
-            int deltaY = mSavedScrollY - currentOffset;
-            if (deltaY != 0) {
-                mDashboardView.scrollBy(0, deltaY);
+        if (mDashboardView != null && mSavedScrollPos != RecyclerView.NO_POSITION
+                && mDashboardView.getLayoutManager() instanceof GridLayoutManager) {
+            GridLayoutManager glm = (GridLayoutManager) mDashboardView.getLayoutManager();
+            glm.scrollToPositionWithOffset(mSavedScrollPos, mSavedScrollOffset);
+        }
+    }
+
+    public static void setDoseResponseOverride(int count) {
+        sDoseResponseOverride = count;
+    }
+
+    public void invalidateCategoryPodsOnly() {
+        if (mDashboardView == null) return;
+
+        Launcher launcher = Launcher.getLauncher(getContext());
+        int windowWidth = launcher != null ? launcher.getDeviceProfile().widthPx : getWidth();
+        int windowHeight = launcher != null ? launcher.getDeviceProfile().heightPx : getHeight();
+        int margin = (int) (120 * getResources().getDisplayMetrics().density / 2.75f); // ~120px pre-reveal lead margin
+
+        mDashboardView.getLocationInWindow(mTempWindowPos);
+        int dashX = mTempWindowPos[0];
+        int dashY = mTempWindowPos[1];
+
+        int podCountLimit = sDoseResponseOverride;
+        int activePodCount = 0;
+
+        for (int i = 0; i < mDashboardView.getChildCount(); i++) {
+            View child = mDashboardView.getChildAt(i);
+            if (child == null) continue;
+
+            CategoryCardView cardView = null;
+            if (child instanceof CategoryCardView) {
+                cardView = (CategoryCardView) child;
+            } else if (child instanceof ViewGroup) {
+                ViewGroup vg = (ViewGroup) child;
+                for (int j = 0; j < vg.getChildCount(); j++) {
+                    View subChild = vg.getChildAt(j);
+                    if (subChild instanceof CategoryCardView) {
+                        cardView = (CategoryCardView) subChild;
+                        break;
+                    }
+                }
+            }
+            if (cardView == null) continue;
+
+            AppLibraryCategoryGlassView gv = cardView.getGlassView();
+            if (gv == null) continue;
+
+            int x = dashX + child.getLeft() + (int) child.getTranslationX();
+            int y = dashY + child.getTop() + (int) child.getTranslationY();
+            int w = cardView.getWidth();
+            int h = cardView.getHeight();
+            if (w == 0 || h == 0) continue;
+
+            int dashW = mDashboardView.getWidth() > 0 ? mDashboardView.getWidth() : windowWidth;
+            boolean isHorizontallyVisible = (dashX + dashW > -margin) && (dashX < windowWidth + margin);
+            boolean isVerticallyVisible = (y + h > -margin) && (y < windowHeight + margin);
+            boolean shouldBeVisible = (isHorizontallyVisible && isVerticallyVisible);
+
+            if (podCountLimit >= 0) {
+                if (activePodCount >= podCountLimit) {
+                    shouldBeVisible = false;
+                }
+            }
+
+            if (shouldBeVisible) {
+                activePodCount++;
+                if (gv.getVisibility() != View.VISIBLE) {
+                    gv.setVisibility(View.VISIBLE);
+                    gv.invalidate(); // warm backdrop immediately upon reveal
+                } else {
+                    gv.invalidate();
+                }
+            } else {
+                if (gv.getVisibility() != View.INVISIBLE) {
+                    gv.setVisibility(View.INVISIBLE);
+                }
             }
         }
     }
@@ -31440,28 +32286,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mSearchBackdropGlass != null && mSearchBackdropGlass.getVisibility() == VISIBLE) {
             mSearchBackdropGlass.invalidate();
         }
-        if (mDashboardView != null) {
-            for (int i = 0; i < mDashboardView.getChildCount(); i++) {
-                View child = mDashboardView.getChildAt(i);
-                if (child instanceof CategoryCardView) {
-                    AppLibraryCategoryGlassView gv = ((CategoryCardView) child).getGlassView();
-                    if (gv != null) {
-                        gv.invalidate();
-                    }
-                } else if (child instanceof ViewGroup) {
-                    ViewGroup vg = (ViewGroup) child;
-                    for (int j = 0; j < vg.getChildCount(); j++) {
-                        View subChild = vg.getChildAt(j);
-                        if (subChild instanceof CategoryCardView) {
-                            AppLibraryCategoryGlassView gv = ((CategoryCardView) subChild).getGlassView();
-                            if (gv != null) {
-                                gv.invalidate();
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        invalidateCategoryPodsOnly();
     }
 
     public void updateNotificationDots(Predicate<PackageUserKey> updatedDots) {
@@ -31535,10 +32360,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
     private float calculateSearchCenteredShift() {
         if (mSearchContainer == null || mSearchInput == null) return 0f;
-        int containerWidth = mSearchContainer.getWidth();
-        if (containerWidth <= 0 && mSearchRow != null) {
-            containerWidth = mSearchRow.getWidth();
-        }
+        int containerWidth = mSearchRow != null && mSearchRow.getWidth() > 0
+                ? mSearchRow.getWidth()
+                : mSearchContainer.getWidth();
         if (containerWidth <= 0) return 0f;
 
         float density = getResources().getDisplayMetrics().density;
@@ -31618,7 +32442,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 # src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
-**Lines**: 50 | **Bytes**: 1578
+**Lines**: 42 | **Bytes**: 1367
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -31661,14 +32485,6 @@ public class AppLibraryBodyContainer extends FrameLayout {
             setClipBounds(new Rect(0, 0, w, h));
         }
     }
-
-    @Override
-    protected void dispatchDraw(Canvas canvas) {
-        canvas.save();
-        canvas.clipRect(0, 0, getWidth(), getHeight());
-        super.dispatchDraw(canvas);
-        canvas.restore();
-    }
 }
 ```
 
@@ -31677,7 +32493,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
-**Lines**: 310 | **Bytes**: 12587
+**Lines**: 312 | **Bytes**: 12567
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -31738,16 +32554,7 @@ public class CategoryCardView extends ViewGroup {
         mPadding = getResources().getDimensionPixelSize(R.dimen.app_library_card_padding);
         mGap = getResources().getDimensionPixelSize(R.dimen.app_library_card_padding) / 2;
 
-        // Clip children to card's squircle/rounded outline
-        setOutlineProvider(new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, android.graphics.Outline outline) {
-                if (view.getWidth() <= 0 || view.getHeight() <= 0) return;
-                float radius = mGlassView != null ? mGlassView.getTargetRadius(view.getWidth(), view.getHeight()) : view.getWidth() * 0.14f;
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
-            }
-        });
-        setClipToOutline(true);
+        setClipToOutline(false);
         setClipChildren(false);
         setClipToPadding(false);
 
@@ -31988,6 +32795,17 @@ public class CategoryCardView extends ViewGroup {
         }
         return null;
     }
+
+    @Override
+    protected void dispatchDraw(android.graphics.Canvas canvas) {
+        if (mGlassView != null && mGlassView.getVisibility() != VISIBLE) {
+            android.util.Log.w("GLASS_REVEAL_AUDIT", "Card " + (mCategoryData != null && mCategoryData.category != null ? mCategoryData.category.getTitle() : "unknown")
+                    + " drawn while glass was INVISIBLE! Restoring VISIBLE.");
+            mGlassView.setVisibility(VISIBLE);
+            mGlassView.invalidate();
+        }
+        super.dispatchDraw(canvas);
+    }
 }
 ```
 
@@ -32149,7 +32967,7 @@ public class MiniClusterView extends View {
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
-**Lines**: 341 | **Bytes**: 12945
+**Lines**: 349 | **Bytes**: 13346
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -32175,6 +32993,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.InsettableFrameLayout;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.applibrary.model.CategoryData;
 import android.graphics.PointF;
 import com.android.launcher3.dragndrop.DragLayer;
@@ -32258,6 +33077,9 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
         setClipToPadding(false);
         mGrid = findViewById(R.id.expanded_category_grid);
         mTitle = findViewById(R.id.expanded_category_title);
+        if (mTitle != null) {
+            mTitle.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        }
 
         if (mGrid != null) {
             mGrid.setClipChildren(false);
@@ -32423,6 +33245,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     public void bind(CategoryData data) {
         mCategoryData = data;
         mTitle.setText(data.category.getTitle());
+        mTitle.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
         mGrid.setAdapter(new ExpandedCategoryAdapter(Launcher.getLauncher(getContext()), data.apps));
     }
 
@@ -32461,6 +33284,9 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
         launcher.onDragLayerHierarchyChanged();
 
         View glass = view.findViewById(R.id.app_library_overlay_glass);
+        if (glass instanceof AppLibraryOverlayGlassView) {
+            ((AppLibraryOverlayGlassView) glass).ensureBound();
+        }
         if (glass != null) {
             glass.setAlpha(0f);
         }
@@ -32499,7 +33325,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 # src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
-**Lines**: 137 | **Bytes**: 4749
+**Lines**: 141 | **Bytes**: 4899
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -32514,6 +33340,9 @@ import android.view.MotionEvent;
 import android.view.View;
 
 import androidx.annotation.Nullable;
+
+import com.android.launcher3.R;
+import com.android.launcher3.util.Themes;
 
 public class AppLibraryIndexScrollerView extends View {
 
@@ -32548,7 +33377,8 @@ public class AppLibraryIndexScrollerView extends View {
         setClickable(true);
         setFocusable(false);
         float density = getResources().getDisplayMetrics().density;
-        mPaint.setColor(0xCCFFFFFF); // Crisp semi-transparent white matching iOS
+        boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        mPaint.setColor(isDarkText ? 0xCC000000 : 0xCCFFFFFF);
         mPaint.setTextSize(10f * density);
         mPaint.setTextAlign(Paint.Align.CENTER);
         mPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
@@ -32645,7 +33475,7 @@ public class AppLibraryIndexScrollerView extends View {
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
-**Lines**: 469 | **Bytes**: 18610
+**Lines**: 518 | **Bytes**: 20230
 
 ```kotlin
 package com.android.launcher3.applibrary.view
@@ -32654,6 +33484,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
@@ -32661,6 +33492,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
@@ -32708,8 +33540,9 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
     private lateinit var scrimView: View
     private lateinit var cardContainer: FrameLayout
     private lateinit var glassBg: PopupGlassView
-    private lateinit var frostBase: View
     private lateinit var contentColumn: LinearLayout
+    private var cornerRadiusPx: Float = 0f
+    private var enterAnimator: ValueAnimator? = null
 
     init {
         orientation = LinearLayout.VERTICAL
@@ -32717,17 +33550,11 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         clipToPadding = false
     }
 
-    private fun isDarkTheme(): Boolean {
-        val nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return nightMode == Configuration.UI_MODE_NIGHT_YES
-    }
-
     private fun buildUI() {
         removeAllViews()
         val density = resources.displayMetrics.density
         val cardWidth = (280 * density).toInt()
-        val cornerRadiusPx = 20f * density
-        val isDark = isDarkTheme()
+        cornerRadiusPx = 20f * density
         val dividerColor = Color.parseColor("#2E000000")
         val hairlineThickness = maxOf(1, (0.55f * density).toInt())
         val geometry = ContinuousCornerGeometry()
@@ -32961,13 +33788,9 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         }
         contentColumn.addView(cancelBtn)
 
-        // Glass background layers
+        // Glass background layer
         glassBg = PopupGlassView(context).apply {
             setPopupRadius(cornerRadiusPx)
-        }
-
-        frostBase = View(context).apply {
-            setBackgroundColor(if (isDark) Color.argb(40, 0, 0, 0) else Color.TRANSPARENT)
         }
 
         val maxCardHeight = (screenHeight * 0.75f).toInt()
@@ -32979,7 +33802,6 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                 val heightSpec = MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY)
 
                 glassBg.measure(widthSpec, heightSpec)
-                frostBase.measure(widthSpec, heightSpec)
 
                 setMeasuredDimension(cardWidth, targetHeight)
             }
@@ -32988,10 +33810,11 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                 val w = right - left
                 val h = bottom - top
                 glassBg.layout(0, 0, w, h)
-                frostBase.layout(0, 0, w, h)
                 contentColumn.layout(0, 0, w, h)
                 pivotX = w / 2f
                 pivotY = h / 2f
+                contentColumn.pivotX = w / 2f
+                contentColumn.pivotY = h / 2f
             }
         }.apply {
             layoutParams = FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -33017,7 +33840,6 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         }
 
         cardContainer.addView(glassBg)
-        cardContainer.addView(frostBase)
         cardContainer.addView(contentColumn)
 
         rootFrame.addView(cardContainer)
@@ -33040,24 +33862,65 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         mIsOpen = true
         launcher.updateDisallowBack()
 
-        post {
+        // Bind backdrop immediately so initial measure has the proper source
+        val glassSource = launcher.findViewById<View>(R.id.glass_source)
+        if (glassSource != null) {
+            glassBg.backdropSource = glassSource
+        } else {
             glassBg.bindToWallpaper()
         }
 
-        cardContainer.scaleX = 0.88f
-        cardContainer.scaleY = 0.88f
+        // Keep cardContainer at 1.0f scale so getLocationOnScreen() and backdrop offsets stay 1:1 aligned
+        cardContainer.scaleX = 1f
+        cardContainer.scaleY = 1f
         cardContainer.alpha = 0f
+        contentColumn.alpha = 0f
+        scrimView.alpha = 0f
 
+        cardContainer.post {
+            if (!mIsOpen) return@post
+            glassBg.bindToWallpaper()
+            startEnterAnimation()
+        }
+    }
+
+    private fun startEnterAnimation() {
+        enterAnimator?.cancel()
         val spring = PathInterpolator(0.16f, 1f, 0.3f, 1f)
-        val scaleXAnim = ObjectAnimator.ofFloat(cardContainer, View.SCALE_X, 0.88f, 1f)
-        val scaleYAnim = ObjectAnimator.ofFloat(cardContainer, View.SCALE_Y, 0.88f, 1f)
-        val alphaAnim = ObjectAnimator.ofFloat(cardContainer, View.ALPHA, 0f, 1f)
-        val scrimAnim = ObjectAnimator.ofFloat(scrimView, View.ALPHA, 0f, 1f)
+        val w = cardContainer.width.toFloat()
+        val h = cardContainer.height.toFloat()
 
-        AnimatorSet().apply {
-            playTogether(scaleXAnim, scaleYAnim, alphaAnim, scrimAnim)
+        enterAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 260
             interpolator = spring
+            addUpdateListener { va ->
+                val f = va.animatedValue as Float
+                val s = 0.90f + 0.10f * f
+
+                contentColumn.scaleX = s
+                contentColumn.scaleY = s
+                contentColumn.alpha = f
+                cardContainer.alpha = f
+                scrimView.alpha = f
+
+                if (w > 0f && h > 0f) {
+                    val left = (w / 2f) * (1f - s)
+                    val top = (h / 2f) * (1f - s)
+                    val right = left + w * s
+                    val bottom = top + h * s
+                    glassBg.setAnimatedShape(RectF(left, top, right, bottom), cornerRadiusPx)
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    contentColumn.scaleX = 1f
+                    contentColumn.scaleY = 1f
+                    contentColumn.alpha = 1f
+                    cardContainer.alpha = 1f
+                    glassBg.setAnimatedShape(null, cornerRadiusPx)
+                    glassBg.invalidate()
+                }
+            })
             start()
         }
     }
@@ -33072,18 +33935,34 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         if (!mIsOpen || isClosing) return
         isClosing = true
         mIsOpen = false
+        enterAnimator?.cancel()
         launcher.updateDisallowBack()
 
         if (animate) {
-            val exitScaleX = ObjectAnimator.ofFloat(cardContainer, View.SCALE_X, 1f, 0.92f)
-            val exitScaleY = ObjectAnimator.ofFloat(cardContainer, View.SCALE_Y, 1f, 0.92f)
-            val exitCardAlpha = ObjectAnimator.ofFloat(cardContainer, View.ALPHA, 1f, 0f)
-            val exitScrimAlpha = ObjectAnimator.ofFloat(scrimView, View.ALPHA, 1f, 0f)
+            val w = cardContainer.width.toFloat()
+            val h = cardContainer.height.toFloat()
 
-            AnimatorSet().apply {
-                playTogether(exitScaleX, exitScaleY, exitCardAlpha, exitScrimAlpha)
+            ValueAnimator.ofFloat(1f, 0f).apply {
                 duration = 150
                 interpolator = AccelerateInterpolator()
+                addUpdateListener { va ->
+                    val f = va.animatedValue as Float
+                    val s = 0.92f + 0.08f * f
+
+                    contentColumn.scaleX = s
+                    contentColumn.scaleY = s
+                    contentColumn.alpha = f
+                    cardContainer.alpha = f
+                    scrimView.alpha = f
+
+                    if (w > 0f && h > 0f) {
+                        val left = (w / 2f) * (1f - s)
+                        val top = (h / 2f) * (1f - s)
+                        val right = left + w * s
+                        val bottom = top + h * s
+                        glassBg.setAnimatedShape(RectF(left, top, right, bottom), cornerRadiusPx)
+                    }
+                }
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
                         launcher.dragLayer?.removeView(this@ChangeCategoryPickerView)
@@ -33123,7 +34002,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
-**Lines**: 520 | **Bytes**: 19678
+**Lines**: 520 | **Bytes**: 19728
 
 ```kotlin
 package com.android.launcher3.applibrary.view
@@ -33345,9 +34224,9 @@ class AppLibraryFolderTransition(
         val card = folderTile as? CategoryCardView
         val hasMiniCluster = n >= 5 && startCenters.size > 4
 
-        // Setup dimming overlay
+        // Setup frosted glass overlay
         overlayGlass?.visibility = View.VISIBLE
-        overlayGlass?.setBackgroundColor(0x22000000.toInt())
+        (overlayGlass as? AppLibraryOverlayGlassView)?.ensureBound()
         overlayGlass?.alpha = 0f
 
         val finals = (0 until n).map { computeChildIconCenterAndSetPivot(grid.getChildAt(it)) }
@@ -33511,9 +34390,9 @@ class AppLibraryFolderTransition(
             pg.alpha = cardAlpha
         }
 
-        // 2. Dim Scrim Overlay
+        // 2. Frosted Glass Backdrop Overlay (identical to Search backdrop)
         overlayGlass?.let { og ->
-            og.alpha = invLerp(0f, 0.6f, p) * 0.35f
+            og.alpha = invLerp(0f, 0.7f, p)
         }
 
         // 3. Category Title
@@ -33652,7 +34531,7 @@ class AppLibraryFolderTransition(
 # src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
-**Lines**: 88 | **Bytes**: 3065
+**Lines**: 89 | **Bytes**: 3136
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -33669,6 +34548,7 @@ import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.model.data.AppInfo;
+import com.android.launcher3.util.Themes;
 
 import java.util.List;
 
@@ -33708,7 +34588,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
         icon.setLayoutParams(lp);
         icon.setCenterVertically(true);
         icon.setDisplay(BubbleTextView.DISPLAY_APP_LIBRARY_EXPANDED);
-        icon.setTextColor(android.graphics.Color.WHITE);
+        icon.setTextColor(Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor));
         // Bind the standard item click listener so clicking an app launches it
         icon.setOnClickListener(mLauncher.getItemOnClickListener());
         return new ViewHolder(icon);
@@ -33749,7 +34629,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
 # src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
-**Lines**: 189 | **Bytes**: 6712
+**Lines**: 200 | **Bytes**: 7235
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -33765,6 +34645,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.icons.FastBitmapDrawable;
 import com.android.launcher3.model.data.AppInfo;
 
@@ -33785,11 +34666,13 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
     private final List<AppInfo> mFilteredApps = new ArrayList<>();
     private final Map<AppInfo, String> mLowerTitleCache = new HashMap<>();
     private final Collator mCollator = Collator.getInstance(Locale.getDefault());
+    private int mTextColor = 0xFFFFFFFF;
 
     public AppLibrarySearchAdapter(Launcher launcher) {
         mLauncher = launcher;
         mCollator.setStrength(Collator.PRIMARY);
-        setHasStableIds(true);
+        setHasStableIds(false);
+        mTextColor = Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor);
     }
 
     private String mCurrentQuery = "";
@@ -33797,6 +34680,7 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
     public void setApps(List<AppInfo> apps) {
         mAllApps.clear();
         mLowerTitleCache.clear();
+        mTextColor = Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor);
         if (apps != null) {
             mAllApps.addAll(apps);
             Collections.sort(mAllApps, (a, b) -> {
@@ -33894,17 +34778,21 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         AppInfo app = mFilteredApps.get(position);
         holder.title.setText(app.title);
+        holder.title.setTextColor(mTextColor);
         FastBitmapDrawable icon = app.newIcon(mLauncher);
         holder.icon.setImageDrawable(icon);
         holder.itemView.setTag(app);
-        holder.itemView.setOnClickListener(v -> {
-            View.OnClickListener clickListener = mLauncher.getItemOnClickListener();
-            if (clickListener != null) {
-                clickListener.onClick(v);
+        holder.icon.setTag(app);
+
+        View.OnClickListener clickListener = v -> {
+            View target = holder.itemView;
+            View.OnClickListener launcherClickListener = mLauncher.getItemOnClickListener();
+            if (launcherClickListener != null) {
+                launcherClickListener.onClick(target);
             } else {
-                mLauncher.startActivitySafely(v, app.getIntent(), app);
+                mLauncher.startActivitySafely(target, app.getIntent(), app);
             }
-            v.postDelayed(() -> {
+            target.postDelayed(() -> {
                 AppLibraryPage alp = mLauncher.getAppLibraryPage();
                 if (alp != null) {
                     alp.exitSearchMode();
@@ -33914,7 +34802,10 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
                     spotlight.close(false);
                 }
             }, 300);
-        });
+        };
+        holder.itemView.setOnClickListener(clickListener);
+        holder.icon.setOnClickListener(clickListener);
+
         View.OnLongClickListener longClickListener = v -> {
             holder.icon.setTag(app);
             holder.itemView.setTag(app);
@@ -34783,16 +35674,16 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 android.graphics.Rect pos = new android.graphics.Rect();
                 getPopupContainer().getDescendantRectRelativeToSelf(mTargetView, pos);
                 float radius;
-                if (mTargetView instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView) {
+                if (mTargetView instanceof foundation.e.bliss.widgets.GlassWidgetHostView glassWidget) {
                     android.graphics.Rect squircle = new android.graphics.Rect();
-                    clockView.getSquircleBoundsInSelf(squircle);
+                    glassWidget.getSquircleBoundsInSelf(squircle);
                     pos.set(
                         pos.left + squircle.left,
                         pos.top + squircle.top,
                         pos.left + squircle.right,
                         pos.top + squircle.bottom
                     );
-                    radius = clockView.getSquircleRadius();
+                    radius = glassWidget.getSquircleRadius();
                 } else {
                     try {
                         int resId = android.content.res.Resources.getSystem().getIdentifier("system_app_widget_background_radius", "dimen", "android");
@@ -42237,7 +43128,7 @@ object BlissPrefs {
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
-**Lines**: 569 | **Bytes**: 22921
+**Lines**: 607 | **Bytes**: 25748
 
 ```kotlin
 /*
@@ -42259,6 +43150,7 @@ object BlissPrefs {
 
 package foundation.e.blisslauncher.features.onboarding
 
+import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
@@ -42285,8 +43177,9 @@ import foundation.e.bliss.multimode.MultiModeController
 
 /**
  * Resolves standard Android roles and categories to populate an iOS-style curated layout
- * on first run. Places all installed apps on the home screen, keeping the last 3 icon slots
- * on Screen 0 blank so it does not look crowded, and grouping work profile apps into a "Work" folder.
+ * on first run. Places 2x2 Clock and 2x2 Calendar Day widgets at the top of Screen 0,
+ * followed by curated app icons below them, keeping the last 2 icon slots on Screen 0 blank,
+ * and grouping work profile apps into a "Work" folder.
  */
 object DefaultHomeLayoutResolver {
     private const val TAG = "DefaultHomeResolver"
@@ -42313,38 +43206,6 @@ object DefaultHomeLayoutResolver {
                 "com.vivo.gallery",
                 "com.miui.gallery",
                 "com.oneplus.gallery"
-            )
-        ),
-        RoleDescriptor(
-            "Calendar",
-            listOf(
-                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
-            ),
-            listOf(
-                "com.google.android.calendar",
-                "com.android.calendar",
-                "com.bbk.calendar",
-                "com.vivo.calendar",
-                "com.xiaomi.calendar",
-                "com.oneplus.calendar"
-            )
-        ),
-        RoleDescriptor(
-            "Clock",
-            listOf(
-                Intent(AlarmClock.ACTION_SHOW_ALARMS),
-                Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
-            ),
-            listOf(
-                "com.google.android.deskclock",
-                "com.android.deskclock",
-                "com.coloros.alarmclock",
-                "com.oplus.alarmclock",
-                "com.sec.android.app.clockpackage",
-                "com.vivo.clock",
-                "com.bbk.clock",
-                "com.miui.clock",
-                "com.oneplus.deskclock"
             )
         ),
         RoleDescriptor(
@@ -42503,8 +43364,12 @@ object DefaultHomeLayoutResolver {
             Favorites.SPANX,
             Favorites.SPANY,
             Favorites.INTENT,
-            Favorites.PROFILE_ID
+            Favorites.PROFILE_ID,
+            Favorites.ITEM_TYPE,
+            Favorites.APPWIDGET_PROVIDER
         )
+        var hasClockWidget = false
+        var hasCalendarWidget = false
         val cursor = db.query(Favorites.TABLE_NAME_ALL, projection, null, null, null, null, null)
         cursor.use { c ->
             val colContainer = c.getColumnIndexOrThrow(Favorites.CONTAINER)
@@ -42515,6 +43380,8 @@ object DefaultHomeLayoutResolver {
             val colSpanY = c.getColumnIndexOrThrow(Favorites.SPANY)
             val colIntent = c.getColumnIndexOrThrow(Favorites.INTENT)
             val colProfileId = c.getColumnIndexOrThrow(Favorites.PROFILE_ID)
+            val colItemType = c.getColumnIndex(Favorites.ITEM_TYPE)
+            val colProvider = c.getColumnIndex(Favorites.APPWIDGET_PROVIDER)
 
             while (c.moveToNext()) {
                 val container = c.getLong(colContainer)
@@ -42526,6 +43393,17 @@ object DefaultHomeLayoutResolver {
                 val intentStr = c.getString(colIntent)
                 val profileSerial = c.getLong(colProfileId)
                 val itemUser = userCache.getUserForSerialNumber(profileSerial) ?: myUser
+                val itemType = if (colItemType >= 0) c.getInt(colItemType) else -1
+                val providerStr = if (colProvider >= 0) c.getString(colProvider) else null
+
+                if (itemType == Favorites.ITEM_TYPE_APPWIDGET && !providerStr.isNullOrEmpty()) {
+                    if (providerStr.contains("ClockAppWidgetProvider") || providerStr.contains("DigitalClockAppWidgetProvider")) {
+                        hasClockWidget = true
+                    }
+                    if (providerStr.contains("CalendarDayAppWidgetProvider") || providerStr.contains("CalendarMonthAppWidgetProvider")) {
+                        hasCalendarWidget = true
+                    }
+                }
 
                 if (container == Favorites.CONTAINER_DESKTOP.toLong()) {
                     val occupied = occupiedCellsByScreen.getOrPut(screen) { HashSet() }
@@ -42551,6 +43429,57 @@ object DefaultHomeLayoutResolver {
                     }
                 }
             }
+        }
+
+        // 1b. Place 2x2 Clock widget (top-left) and 2x2 Calendar Day widget (top-right) at top of Screen 0
+        val clockProvider = ComponentName(context.packageName, "foundation.e.bliss.widgets.clock.ClockAppWidgetProvider")
+        val calendarProvider = ComponentName(context.packageName, "foundation.e.bliss.widgets.calendar.CalendarDayAppWidgetProvider")
+
+        val widgetHolder = dbHelper.newLauncherWidgetHolder()
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+
+        fun placeWidgetIfMissing(cn: ComponentName, screen: Int, cellX: Int, cellY: Int, spanX: Int, spanY: Int) {
+            try {
+                val appWidgetId = widgetHolder.allocateAppWidgetId()
+                val bound = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, cn)
+                if (bound) {
+                    val values = ContentValues().apply {
+                        put(Favorites._ID, dbHelper.generateNewItemId())
+                        put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPWIDGET)
+                        put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                        put(Favorites.SCREEN, screen)
+                        put(Favorites.CELLX, cellX)
+                        put(Favorites.CELLY, cellY)
+                        put(Favorites.SPANX, spanX)
+                        put(Favorites.SPANY, spanY)
+                        put(Favorites.APPWIDGET_ID, appWidgetId)
+                        put(Favorites.APPWIDGET_PROVIDER, cn.flattenToString())
+                        put(Favorites.APPWIDGET_SOURCE, Favorites.CONTAINER_DESKTOP)
+                        put(Favorites.PROFILE_ID, userSerial)
+                        put(Favorites.MODIFIED, System.currentTimeMillis())
+                    }
+                    dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
+                    val occupied = occupiedCellsByScreen.getOrPut(screen) { HashSet() }
+                    for (x in cellX until (cellX + spanX)) {
+                        for (y in cellY until (cellY + spanY)) {
+                            occupied.add(Pair(x, y))
+                        }
+                    }
+                    Log.d(TAG, "Placed widget $cn at screen=$screen ($cellX, $cellY, ${spanX}x${spanY}) id=$appWidgetId")
+                } else {
+                    Log.w(TAG, "bindAppWidgetIdIfAllowed returned false for $cn")
+                    widgetHolder.deleteAppWidgetId(appWidgetId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to place widget $cn", e)
+            }
+        }
+
+        if (!hasClockWidget) {
+            placeWidgetIfMissing(clockProvider, 0, 0, 0, 2, 2)
+        }
+        if (!hasCalendarWidget) {
+            placeWidgetIfMissing(calendarProvider, 0, 2, 0, 2, 2)
         }
 
         val workActivities = ArrayList<LauncherActivityInfo>()
@@ -42600,10 +43529,10 @@ object DefaultHomeLayoutResolver {
             }
         }
 
-        // 4. Reserve the last 3 cells on Screen 0 so it stays clean and not too crowded
+        // 4. Reserve the last 2 cells on Screen 0 so it stays clean and not too crowded
         val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
         val totalCellsScreen0 = numCols * numRows
-        for (idx in (totalCellsScreen0 - 3) until totalCellsScreen0) {
+        for (idx in (totalCellsScreen0 - 2) until totalCellsScreen0) {
             if (idx >= 0) {
                 val rx = idx % numCols
                 val ry = idx / numCols
@@ -42747,7 +43676,7 @@ object DefaultHomeLayoutResolver {
             dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
         }
 
-        Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has last 3 slots blank.")
+        Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has Clock and Calendar widgets at top and last 2 slots blank.")
     }
 
     private fun resolveRole(
@@ -42815,7 +43744,7 @@ object DefaultHomeLayoutResolver {
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 209 | **Bytes**: 9429
+**Lines**: 211 | **Bytes**: 9510
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -42982,7 +43911,9 @@ object DefaultHomeLayoutResolver {
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="false"
+            android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:autoRemoveFromRecents="true" />
 
         <provider
@@ -43033,7 +43964,7 @@ object DefaultHomeLayoutResolver {
 # AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest.xml`  
-**Lines**: 78 | **Bytes**: 3308
+**Lines**: 79 | **Bytes**: 3327
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -43095,6 +44026,8 @@ object DefaultHomeLayoutResolver {
             android:resizeableActivity="true"
             android:resumeWhilePausing="true"
             android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
             android:exported="true"
             android:enabled="true">
             <intent-filter>
@@ -43104,7 +44037,6 @@ object DefaultHomeLayoutResolver {
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
-                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"
@@ -43120,7 +44052,7 @@ object DefaultHomeLayoutResolver {
 # bliss/AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 59 | **Bytes**: 2263
+**Lines**: 98 | **Bytes**: 3977
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -43164,7 +44096,7 @@ object DefaultHomeLayoutResolver {
                 android:resource="@xml/weather_appwidget_info" />
         </receiver>
 
-        <!-- iOS 2x2 Analog Clock Widget -->
+        <!-- iOS 2x2 Clock Widget -->
         <receiver
             android:name="foundation.e.bliss.widgets.clock.ClockAppWidgetProvider"
             android:exported="true"
@@ -43175,6 +44107,45 @@ object DefaultHomeLayoutResolver {
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/clock_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Digital Seconds Clock Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.clock.DigitalClockAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/digital_clock_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/digital_clock_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Calendar Day Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.calendar.CalendarDayAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/calendar_day_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_day_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Calendar Month Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.calendar.CalendarMonthAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/calendar_month_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_month_appwidget_info" />
         </receiver>
 
 
@@ -43188,7 +44159,7 @@ object DefaultHomeLayoutResolver {
 # bliss/AndroidManifest-withoutQuickstep.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
-**Lines**: 74 | **Bytes**: 3185
+**Lines**: 75 | **Bytes**: 3204
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -43246,6 +44217,8 @@ object DefaultHomeLayoutResolver {
             android:resizeableActivity="true"
             android:resumeWhilePausing="true"
             android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
             android:exported="true"
             android:enabled="true">
             <intent-filter>
@@ -43255,7 +44228,6 @@ object DefaultHomeLayoutResolver {
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
-                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"

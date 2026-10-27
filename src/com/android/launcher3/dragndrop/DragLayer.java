@@ -275,10 +275,17 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
             Rect destRect = new Rect();
             d.getWorkspaceVisualDragBounds(destRect);
 
-            // In most cases this additional scale factor should be a no-op (1). It mainly accounts
-            // for alternate grids where the source and destination icon sizes are different
-            toScale *= ((1f * destRect.width())
-                    / (dragView.getMeasuredWidth() - dragView.getBlurSizeOutline()));
+            if (child instanceof com.android.launcher3.widget.LauncherAppWidgetHostView) {
+                // Widget drag view was created from child's unscaled measured dimensions;
+                // childScale already accounts for child.getScaleX() (mScaleToFit).
+                // Ensure toScale represents the exact final visual scale without double-counting.
+                toScale = scale;
+            } else {
+                // In most cases this additional scale factor should be a no-op (1). It mainly accounts
+                // for alternate grids where the source and destination icon sizes are different
+                toScale *= ((1f * destRect.width())
+                        / (dragView.getMeasuredWidth() - dragView.getBlurSizeOutline()));
+            }
 
             // This accounts for the offset of the DragView created by scaling it about its
             // center as it animates into place.
@@ -290,7 +297,15 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
         }
 
         child.setVisibility(INVISIBLE);
-        Runnable onCompleteRunnable = () -> child.setVisibility(VISIBLE);
+        Runnable onCompleteRunnable = () -> {
+            child.setVisibility(VISIBLE);
+            if (mActivity instanceof Launcher) {
+                Launcher l = (Launcher) mActivity;
+                if (l.getWorkspace() != null && l.getWorkspace().isWobbling()) {
+                    l.getWorkspace().wobbleSingleChild(child);
+                }
+            }
+        };
         animateViewIntoPosition(dragView, toX, toY, 1, toScale, toScale,
                 onCompleteRunnable, ANIMATION_END_DISAPPEAR, duration, anchorView);
     }

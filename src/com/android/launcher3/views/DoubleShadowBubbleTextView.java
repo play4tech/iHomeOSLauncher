@@ -51,8 +51,9 @@ public class DoubleShadowBubbleTextView extends BubbleTextView {
 
     @Override
     public void onDraw(Canvas canvas) {
-        // If text is transparent or shadow alpha is 0, don't draw any shadow
-        if (mShadowInfo.skipDoubleShadow(this)) {
+        // If in App Library expanded, or text is transparent or shadow alpha is 0, don't draw any shadow
+        if (mDisplay == DISPLAY_APP_LIBRARY_EXPANDED || mShadowInfo.skipDoubleShadow(this)) {
+            getPaint().clearShadowLayer();
             super.onDraw(canvas);
             return;
         }

@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.android.launcher3.R;
 import com.android.launcher3.applibrary.model.AppLibraryCategory;
 import com.android.launcher3.model.data.AppInfo;
+import com.android.launcher3.util.Themes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +67,10 @@ public class AppLibraryDashboardAdapter extends RecyclerView.Adapter<AppLibraryD
         cardView.setLayoutParams(cardLp);
         
         TextView label = new TextView(mContext);
-        label.setTextColor(Color.WHITE);
+        boolean isDarkText = Themes.getAttrBoolean(mContext, R.attr.isWorkspaceDarkText);
+        int textColor = Themes.getAttrColor(mContext, R.attr.workspaceTextColor);
+        label.setTextColor(textColor);
+        label.setShadowLayer(0, 0, 0, 0);
         label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         // iOS uses medium or regular sans-serif
         label.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL));
@@ -87,6 +91,9 @@ public class AppLibraryDashboardAdapter extends RecyclerView.Adapter<AppLibraryD
         CategoryData data = mCategories.get(position);
         holder.cardView.bind(data);
         holder.label.setText(data.category.getTitle());
+        boolean isDarkText = Themes.getAttrBoolean(mContext, R.attr.isWorkspaceDarkText);
+        holder.label.setTextColor(Themes.getAttrColor(mContext, R.attr.workspaceTextColor));
+        holder.label.setShadowLayer(0, 0, 0, 0);
     }
 
     @Override

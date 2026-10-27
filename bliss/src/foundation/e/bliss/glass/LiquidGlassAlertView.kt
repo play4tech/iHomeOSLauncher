@@ -82,7 +82,6 @@ constructor(
     private lateinit var scrimView: View
     private lateinit var cardContainer: FrameLayout
     private lateinit var glassBg: PopupGlassView
-    private lateinit var frostBase: View
     private lateinit var contentColumn: LinearLayout
 
     private var isDismissHandled = false
@@ -273,11 +272,6 @@ constructor(
             setPopupRadius(cornerRadiusPx)
         }
 
-        // Layer 1: Frosted translucent wash
-        frostBase = View(context).apply {
-            setBackgroundColor(if (isDark) Color.argb(40, 0, 0, 0) else Color.TRANSPARENT)
-        }
-
         // Custom CardContainer that sizes tightly to contentColumn without expanding vertically
         cardContainer = object : FrameLayout(context) {
             override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -287,7 +281,6 @@ constructor(
                 val heightSpec = MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY)
 
                 glassBg.measure(widthSpec, heightSpec)
-                frostBase.measure(widthSpec, heightSpec)
 
                 setMeasuredDimension(cardWidth, targetHeight)
             }
@@ -296,7 +289,6 @@ constructor(
                 val w = right - left
                 val h = bottom - top
                 glassBg.layout(0, 0, w, h)
-                frostBase.layout(0, 0, w, h)
                 contentColumn.layout(0, 0, w, h)
                 pivotX = w / 2f
                 pivotY = h / 2f
@@ -321,7 +313,6 @@ constructor(
         }
 
         cardContainer.addView(glassBg)
-        cardContainer.addView(frostBase)
         cardContainer.addView(contentColumn)
 
         rootFrame.addView(cardContainer)

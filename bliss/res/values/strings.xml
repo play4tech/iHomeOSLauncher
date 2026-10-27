@@ -57,7 +57,7 @@
     <string name="onboarding_customize_title">Wallpaper &amp; Widgets</string>
     <string name="onboarding_customize_body">Personalize your layout anytime with widgets and wallpapers.</string>
     <string name="onboarding_customize_wallpaper_title">Change Wallpaper</string>
-    <string name="onboarding_customize_wallpaper_body">Touch &amp; hold the screen, tap Edit in the top left, and select Edit Wallpaper and choose your wallpaper to change it.</string>
+    <string name="onboarding_customize_wallpaper_body">Touch &amp; hold the screen, tap Edit in the top left, and select Change Wallpaper and choose your wallpaper to change it.</string>
     <string name="onboarding_customize_widget_title">Add Widgets</string>
     <string name="onboarding_customize_widget_body">In the same Edit menu, select Add Widget to place widgets directly on your home screen.</string>
     <string name="onboarding_customize_action">Get Started</string>
@@ -65,4 +65,11 @@
     <!-- iOS 2x2 Analog Clock Widget -->
     <string name="clock_widget_label">Clock</string>
     <string name="clock_widget_description">Analog Clock</string>
+
+    <!-- iOS 2x2 Calendar Widgets -->
+    <string name="calendar_widget_label">Calendar</string>
+    <string name="calendar_day_widget_label">Calendar</string>
+    <string name="calendar_day_widget_description">Current day and date</string>
+    <string name="calendar_month_widget_label">Month</string>
+    <string name="calendar_month_widget_description">Monthly calendar</string>
 </resources>

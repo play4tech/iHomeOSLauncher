@@ -56,16 +56,7 @@ public class CategoryCardView extends ViewGroup {
         mPadding = getResources().getDimensionPixelSize(R.dimen.app_library_card_padding);
         mGap = getResources().getDimensionPixelSize(R.dimen.app_library_card_padding) / 2;
 
-        // Clip children to card's squircle/rounded outline
-        setOutlineProvider(new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(View view, android.graphics.Outline outline) {
-                if (view.getWidth() <= 0 || view.getHeight() <= 0) return;
-                float radius = mGlassView != null ? mGlassView.getTargetRadius(view.getWidth(), view.getHeight()) : view.getWidth() * 0.14f;
-                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
-            }
-        });
-        setClipToOutline(true);
+        setClipToOutline(false);
         setClipChildren(false);
         setClipToPadding(false);
 
@@ -305,5 +296,16 @@ public class CategoryCardView extends ViewGroup {
             return new PointF(cx, cy);
         }
         return null;
+    }
+
+    @Override
+    protected void dispatchDraw(android.graphics.Canvas canvas) {
+        if (mGlassView != null && mGlassView.getVisibility() != VISIBLE) {
+            android.util.Log.w("GLASS_REVEAL_AUDIT", "Card " + (mCategoryData != null && mCategoryData.category != null ? mCategoryData.category.getTitle() : "unknown")
+                    + " drawn while glass was INVISIBLE! Restoring VISIBLE.");
+            mGlassView.setVisibility(VISIBLE);
+            mGlassView.invalidate();
+        }
+        super.dispatchDraw(canvas);
     }
 }

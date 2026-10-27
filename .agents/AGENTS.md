@@ -120,6 +120,15 @@ Any future modification to this codebase MUST NOT unfix or regress any previousl
 ### 5. Invariant: Spotlight Search & App Library State Consistency
 - **Rule**: Spotlight search back gesture must cleanly dismiss the soft keyboard and animate the overlay without glitching. Exiting App Library search must synchronously re-bind categories so the library is never left blank.
 
+### 6. Invariant: Continuous Live Optical Refraction Across All Motion
+- **Rule**:
+  - All Liquid Glass surfaces (home screen folder icons, glass widgets, dock glass, search pill, and App Library category cards) MUST maintain continuous, real-time live optical refraction during any motion (horizontal workspace page swiping, vertical App Library scrolling, overscroll rubber-banding, icon dragging, and sensor tilts).
+  - The wallpaper backdrop beneath the lens MUST dynamically refract and shift smoothly with finger movement so the glass feels seamless, fluid, and authentic—it must NEVER freeze, lag behind, or slide across the screen like a static flat decal.
+  - To prevent performance regressions while preserving seamless live refraction:
+    - Never use global polling or infinite redraw loops (`enableDynamicBackground` must remain `false`).
+    - Drive live updates strictly on-demand via motion event hooks (`Workspace.onScrollChanged()`, `AppLibraryDashboardView` scroll & overscroll listeners, and drag controllers).
+    - Cache native Skia shaders (`GlassConfig.drawBorder()`) to eliminate per-frame allocations.
+
 ---
 
 # Rule: Mandatory Synchronization of `launcher_important_logic.md`

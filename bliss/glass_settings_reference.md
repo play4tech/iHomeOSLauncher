@@ -10,11 +10,11 @@ Version: Config Version 5 (Refraction Inward iOS match)
 | Setting | SharedPreferences Key | Default Value | Description |
 | :--- | :--- | :--- | :--- |
 | **Refraction Height** | `pref_glass_refraction_height` | `143.0f` | Height of the simulated 3D lens surface curve in pixels. |
-| **Bevel Width** | `pref_glass_bevel_width` | `49.0f` | Width of the perimeter bevel border where refraction occurs. |
+| **Bevel Width** | `pref_glass_bevel_width` | `65.0f` | Width of the perimeter bevel border where refraction occurs. |
 | **Refraction Falloff** | `pref_glass_refraction_falloff` | `2.94f` | Curvature exponent for the lens profile (smooth falloff). |
 | **Dispersion Strength** | `pref_glass_dispersion_strength` | `0.0f` | Chromatic dispersion separating color channels (set to 0 for clean iOS look). |
-| **Blur Amount** | `pref_glass_blur_amount` | `0.14f` | Backdrop blur intensity factor. |
-| **Saturation** | `pref_glass_saturation` | `140.0f` | Color saturation percentage of backdrop content through the glass (140% for iOS vibrant look). |
+| **Blur Amount** | `pref_glass_blur_amount` | `0.25f` | Backdrop blur intensity factor. |
+| **Saturation** | `pref_glass_saturation` | `120.0f` | Color saturation percentage of backdrop content through the glass (120% for iOS vibrant look). |
 | **Aberration Intensity** | `pref_glass_aberration_intensity` | `2.0f` | Chromatic fringe/aberration intensity at extreme edges. |
 | **Displacement Scale** | `pref_glass_displacement_scale` | `43.0f` | Maximum pixel displacement for refractive bending. |
 | **Elasticity** | `pref_glass_elasticity` | `0.15f` | Dynamic spring/inertia response factor during motion. |
@@ -67,14 +67,14 @@ Version: Config Version 5 (Refraction Inward iOS match)
 
 ```xml
 <map>
-    <int name="pref_glass_config_version" value="5" />
+    <int name="pref_glass_config_version" value="13" />
     <int name="pref_glass_tint" value="687865855" />
     <float name="pref_glass_refraction_height" value="143.0" />
-    <float name="pref_glass_bevel_width" value="49.0" />
+    <float name="pref_glass_bevel_width" value="65.0" />
     <float name="pref_glass_refraction_falloff" value="2.94" />
     <float name="pref_glass_dispersion_strength" value="0.0" />
-    <float name="pref_glass_blur_amount" value="0.14" />
-    <float name="pref_glass_saturation" value="140.0" />
+    <float name="pref_glass_blur_amount" value="0.25" />
+    <float name="pref_glass_saturation" value="120.0" />
     <float name="pref_glass_aberration_intensity" value="2.0" />
     <float name="pref_glass_displacement_scale" value="43.0" />
     <float name="pref_glass_elasticity" value="0.15" />

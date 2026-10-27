@@ -16,7 +16,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 209 | **Bytes**: 9429
+**Lines**: 211 | **Bytes**: 9510
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -183,7 +183,9 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="false"
+            android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:autoRemoveFromRecents="true" />
 
         <provider
@@ -234,7 +236,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest.xml`  
-**Lines**: 78 | **Bytes**: 3308
+**Lines**: 79 | **Bytes**: 3327
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -296,6 +298,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:resizeableActivity="true"
             android:resumeWhilePausing="true"
             android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
             android:exported="true"
             android:enabled="true">
             <intent-filter>
@@ -305,7 +309,6 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
-                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"
@@ -321,7 +324,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # bliss/AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 59 | **Bytes**: 2263
+**Lines**: 98 | **Bytes**: 3977
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -365,7 +368,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
                 android:resource="@xml/weather_appwidget_info" />
         </receiver>
 
-        <!-- iOS 2x2 Analog Clock Widget -->
+        <!-- iOS 2x2 Clock Widget -->
         <receiver
             android:name="foundation.e.bliss.widgets.clock.ClockAppWidgetProvider"
             android:exported="true"
@@ -376,6 +379,45 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/clock_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Digital Seconds Clock Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.clock.DigitalClockAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/digital_clock_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/digital_clock_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Calendar Day Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.calendar.CalendarDayAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/calendar_day_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_day_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Calendar Month Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.calendar.CalendarMonthAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/calendar_month_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_month_appwidget_info" />
         </receiver>
 
 
@@ -389,7 +431,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
-**Lines**: 74 | **Bytes**: 3185
+**Lines**: 75 | **Bytes**: 3204
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -447,6 +489,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:resizeableActivity="true"
             android:resumeWhilePausing="true"
             android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
             android:exported="true"
             android:enabled="true">
             <intent-filter>
@@ -456,7 +500,6 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
-                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"

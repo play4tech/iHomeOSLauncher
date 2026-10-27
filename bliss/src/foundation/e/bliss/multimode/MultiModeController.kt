@@ -96,11 +96,19 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
         private lateinit var prefs: LauncherPrefs
 
         @JvmStatic
-        val isSingleLayerMode
-            get() = prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
+        val isSingleLayerMode: Boolean
+            get() = if (Companion::prefs.isInitialized) {
+                prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
+            } else {
+                true
+            }
 
         @JvmStatic
-        val isNotifCountEnabled
-            get() = prefs.get(LauncherPrefs.IS_NOTIF_COUNT_ENABLED)
+        val isNotifCountEnabled: Boolean
+            get() = if (Companion::prefs.isInitialized) {
+                prefs.get(LauncherPrefs.IS_NOTIF_COUNT_ENABLED)
+            } else {
+                true
+            }
     }
 }

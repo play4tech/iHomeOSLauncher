@@ -293,16 +293,29 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val anim = ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
             duration = 250
             interpolator = Interpolators.EMPHASIZED_DECELERATE
+            addUpdateListener { invalidateGlassButtons() }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     if (currentAnimator === animation) {
                         currentAnimator = null
                     }
+                    invalidateGlassButtons()
                 }
             })
             start()
         }
         currentAnimator = anim
+    }
+
+    fun invalidateGlassButtons() {
+        for (i in 0 until editButtonContainer.childCount) {
+            (editButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
+                ?.invalidate()
+        }
+        for (i in 0 until doneButtonContainer.childCount) {
+            (doneButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
+                ?.invalidate()
+        }
     }
 
     fun hide() {

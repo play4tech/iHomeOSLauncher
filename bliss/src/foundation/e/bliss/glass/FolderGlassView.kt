@@ -106,7 +106,7 @@ constructor(
 
         // Standard master glass parameters from GlassConfig (matches App Library category effect)
         GlassConfig.applyDefaultConfig(this)
-        enableDynamicBackground = true
+        enableDynamicBackground = false
     }
 
     override fun onAttachedToWindow() {

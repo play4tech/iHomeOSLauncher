@@ -34,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.Listener {
 
     private val builder = WallpaperEnvironmentBuilder.INSTANCE.get(context)
+    private val repository = WallpaperRepository.INSTANCE.get(context)
     private val mListeners = CopyOnWriteArrayList<Listener>()
 
     private val wallpaperFilter = BlurWallpaperFilter(context)
@@ -61,11 +62,12 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
         }
     }
 
-    private fun regenerateBlur(wallpaper: Bitmap) {
+    fun regenerateBlur(wallpaper: Bitmap? = null) {
+        val wp = wallpaper ?: builder.environment?.wallpaper ?: repository.currentWallpaper ?: return
         Executors.THREAD_POOL_EXECUTOR.execute {
             try {
-                if (wallpaper.isRecycled) return@execute
-                val vibrantBitmap = applyVibrancy(wallpaper)
+                if (wp.isRecycled) return@execute
+                val vibrantBitmap = applyVibrancy(wp)
 
                 applyTask =
                     wallpaperFilter.apply(vibrantBitmap).setCallback { result: BlurSizes?, error: Throwable? ->

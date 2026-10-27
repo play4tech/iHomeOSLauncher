@@ -641,16 +641,21 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                 || x > getWidth() - getPaddingRight();
     }
 
-    private final Runnable mResetStayPressedRunnable = this::clearPressedBackground;
+    private final Runnable mResetStayPressedRunnable = () -> {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] WATCHDOG fired (2000ms) at t=" + now + ", mStayPressed=" + mStayPressed);
+        clearPressedBackground("watchdog");
+    };
 
     void setStayPressed(boolean stayPressed) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] setStayPressed(" + stayPressed + ") at t=" + now);
         mStayPressed = stayPressed;
         refreshDrawableState();
         removeCallbacks(mResetStayPressedRunnable);
         if (stayPressed) {
-            // Guarantee that the icon never remains stuck enlarged if remote transition
-            // callbacks are dropped (e.g. OEM ROMs like ColorOS / Realme UI).
-            postDelayed(mResetStayPressedRunnable, 400);
+            // Safety backstop against aborted launches or dropped lifecycle callbacks
+            postDelayed(mResetStayPressedRunnable, 2000);
         }
     }
 
@@ -660,28 +665,36 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         if (mIcon != null) {
             mIcon.setVisible(isVisible, false);
         }
-        if (!isVisible && mStayPressed) {
-            clearPressedBackground();
-        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onVisibilityAggregated(" + isVisible + ") at t=" + now + ", mStayPressed=" + mStayPressed);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
-        if (mStayPressed) {
-            clearPressedBackground();
-        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onWindowFocusChanged(" + hasWindowFocus + ") at t=" + now + ", mStayPressed=" + mStayPressed);
+        // Do not clear mStayPressed on window focus loss.
+        // Clearing is managed by Launcher.onStop() and EVENT_RESUMED, with the 2000ms watchdog as safety backstop.
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onDetachedFromWindow at t=" + now + ", mStayPressed=" + mStayPressed);
         if (mStayPressed) {
-            clearPressedBackground();
+            clearPressedBackground("detached");
         }
     }
 
     public void clearPressedBackground() {
+        clearPressedBackground("unspecified");
+    }
+
+    public void clearPressedBackground(String reason) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] clearPressedBackground(" + reason + ") at t=" + now + ", wasStayPressed=" + mStayPressed);
         removeCallbacks(mResetStayPressedRunnable);
         setPressed(false);
         if (mStayPressed) {

@@ -39,7 +39,7 @@
                 android:resource="@xml/weather_appwidget_info" />
         </receiver>
 
-        <!-- iOS 2x2 Analog Clock Widget -->
+        <!-- iOS 2x2 Clock Widget -->
         <receiver
             android:name="foundation.e.bliss.widgets.clock.ClockAppWidgetProvider"
             android:exported="true"
@@ -50,6 +50,45 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/clock_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Digital Seconds Clock Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.clock.DigitalClockAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/digital_clock_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/digital_clock_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Calendar Day Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.calendar.CalendarDayAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/calendar_day_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_day_appwidget_info" />
+        </receiver>
+
+        <!-- iOS 2x2 Calendar Month Widget -->
+        <receiver
+            android:name="foundation.e.bliss.widgets.calendar.CalendarMonthAppWidgetProvider"
+            android:exported="true"
+            android:label="@string/calendar_month_widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calendar_month_appwidget_info" />
         </receiver>
 
 

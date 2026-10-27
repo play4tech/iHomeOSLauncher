@@ -30,8 +30,10 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.provider.Settings
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Switch
@@ -50,6 +52,7 @@ import com.android.launcher3.model.data.ItemInfoWithIcon
 import foundation.e.bliss.glass.FolderGlassView
 import foundation.e.bliss.glass.GlassConfig
 import foundation.e.bliss.glass.PreviewDockGlassView
+import foundation.e.bliss.glass.PreviewWallpaperView
 import foundation.e.bliss.glass.SearchPillGlassView
 import foundation.e.bliss.wallpaper.WallpaperRepository
 import java.util.Locale
@@ -63,7 +66,7 @@ class GlassCustomizeActivity : FragmentActivity() {
     private lateinit var previewDockGlass: PreviewDockGlassView
     private var previewFolderGlass: FolderGlassView? = null
     private var previewSearchGlass: SearchPillGlassView? = null
-    private lateinit var previewWallpaper: ImageView
+    private lateinit var previewWallpaper: PreviewWallpaperView
     private var currentSettings: GlassConfig.GlassSettings = GlassConfig.GlassSettings()
 
     private val sliderBindings = mutableListOf<SliderBinding>()
@@ -72,6 +75,11 @@ class GlassCustomizeActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_glass_customize)
 
         setupSystemBars()
@@ -124,18 +132,18 @@ class GlassCustomizeActivity : FragmentActivity() {
         // Configure live dock glass and preview elements
         previewWallpaper.post {
             previewDockGlass.backdropSource = previewWallpaper
-            previewDockGlass.enableDynamicBackground = true
+            previewDockGlass.enableDynamicBackground = false
             previewDockGlass.useShaderPipeline = true
 
             previewFolderGlass?.let {
                 it.backdropSource = previewWallpaper
-                it.enableDynamicBackground = true
+                it.enableDynamicBackground = false
                 it.useShaderPipeline = true
             }
 
             previewSearchGlass?.let {
                 it.backdropSource = previewWallpaper
-                it.enableDynamicBackground = true
+                it.enableDynamicBackground = false
                 it.useShaderPipeline = true
             }
 
@@ -174,40 +182,87 @@ class GlassCustomizeActivity : FragmentActivity() {
     }
 
     private fun setupPreviewIcons() {
-        val iconViews = listOf(
+        val dockIconViews = listOf(
             findViewById<ImageView>(R.id.icon_phone),
             findViewById<ImageView>(R.id.icon_messages),
             findViewById<ImageView>(R.id.icon_browser),
             findViewById<ImageView>(R.id.icon_camera)
         )
 
-        // 1. Try to load the user's actual homescreen dock items from LauncherModel
+        val desktopIconViews = listOf(
+            findViewById<ImageView>(R.id.icon_desktop_1),
+            findViewById<ImageView>(R.id.icon_desktop_2),
+            findViewById<ImageView>(R.id.icon_desktop_3)
+        )
+
+        val miniIconViews = listOf(
+            findViewById<ImageView>(R.id.folder_mini_1),
+            findViewById<ImageView>(R.id.folder_mini_2),
+            findViewById<ImageView>(R.id.folder_mini_3),
+            findViewById<ImageView>(R.id.folder_mini_4)
+        )
+
+        // 1. Try to load the user's actual homescreen items from LauncherModel
         val realDockDrawables = mutableListOf<Drawable>()
+        val realDesktopDrawables = mutableListOf<Drawable>()
+        val realFolderMiniDrawables = mutableListOf<Drawable>()
+
         try {
             val appState = LauncherAppState.getInstance(this)
             val bgDataModel = appState.model.mBgDataModel
-            val hotseatItems = synchronized(bgDataModel) {
-                bgDataModel.workspaceItems
+            synchronized(bgDataModel) {
+                // Dock items
+                val hotseatItems = bgDataModel.workspaceItems
                     .filter { it.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT }
                     .sortedBy { it.screenId }
-            }
-            for (item in hotseatItems) {
-                if (realDockDrawables.size >= 4) break
-                val d = when (item) {
-                    is ItemInfoWithIcon -> item.newIcon(this)
-                    is FolderInfo -> item.contents.firstOrNull()?.newIcon(this)
-                    else -> null
+                for (item in hotseatItems) {
+                    if (realDockDrawables.size >= 4) break
+                    val d = when (item) {
+                        is ItemInfoWithIcon -> item.newIcon(this)
+                        is FolderInfo -> item.contents.firstOrNull()?.newIcon(this)
+                        else -> null
+                    }
+                    if (d != null) {
+                        realDockDrawables.add(d)
+                    }
                 }
-                if (d != null) {
-                    realDockDrawables.add(d)
+
+                // Desktop items
+                val desktopItems = bgDataModel.workspaceItems
+                    .filter { it.container == LauncherSettings.Favorites.CONTAINER_DESKTOP }
+                    .sortedWith(compareBy({ it.screenId }, { it.cellY }, { it.cellX }))
+                for (item in desktopItems) {
+                    if (realDesktopDrawables.size >= 3) break
+                    val d = when (item) {
+                        is ItemInfoWithIcon -> item.newIcon(this)
+                        is FolderInfo -> item.contents.firstOrNull()?.newIcon(this)
+                        else -> null
+                    }
+                    if (d != null) {
+                        realDesktopDrawables.add(d)
+                    }
+                }
+
+                // Folder items if any folder exists
+                if (bgDataModel.folders.size() > 0) {
+                    val folder = bgDataModel.folders.valueAt(0)
+                    if (folder != null) {
+                        for (fItem in folder.contents) {
+                            if (realFolderMiniDrawables.size >= 4) break
+                            val d = fItem.newIcon(this)
+                            if (d != null) {
+                                realFolderMiniDrawables.add(d)
+                            }
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Could not load hotseat items from model", e)
+            Log.w(TAG, "Could not load items from model", e)
         }
 
-        // 2. Default fallback intents & drawables for empty or unfilled slots
-        val defaultApps = listOf(
+        // 2. Default fallback intents & drawables for dock slots
+        val defaultDockApps = listOf(
             Pair(Intent(Intent.ACTION_DIAL), R.drawable.ic_preview_phone),
             Pair(Intent(Intent.ACTION_SENDTO).apply { data = Uri.parse("smsto:") }, R.drawable.ic_preview_messages),
             Pair(Intent(Intent.ACTION_VIEW, Uri.parse("https://google.com")), R.drawable.ic_preview_browser),
@@ -215,13 +270,39 @@ class GlassCustomizeActivity : FragmentActivity() {
         )
 
         for (i in 0 until 4) {
-            val iconView = iconViews[i] ?: continue
+            val iconView = dockIconViews[i] ?: continue
             if (i < realDockDrawables.size) {
                 iconView.setImageDrawable(realDockDrawables[i])
             } else {
-                val fallbackIndex = (i - realDockDrawables.size).coerceAtMost(defaultApps.lastIndex)
-                val (intent, fallbackRes) = defaultApps[fallbackIndex]
+                val fallbackIndex = (i - realDockDrawables.size).coerceAtMost(defaultDockApps.lastIndex)
+                val (intent, fallbackRes) = defaultDockApps[fallbackIndex]
                 iconView.setImageDrawable(resolveIcon(intent, fallbackRes))
+            }
+        }
+
+        // 3. Default fallback intents & drawables for desktop slots
+        val defaultDesktopApps = listOf(
+            Pair(Intent(Intent.ACTION_VIEW).apply { type = "image/*" }, R.drawable.ic_preview_photos),
+            Pair(Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0")), R.drawable.ic_preview_maps),
+            Pair(Intent(Settings.ACTION_SETTINGS), R.drawable.ic_preview_settings)
+        )
+
+        for (i in 0 until 3) {
+            val iconView = desktopIconViews[i] ?: continue
+            if (i < realDesktopDrawables.size) {
+                iconView.setImageDrawable(realDesktopDrawables[i])
+            } else {
+                val fallbackIndex = (i - realDesktopDrawables.size).coerceAtMost(defaultDesktopApps.lastIndex)
+                val (intent, fallbackRes) = defaultDesktopApps[fallbackIndex]
+                iconView.setImageDrawable(resolveIcon(intent, fallbackRes))
+            }
+        }
+
+        // 4. Bind mini icons if real folder contents were found
+        for (i in 0 until miniIconViews.size) {
+            val miniView = miniIconViews[i] ?: continue
+            if (i < realFolderMiniDrawables.size) {
+                miniView.setImageDrawable(realFolderMiniDrawables[i])
             }
         }
     }
@@ -285,14 +366,33 @@ class GlassCustomizeActivity : FragmentActivity() {
             title = "Blur Amount",
             subtitle = "Background frosted blur (${String.format(Locale.US, "%.2f", GlassConfig.DEFAULT_BLUR_AMOUNT)} default)",
             min = 0.0f,
-            max = 3.0f,
-            steps = 300,
+            max = 1.0f,
+            steps = 100,
             getter = { it.blurAmount },
             setter = { s, v -> s.blurAmount = v },
-            formatter = { String.format(Locale.US, "%.2f", it) }
+            formatter = { String.format(Locale.US, "%.2f", it) },
+            onStopTracking = {
+                foundation.e.bliss.wallpaper.WallpaperBlurRenderer.INSTANCE.get(this).regenerateBlur()
+            }
         )
 
-        // 4. Saturation Boost
+        // 4. White Tint Opacity
+        bindSlider(
+            containerId = R.id.slider_white_tint_opacity,
+            title = "White Tint Opacity",
+            subtitle = "Translucent white body tint (${(Color.alpha(GlassConfig.DEFAULT_GLASS_TINT) / 255f * 100).toInt()}% default)",
+            min = 0f,
+            max = 100f,
+            steps = 100,
+            getter = { (Color.alpha(it.glassTint) / 255f) * 100f },
+            setter = { s, v ->
+                val alpha = (v / 100f * 255f).toInt().coerceIn(0, 255)
+                s.glassTint = Color.argb(alpha, 255, 255, 255)
+            },
+            formatter = { String.format(Locale.US, "%.0f%%", it) }
+        )
+
+        // 5. Saturation Boost
         bindSlider(
             containerId = R.id.slider_saturation,
             title = "Saturation Boost",
@@ -380,10 +480,11 @@ class GlassCustomizeActivity : FragmentActivity() {
         steps: Int,
         getter: (GlassConfig.GlassSettings) -> Float,
         setter: (GlassConfig.GlassSettings, Float) -> Unit,
-        formatter: (Float) -> String
+        formatter: (Float) -> String,
+        onStopTracking: (() -> Unit)? = null
     ) {
         val container = findViewById<View>(containerId) ?: return
-        val binding = SliderBinding(container, title, subtitle, min, max, steps, getter, setter, formatter)
+        val binding = SliderBinding(container, title, subtitle, min, max, steps, getter, setter, formatter, onStopTracking)
         binding.init(onChanged = { applyToPreview() }, currentSettings)
         sliderBindings.add(binding)
     }
@@ -464,6 +565,9 @@ class GlassCustomizeActivity : FragmentActivity() {
     }
 
     private fun applyToPreview() {
+        previewWallpaper.blurAmount = currentSettings.blurAmount
+        previewWallpaper.invalidate()
+
         GlassConfig.applyConfig(previewDockGlass, currentSettings)
         previewDockGlass.invalidate()
 
@@ -495,9 +599,10 @@ class GlassCustomizeActivity : FragmentActivity() {
         val steps: Int,
         val getter: (GlassConfig.GlassSettings) -> Float,
         val setter: (GlassConfig.GlassSettings, Float) -> Unit,
-        val formatter: (Float) -> String
+        val formatter: (Float) -> String,
+        val onStopTracking: (() -> Unit)? = null
     ) {
-        val seekbar: SeekBar = container.findViewById(R.id.seekbar)!!
+        val slider: IosSlider = container.findViewById(R.id.seekbar)!!
         val txtTitle: TextView = container.findViewById(R.id.txt_title)!!
         val txtSubtitle: TextView = container.findViewById(R.id.txt_subtitle)!!
         val txtValue: TextView = container.findViewById(R.id.txt_value)!!
@@ -505,29 +610,30 @@ class GlassCustomizeActivity : FragmentActivity() {
         fun init(onChanged: () -> Unit, settings: GlassConfig.GlassSettings) {
             txtTitle.text = title
             txtSubtitle.text = subtitle
-            seekbar.max = steps
+            slider.min = min
+            slider.max = max
+            slider.steps = steps
             updateFromSettings(settings)
 
-            seekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(sb: SeekBar?, progress: Int, fromUser: Boolean) {
+            slider.onSliderChangeListener = object : IosSlider.OnSliderChangeListener {
+                override fun onProgressChanged(s: IosSlider, progress: Float, fromUser: Boolean) {
                     if (fromUser) {
-                        val value = min + (progress.toFloat() / steps.toFloat()) * (max - min)
-                        setter(settings, value)
-                        txtValue.text = formatter(value)
+                        setter(settings, progress)
+                        txtValue.text = formatter(progress)
                         onChanged()
                     }
                 }
 
-                override fun onStartTrackingTouch(sb: SeekBar?) {}
-                override fun onStopTrackingTouch(sb: SeekBar?) {}
-            })
+                override fun onStopTrackingTouch(s: IosSlider) {
+                    onStopTracking?.invoke()
+                }
+            }
         }
 
         fun updateFromSettings(settings: GlassConfig.GlassSettings) {
             val value = getter(settings)
             txtValue.text = formatter(value)
-            val progress = (((value - min) / (max - min)) * steps).toInt().coerceIn(0, steps)
-            seekbar.progress = progress
+            slider.progress = value
         }
     }
 

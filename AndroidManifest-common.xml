@@ -162,7 +162,9 @@
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="false"
+            android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:autoRemoveFromRecents="true" />
 
         <provider

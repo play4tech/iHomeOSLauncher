@@ -31,6 +31,8 @@ import android.util.AttributeSet
 import android.util.Log
 import android.widget.FrameLayout
 import com.android.launcher3.Insettable
+import com.example.liquidglass.LiquidGlassView
+import foundation.e.bliss.glass.GlassConfig
 
 class WallpaperProxyView
 @JvmOverloads
@@ -38,6 +40,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     FrameLayout(context, attrs, defStyleAttr),
     WallpaperEnvironmentBuilder.Listener,
     WallpaperRepository.Listener,
+    WallpaperBlurRenderer.Listener,
     Insettable {
 
     private var hasLoggedDraw = false
@@ -50,8 +53,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
     private val envBuilder = WallpaperEnvironmentBuilder.INSTANCE.get(context)
     private val repository = WallpaperRepository.INSTANCE.get(context)
+    private val blurRenderer = WallpaperBlurRenderer.INSTANCE.get(context)
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+    private val blurPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
+    private val blurMatrix = Matrix()
 
     override fun setInsets(insets: Rect) {}
 
@@ -63,6 +69,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         repository.updateAsync()
         envBuilder.addListener(this)
         repository.addListener(this)
+        blurRenderer.addListener(this)
         updateFallbackGradient(width, height, repository.currentColors)
     }
 
@@ -71,6 +78,11 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         Log.d("WallpaperProxyView", "onDetachedFromWindow: Proxy view detached")
         envBuilder.removeListener(this)
         repository.removeListener(this)
+        blurRenderer.removeListener(this)
+    }
+
+    override fun onBlurCacheUpdated(blurSizes: WallpaperBlurRenderer.BlurSizes?) {
+        postInvalidate()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -129,11 +141,40 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val environment = envBuilder.environment
+        val rawWp = environment?.wallpaper ?: repository.currentWallpaper
+
         if (environment != null) {
             environment.transform.toMatrix(matrix)
-            canvas.drawBitmap(environment.wallpaper, matrix, paint)
-        } else if (repository.currentWallpaper != null) {
-            canvas.drawBitmap(repository.currentWallpaper!!, matrix, paint)
+        } else {
+            matrix.reset()
+        }
+
+        // Check if this draw call is an offscreen backdrop capture by a glass view
+        val isCapturedByGlass = LiquidGlassView.isCapturingAnyGlassBackdrop
+        val blurAmount = GlassConfig.loadSettings(context).blurAmount
+        val useFastBlur = com.example.liquidglass.GlassLensRenderer.getDebugProp("debug.launcher.fast_blur", false)
+
+        if (useFastBlur && isCapturedByGlass && blurAmount > 0.001f && rawWp != null) {
+            val blurSizes = blurRenderer.blurSizes
+            val blurBmp = blurSizes?.background
+            if (blurBmp != null && !blurBmp.isRecycled) {
+                val alpha = ((blurAmount / GlassConfig.DEFAULT_BLUR_AMOUNT).coerceIn(0f, 1f) * 255).toInt()
+                if (alpha < 255) {
+                    canvas.drawBitmap(rawWp, matrix, paint)
+                }
+                blurPaint.alpha = alpha
+                blurMatrix.set(matrix)
+                val scaleX = rawWp.width.toFloat() / blurBmp.width.toFloat()
+                val scaleY = rawWp.height.toFloat() / blurBmp.height.toFloat()
+                blurMatrix.preScale(scaleX, scaleY)
+                canvas.drawBitmap(blurBmp, blurMatrix, blurPaint)
+                return
+            }
+        }
+
+        // Normal screen drawing: ALWAYS draw the clean, crisp wallpaper!
+        if (rawWp != null) {
+            canvas.drawBitmap(rawWp, matrix, paint)
         } else {
             val gradPaint = fallbackGradientPaint
             if (gradPaint != null) {

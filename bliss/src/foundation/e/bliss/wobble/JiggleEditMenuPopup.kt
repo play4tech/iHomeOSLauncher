@@ -137,10 +137,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         rowsColumn.addView(createDivider(density, dividerHeight))
 
-        // --- Row 3: Edit Wallpaper ---
+        // --- Row 3: Change Wallpaper ---
         val rowEditWallpaper = createRow(
             iconRes = R.drawable.ic_edit_wallpaper,
-            label = "Edit Wallpaper",
+            label = "Change Wallpaper",
             density = density,
             rowHeight = rowHeight
         ) {

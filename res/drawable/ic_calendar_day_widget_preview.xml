@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+    <!-- Frosted squircle background -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M32,16 L96,16 C112,16 112,16 112,32 L112,96 C112,112 112,112 96,112 L32,112 C16,112 16,112 16,96 L16,32 C16,16 16,16 32,16 Z" />
+
+    <!-- Specular border -->
+    <path
+        android:strokeColor="#66FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M32,16 L96,16 C112,16 112,16 112,32 L112,96 C112,112 112,112 96,112 L32,112 C16,112 16,112 16,96 L16,32 C16,16 16,16 32,16 Z" />
+
+    <!-- FR header in iOS Red -->
+    <path
+        android:strokeColor="#FF3B30"
+        android:strokeWidth="2.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M30,44 L30,32 L38,32 M30,37.5 L36,37.5 M43,44 L43,32 L49,32 C52,32 52,38 49,38 L43,38 M47,38 L51,44" />
+
+    <!-- SEP header in Muted Gray -->
+    <path
+        android:strokeColor="#A0A0A5"
+        android:strokeWidth="2.0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M64,34 C61,32 57,33 57,36 C57,40 64,39 64,42 C64,45 60,45 57,43 M74,32 L68,32 L68,44 L74,44 M68,38 L73,38 M79,44 L79,32 L84,32 C87,32 87,38 84,38 L79,38" />
+
+    <!-- Big White 22 -->
+    <!-- First '2' -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M31,69 C32,59 57,56 57,68 C57,78 31,88 31,98 L59,98" />
+
+    <!-- Second '2' -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M71,69 C72,59 97,56 97,68 C97,78 71,88 71,98 L99,98" />
+</vector>

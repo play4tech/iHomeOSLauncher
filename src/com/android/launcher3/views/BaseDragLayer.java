@@ -182,13 +182,7 @@ public abstract class BaseDragLayer<T extends Context & ActivityContext>
         }
 
         for (TouchController controller : mControllers) {
-            if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-                android.util.Log.d("AppLibraryTouch", "Controller in list: " + controller.getClass().getSimpleName());
-            }
             if (controller.onControllerInterceptTouchEvent(ev)) {
-                if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-                    android.util.Log.d("AppLibraryTouch", "Controller intercepted on DOWN: " + controller.getClass().getSimpleName());
-                }
                 return controller;
             }
         }

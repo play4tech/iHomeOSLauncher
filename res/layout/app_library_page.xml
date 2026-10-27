@@ -68,23 +68,47 @@
                         android:src="@drawable/ic_app_library_search"
                         android:tint="#D9FFFFFF" />
 
-                    <com.android.launcher3.ExtendedEditText
-                        android:id="@+id/app_library_search_input"
-                        android:layout_width="match_parent"
+                    <FrameLayout
+                        android:id="@+id/app_library_search_input_frame"
+                        android:layout_width="0dp"
                         android:layout_height="match_parent"
-                        android:background="@android:color/transparent"
-                        android:hint="App Library"
-                        android:textColor="#FFFFFF"
-                        android:textColorHint="#D9FFFFFF"
-                        android:textSize="17sp"
-                        android:fontFamily="@font/inter"
-                        android:includeFontPadding="false"
-                        android:paddingStart="7dp"
-                        android:paddingEnd="0dp"
-                        android:gravity="center_vertical"
-                        android:imeOptions="actionSearch|flagNoExtractUi"
-                        android:inputType="text|textNoSuggestions"
-                        android:singleLine="true" />
+                        android:layout_weight="1">
+
+                        <com.android.launcher3.ExtendedEditText
+                            android:id="@+id/app_library_search_input"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:hint="App Library"
+                            android:textColor="#FFFFFF"
+                            android:textColorHint="#D9FFFFFF"
+                            android:textSize="17sp"
+                            android:fontFamily="@font/inter"
+                            android:includeFontPadding="false"
+                            android:paddingStart="7dp"
+                            android:paddingEnd="0dp"
+                            android:gravity="center_vertical"
+                            android:imeOptions="actionSearch|flagNoExtractUi"
+                            android:inputType="text|textNoSuggestions"
+                            android:singleLine="true" />
+
+                        <TextView
+                            android:id="@+id/app_library_search_query_overlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@android:color/transparent"
+                            android:textColor="#FFFFFF"
+                            android:textSize="17sp"
+                            android:fontFamily="@font/inter"
+                            android:includeFontPadding="false"
+                            android:paddingStart="7dp"
+                            android:paddingEnd="0dp"
+                            android:gravity="center_vertical"
+                            android:singleLine="true"
+                            android:clickable="false"
+                            android:focusable="false"
+                            android:visibility="gone" />
+                    </FrameLayout>
                 </LinearLayout>
             </FrameLayout>
 

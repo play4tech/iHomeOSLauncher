@@ -87,11 +87,12 @@ class LauncherAppWidgetHost extends AppWidgetHost {
     @NonNull
     public LauncherAppWidgetHostView onCreateView(Context context, int appWidgetId,
             AppWidgetProviderInfo appWidget) {
-        if (appWidget != null && foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.isClockWidget(appWidget.provider)) {
-            foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView =
-                    new foundation.e.bliss.widgets.clock.ClockWidgetHostView(context);
-            clockView.setAppWidget(appWidgetId, appWidget);
-            return clockView;
+        if (appWidget != null) {
+            LauncherAppWidgetHostView glassView =
+                    foundation.e.bliss.widgets.GlassWidgetFactory.createHostView(context, appWidgetId, appWidget);
+            if (glassView != null) {
+                return glassView;
+            }
         }
         ListenableHostView result =
                 mViewToRecycle != null ? mViewToRecycle : new ListenableHostView(context);

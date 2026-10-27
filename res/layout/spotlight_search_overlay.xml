@@ -61,10 +61,11 @@
                         android:paddingHorizontal="12dp">
 
                         <ImageView
+                            android:id="@+id/spotlight_search_icon"
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:src="@drawable/ic_allapps_search"
-                            android:tint="#FFFFFF" />
+                            android:tint="?attr/workspaceTextColor" />
 
                         <com.android.launcher3.ExtendedEditText
                             android:id="@+id/spotlight_search_input"
@@ -73,8 +74,8 @@
                             android:layout_weight="1"
                             android:background="@android:color/transparent"
                             android:hint="Search"
-                            android:textColor="#FFFFFF"
-                            android:textColorHint="#99FFFFFF"
+                            android:textColor="?attr/workspaceTextColor"
+                            android:textColorHint="?attr/workspaceTextColor"
                             android:textSize="17sp"
                             android:paddingStart="8dp"
                             android:paddingEnd="4dp"
@@ -88,7 +89,7 @@
                             android:layout_width="20dp"
                             android:layout_height="20dp"
                             android:src="@drawable/ic_remove_icon"
-                            android:tint="#99FFFFFF"
+                            android:tint="?attr/workspaceTextColor"
                             android:visibility="gone" />
                     </LinearLayout>
                 </FrameLayout>
@@ -101,7 +102,7 @@
                     android:paddingStart="12dp"
                     android:paddingEnd="4dp"
                     android:text="Cancel"
-                    android:textColor="#FFFFFF"
+                    android:textColor="?attr/workspaceTextColor"
                     android:textSize="17sp"
                     android:fontFamily="sans-serif" />
             </LinearLayout>

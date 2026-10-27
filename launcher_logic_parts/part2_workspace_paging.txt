@@ -18,7 +18,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/Workspace.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
-**Lines**: 5210 | **Bytes**: 226416
+**Lines**: 5362 | **Bytes**: 234470
 
 ```java
 /*
@@ -38,6 +38,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
  */
 
 package com.android.launcher3;
+
+import android.graphics.Canvas;
 
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_EXIT_DELAY;
 import static com.android.launcher3.LauncherSettings.Favorites.ITEM_TYPE_APPLICATION;
@@ -676,17 +678,29 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
         updateChildrenLayersEnabled();
         StateManager<LauncherState> stateManager = mLauncher.getStateManager();
-        stateManager.addStateListener(new StateManager.StateListener<LauncherState>() {
-            @Override
-            public void onStateTransitionComplete(LauncherState finalState) {
-                if (finalState == NORMAL) {
-                    if (!mDeferRemoveExtraEmptyScreen) {
-                        removeExtraEmptyScreen(true /* stripEmptyScreens */);
+        if (!mDeferRemoveExtraEmptyScreen) {
+            if (!stateManager.isInTransition()) {
+                removeExtraEmptyScreen(true /* stripEmptyScreens */);
+            } else {
+                stateManager.addStateListener(new StateManager.StateListener<LauncherState>() {
+                    @Override
+                    public void onStateTransitionComplete(LauncherState finalState) {
+                        if (finalState == NORMAL || finalState == EDIT_MODE) {
+                            if (!mDeferRemoveExtraEmptyScreen) {
+                                removeExtraEmptyScreen(true /* stripEmptyScreens */);
+                            }
+                            stateManager.removeStateListener(this);
+                        }
                     }
-                    stateManager.removeStateListener(this);
-                }
+                });
             }
-        });
+            // Safety fallback: ensure extra empty screen is never leaked if transition was cancelled or interrupted
+            postDelayed(() -> {
+                if (!mDeferRemoveExtraEmptyScreen && hasExtraEmptyScreens()) {
+                    removeExtraEmptyScreen(true /* stripEmptyScreens */);
+                }
+            }, 500);
+        }
 
         mPrevDragViewVisualCenter[0] = mPrevDragViewVisualCenter[1] = -1f;
         mDragInfo = null;
@@ -1738,6 +1752,21 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
     }
 
+    public static int sFolderDrawCount = 0;
+    public static int sWidgetDrawCount = 0;
+    public static int sWorkspaceFrames = 0;
+
+    private static int getWidgetDoseLimit() {
+        try {
+            Class<?> sp = Class.forName("android.os.SystemProperties");
+            String val = (String) sp.getMethod("get", String.class, String.class)
+                    .invoke(null, "debug.launcher.widget_glass", "-1");
+            return Integer.parseInt(val);
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
+
     /**
      * Invalidates all active Liquid Glass surfaces across visible pages and the dock so that
      * refraction updates live in real-time during user drags, scrolling, and page flings.
@@ -1759,20 +1788,37 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 for (int p = leftScreen; p <= rightScreen; p++) {
                     if (p < 0 || p >= pageCount) continue;
                     View page = getChildAt(p);
+                    if (page == mAppLibraryCellLayout) {
+                        if (mAppLibraryPinnedItem instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
+                            ((com.android.launcher3.applibrary.view.AppLibraryPage) mAppLibraryPinnedItem).invalidateGlassSurfaces();
+                        }
+                        continue;
+                    }
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
+                            sWorkspaceFrames++;
+                            int widgetLimit = getWidgetDoseLimit();
+                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
-                                    if (gv != null) {
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
-                                } else if (child instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
-                                    FolderGlassView gv = ((foundation.e.bliss.widgets.clock.ClockWidgetHostView) child).getGlassView();
+                                } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                                    FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
                                     if (gv != null) {
-                                        gv.invalidate();
+                                        if (widgetLimit >= 0) {
+                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
+                                        }
+                                        if (gv.getVisibility() == VISIBLE) {
+                                            sWidgetDrawCount++;
+                                            gv.invalidate();
+                                        }
+                                        widgetIdx++;
                                     }
                                 }
                             }
@@ -1802,11 +1848,51 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     }
                 }
             }
+
+            View pageIndicator = getPageIndicator();
+            if (pageIndicator instanceof PageIndicatorDots) {
+                foundation.e.bliss.glass.SearchPillGlassView pillGlass =
+                        ((PageIndicatorDots) pageIndicator).getPillGlassView();
+                if (pillGlass != null && pillGlass.getVisibility() == VISIBLE) {
+                    pillGlass.invalidate();
+                }
+            }
+
+            if (isWobbling()) {
+                View topBar = mLauncher.findViewById(R.id.jiggle_top_bar);
+                if (topBar instanceof foundation.e.bliss.wobble.JiggleTopBarView
+                        && topBar.getVisibility() == VISIBLE) {
+                    ((foundation.e.bliss.wobble.JiggleTopBarView) topBar).invalidateGlassButtons();
+                }
+            }
         } catch (Throwable ignored) {}
     }
 
     public void invalidateScrollingPageGlassSurfaces() {
         try {
+            if (mCachedDockGlass == null) {
+                mCachedDockGlass = mLauncher.findViewById(R.id.dock_glass);
+            }
+            if (mCachedDockGlass != null && mCachedDockGlass.getVisibility() == VISIBLE) {
+                mCachedDockGlass.invalidate();
+            }
+
+            View pageIndicator = getPageIndicator();
+            if (pageIndicator instanceof PageIndicatorDots) {
+                foundation.e.bliss.glass.SearchPillGlassView pillGlass =
+                        ((PageIndicatorDots) pageIndicator).getPillGlassView();
+                if (pillGlass != null && pillGlass.getVisibility() == VISIBLE) {
+                    pillGlass.invalidate();
+                }
+            }
+
+            if (isWobbling()) {
+                View topBar = mLauncher.findViewById(R.id.jiggle_top_bar);
+                if (topBar instanceof foundation.e.bliss.wobble.JiggleTopBarView
+                        && topBar.getVisibility() == VISIBLE) {
+                    ((foundation.e.bliss.wobble.JiggleTopBarView) topBar).invalidateGlassButtons();
+                }
+            }
             final int[] visibleScreens = getVisibleChildrenRange();
             if (visibleScreens != null && visibleScreens.length >= 2 && visibleScreens[0] >= 0) {
                 int leftScreen = visibleScreens[0];
@@ -1815,32 +1901,58 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 for (int p = leftScreen; p <= rightScreen; p++) {
                     if (p < 0 || p >= pageCount) continue;
                     View page = getChildAt(p);
+                    if (page == mAppLibraryCellLayout) {
+                        if (mAppLibraryPinnedItem instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
+                            ((com.android.launcher3.applibrary.view.AppLibraryPage) mAppLibraryPinnedItem).invalidateGlassSurfaces();
+                        }
+                        continue;
+                    }
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
+                            sWorkspaceFrames++;
+                            int widgetLimit = getWidgetDoseLimit();
+                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
-                                    if (gv != null) {
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
-                                } else if (child instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
-                                    FolderGlassView gv = ((foundation.e.bliss.widgets.clock.ClockWidgetHostView) child).getGlassView();
+                                } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                                    FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
                                     if (gv != null) {
-                                        gv.invalidate();
+                                        if (widgetLimit >= 0) {
+                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
+                                        }
+                                        if (gv.getVisibility() == VISIBLE) {
+                                            sWidgetDrawCount++;
+                                            gv.invalidate();
+                                        }
+                                        widgetIdx++;
                                     }
                                 }
                             }
                         }
                     }
                 }
+                int appLibIndex = (mAppLibraryCellLayout != null)
+                        ? indexOfChild(mAppLibraryCellLayout)
+                        : mScreenOrder.indexOf(APP_LIBRARY_SCREEN_ID);
+                if (appLibIndex >= 0 && appLibIndex >= leftScreen && appLibIndex <= rightScreen
+                        && mAppLibraryPinnedItem instanceof com.android.launcher3.applibrary.view.AppLibraryPage) {
+                    ((com.android.launcher3.applibrary.view.AppLibraryPage) mAppLibraryPinnedItem).invalidateGlassSurfaces();
+                }
             }
         } catch (Throwable ignored) {}
     }
 
     private boolean isNearAppLibrary() {
-        int appLibIndex = mScreenOrder.indexOf(APP_LIBRARY_SCREEN_ID);
+        int appLibIndex = (mAppLibraryCellLayout != null)
+                ? indexOfChild(mAppLibraryCellLayout)
+                : mScreenOrder.indexOf(APP_LIBRARY_SCREEN_ID);
         if (appLibIndex < 0) return false;
         int scrollForAppLib = getScrollForPage(appLibIndex);
         int pageWidth = getWidth();
@@ -2020,7 +2132,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     dockGlass.setAlpha(1f);
                 }
             }
-            if (mLauncher.mBlurLayer != null && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) mLauncher.mBlurLayer.setAlpha(0);
+            if (mLauncher.mBlurLayer != null && com.android.launcher3.folder.Folder.getOpen(mLauncher) == null) {
+                mLauncher.mBlurLayer.setAlpha(0);
+            }
             return;
         }
 
@@ -2051,7 +2165,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             dockGlass.setAlpha(dockAlpha);
         }
 
-        if (mLauncher.mBlurLayer != null) mLauncher.mBlurLayer.setAlpha(progress);
+        if (mLauncher.mBlurLayer != null) {
+            float currentAlpha = mLauncher.mBlurLayer.getAlpha();
+            if (Math.abs(progress - currentAlpha) >= 0.02f || progress <= 0f || progress >= 1f) {
+                mLauncher.mBlurLayer.setAlpha(progress);
+            }
+        }
     }
 
     public void showPageIndicatorAtCurrentScroll() {
@@ -3214,11 +3333,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 final ItemInfo info = (ItemInfo) cell.getTag();
                 boolean isWidget = info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET
                         || info.itemType == LauncherSettings.Favorites.ITEM_TYPE_CUSTOM_APPWIDGET;
-                if (isWidget && dropTargetLayout != null) {
-                    // animate widget to a valid place
-                    int animationType = resizeOnDrop ? ANIMATE_INTO_POSITION_AND_RESIZE :
-                            ANIMATE_INTO_POSITION_AND_DISAPPEAR;
-                    animateWidgetDrop(info, parent, d.dragView, null, animationType, cell, false);
+                if (isWidget && resizeOnDrop && dropTargetLayout != null) {
+                    // animate widget to a valid place when resized on drop
+                    animateWidgetDrop(info, parent, d.dragView, null, ANIMATE_INTO_POSITION_AND_RESIZE, cell, false);
                 } else {
                     int duration = snappedToNewPage ? ADJACENT_SCREEN_DROP_DURATION : -1;
                     mLauncher.getDragLayer().animateViewIntoPosition(d.dragView, cell, duration,
@@ -3645,6 +3762,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 child.clearAnimation();
             }
             manageFolderFeedback(targetCellDistance, d);
+            invalidateGlassSurfaces();
 
             boolean nearestDropOccupied = mDragTargetLayout.isNearestDropLocationOccupied((int)
                             mDragViewVisualCenter[0], (int) mDragViewVisualCenter[1], item.spanX,
@@ -3795,14 +3913,36 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         float relTouchX = d.x - screenLeft;
         float relCenterX = centerX - screenLeft;
 
-        // Edge gutter threshold: only trigger neighbor page snap when the user deliberately
-        // pushes into the screen edge gutter (<= 24dp from outer bezel).
-        // Inside Column 0 (center ~57dp, left bound 16dp) or Column 3, neither the finger
-        // nor the icon center can reach <= 24dp, keeping in-page reordering fully responsive.
-        float edgeGutter = getResources().getDisplayMetrics().density * 24f;
+        float density = getResources().getDisplayMetrics().density;
+        // Dynamic grid-relative page-flip gutter: scales with layout padding and cell width
+        // plus a 2px expansion, clamped with ergonomic safety bounds.
+        float dynamicGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.10f) + 2f;
+        float minGutter = density * 12f;
+        float maxGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.25f);
+        float edgeGutter = Math.max(minGutter, Math.min(maxGutter, dynamicGutter));
 
-        boolean isAtLeftEdge = (relCenterX <= edgeGutter || relTouchX <= edgeGutter);
-        boolean isAtRightEdge = (relCenterX >= screenWidth - edgeGutter || relTouchX >= screenWidth - edgeGutter);
+        // Dynamic minimum bezel zone: scaled to half padding + 2px, clamped to at least 8dp + 2px
+        float minimumBezelZone = Math.max(density * 8f + 2f, (leftLayout.getPaddingLeft() * 0.5f) + 2f);
+
+        // Dynamic reorder edge clearance: proportional to cell width
+        float reorderEdgeClearance = leftLayout.getCellWidth() * 0.10f;
+
+        float leftReorderRingOuterX = leftLayout.getBoundaryReorderRingOuterX(true);
+        float rightReorderRingOuterX = rightLayout.getLeft() - screenLeft
+                + rightLayout.getBoundaryReorderRingOuterX(false);
+        // Keep a full edge-clearance beyond boundary reorder rings so a slightly shaky drag can
+        // still show the reorder preview before it enters the page-flip zone. If the rings leave
+        // less room, retain a dynamic bezel strip for deliberate paging.
+        float leftEdgeThreshold = Math.max(minimumBezelZone,
+                Math.min(edgeGutter, leftReorderRingOuterX - reorderEdgeClearance));
+        float rightEdgeThreshold = Math.min(screenWidth - minimumBezelZone,
+                Math.max(screenWidth - edgeGutter,
+                        rightReorderRingOuterX + reorderEdgeClearance));
+
+        boolean isAtLeftEdge = (relCenterX <= leftEdgeThreshold
+                || relTouchX <= leftEdgeThreshold);
+        boolean isAtRightEdge = (relCenterX >= rightEdgeThreshold
+                || relTouchX >= rightEdgeThreshold);
 
         IntSet pageIndexesToVerify = IntSet.wrap(nextPage - 1,
                 nextPage + (isTwoPanelEnabled() ? 2 : 1));
@@ -4303,8 +4443,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         getFinalPositionForDropAnimation(finalPos, scaleXY, dragView, cellLayout, info, mTargetCell,
                 scalePreview, finalView);
 
+        if (finalView != null) {
+            finalView.setVisibility(INVISIBLE);
+        }
+
         Resources res = mLauncher.getResources();
-        final int duration = res.getInteger(R.integer.config_dropAnimMaxDuration) - 200;
+        final int duration = -1;
 
         boolean isWidget = info.itemType == LauncherSettings.Favorites.ITEM_TYPE_APPWIDGET ||
                 info.itemType == LauncherSettings.Favorites.ITEM_TYPE_CUSTOM_APPWIDGET;
@@ -4312,7 +4456,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 && finalView != null
                 && dragView.getContentView() != finalView) {
             Drawable crossFadeDrawable = createWidgetDrawable(info, finalView);
-            dragView.crossFadeContent(crossFadeDrawable, (int) (duration * 0.8f));
+            int crossFadeDuration = (int) (res.getInteger(R.integer.config_dropAnimMinDuration) * 1.2f);
+            dragView.crossFadeContent(crossFadeDrawable, crossFadeDuration);
         } else if (isWidget && external) {
             scaleXY[0] = scaleXY[1] = Math.min(scaleXY[0], scaleXY[1]);
         }
@@ -4334,6 +4479,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 public void run() {
                     if (finalView != null) {
                         finalView.setVisibility(VISIBLE);
+                        if (isWobbling()) {
+                            wobbleSingleChild(finalView);
+                        }
                     }
                     if (onCompleteRunnable != null) {
                         onCompleteRunnable.run();
@@ -4952,6 +5100,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             animate().translationY(wobbleY)
                     .setDuration(250)
                     .setInterpolator(com.android.app.animation.Interpolators.EMPHASIZED_DECELERATE)
+                    .setUpdateListener(animation -> invalidateGlassSurfaces())
+                    .withEndAction(this::invalidateGlassSurfaces)
                     .start();
             if (mAppLibraryCellLayout != null) {
                 mAppLibraryCellLayout.animate().translationY(-wobbleY)
@@ -4968,6 +5118,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             animate().translationY(0f)
                     .setDuration(200)
                     .setInterpolator(com.android.app.animation.Interpolators.EMPHASIZED_ACCELERATE)
+                    .setUpdateListener(animation -> invalidateGlassSurfaces())
+                    .withEndAction(this::invalidateGlassSurfaces)
                     .start();
             if (mAppLibraryCellLayout != null) {
                 mAppLibraryCellLayout.animate().translationY(0f)
@@ -6184,7 +6336,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
-**Lines**: 498 | **Bytes**: 23466
+**Lines**: 553 | **Bytes**: 25658
 
 ```java
 /*
@@ -6305,6 +6457,14 @@ public class ItemClickHandler {
             }
         }
 
+        if (v instanceof foundation.e.bliss.widgets.calendar.CalendarDayWidgetHostView
+                || v instanceof foundation.e.bliss.widgets.calendar.CalendarMonthWidgetHostView) {
+            if (!workspace.isWobbling()) {
+                onClickCalendarWidget(v.getContext());
+                return;
+            }
+        }
+
         Object tag = v.getTag();
         if (tag instanceof WorkspaceItemInfo) {
             Folder folder = Folder.getOpen(launcher);
@@ -6420,6 +6580,53 @@ public class ItemClickHandler {
             "com.miui.clock"
         };
         for (String pkg : clockPackages) {
+            try {
+                Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(launchIntent);
+                    return;
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    /**
+     * Event handler for the iOS Calendar widgets click.
+     * Launches the user's default Calendar app.
+     */
+    private static void onClickCalendarWidget(Context context) {
+        try {
+            android.net.Uri uri = android.net.Uri.parse("content://com.android.calendar/time/" + System.currentTimeMillis());
+            Intent intent = new Intent(Intent.ACTION_VIEW).setData(uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_APP_CALENDAR);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        String[] calendarPackages = new String[] {
+            "com.google.android.calendar",
+            "com.android.calendar",
+            "com.samsung.android.calendar",
+            "com.coloros.calendar",
+            "com.oplus.calendar",
+            "com.bbk.calendar",
+            "com.vivo.calendar",
+            "com.miui.calendar"
+        };
+        for (String pkg : calendarPackages) {
             try {
                 Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
                 if (launchIntent != null) {
@@ -6930,7 +7137,7 @@ public class ItemLongClickListener {
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
-**Lines**: 107 | **Bytes**: 3647
+**Lines**: 115 | **Bytes**: 3885
 
 ```kotlin
 /*
@@ -7031,12 +7238,20 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
         private lateinit var prefs: LauncherPrefs
 
         @JvmStatic
-        val isSingleLayerMode
-            get() = prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
+        val isSingleLayerMode: Boolean
+            get() = if (Companion::prefs.isInitialized) {
+                prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
+            } else {
+                true
+            }
 
         @JvmStatic
-        val isNotifCountEnabled
-            get() = prefs.get(LauncherPrefs.IS_NOTIF_COUNT_ENABLED)
+        val isNotifCountEnabled: Boolean
+            get() = if (Companion::prefs.isInitialized) {
+                prefs.get(LauncherPrefs.IS_NOTIF_COUNT_ENABLED)
+            } else {
+                true
+            }
     }
 }
 ```

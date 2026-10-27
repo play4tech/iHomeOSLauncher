@@ -99,6 +99,7 @@ constructor(
         // (cov = clamp(0.5 - d / 1.5, 0.0, 1.0)) and renders specular caustics at the rim.
         // Hardware outline clipping introduces jagged 1-bit edges and cuts off the specular glow.
         clipToOutline = false
+        invalidateOnBackdropScroll = false
     }
 
     override fun onAttachedToWindow() {

@@ -67,11 +67,6 @@ class GridFolderIconLayoutRule(context: Context) : ClippedFolderIconLayoutRule()
 
             point[0] = outerPadX + baseX * (itemSize + innerGapX)
             point[1] = outerPadY + baseY * (itemSize + innerGapY)
-
-            android.util.Log.d(
-                "FolderLayout",
-                "index=$index, avail=$mAvailableSpace, iconSize=$iconSize, scale=$scale, outerX=$outerPadX, outerY=$outerPadY, innerGapX=$innerGapX, x=${point[0]}, y=${point[1]}"
-            )
         } else {
             point[1] = mAvailableSpace / 2 - (iconSize * scale) / 2
             point[0] = point[1]

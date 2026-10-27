@@ -29,6 +29,8 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.core.view.WindowCompat
 import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.R
@@ -71,9 +73,12 @@ class OnboardingActivity : Activity() {
     private lateinit var primaryButton: TextView
     private lateinit var secondaryButton: TextView
 
+    private var backCallback: OnBackInvokedCallback? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sIsActive = true
+        registerBackDispatcher()
         setupSystemBars()
         setContentView(R.layout.activity_onboarding)
 
@@ -325,8 +330,43 @@ class OnboardingActivity : Activity() {
         }
     }
 
+    private fun registerBackDispatcher() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && backCallback == null) {
+            try {
+                val callback = OnBackInvokedCallback {
+                    handleBackNavigation()
+                }
+                onBackInvokedDispatcher.registerOnBackInvokedCallback(
+                    OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    callback
+                )
+                backCallback = callback
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to register OnBackInvokedCallback", t)
+            }
+        }
+    }
+
+    private fun unregisterBackDispatcher() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                backCallback?.let { callback ->
+                    onBackInvokedDispatcher.unregisterOnBackInvokedCallback(callback)
+                    backCallback = null
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to unregister OnBackInvokedCallback", t)
+            }
+        }
+    }
+
     @Deprecated("Deprecated in Java")
     override fun onBackPressed() {
+        handleBackNavigation()
+    }
+
+    private fun handleBackNavigation() {
+        if (isFinishing || isDestroyed) return
         when (currentStep) {
             Step.CUSTOMIZE_TIPS -> {
                 if (isNotificationStepNeeded) {
@@ -352,6 +392,7 @@ class OnboardingActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterBackDispatcher()
         sIsActive = false
     }
 

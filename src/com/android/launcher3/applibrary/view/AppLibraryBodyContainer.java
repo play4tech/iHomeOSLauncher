@@ -38,12 +38,4 @@ public class AppLibraryBodyContainer extends FrameLayout {
             setClipBounds(new Rect(0, 0, w, h));
         }
     }
-
-    @Override
-    protected void dispatchDraw(Canvas canvas) {
-        canvas.save();
-        canvas.clipRect(0, 0, getWidth(), getHeight());
-        super.dispatchDraw(canvas);
-        canvas.restore();
-    }
 }

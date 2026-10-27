@@ -945,10 +945,20 @@ public class CellLayout extends ViewGroup {
 
     /**
      * Returns the distance between the given coordinate and the visual center of the given cell.
+     * For squircle app icons (and folders), uses superellipse (n=4) distance metric to ensure
+     * uniform folder creation and move-aside trigger margins across flat edges and corners alike.
      */
     public float getDistanceFromWorkspaceCellVisualCenter(float x, float y, int[] cell) {
         getWorkspaceCellVisualCenter(cell[0], cell[1], mTmpPoint);
-        return (float) Math.hypot(x - mTmpPoint[0], y - mTmpPoint[1]);
+        float dx = x - mTmpPoint[0];
+        float dy = y - mTmpPoint[1];
+        View child = getChildAt(cell[0], cell[1]);
+        if (canCreateFolder(child) || child instanceof com.android.launcher3.folder.FolderIcon) {
+            double dx2 = dx * dx;
+            double dy2 = dy * dy;
+            return (float) Math.sqrt(Math.sqrt(dx2 * dx2 + dy2 * dy2));
+        }
+        return (float) Math.hypot(dx, dy);
     }
 
     private void getWorkspaceCellVisualCenter(int cellX, int cellY, int[] outPoint) {
@@ -968,18 +978,35 @@ public class CellLayout extends ViewGroup {
     }
 
     /**
-     * Returns the max distance from the center of a cell that can accept a drop to create a folder.
+     * Returns the max distance from the center of a cell that can accept a drop to create a folder
+     * (or add to an existing folder). Uses a concentric 65% squircle core matching the app icon trigger,
+     * leaving the outer 35% margin for reordering (move aside).
      */
     public float getFolderCreationRadius(int[] targetCell) {
+        View child = getChildAt(targetCell[0], targetCell[1]);
+        if (child instanceof com.android.launcher3.folder.FolderIcon) {
+            com.android.launcher3.folder.FolderIcon fi = (com.android.launcher3.folder.FolderIcon) child;
+            if (fi.getGlassView() != null && fi.getGlassView().getWidth() > 0) {
+                return (fi.getGlassView().getWidth() / 2f) * 0.65f;
+            }
+            DeviceProfile grid = mActivity.getDeviceProfile();
+            if (grid != null && grid.folderIconSizePx > 0) {
+                return (grid.folderIconSizePx / 2f) * 0.65f;
+            }
+            fi.getWorkspaceVisualDragBounds(mTempRect);
+            float folderHalfWidth = mTempRect.width() / 2f;
+            if (folderHalfWidth > 0) {
+                return folderHalfWidth * 0.65f;
+            }
+        } else if (child instanceof DraggableView) {
+            ((DraggableView) child).getWorkspaceVisualDragBounds(mTempRect);
+            float iconHalfWidth = mTempRect.width() / 2f;
+            if (iconHalfWidth > 0) {
+                return iconHalfWidth * 0.65f;
+            }
+        }
         DeviceProfile grid = mActivity.getDeviceProfile();
-        float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
-        // Keep folder creation inside the normal reorder ring. Boundary cells get a wider
-        // reorder-only margin so a drag does not need to land on a narrow pixel band.
-        int[] centerPoint = mTmpPoint;
-        getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
-        float reorderRadius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
-        float folderRadius = (reorderRadius + iconVisibleRadius) / 2;
-        return folderRadius;
+        return (grid.iconSizePx / 2f) * 0.65f;
     }
 
     /**
@@ -1223,6 +1250,13 @@ public class CellLayout extends ViewGroup {
                     float x = (1 - r) * initPreviewOffsetX + r * finalPreviewOffsetX;
                     float y = (1 - r) * initPreviewOffsetY + r * finalPreviewOffsetY;
                     item.getTranslateDelegate().setTranslation(INDEX_REORDER_PREVIEW_OFFSET, x, y);
+                    if (child instanceof com.android.launcher3.folder.FolderIcon) {
+                        foundation.e.bliss.glass.FolderGlassView gv = ((com.android.launcher3.folder.FolderIcon) child).getGlassView();
+                        if (gv != null) gv.invalidate();
+                    } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                        foundation.e.bliss.glass.FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
+                        if (gv != null) gv.invalidate();
+                    }
                 }
             });
             va.addListener(new AnimatorListenerAdapter() {
@@ -1236,6 +1270,13 @@ public class CellLayout extends ViewGroup {
                         item.getTranslateDelegate()
                                 .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
                         child.requestLayout();
+                        if (child instanceof com.android.launcher3.folder.FolderIcon) {
+                            foundation.e.bliss.glass.FolderGlassView gv = ((com.android.launcher3.folder.FolderIcon) child).getGlassView();
+                            if (gv != null) gv.invalidate();
+                        } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                            foundation.e.bliss.glass.FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
+                            if (gv != null) gv.invalidate();
+                        }
                     }
                     if (mReorderAnimators.containsKey(lp)) {
                         mReorderAnimators.remove(lp);

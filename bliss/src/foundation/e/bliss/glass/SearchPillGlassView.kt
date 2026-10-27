@@ -34,6 +34,7 @@ import com.android.launcher3.R
 import com.example.liquidglass.GlassAccessibilityMode
 import com.example.liquidglass.GlassMaterial
 import com.example.liquidglass.LiquidGlassView
+import foundation.e.bliss.graphics.ContinuousCornerGeometry
 
 /**
  * Liquid glass refraction surface for the Home Screen search pill on the page indicator.
@@ -51,7 +52,7 @@ constructor(
         // No-op here prevents InsettableFrameLayout from altering margins.
     }
 
-    private val clipPath = Path()
+    private val continuousGeometry = ContinuousCornerGeometry()
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
     }
@@ -82,9 +83,12 @@ constructor(
                     outline.setRoundRect(0, 0, view.width, view.height, radius)
                 }
             }
-        clipToOutline = true
+        clipToOutline = false
 
         GlassConfig.applyDefaultConfig(this)
+        isClickable = false
+        isFocusable = false
+        invalidateOnBackdropScroll = false
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -97,7 +101,7 @@ constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         GlassConfig.registerView(this)
-        isClickable = true
+        isClickable = false
         isFocusable = false
         isEnabled = true
         if (height > 0) {
@@ -127,16 +131,21 @@ constructor(
             super.draw(canvas)
             return
         }
-        val radius = height / 2f
-        clipPath.reset()
-        clipPath.addRoundRect(0f, 0f, width.toFloat(), height.toFloat(), radius, radius, Path.Direction.CW)
-        canvas.save()
-        canvas.clipPath(clipPath)
+        val targetRadius = height / 2f
+        if (cornerRadius != targetRadius) {
+            cornerRadius = targetRadius
+        }
+
         super.draw(canvas)
 
         if (borderEnabled && borderWidthPx > 0f && borderOpacity > 0f) {
+            val path = continuousGeometry.getPath(
+                width = width.toFloat(),
+                height = height.toFloat(),
+                radius = targetRadius
+            )
             GlassConfig.drawBorder(
-                canvas, clipPath, borderPaint,
+                canvas, path, borderPaint,
                 borderWidthPx, borderOpacity, borderFade,
                 borderPosition, borderFadeSpread, false,
                 height.toFloat()
@@ -144,54 +153,18 @@ constructor(
         }
 
         if (whiteBorderEnabled && whiteBorderWidthPx > 0f && whiteBorderOpacity > 0f) {
+            val path = continuousGeometry.getPath(
+                width = width.toFloat(),
+                height = height.toFloat(),
+                radius = targetRadius
+            )
             GlassConfig.drawBorder(
-                canvas, clipPath, whiteBorderPaint,
+                canvas, path, whiteBorderPaint,
                 whiteBorderWidthPx, whiteBorderOpacity, whiteBorderFade,
                 whiteBorderPosition, whiteBorderFadeSpread, true,
                 height.toFloat()
             )
         }
-
-        canvas.restore()
-    }
-
-    private var touchDown = false
-
-    override fun onTouchEvent(event: MotionEvent): Boolean {
-        when (event.actionMasked) {
-            MotionEvent.ACTION_DOWN -> {
-                touchDown = true
-                return true
-            }
-            MotionEvent.ACTION_MOVE -> {
-                if (!touchDown) return false
-                val slop = android.view.ViewConfiguration.get(context).scaledTouchSlop
-                if (event.x < -slop || event.x > width + slop || event.y < -slop || event.y > height + slop) {
-                    touchDown = false
-                    return false
-                }
-                return true
-            }
-            MotionEvent.ACTION_UP -> {
-                if (touchDown) {
-                    touchDown = false
-                    if (event.x >= 0 && event.x <= width && event.y >= 0 && event.y <= height) {
-                        val launcher = com.android.launcher3.Launcher.getLauncher(context)
-                        if (launcher != null && launcher.workspace != null && !launcher.workspace.isWobbling) {
-                            com.android.launcher3.applibrary.view.SpotlightSearchOverlay.show(launcher)
-                            playSoundEffect(android.view.SoundEffectConstants.CLICK)
-                            return true
-                        }
-                    }
-                }
-                return false
-            }
-            MotionEvent.ACTION_CANCEL -> {
-                touchDown = false
-                return false
-            }
-        }
-        return false
     }
 
     private fun findWallpaperProxy(): View? {

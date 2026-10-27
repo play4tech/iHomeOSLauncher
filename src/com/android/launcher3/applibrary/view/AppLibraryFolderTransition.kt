@@ -217,9 +217,9 @@ class AppLibraryFolderTransition(
         val card = folderTile as? CategoryCardView
         val hasMiniCluster = n >= 5 && startCenters.size > 4
 
-        // Setup dimming overlay
+        // Setup frosted glass overlay
         overlayGlass?.visibility = View.VISIBLE
-        overlayGlass?.setBackgroundColor(0x22000000.toInt())
+        (overlayGlass as? AppLibraryOverlayGlassView)?.ensureBound()
         overlayGlass?.alpha = 0f
 
         val finals = (0 until n).map { computeChildIconCenterAndSetPivot(grid.getChildAt(it)) }
@@ -383,9 +383,9 @@ class AppLibraryFolderTransition(
             pg.alpha = cardAlpha
         }
 
-        // 2. Dim Scrim Overlay
+        // 2. Frosted Glass Backdrop Overlay (identical to Search backdrop)
         overlayGlass?.let { og ->
-            og.alpha = invLerp(0f, 0.6f, p) * 0.35f
+            og.alpha = invLerp(0f, 0.7f, p)
         }
 
         // 3. Category Title

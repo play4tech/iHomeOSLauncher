@@ -42,6 +42,7 @@ public class AppLibraryOverlayGlassView extends LiquidGlassView {
         setEnableDynamicBackground(false);
         setCollectFrameStats(false);
         setCornerRadius(0f);
+        setInvalidateOnBackdropScroll(false);
     }
 
     @Override

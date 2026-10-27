@@ -864,16 +864,16 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 android.graphics.Rect pos = new android.graphics.Rect();
                 getPopupContainer().getDescendantRectRelativeToSelf(mTargetView, pos);
                 float radius;
-                if (mTargetView instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView) {
+                if (mTargetView instanceof foundation.e.bliss.widgets.GlassWidgetHostView glassWidget) {
                     android.graphics.Rect squircle = new android.graphics.Rect();
-                    clockView.getSquircleBoundsInSelf(squircle);
+                    glassWidget.getSquircleBoundsInSelf(squircle);
                     pos.set(
                         pos.left + squircle.left,
                         pos.top + squircle.top,
                         pos.left + squircle.right,
                         pos.top + squircle.bottom
                     );
-                    radius = clockView.getSquircleRadius();
+                    radius = glassWidget.getSquircleRadius();
                 } else {
                     try {
                         int resId = android.content.res.Resources.getSystem().getIdentifier("system_app_widget_background_radius", "dimen", "android");
@@ -8318,7 +8318,7 @@ object BlissPrefs {
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
-**Lines**: 569 | **Bytes**: 22921
+**Lines**: 607 | **Bytes**: 25748
 
 ```kotlin
 /*
@@ -8340,6 +8340,7 @@ object BlissPrefs {
 
 package foundation.e.blisslauncher.features.onboarding
 
+import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.ContentValues
 import android.content.Context
@@ -8366,8 +8367,9 @@ import foundation.e.bliss.multimode.MultiModeController
 
 /**
  * Resolves standard Android roles and categories to populate an iOS-style curated layout
- * on first run. Places all installed apps on the home screen, keeping the last 3 icon slots
- * on Screen 0 blank so it does not look crowded, and grouping work profile apps into a "Work" folder.
+ * on first run. Places 2x2 Clock and 2x2 Calendar Day widgets at the top of Screen 0,
+ * followed by curated app icons below them, keeping the last 2 icon slots on Screen 0 blank,
+ * and grouping work profile apps into a "Work" folder.
  */
 object DefaultHomeLayoutResolver {
     private const val TAG = "DefaultHomeResolver"
@@ -8394,38 +8396,6 @@ object DefaultHomeLayoutResolver {
                 "com.vivo.gallery",
                 "com.miui.gallery",
                 "com.oneplus.gallery"
-            )
-        ),
-        RoleDescriptor(
-            "Calendar",
-            listOf(
-                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR)
-            ),
-            listOf(
-                "com.google.android.calendar",
-                "com.android.calendar",
-                "com.bbk.calendar",
-                "com.vivo.calendar",
-                "com.xiaomi.calendar",
-                "com.oneplus.calendar"
-            )
-        ),
-        RoleDescriptor(
-            "Clock",
-            listOf(
-                Intent(AlarmClock.ACTION_SHOW_ALARMS),
-                Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_CLOCK")
-            ),
-            listOf(
-                "com.google.android.deskclock",
-                "com.android.deskclock",
-                "com.coloros.alarmclock",
-                "com.oplus.alarmclock",
-                "com.sec.android.app.clockpackage",
-                "com.vivo.clock",
-                "com.bbk.clock",
-                "com.miui.clock",
-                "com.oneplus.deskclock"
             )
         ),
         RoleDescriptor(
@@ -8584,8 +8554,12 @@ object DefaultHomeLayoutResolver {
             Favorites.SPANX,
             Favorites.SPANY,
             Favorites.INTENT,
-            Favorites.PROFILE_ID
+            Favorites.PROFILE_ID,
+            Favorites.ITEM_TYPE,
+            Favorites.APPWIDGET_PROVIDER
         )
+        var hasClockWidget = false
+        var hasCalendarWidget = false
         val cursor = db.query(Favorites.TABLE_NAME_ALL, projection, null, null, null, null, null)
         cursor.use { c ->
             val colContainer = c.getColumnIndexOrThrow(Favorites.CONTAINER)
@@ -8596,6 +8570,8 @@ object DefaultHomeLayoutResolver {
             val colSpanY = c.getColumnIndexOrThrow(Favorites.SPANY)
             val colIntent = c.getColumnIndexOrThrow(Favorites.INTENT)
             val colProfileId = c.getColumnIndexOrThrow(Favorites.PROFILE_ID)
+            val colItemType = c.getColumnIndex(Favorites.ITEM_TYPE)
+            val colProvider = c.getColumnIndex(Favorites.APPWIDGET_PROVIDER)
 
             while (c.moveToNext()) {
                 val container = c.getLong(colContainer)
@@ -8607,6 +8583,17 @@ object DefaultHomeLayoutResolver {
                 val intentStr = c.getString(colIntent)
                 val profileSerial = c.getLong(colProfileId)
                 val itemUser = userCache.getUserForSerialNumber(profileSerial) ?: myUser
+                val itemType = if (colItemType >= 0) c.getInt(colItemType) else -1
+                val providerStr = if (colProvider >= 0) c.getString(colProvider) else null
+
+                if (itemType == Favorites.ITEM_TYPE_APPWIDGET && !providerStr.isNullOrEmpty()) {
+                    if (providerStr.contains("ClockAppWidgetProvider") || providerStr.contains("DigitalClockAppWidgetProvider")) {
+                        hasClockWidget = true
+                    }
+                    if (providerStr.contains("CalendarDayAppWidgetProvider") || providerStr.contains("CalendarMonthAppWidgetProvider")) {
+                        hasCalendarWidget = true
+                    }
+                }
 
                 if (container == Favorites.CONTAINER_DESKTOP.toLong()) {
                     val occupied = occupiedCellsByScreen.getOrPut(screen) { HashSet() }
@@ -8632,6 +8619,57 @@ object DefaultHomeLayoutResolver {
                     }
                 }
             }
+        }
+
+        // 1b. Place 2x2 Clock widget (top-left) and 2x2 Calendar Day widget (top-right) at top of Screen 0
+        val clockProvider = ComponentName(context.packageName, "foundation.e.bliss.widgets.clock.ClockAppWidgetProvider")
+        val calendarProvider = ComponentName(context.packageName, "foundation.e.bliss.widgets.calendar.CalendarDayAppWidgetProvider")
+
+        val widgetHolder = dbHelper.newLauncherWidgetHolder()
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+
+        fun placeWidgetIfMissing(cn: ComponentName, screen: Int, cellX: Int, cellY: Int, spanX: Int, spanY: Int) {
+            try {
+                val appWidgetId = widgetHolder.allocateAppWidgetId()
+                val bound = appWidgetManager.bindAppWidgetIdIfAllowed(appWidgetId, cn)
+                if (bound) {
+                    val values = ContentValues().apply {
+                        put(Favorites._ID, dbHelper.generateNewItemId())
+                        put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPWIDGET)
+                        put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                        put(Favorites.SCREEN, screen)
+                        put(Favorites.CELLX, cellX)
+                        put(Favorites.CELLY, cellY)
+                        put(Favorites.SPANX, spanX)
+                        put(Favorites.SPANY, spanY)
+                        put(Favorites.APPWIDGET_ID, appWidgetId)
+                        put(Favorites.APPWIDGET_PROVIDER, cn.flattenToString())
+                        put(Favorites.APPWIDGET_SOURCE, Favorites.CONTAINER_DESKTOP)
+                        put(Favorites.PROFILE_ID, userSerial)
+                        put(Favorites.MODIFIED, System.currentTimeMillis())
+                    }
+                    dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
+                    val occupied = occupiedCellsByScreen.getOrPut(screen) { HashSet() }
+                    for (x in cellX until (cellX + spanX)) {
+                        for (y in cellY until (cellY + spanY)) {
+                            occupied.add(Pair(x, y))
+                        }
+                    }
+                    Log.d(TAG, "Placed widget $cn at screen=$screen ($cellX, $cellY, ${spanX}x${spanY}) id=$appWidgetId")
+                } else {
+                    Log.w(TAG, "bindAppWidgetIdIfAllowed returned false for $cn")
+                    widgetHolder.deleteAppWidgetId(appWidgetId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to place widget $cn", e)
+            }
+        }
+
+        if (!hasClockWidget) {
+            placeWidgetIfMissing(clockProvider, 0, 0, 0, 2, 2)
+        }
+        if (!hasCalendarWidget) {
+            placeWidgetIfMissing(calendarProvider, 0, 2, 0, 2, 2)
         }
 
         val workActivities = ArrayList<LauncherActivityInfo>()
@@ -8681,10 +8719,10 @@ object DefaultHomeLayoutResolver {
             }
         }
 
-        // 4. Reserve the last 3 cells on Screen 0 so it stays clean and not too crowded
+        // 4. Reserve the last 2 cells on Screen 0 so it stays clean and not too crowded
         val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
         val totalCellsScreen0 = numCols * numRows
-        for (idx in (totalCellsScreen0 - 3) until totalCellsScreen0) {
+        for (idx in (totalCellsScreen0 - 2) until totalCellsScreen0) {
             if (idx >= 0) {
                 val rx = idx % numCols
                 val ry = idx / numCols
@@ -8828,7 +8866,7 @@ object DefaultHomeLayoutResolver {
             dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
         }
 
-        Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has last 3 slots blank.")
+        Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has Clock and Calendar widgets at top and last 2 slots blank.")
     }
 
     private fun resolveRole(

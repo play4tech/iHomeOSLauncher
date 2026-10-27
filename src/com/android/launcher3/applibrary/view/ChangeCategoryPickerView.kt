@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
@@ -11,6 +12,7 @@ import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.RippleDrawable
@@ -58,8 +60,9 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
     private lateinit var scrimView: View
     private lateinit var cardContainer: FrameLayout
     private lateinit var glassBg: PopupGlassView
-    private lateinit var frostBase: View
     private lateinit var contentColumn: LinearLayout
+    private var cornerRadiusPx: Float = 0f
+    private var enterAnimator: ValueAnimator? = null
 
     init {
         orientation = LinearLayout.VERTICAL
@@ -67,17 +70,11 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         clipToPadding = false
     }
 
-    private fun isDarkTheme(): Boolean {
-        val nightMode = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return nightMode == Configuration.UI_MODE_NIGHT_YES
-    }
-
     private fun buildUI() {
         removeAllViews()
         val density = resources.displayMetrics.density
         val cardWidth = (280 * density).toInt()
-        val cornerRadiusPx = 20f * density
-        val isDark = isDarkTheme()
+        cornerRadiusPx = 20f * density
         val dividerColor = Color.parseColor("#2E000000")
         val hairlineThickness = maxOf(1, (0.55f * density).toInt())
         val geometry = ContinuousCornerGeometry()
@@ -311,13 +308,9 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         }
         contentColumn.addView(cancelBtn)
 
-        // Glass background layers
+        // Glass background layer
         glassBg = PopupGlassView(context).apply {
             setPopupRadius(cornerRadiusPx)
-        }
-
-        frostBase = View(context).apply {
-            setBackgroundColor(if (isDark) Color.argb(40, 0, 0, 0) else Color.TRANSPARENT)
         }
 
         val maxCardHeight = (screenHeight * 0.75f).toInt()
@@ -329,7 +322,6 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                 val heightSpec = MeasureSpec.makeMeasureSpec(targetHeight, MeasureSpec.EXACTLY)
 
                 glassBg.measure(widthSpec, heightSpec)
-                frostBase.measure(widthSpec, heightSpec)
 
                 setMeasuredDimension(cardWidth, targetHeight)
             }
@@ -338,10 +330,11 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                 val w = right - left
                 val h = bottom - top
                 glassBg.layout(0, 0, w, h)
-                frostBase.layout(0, 0, w, h)
                 contentColumn.layout(0, 0, w, h)
                 pivotX = w / 2f
                 pivotY = h / 2f
+                contentColumn.pivotX = w / 2f
+                contentColumn.pivotY = h / 2f
             }
         }.apply {
             layoutParams = FrameLayout.LayoutParams(cardWidth, FrameLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -367,7 +360,6 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         }
 
         cardContainer.addView(glassBg)
-        cardContainer.addView(frostBase)
         cardContainer.addView(contentColumn)
 
         rootFrame.addView(cardContainer)
@@ -390,24 +382,65 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         mIsOpen = true
         launcher.updateDisallowBack()
 
-        post {
+        // Bind backdrop immediately so initial measure has the proper source
+        val glassSource = launcher.findViewById<View>(R.id.glass_source)
+        if (glassSource != null) {
+            glassBg.backdropSource = glassSource
+        } else {
             glassBg.bindToWallpaper()
         }
 
-        cardContainer.scaleX = 0.88f
-        cardContainer.scaleY = 0.88f
+        // Keep cardContainer at 1.0f scale so getLocationOnScreen() and backdrop offsets stay 1:1 aligned
+        cardContainer.scaleX = 1f
+        cardContainer.scaleY = 1f
         cardContainer.alpha = 0f
+        contentColumn.alpha = 0f
+        scrimView.alpha = 0f
 
+        cardContainer.post {
+            if (!mIsOpen) return@post
+            glassBg.bindToWallpaper()
+            startEnterAnimation()
+        }
+    }
+
+    private fun startEnterAnimation() {
+        enterAnimator?.cancel()
         val spring = PathInterpolator(0.16f, 1f, 0.3f, 1f)
-        val scaleXAnim = ObjectAnimator.ofFloat(cardContainer, View.SCALE_X, 0.88f, 1f)
-        val scaleYAnim = ObjectAnimator.ofFloat(cardContainer, View.SCALE_Y, 0.88f, 1f)
-        val alphaAnim = ObjectAnimator.ofFloat(cardContainer, View.ALPHA, 0f, 1f)
-        val scrimAnim = ObjectAnimator.ofFloat(scrimView, View.ALPHA, 0f, 1f)
+        val w = cardContainer.width.toFloat()
+        val h = cardContainer.height.toFloat()
 
-        AnimatorSet().apply {
-            playTogether(scaleXAnim, scaleYAnim, alphaAnim, scrimAnim)
+        enterAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 260
             interpolator = spring
+            addUpdateListener { va ->
+                val f = va.animatedValue as Float
+                val s = 0.90f + 0.10f * f
+
+                contentColumn.scaleX = s
+                contentColumn.scaleY = s
+                contentColumn.alpha = f
+                cardContainer.alpha = f
+                scrimView.alpha = f
+
+                if (w > 0f && h > 0f) {
+                    val left = (w / 2f) * (1f - s)
+                    val top = (h / 2f) * (1f - s)
+                    val right = left + w * s
+                    val bottom = top + h * s
+                    glassBg.setAnimatedShape(RectF(left, top, right, bottom), cornerRadiusPx)
+                }
+            }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    contentColumn.scaleX = 1f
+                    contentColumn.scaleY = 1f
+                    contentColumn.alpha = 1f
+                    cardContainer.alpha = 1f
+                    glassBg.setAnimatedShape(null, cornerRadiusPx)
+                    glassBg.invalidate()
+                }
+            })
             start()
         }
     }
@@ -422,18 +455,34 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
         if (!mIsOpen || isClosing) return
         isClosing = true
         mIsOpen = false
+        enterAnimator?.cancel()
         launcher.updateDisallowBack()
 
         if (animate) {
-            val exitScaleX = ObjectAnimator.ofFloat(cardContainer, View.SCALE_X, 1f, 0.92f)
-            val exitScaleY = ObjectAnimator.ofFloat(cardContainer, View.SCALE_Y, 1f, 0.92f)
-            val exitCardAlpha = ObjectAnimator.ofFloat(cardContainer, View.ALPHA, 1f, 0f)
-            val exitScrimAlpha = ObjectAnimator.ofFloat(scrimView, View.ALPHA, 1f, 0f)
+            val w = cardContainer.width.toFloat()
+            val h = cardContainer.height.toFloat()
 
-            AnimatorSet().apply {
-                playTogether(exitScaleX, exitScaleY, exitCardAlpha, exitScrimAlpha)
+            ValueAnimator.ofFloat(1f, 0f).apply {
                 duration = 150
                 interpolator = AccelerateInterpolator()
+                addUpdateListener { va ->
+                    val f = va.animatedValue as Float
+                    val s = 0.92f + 0.08f * f
+
+                    contentColumn.scaleX = s
+                    contentColumn.scaleY = s
+                    contentColumn.alpha = f
+                    cardContainer.alpha = f
+                    scrimView.alpha = f
+
+                    if (w > 0f && h > 0f) {
+                        val left = (w / 2f) * (1f - s)
+                        val top = (h / 2f) * (1f - s)
+                        val right = left + w * s
+                        val bottom = top + h * s
+                        glassBg.setAnimatedShape(RectF(left, top, right, bottom), cornerRadiusPx)
+                    }
+                }
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
                         launcher.dragLayer?.removeView(this@ChangeCategoryPickerView)

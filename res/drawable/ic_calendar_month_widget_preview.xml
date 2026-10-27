@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="128dp"
+    android:height="128dp"
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+    <!-- Frosted squircle background -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M32,16 L96,16 C112,16 112,16 112,32 L112,96 C112,112 112,112 96,112 L32,112 C16,112 16,112 16,96 L16,32 C16,16 16,16 32,16 Z" />
+
+    <!-- Specular border -->
+    <path
+        android:strokeColor="#66FFFFFF"
+        android:strokeWidth="1.5"
+        android:pathData="M32,16 L96,16 C112,16 112,16 112,32 L112,96 C112,112 112,112 96,112 L32,112 C16,112 16,112 16,96 L16,32 C16,16 16,16 32,16 Z" />
+
+    <!-- SEPTEMBER header title pill in iOS Red -->
+    <path
+        android:fillColor="#FF3B30"
+        android:pathData="M27,29 L62,29 C63,29 64,30 64,31 L64,33 C64,34 63,35 62,35 L27,35 C26,35 25,34 25,33 L25,31 C25,30 26,29 27,29 Z" />
+
+    <!-- Weekday header indicators (M D M D F S S) -->
+    <path
+        android:fillColor="#A0A0A5"
+        android:pathData="M29,43 A1.8,1.8 0 1,0 29,46.6 A1.8,1.8 0 1,0 29,43 Z
+                          M40,43 A1.8,1.8 0 1,0 40,46.6 A1.8,1.8 0 1,0 40,43 Z
+                          M51,43 A1.8,1.8 0 1,0 51,46.6 A1.8,1.8 0 1,0 51,43 Z
+                          M62,43 A1.8,1.8 0 1,0 62,46.6 A1.8,1.8 0 1,0 62,43 Z
+                          M73,43 A1.8,1.8 0 1,0 73,46.6 A1.8,1.8 0 1,0 73,43 Z
+                          M84,43 A1.8,1.8 0 1,0 84,46.6 A1.8,1.8 0 1,0 84,43 Z
+                          M95,43 A1.8,1.8 0 1,0 95,46.6 A1.8,1.8 0 1,0 95,43 Z" />
+
+    <!-- Days grid - Row 1 -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M73,55 A1.8,1.8 0 1,0 73,58.6 A1.8,1.8 0 1,0 73,55 Z
+                          M84,55 A1.8,1.8 0 1,0 84,58.6 A1.8,1.8 0 1,0 84,55 Z
+                          M95,55 A1.8,1.8 0 1,0 95,58.6 A1.8,1.8 0 1,0 95,55 Z" />
+
+    <!-- Days grid - Row 2 -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M29,67 A1.8,1.8 0 1,0 29,70.6 A1.8,1.8 0 1,0 29,67 Z
+                          M40,67 A1.8,1.8 0 1,0 40,70.6 A1.8,1.8 0 1,0 40,67 Z
+                          M51,67 A1.8,1.8 0 1,0 51,70.6 A1.8,1.8 0 1,0 51,67 Z
+                          M62,67 A1.8,1.8 0 1,0 62,70.6 A1.8,1.8 0 1,0 62,67 Z
+                          M73,67 A1.8,1.8 0 1,0 73,70.6 A1.8,1.8 0 1,0 73,67 Z
+                          M84,67 A1.8,1.8 0 1,0 84,70.6 A1.8,1.8 0 1,0 84,67 Z
+                          M95,67 A1.8,1.8 0 1,0 95,70.6 A1.8,1.8 0 1,0 95,67 Z" />
+
+    <!-- Days grid - Row 3 -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M29,79 A1.8,1.8 0 1,0 29,82.6 A1.8,1.8 0 1,0 29,79 Z
+                          M40,79 A1.8,1.8 0 1,0 40,82.6 A1.8,1.8 0 1,0 40,79 Z
+                          M51,79 A1.8,1.8 0 1,0 51,82.6 A1.8,1.8 0 1,0 51,79 Z
+                          M62,79 A1.8,1.8 0 1,0 62,82.6 A1.8,1.8 0 1,0 62,79 Z
+                          M73,79 A1.8,1.8 0 1,0 73,82.6 A1.8,1.8 0 1,0 73,79 Z
+                          M84,79 A1.8,1.8 0 1,0 84,82.6 A1.8,1.8 0 1,0 84,79 Z
+                          M95,79 A1.8,1.8 0 1,0 95,82.6 A1.8,1.8 0 1,0 95,79 Z" />
+
+    <!-- Days grid - Row 4 (contains today's date badge) -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M29,91 A1.8,1.8 0 1,0 29,94.6 A1.8,1.8 0 1,0 29,91 Z
+                          M40,91 A1.8,1.8 0 1,0 40,94.6 A1.8,1.8 0 1,0 40,91 Z
+                          M51,91 A1.8,1.8 0 1,0 51,94.6 A1.8,1.8 0 1,0 51,91 Z
+                          M62,91 A1.8,1.8 0 1,0 62,94.6 A1.8,1.8 0 1,0 62,91 Z
+                          M84,91 A1.8,1.8 0 1,0 84,94.6 A1.8,1.8 0 1,0 84,91 Z
+                          M95,91 A1.8,1.8 0 1,0 95,94.6 A1.8,1.8 0 1,0 95,91 Z" />
+
+    <!-- Today's date (22) highlighted with Red Circle badge -->
+    <path
+        android:fillColor="#FF3B30"
+        android:pathData="M73,87.5 A5.2,5.2 0 1,0 73,97.9 A5.2,5.2 0 1,0 73,87.5 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M73,91 A1.8,1.8 0 1,0 73,94.6 A1.8,1.8 0 1,0 73,91 Z" />
+
+    <!-- Days grid - Row 5 -->
+    <path
+        android:fillColor="#CCFFFFFF"
+        android:pathData="M29,103 A1.8,1.8 0 1,0 29,106.6 A1.8,1.8 0 1,0 29,103 Z
+                          M40,103 A1.8,1.8 0 1,0 40,106.6 A1.8,1.8 0 1,0 40,103 Z
+                          M51,103 A1.8,1.8 0 1,0 51,106.6 A1.8,1.8 0 1,0 51,103 Z
+                          M62,103 A1.8,1.8 0 1,0 62,106.6 A1.8,1.8 0 1,0 62,103 Z
+                          M73,103 A1.8,1.8 0 1,0 73,106.6 A1.8,1.8 0 1,0 73,103 Z
+                          M84,103 A1.8,1.8 0 1,0 84,106.6 A1.8,1.8 0 1,0 84,103 Z" />
+</vector>

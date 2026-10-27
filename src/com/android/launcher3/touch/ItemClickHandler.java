@@ -116,6 +116,14 @@ public class ItemClickHandler {
             }
         }
 
+        if (v instanceof foundation.e.bliss.widgets.calendar.CalendarDayWidgetHostView
+                || v instanceof foundation.e.bliss.widgets.calendar.CalendarMonthWidgetHostView) {
+            if (!workspace.isWobbling()) {
+                onClickCalendarWidget(v.getContext());
+                return;
+            }
+        }
+
         Object tag = v.getTag();
         if (tag instanceof WorkspaceItemInfo) {
             Folder folder = Folder.getOpen(launcher);
@@ -231,6 +239,53 @@ public class ItemClickHandler {
             "com.miui.clock"
         };
         for (String pkg : clockPackages) {
+            try {
+                Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
+                if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(launchIntent);
+                    return;
+                }
+            } catch (Throwable ignored) {}
+        }
+    }
+
+    /**
+     * Event handler for the iOS Calendar widgets click.
+     * Launches the user's default Calendar app.
+     */
+    private static void onClickCalendarWidget(Context context) {
+        try {
+            android.net.Uri uri = android.net.Uri.parse("content://com.android.calendar/time/" + System.currentTimeMillis());
+            Intent intent = new Intent(Intent.ACTION_VIEW).setData(uri);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        try {
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_APP_CALENDAR);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            if (intent.resolveActivity(context.getPackageManager()) != null) {
+                context.startActivity(intent);
+                return;
+            }
+        } catch (Throwable ignored) {}
+
+        String[] calendarPackages = new String[] {
+            "com.google.android.calendar",
+            "com.android.calendar",
+            "com.samsung.android.calendar",
+            "com.coloros.calendar",
+            "com.oplus.calendar",
+            "com.bbk.calendar",
+            "com.vivo.calendar",
+            "com.miui.calendar"
+        };
+        for (String pkg : calendarPackages) {
             try {
                 Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(pkg);
                 if (launchIntent != null) {

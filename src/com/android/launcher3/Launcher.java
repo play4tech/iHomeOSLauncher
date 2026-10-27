@@ -1306,8 +1306,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         mAppWidgetHolder.setActivityStarted(false);
         NotificationListener.removeNotificationsChangedListener(getPopupDataProvider());
         FloatingIconView.resetIconLoadResult();
+        long nowStop = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.onStop at t=" + nowStop + ", mLastLaunchedIcon=" + (mLastLaunchedIcon != null ? mLastLaunchedIcon.getText() : "null"));
         if (mLastLaunchedIcon != null) {
-            mLastLaunchedIcon.clearPressedBackground();
+            mLastLaunchedIcon.clearPressedBackground("Launcher.onStop");
             mLastLaunchedIcon = null;
         }
         AccessibilityManagerCompat.sendTestProtocolEventToTest(
@@ -1346,8 +1348,10 @@ public class Launcher extends StatefulActivity<LauncherState>
         // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
 
+        long nowResume = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.onDeferredResumed at t=" + nowResume + ", mLastLaunchedIcon=" + (mLastLaunchedIcon != null ? mLastLaunchedIcon.getText() : "null"));
         if (mLastLaunchedIcon != null) {
-            mLastLaunchedIcon.clearPressedBackground();
+            mLastLaunchedIcon.clearPressedBackground("Launcher.onDeferredResumed");
             mLastLaunchedIcon = null;
         }
 
@@ -1444,8 +1448,15 @@ public class Launcher extends StatefulActivity<LauncherState>
             ItemInstallQueue.INSTANCE.get(this).pauseModelPush(FLAG_DRAG_AND_DROP);
             getRotationHelper().setCurrentStateRequest(REQUEST_LOCK);
 
-            mWorkspace.showPageIndicatorAtCurrentScroll();
             mWorkspace.setClipChildren(false);
+            if (mWorkspace.getPageIndicator() instanceof com.android.launcher3.pageindicators.PageIndicatorDots) {
+                ((com.android.launcher3.pageindicators.PageIndicatorDots) mWorkspace.getPageIndicator()).setForceDotsMode(true);
+            }
+        } else {
+            if (mWorkspace != null && mWorkspace.getPageIndicator() instanceof com.android.launcher3.pageindicators.PageIndicatorDots
+                    && !mWorkspace.isWobbling()) {
+                ((com.android.launcher3.pageindicators.PageIndicatorDots) mWorkspace.getPageIndicator()).setForceDotsMode(false);
+            }
         }
         // Always auto-hide the page indicator after a brief delay (iOS-style fade away)
         mWorkspace.getPageIndicator().setShouldAutoHide(true);
@@ -2726,13 +2737,19 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         DragTrace.log("Launcher.startActivitySafely item=" + (item != null ? item.title : "null") + " intent=" + intent);
+        long tStart = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.startActivitySafely BEGIN at t=" + tStart + " item=" + (item != null ? item.title : "null"));
         RunnableList result = super.startActivitySafely(v, intent, item);
+        long tAfter = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "Launcher.startActivitySafely END at t=" + tAfter + " (took " + (tAfter - tStart) + "ms)");
         if (v instanceof BubbleTextView) {
             BubbleTextView btv = (BubbleTextView) v;
             btv.setStayPressed(true);
             mLastLaunchedIcon = btv;
             if (result != null) {
                 result.add(() -> {
+                    long tCallback = android.os.SystemClock.elapsedRealtime();
+                    android.util.Log.d("StayPressedTrace", "EVENT_RESUMED callback fired for [" + btv.getText() + "] at t=" + tCallback);
                     btv.setStayPressed(false);
                     if (mLastLaunchedIcon == btv) {
                         mLastLaunchedIcon = null;

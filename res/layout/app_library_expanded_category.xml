@@ -13,13 +13,13 @@
         android:clipToPadding="false"
         android:fitsSystemWindows="false">
 
-        <!-- Full screen glass background is not used in iOS App Library expansion (wallpaper blur persists seamlessly) -->
-        <View
+        <!-- Full-screen frosted glass backdrop (identical to Search backdrop) -->
+        <com.android.launcher3.applibrary.view.AppLibraryOverlayGlassView
             android:id="@+id/app_library_overlay_glass"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@android:color/transparent"
-            android:visibility="gone"
+            android:visibility="visible"
+            android:alpha="0"
             android:fitsSystemWindows="false" />
 
         <!-- Content overlay — centered on screen like iOS folder/overlay -->
@@ -42,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:paddingHorizontal="12dp"
                 android:paddingBottom="24dp"
-                android:textColor="#FFFFFF"
+                android:textColor="?attr/workspaceTextColor"
                 android:textSize="32sp"
                 android:textStyle="bold"
                 android:fontFamily="sans-serif-medium" />

@@ -476,6 +476,12 @@ public abstract class DragController<T extends ActivityContext>
 
     protected void handleMoveEvent(int x, int y) {
         mDragObject.dragView.move(x, y);
+        if (mActivity instanceof com.android.launcher3.Launcher) {
+            com.android.launcher3.Workspace<?> ws = ((com.android.launcher3.Launcher) mActivity).getWorkspace();
+            if (ws != null) {
+                ws.invalidateGlassSurfaces();
+            }
+        }
 
         // Check if we are hovering over the scroll areas
         mDistanceSinceScroll += Math.hypot(mLastTouch.x - x, mLastTouch.y - y);

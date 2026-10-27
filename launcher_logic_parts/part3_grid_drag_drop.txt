@@ -21,7 +21,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/CellLayout.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
-**Lines**: 2276 | **Bytes**: 93961
+**Lines**: 2370 | **Bytes**: 99252
 
 ```java
 /*
@@ -971,10 +971,20 @@ public class CellLayout extends ViewGroup {
 
     /**
      * Returns the distance between the given coordinate and the visual center of the given cell.
+     * For squircle app icons (and folders), uses superellipse (n=4) distance metric to ensure
+     * uniform folder creation and move-aside trigger margins across flat edges and corners alike.
      */
     public float getDistanceFromWorkspaceCellVisualCenter(float x, float y, int[] cell) {
         getWorkspaceCellVisualCenter(cell[0], cell[1], mTmpPoint);
-        return (float) Math.hypot(x - mTmpPoint[0], y - mTmpPoint[1]);
+        float dx = x - mTmpPoint[0];
+        float dy = y - mTmpPoint[1];
+        View child = getChildAt(cell[0], cell[1]);
+        if (canCreateFolder(child) || child instanceof com.android.launcher3.folder.FolderIcon) {
+            double dx2 = dx * dx;
+            double dy2 = dy * dy;
+            return (float) Math.sqrt(Math.sqrt(dx2 * dx2 + dy2 * dy2));
+        }
+        return (float) Math.hypot(dx, dy);
     }
 
     private void getWorkspaceCellVisualCenter(int cellX, int cellY, int[] outPoint) {
@@ -994,13 +1004,35 @@ public class CellLayout extends ViewGroup {
     }
 
     /**
-     * Returns the max distance from the center of a cell that can accept a drop to create a folder.
+     * Returns the max distance from the center of a cell that can accept a drop to create a folder
+     * (or add to an existing folder). Uses a concentric 65% squircle core matching the app icon trigger,
+     * leaving the outer 35% margin for reordering (move aside).
      */
     public float getFolderCreationRadius(int[] targetCell) {
+        View child = getChildAt(targetCell[0], targetCell[1]);
+        if (child instanceof com.android.launcher3.folder.FolderIcon) {
+            com.android.launcher3.folder.FolderIcon fi = (com.android.launcher3.folder.FolderIcon) child;
+            if (fi.getGlassView() != null && fi.getGlassView().getWidth() > 0) {
+                return (fi.getGlassView().getWidth() / 2f) * 0.65f;
+            }
+            DeviceProfile grid = mActivity.getDeviceProfile();
+            if (grid != null && grid.folderIconSizePx > 0) {
+                return (grid.folderIconSizePx / 2f) * 0.65f;
+            }
+            fi.getWorkspaceVisualDragBounds(mTempRect);
+            float folderHalfWidth = mTempRect.width() / 2f;
+            if (folderHalfWidth > 0) {
+                return folderHalfWidth * 0.65f;
+            }
+        } else if (child instanceof DraggableView) {
+            ((DraggableView) child).getWorkspaceVisualDragBounds(mTempRect);
+            float iconHalfWidth = mTempRect.width() / 2f;
+            if (iconHalfWidth > 0) {
+                return iconHalfWidth * 0.65f;
+            }
+        }
         DeviceProfile grid = mActivity.getDeviceProfile();
-        float iconVisibleRadius = ICON_VISIBLE_AREA_FACTOR * grid.iconSizePx / 2;
-        // Halfway between reorder radius and icon.
-        return (getReorderRadius(targetCell, 1, 1) + iconVisibleRadius) / 2;
+        return (grid.iconSizePx / 2f) * 0.65f;
     }
 
     /**
@@ -1009,6 +1041,54 @@ public class CellLayout extends ViewGroup {
     public float getReorderRadius(int[] targetCell, int spanX, int spanY) {
         int[] centerPoint = mTmpPoint;
         getWorkspaceCellVisualCenter(targetCell[0], targetCell[1], centerPoint);
+        float radius = calculateReorderRadius(targetCell, spanX, spanY, centerPoint);
+        return radius + getBoundaryReorderRadiusExtension(targetCell, spanX, spanY,
+                centerPoint, radius);
+    }
+
+    /** Returns the outer horizontal edge of the first or last column's reorder rings. */
+    float getBoundaryReorderRingOuterX(boolean firstColumn) {
+        int cellX = firstColumn ? 0 : mCountX - 1;
+        float outerX = firstColumn ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
+        int[] targetCell = new int[]{cellX, 0};
+        int[] centerPoint = mTmpPoint;
+        for (int cellY = 0; cellY < mCountY; cellY++) {
+            // Empty cells have no active reorder ring and must not narrow the bezel zone.
+            if (getChildAt(cellX, cellY) == null) continue;
+            targetCell[1] = cellY;
+            getWorkspaceCellVisualCenter(cellX, cellY, centerPoint);
+            float baseRadius = calculateReorderRadius(targetCell, 1, 1, centerPoint);
+            float radius = baseRadius + getBoundaryReorderRadiusExtension(targetCell, 1, 1,
+                    centerPoint, baseRadius);
+            outerX = firstColumn ? Math.min(outerX, centerPoint[0] - radius)
+                    : Math.max(outerX, centerPoint[0] + radius);
+        }
+        return outerX;
+    }
+
+    /**
+     * Extends reorder hit targets for folderable icons at the workspace edges. The folder hit
+     * radius stays unchanged, preserving a clear center target for folder creation.
+     */
+    private float getBoundaryReorderRadiusExtension(int[] targetCell, int spanX, int spanY,
+            int[] centerPoint, float baseRadius) {
+        if (spanX != 1 || spanY != 1
+                || (targetCell[0] != 0 && targetCell[0] != mCountX - 1)
+                || !canCreateFolder(getChildAt(targetCell[0], targetCell[1]))) {
+            return 0;
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        float desiredExtension = 12f * density;
+        float minimumEdgeInset = 8f * density;
+        float spaceToScreenEdge = targetCell[0] == 0
+                ? centerPoint[0] - baseRadius
+                : getWidth() - centerPoint[0] - baseRadius;
+        return Math.max(0, Math.min(desiredExtension, spaceToScreenEdge - minimumEdgeInset));
+    }
+
+    private float calculateReorderRadius(int[] targetCell, int spanX, int spanY,
+            int[] centerPoint) {
 
         Rect cellBoundsWithSpacing = mTempRect;
         cellToRect(targetCell[0], targetCell[1], spanX, spanY, cellBoundsWithSpacing);
@@ -1196,6 +1276,13 @@ public class CellLayout extends ViewGroup {
                     float x = (1 - r) * initPreviewOffsetX + r * finalPreviewOffsetX;
                     float y = (1 - r) * initPreviewOffsetY + r * finalPreviewOffsetY;
                     item.getTranslateDelegate().setTranslation(INDEX_REORDER_PREVIEW_OFFSET, x, y);
+                    if (child instanceof com.android.launcher3.folder.FolderIcon) {
+                        foundation.e.bliss.glass.FolderGlassView gv = ((com.android.launcher3.folder.FolderIcon) child).getGlassView();
+                        if (gv != null) gv.invalidate();
+                    } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                        foundation.e.bliss.glass.FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
+                        if (gv != null) gv.invalidate();
+                    }
                 }
             });
             va.addListener(new AnimatorListenerAdapter() {
@@ -1209,6 +1296,13 @@ public class CellLayout extends ViewGroup {
                         item.getTranslateDelegate()
                                 .setTranslation(INDEX_REORDER_PREVIEW_OFFSET, 0, 0);
                         child.requestLayout();
+                        if (child instanceof com.android.launcher3.folder.FolderIcon) {
+                            foundation.e.bliss.glass.FolderGlassView gv = ((com.android.launcher3.folder.FolderIcon) child).getGlassView();
+                            if (gv != null) gv.invalidate();
+                        } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
+                            foundation.e.bliss.glass.FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
+                            if (gv != null) gv.invalidate();
+                        }
                     }
                     if (mReorderAnimators.containsKey(lp)) {
                         mReorderAnimators.remove(lp);
@@ -2702,7 +2796,7 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
 # src/com/android/launcher3/BubbleTextView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/BubbleTextView.java`  
-**Lines**: 1537 | **Bytes**: 59174
+**Lines**: 1550 | **Bytes**: 60500
 
 ```java
 /*
@@ -3348,16 +3442,21 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                 || x > getWidth() - getPaddingRight();
     }
 
-    private final Runnable mResetStayPressedRunnable = this::clearPressedBackground;
+    private final Runnable mResetStayPressedRunnable = () -> {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] WATCHDOG fired (2000ms) at t=" + now + ", mStayPressed=" + mStayPressed);
+        clearPressedBackground("watchdog");
+    };
 
     void setStayPressed(boolean stayPressed) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] setStayPressed(" + stayPressed + ") at t=" + now);
         mStayPressed = stayPressed;
         refreshDrawableState();
         removeCallbacks(mResetStayPressedRunnable);
         if (stayPressed) {
-            // Guarantee that the icon never remains stuck enlarged if remote transition
-            // callbacks are dropped (e.g. OEM ROMs like ColorOS / Realme UI).
-            postDelayed(mResetStayPressedRunnable, 400);
+            // Safety backstop against aborted launches or dropped lifecycle callbacks
+            postDelayed(mResetStayPressedRunnable, 2000);
         }
     }
 
@@ -3367,28 +3466,36 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         if (mIcon != null) {
             mIcon.setVisible(isVisible, false);
         }
-        if (!isVisible && mStayPressed) {
-            clearPressedBackground();
-        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onVisibilityAggregated(" + isVisible + ") at t=" + now + ", mStayPressed=" + mStayPressed);
     }
 
     @Override
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
-        if (mStayPressed) {
-            clearPressedBackground();
-        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onWindowFocusChanged(" + hasWindowFocus + ") at t=" + now + ", mStayPressed=" + mStayPressed);
+        // Do not clear mStayPressed on window focus loss.
+        // Clearing is managed by Launcher.onStop() and EVENT_RESUMED, with the 2000ms watchdog as safety backstop.
     }
 
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] onDetachedFromWindow at t=" + now + ", mStayPressed=" + mStayPressed);
         if (mStayPressed) {
-            clearPressedBackground();
+            clearPressedBackground("detached");
         }
     }
 
     public void clearPressedBackground() {
+        clearPressedBackground("unspecified");
+    }
+
+    public void clearPressedBackground(String reason) {
+        long now = android.os.SystemClock.elapsedRealtime();
+        android.util.Log.d("StayPressedTrace", "[" + getText() + "] clearPressedBackground(" + reason + ") at t=" + now + ", wasStayPressed=" + mStayPressed);
         removeCallbacks(mResetStayPressedRunnable);
         setPressed(false);
         if (mStayPressed) {
@@ -4248,7 +4355,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
-**Lines**: 649 | **Bytes**: 29213
+**Lines**: 715 | **Bytes**: 32346
 
 ```java
 /*
@@ -4417,6 +4524,8 @@ public class ReorderAlgorithm {
 
         solution.intersectingViews = intersectingViews;
 
+        applyBoundaryHorizontalPreference(intersectingViews, occupiedRect, direction, solution);
+
         // First we try to find a solution which respects the push mechanic. That is,
         // we try to find a solution such that no displaced item travels through another item
         // without also displacing that item.
@@ -4438,6 +4547,70 @@ public class ReorderAlgorithm {
             }
         }
         return true;
+    }
+
+    /**
+     * Prefer shifting a displaced boundary item back into the same row when the proposed
+     * configuration contains a real contiguous slot for its full span. A full row keeps the
+     * existing vertical/cross-row fallback.
+     */
+    private void applyBoundaryHorizontalPreference(ArrayList<View> intersectingViews,
+            Rect dropRegion, int[] direction, ItemConfiguration solution) {
+        if (direction[0] == 0) return;
+
+        int countX = mCellLayout.getCountX();
+        for (View displacedView : intersectingViews) {
+            CellAndSpan displaced = solution.map.get(displacedView);
+            if (displaced == null) continue;
+
+            boolean rightBoundaryPush = direction[0] > 0
+                    && displaced.cellX + displaced.spanX == countX;
+            boolean leftBoundaryPush = direction[0] < 0 && displaced.cellX == 0;
+            if (!rightBoundaryPush && !leftBoundaryPush) continue;
+
+            int horizontalShift = rightBoundaryPush ? -1 : 1;
+            int availableCellX = findSameRowSlot(displacedView, displaced, horizontalShift,
+                    dropRegion, solution);
+            if (availableCellX >= 0) {
+                mCellLayout.mTmpOccupied.markCells(displaced, false);
+                displaced.cellX = availableCellX;
+                mCellLayout.mTmpOccupied.markCells(displaced, true);
+                mCellLayout.mTmpOccupied.markCells(dropRegion, true);
+                intersectingViews.remove(displacedView);
+                direction[0] = horizontalShift;
+                direction[1] = 0;
+                return;
+            }
+        }
+    }
+
+    /** Returns a fitting free cell start on the same row, or -1 if none is available. */
+    private int findSameRowSlot(View displacedView, CellAndSpan displaced, int horizontalShift,
+            Rect dropRegion, ItemConfiguration solution) {
+        int firstCellX = horizontalShift < 0 ? 0 : displaced.cellX + 1;
+        int lastCellX = horizontalShift < 0 ? displaced.cellX - 1
+                : mCellLayout.getCountX() - displaced.spanX;
+
+        for (int candidateX = firstCellX; candidateX <= lastCellX; candidateX++) {
+            Rect candidate = new Rect(candidateX, displaced.cellY,
+                    candidateX + displaced.spanX, displaced.cellY + displaced.spanY);
+            if (Rect.intersects(candidate, dropRegion)) continue;
+
+            boolean occupied = false;
+            for (Entry<View, CellAndSpan> entry : solution.map.entrySet()) {
+                View otherView = entry.getKey();
+                if (otherView == displacedView) continue;
+                CellAndSpan other = entry.getValue();
+                Rect otherRect = new Rect(other.cellX, other.cellY,
+                        other.cellX + other.spanX, other.cellY + other.spanY);
+                if (Rect.intersects(candidate, otherRect)) {
+                    occupied = true;
+                    break;
+                }
+            }
+            if (!occupied) return candidateX;
+        }
+        return -1;
     }
 
     private boolean addViewToTempLocation(View v, Rect rectOccupiedByPotentialDrop, int[] direction,
@@ -4978,7 +5151,7 @@ class ItemConfiguration : CellAndSpan() {
 # src/com/android/launcher3/dragndrop/DragController.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragController.java`  
-**Lines**: 640 | **Bytes**: 23735
+**Lines**: 646 | **Bytes**: 24015
 
 ```java
 /*
@@ -5459,6 +5632,12 @@ public abstract class DragController<T extends ActivityContext>
 
     protected void handleMoveEvent(int x, int y) {
         mDragObject.dragView.move(x, y);
+        if (mActivity instanceof com.android.launcher3.Launcher) {
+            com.android.launcher3.Workspace<?> ws = ((com.android.launcher3.Launcher) mActivity).getWorkspace();
+            if (ws != null) {
+                ws.invalidateGlassSurfaces();
+            }
+        }
 
         // Check if we are hovering over the scroll areas
         mDistanceSinceScroll += Math.hypot(mLastTouch.x - x, mLastTouch.y - y);
@@ -5627,7 +5806,7 @@ public abstract class DragController<T extends ActivityContext>
 # src/com/android/launcher3/dragndrop/DragLayer.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragLayer.java`  
-**Lines**: 498 | **Bytes**: 20395
+**Lines**: 513 | **Bytes**: 21145
 
 ```java
 
@@ -5907,10 +6086,17 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
             Rect destRect = new Rect();
             d.getWorkspaceVisualDragBounds(destRect);
 
-            // In most cases this additional scale factor should be a no-op (1). It mainly accounts
-            // for alternate grids where the source and destination icon sizes are different
-            toScale *= ((1f * destRect.width())
-                    / (dragView.getMeasuredWidth() - dragView.getBlurSizeOutline()));
+            if (child instanceof com.android.launcher3.widget.LauncherAppWidgetHostView) {
+                // Widget drag view was created from child's unscaled measured dimensions;
+                // childScale already accounts for child.getScaleX() (mScaleToFit).
+                // Ensure toScale represents the exact final visual scale without double-counting.
+                toScale = scale;
+            } else {
+                // In most cases this additional scale factor should be a no-op (1). It mainly accounts
+                // for alternate grids where the source and destination icon sizes are different
+                toScale *= ((1f * destRect.width())
+                        / (dragView.getMeasuredWidth() - dragView.getBlurSizeOutline()));
+            }
 
             // This accounts for the offset of the DragView created by scaling it about its
             // center as it animates into place.
@@ -5922,7 +6108,15 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
         }
 
         child.setVisibility(INVISIBLE);
-        Runnable onCompleteRunnable = () -> child.setVisibility(VISIBLE);
+        Runnable onCompleteRunnable = () -> {
+            child.setVisibility(VISIBLE);
+            if (mActivity instanceof Launcher) {
+                Launcher l = (Launcher) mActivity;
+                if (l.getWorkspace() != null && l.getWorkspace().isWobbling()) {
+                    l.getWorkspace().wobbleSingleChild(child);
+                }
+            }
+        };
         animateViewIntoPosition(dragView, toX, toY, 1, toScale, toScale,
                 onCompleteRunnable, ANIMATION_END_DISAPPEAR, duration, anchorView);
     }

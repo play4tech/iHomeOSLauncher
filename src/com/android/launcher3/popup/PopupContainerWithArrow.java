@@ -831,16 +831,16 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                 android.graphics.Rect pos = new android.graphics.Rect();
                 getPopupContainer().getDescendantRectRelativeToSelf(mTargetView, pos);
                 float radius;
-                if (mTargetView instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView clockView) {
+                if (mTargetView instanceof foundation.e.bliss.widgets.GlassWidgetHostView glassWidget) {
                     android.graphics.Rect squircle = new android.graphics.Rect();
-                    clockView.getSquircleBoundsInSelf(squircle);
+                    glassWidget.getSquircleBoundsInSelf(squircle);
                     pos.set(
                         pos.left + squircle.left,
                         pos.top + squircle.top,
                         pos.left + squircle.right,
                         pos.top + squircle.bottom
                     );
-                    radius = clockView.getSquircleRadius();
+                    radius = glassWidget.getSquircleRadius();
                 } else {
                     try {
                         int resId = android.content.res.Resources.getSystem().getIdentifier("system_app_widget_background_radius", "dimen", "android");

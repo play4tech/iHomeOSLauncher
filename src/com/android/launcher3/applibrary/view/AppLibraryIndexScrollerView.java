@@ -11,6 +11,9 @@ import android.view.View;
 
 import androidx.annotation.Nullable;
 
+import com.android.launcher3.R;
+import com.android.launcher3.util.Themes;
+
 public class AppLibraryIndexScrollerView extends View {
 
     public interface OnSectionSelectedListener {
@@ -44,7 +47,8 @@ public class AppLibraryIndexScrollerView extends View {
         setClickable(true);
         setFocusable(false);
         float density = getResources().getDisplayMetrics().density;
-        mPaint.setColor(0xCCFFFFFF); // Crisp semi-transparent white matching iOS
+        boolean isDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        mPaint.setColor(isDarkText ? 0xCC000000 : 0xCCFFFFFF);
         mPaint.setTextSize(10f * density);
         mPaint.setTextAlign(Paint.Align.CENTER);
         mPaint.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));

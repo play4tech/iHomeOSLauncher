@@ -21,6 +21,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.InsettableFrameLayout;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.applibrary.model.CategoryData;
 import android.graphics.PointF;
 import com.android.launcher3.dragndrop.DragLayer;
@@ -104,6 +105,9 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
         setClipToPadding(false);
         mGrid = findViewById(R.id.expanded_category_grid);
         mTitle = findViewById(R.id.expanded_category_title);
+        if (mTitle != null) {
+            mTitle.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        }
 
         if (mGrid != null) {
             mGrid.setClipChildren(false);
@@ -269,6 +273,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     public void bind(CategoryData data) {
         mCategoryData = data;
         mTitle.setText(data.category.getTitle());
+        mTitle.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
         mGrid.setAdapter(new ExpandedCategoryAdapter(Launcher.getLauncher(getContext()), data.apps));
     }
 
@@ -307,6 +312,9 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
         launcher.onDragLayerHierarchyChanged();
 
         View glass = view.findViewById(R.id.app_library_overlay_glass);
+        if (glass instanceof AppLibraryOverlayGlassView) {
+            ((AppLibraryOverlayGlassView) glass).ensureBound();
+        }
         if (glass != null) {
             glass.setAlpha(0f);
         }

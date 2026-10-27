@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Clean White Base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M0,0h48v48h-48z" />
+    <!-- Stylized Photos Pinwheel Petals -->
+    <!-- Top Petal (Yellow/Orange) -->
+    <path
+        android:fillColor="#FFCC00"
+        android:pathData="M24,14c-2.2,0 -4,1.8 -4,4v6h8v-6c0,-2.2 -1.8,-4 -4,-4z" />
+    <!-- Bottom Petal (Blue) -->
+    <path
+        android:fillColor="#007AFF"
+        android:pathData="M24,34c2.2,0 4,-1.8 4,-4v-6h-8v6c0,2.2 1.8,4 4,4z" />
+    <!-- Left Petal (Green) -->
+    <path
+        android:fillColor="#34C759"
+        android:pathData="M14,24c0,2.2 1.8,4 4,4h6v-8h-6c-2.2,0 -4,1.8 -4,4z" />
+    <!-- Right Petal (Red/Pink) -->
+    <path
+        android:fillColor="#FF2D55"
+        android:pathData="M34,24c0,-2.2 -1.8,-4 -4,-4h-6v8h6c2.2,0 4,-1.8 4,-4z" />
+    <!-- Diagonal Petals -->
+    <path
+        android:fillColor="#FF9500"
+        android:pathData="M29.5,15.5c-1.6,-1.6 -4.1,-1.6 -5.7,0l-4.2,4.2 5.7,5.7 4.2,-4.2c1.6,-1.6 1.6,-4.1 0,-5.7z" />
+    <path
+        android:fillColor="#AF52DE"
+        android:pathData="M18.5,32.5c1.6,1.6 4.1,1.6 5.7,0l4.2,-4.2 -5.7,-5.7 -4.2,4.2c-1.6,1.6 -1.6,4.1 0,5.7z" />
+</vector>

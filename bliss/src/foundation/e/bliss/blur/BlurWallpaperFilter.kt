@@ -34,7 +34,10 @@ class BlurWallpaperFilter(private val context: Context) :
             var blurAppGroup: Bitmap? = null
             var blurWidget: Bitmap? = null
             try {
-                blurBackground = blur(wallpaper, WallpaperBlurRenderer.blurConfigBackground)
+                val blurAmount = foundation.e.bliss.glass.GlassConfig.loadSettings(context).blurAmount
+                val bgRadius = if (blurAmount <= 0.001f) 1 else (3.5f + blurAmount * 35f).toInt().coerceIn(1, 25)
+                val bgConfig = WallpaperBlurRenderer.BlurConfig({ it.background }, 2, bgRadius)
+                blurBackground = blur(wallpaper, bgConfig)
                 blurDock = blur(wallpaper, WallpaperBlurRenderer.blurConfigDock)
                 blurAppGroup = blur(wallpaper, WallpaperBlurRenderer.blurConfigAppGroup)
                 blurWidget = blur(wallpaper, WallpaperBlurRenderer.blurConfigWidget)

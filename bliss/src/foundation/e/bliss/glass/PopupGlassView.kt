@@ -229,7 +229,7 @@ constructor(
     }
 
     fun setBlurRadius(radius: Float) {
-        blurAmount = (radius / 100f).coerceIn(0.01f, 1.0f)
+        blurAmount = (radius / 100f).coerceIn(0.01f, 3.0f)
     }
 
     fun setTintAlpha(alpha: Float) {
@@ -237,7 +237,7 @@ constructor(
     }
 
     companion object {
-        const val POPUP_BLUR_AMOUNT: Float = 0.25f
+        const val POPUP_BLUR_AMOUNT: Float = 1.0f
         const val POPUP_WHITE_TINT_ALPHA: Int = 179 // 70% opacity (179 / 255)
     }
 }

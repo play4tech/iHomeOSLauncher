@@ -1,35 +1,49 @@
 package com.android.launcher3.applibrary.view;
 
-import android.animation.Animator;
-import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Rect;
 import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.ViewConfiguration;
-import android.view.animation.PathInterpolator;
+import android.view.View;
 import android.widget.EdgeEffect;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.dynamicanimation.animation.FloatValueHolder;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+/**
+ * App Library grid with iOS-style rubber-band overscroll.
+ *
+ * RecyclerView keeps full ownership of touch handling, nested scrolling, recycling, and fling.
+ * A custom EdgeEffect translates child item views with the iOS rubber-band curve on pull,
+ * and rebounds / absorbs fling velocity using a critically damped SpringAnimation.
+ */
 public class AppLibraryDashboardView extends RecyclerView {
 
     public interface OnOverscrollListener {
         void onOverscrollChanged(float translationY);
     }
 
+    // Rubber band: offset = d * (1 - 1 / (x * C / d + 1))
+    // x = raw finger pull in px, d = RUBBER_RANGE * view height (asymptote).
+    private static final float RUBBER_C = 0.55f;
+    private static final float RUBBER_RANGE = 0.5f;
+
+    // Critically damped spring (DAMPING_RATIO_NO_BOUNCY): natural deceleration without oscillation.
+    private static final float SPRING_STIFFNESS = 280f;
+
+    // Spring start velocity (px/s) per px/s of fling velocity absorbed at an edge.
+    private static final float ABSORB_SCALE = 0.35f;
+
     private OnOverscrollListener mOverscrollListener;
-    private float mLastTouchY = 0f;
-    private float mInitialDownY = 0f;
+    // Signed translation currently applied to every child (+ at top edge, - at bottom edge).
     private float mOverscrollY = 0f;
-    private boolean mIsOverscrolling = false;
-    private int mTouchSlop;
-    private ValueAnimator mReboundAnimator;
+    private ElasticEdgeEffect mTopEdgeEffect;
+    private ElasticEdgeEffect mBottomEdgeEffect;
 
     public AppLibraryDashboardView(@NonNull Context context) {
         this(context, null);
@@ -39,7 +53,8 @@ public class AppLibraryDashboardView extends RecyclerView {
         this(context, attrs, 0);
     }
 
-    public AppLibraryDashboardView(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+    public AppLibraryDashboardView(@NonNull Context context, @Nullable AttributeSet attrs,
+            int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         init();
     }
@@ -49,139 +64,44 @@ public class AppLibraryDashboardView extends RecyclerView {
     }
 
     private void init() {
-        // iOS App Library uses a 2-column grid
-        GridLayoutManager layoutManager =
-                new GridLayoutManager(getContext(), 2);
-        setLayoutManager(layoutManager);
+        setLayoutManager(new GridLayoutManager(getContext(), 2));
         setHasFixedSize(true);
         setItemViewCacheSize(14);
-
-        // Disable default item animations for a smoother iOS-like feel when updating
         setItemAnimator(null);
         setClipToPadding(false);
         setClipChildren(false);
 
-        // Enable EdgeEffect and drive physical translationY rubber-band stretch via custom EdgeEffectFactory
+        // Required so RecyclerView routes boundary touches to the EdgeEffect
         setOverScrollMode(OVER_SCROLL_ALWAYS);
+
         setEdgeEffectFactory(new EdgeEffectFactory() {
             @NonNull
             @Override
             protected EdgeEffect createEdgeEffect(@NonNull RecyclerView view, int direction) {
-                return new DashboardRubberBandEdgeEffect(getContext(), direction);
+                if (direction == DIRECTION_TOP) {
+                    mTopEdgeEffect = new ElasticEdgeEffect(view.getContext(), 1f);
+                    return mTopEdgeEffect;
+                } else if (direction == DIRECTION_BOTTOM) {
+                    mBottomEdgeEffect = new ElasticEdgeEffect(view.getContext(), -1f);
+                    return mBottomEdgeEffect;
+                }
+                return super.createEdgeEffect(view, direction);
             }
         });
-        mTouchSlop = ViewConfiguration.get(getContext()).getScaledTouchSlop();
-    }
 
-    private class DashboardRubberBandEdgeEffect extends EdgeEffect {
-        private final int mDirection;
-
-        DashboardRubberBandEdgeEffect(Context context, int direction) {
-            super(context);
-            mDirection = direction;
-        }
-
-        @Override
-        public void onPull(float deltaDistance) {
-            handlePull(deltaDistance);
-        }
-
-        @Override
-        public void onPull(float deltaDistance, float displacement) {
-            handlePull(deltaDistance);
-        }
-
-        @Override
-        public float onPullDistance(float deltaDistance, float displacement) {
-            handlePull(deltaDistance);
-            return deltaDistance;
-        }
-
-        @Override
-        public float getDistance() {
-            if (getHeight() <= 0) return 0f;
-            if (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) {
-                return mOverscrollY < -0.5f ? -mOverscrollY / getHeight() : 0f;
-            } else if (mDirection == EdgeEffectFactory.DIRECTION_TOP) {
-                return mOverscrollY > 0.5f ? mOverscrollY / getHeight() : 0f;
-            }
-            return 0f;
-        }
-
-        private void handlePull(float deltaDistance) {
-            if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                mReboundAnimator.cancel();
-            }
-            mIsOverscrolling = true;
-            if (getParent() != null) {
-                getParent().requestDisallowInterceptTouchEvent(true);
+        // Children bound/attached mid-overscroll must pick up the current offset, and
+        // recycled children must not carry a stale one into their next bind.
+        addOnChildAttachStateChangeListener(new OnChildAttachStateChangeListener() {
+            @Override
+            public void onChildViewAttachedToWindow(@NonNull View view) {
+                view.setTranslationY(mOverscrollY);
             }
 
-            // deltaDistance is relative to view height.
-            // DIRECTION_BOTTOM: dragging up beyond bottom -> negative translationY
-            // DIRECTION_TOP: dragging down beyond top -> positive translationY
-            float sign = (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) ? -1f : 1f;
-            float pixelDelta = deltaDistance * (getHeight() > 0 ? getHeight() : 1000f);
-
-            float maxPull = getHeight() > 0 ? getHeight() * 0.45f : 600f;
-            float progress = Math.min(1f, Math.abs(mOverscrollY) / maxPull);
-            float damping = 0.42f * (1f - progress * 0.65f);
-
-            // If pulling back toward zero, reduce resistance
-            if ((mOverscrollY > 0 && sign * deltaDistance < 0) || (mOverscrollY < 0 && sign * deltaDistance > 0)) {
-                damping = 0.75f;
+            @Override
+            public void onChildViewDetachedFromWindow(@NonNull View view) {
+                view.setTranslationY(0f);
             }
-
-            mOverscrollY += sign * pixelDelta * damping;
-
-            // Clamp to zero if crossing back
-            if (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM && mOverscrollY > 0f) {
-                mOverscrollY = 0f;
-            } else if (mDirection == EdgeEffectFactory.DIRECTION_TOP && mOverscrollY < 0f) {
-                mOverscrollY = 0f;
-            }
-
-            setTranslationY(mOverscrollY);
-            notifyOverscroll(mOverscrollY);
-        }
-
-        @Override
-        public void onRelease() {
-            if (getParent() != null) {
-                getParent().requestDisallowInterceptTouchEvent(false);
-            }
-            boolean isOverscrolledInMyDirection = (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM && mOverscrollY < -0.5f)
-                    || (mDirection == EdgeEffectFactory.DIRECTION_TOP && mOverscrollY > 0.5f);
-            if (isOverscrolledInMyDirection) {
-                animateRebound();
-            } else if (Math.abs(mOverscrollY) <= 0.5f) {
-                mIsOverscrolling = false;
-            }
-        }
-
-        @Override
-        public void onAbsorb(int velocity) {
-            int signedVelocity = (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) ? velocity : -velocity;
-            playFlingBounce(signedVelocity);
-        }
-
-        @Override
-        public boolean draw(Canvas canvas) {
-            return false;
-        }
-
-        @Override
-        public boolean isFinished() {
-            if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                return false;
-            }
-            if (mDirection == EdgeEffectFactory.DIRECTION_BOTTOM) {
-                return mOverscrollY >= -0.5f;
-            } else if (mDirection == EdgeEffectFactory.DIRECTION_TOP) {
-                return mOverscrollY <= 0.5f;
-            }
-            return true;
-        }
+        });
     }
 
     @Override
@@ -192,166 +112,173 @@ public class AppLibraryDashboardView extends RecyclerView {
         }
     }
 
-    @Override
-    public boolean onInterceptTouchEvent(MotionEvent e) {
-        if (e.getActionMasked() == MotionEvent.ACTION_DOWN) {
-            if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                mReboundAnimator.cancel();
-            }
-            mLastTouchY = e.getY();
-            mInitialDownY = e.getY();
-            if (Math.abs(mOverscrollY) > 0.5f) {
-                mIsOverscrolling = true;
-                return true;
-            }
+    /**
+     * Translate the CHILDREN, not this view. RecyclerView reads touch coordinates in its own
+     * local space, so translating the RecyclerView itself feeds motion back into the
+     * next dy and distorts effective drag.
+     */
+    private void applyOverscroll(float translationY) {
+        mOverscrollY = translationY;
+        for (int i = 0, n = getChildCount(); i < n; i++) {
+            getChildAt(i).setTranslationY(translationY);
         }
-        return super.onInterceptTouchEvent(e);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent e) {
-        int action = e.getActionMasked();
-        switch (action) {
-            case MotionEvent.ACTION_DOWN:
-                if (mReboundAnimator != null && mReboundAnimator.isRunning()) {
-                    mReboundAnimator.cancel();
-                }
-                mLastTouchY = e.getY();
-                mInitialDownY = e.getY();
-                break;
-
-            case MotionEvent.ACTION_UP:
-            case MotionEvent.ACTION_CANCEL:
-                if (getParent() != null) {
-                    getParent().requestDisallowInterceptTouchEvent(false);
-                }
-                if (Math.abs(mOverscrollY) > 0.5f && (mReboundAnimator == null || !mReboundAnimator.isRunning())) {
-                    animateRebound();
-                }
-                break;
-        }
-        return super.onTouchEvent(e);
-    }
-
-    @Override
-    public boolean fling(int velocityX, int velocityY) {
-        boolean canScroll = canScrollVertically(velocityY > 0 ? 1 : -1);
-        if (!canScroll && Math.abs(velocityY) > 250) {
-            playFlingBounce(velocityY);
-            return true;
-        }
-        return super.fling(velocityX, velocityY);
-    }
-
-    private void playFlingBounce(int velocityY) {
-        if (Math.abs(velocityY) < 250) return;
-        if (mReboundAnimator != null) {
-            mReboundAnimator.cancel();
-        }
-        mIsOverscrolling = true;
-        float density = getResources().getDisplayMetrics().density;
-        float maxBounce = 55f * density;
-        float distance = Math.min(Math.abs(velocityY) * 0.045f, maxBounce);
-        float peakY = (velocityY > 0 ? -1f : 1f) * distance;
-        float startY = mOverscrollY;
-
-        // Phase 1: Decelerate outward to peak (iOS spring compression)
-        ValueAnimator outwardAnim = ValueAnimator.ofFloat(startY, peakY);
-        mReboundAnimator = outwardAnim;
-        outwardAnim.setDuration(160);
-        outwardAnim.setInterpolator(new android.view.animation.DecelerateInterpolator(1.2f));
-        outwardAnim.addUpdateListener(a -> {
-            mOverscrollY = (float) a.getAnimatedValue();
-            setTranslationY(mOverscrollY);
-            notifyOverscroll(mOverscrollY);
-        });
-        outwardAnim.addListener(new AnimatorListenerAdapter() {
-            private boolean mCancelled = false;
-
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                mCancelled = true;
-            }
-
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (mCancelled) return;
-                // Phase 2: Spring back from peak to 0 (smooth iOS recovery)
-                ValueAnimator reboundAnim = ValueAnimator.ofFloat(peakY, 0f);
-                mReboundAnimator = reboundAnim;
-                reboundAnim.setDuration(280);
-                reboundAnim.setInterpolator(new PathInterpolator(0.25f, 1f, 0.5f, 1f));
-                reboundAnim.addUpdateListener(ra -> {
-                    mOverscrollY = (float) ra.getAnimatedValue();
-                    setTranslationY(mOverscrollY);
-                    notifyOverscroll(mOverscrollY);
-                });
-                reboundAnim.addListener(new AnimatorListenerAdapter() {
-                    private boolean mReboundCancelled = false;
-
-                    @Override
-                    public void onAnimationCancel(Animator animation) {
-                        mReboundCancelled = true;
-                    }
-
-                    @Override
-                    public void onAnimationEnd(Animator animation) {
-                        if (!mReboundCancelled) {
-                            mOverscrollY = 0f;
-                            setTranslationY(0f);
-                            notifyOverscroll(0f);
-                            mIsOverscrolling = false;
-                        }
-                    }
-                });
-                reboundAnim.start();
-            }
-        });
-        outwardAnim.start();
-    }
-
-    private void animateRebound() {
-        if (mReboundAnimator != null) {
-            mReboundAnimator.cancel();
-        }
-        mReboundAnimator = ValueAnimator.ofFloat(mOverscrollY, 0f);
-        mReboundAnimator.setDuration(280);
-        mReboundAnimator.setInterpolator(new PathInterpolator(0.25f, 1f, 0.5f, 1f));
-        mReboundAnimator.addUpdateListener(animation -> {
-            mOverscrollY = (float) animation.getAnimatedValue();
-            setTranslationY(mOverscrollY);
-            notifyOverscroll(mOverscrollY);
-        });
-        mReboundAnimator.addListener(new AnimatorListenerAdapter() {
-            private boolean mCancelled = false;
-            @Override
-            public void onAnimationCancel(Animator animation) {
-                mCancelled = true;
-            }
-            @Override
-            public void onAnimationEnd(Animator animation) {
-                if (!mCancelled) {
-                    mOverscrollY = 0f;
-                    setTranslationY(0f);
-                    notifyOverscroll(0f);
-                    mIsOverscrolling = false;
-                }
-            }
-        });
-        mReboundAnimator.start();
-    }
-
-    private void notifyOverscroll(float translationY) {
         if (mOverscrollListener != null) {
             mOverscrollListener.onOverscrollChanged(translationY);
         }
     }
 
+    private void claimTouch() {
+        if (getParent() != null) {
+            getParent().requestDisallowInterceptTouchEvent(true);
+        }
+    }
+
+    private void releaseTouch() {
+        if (getParent() != null) {
+            getParent().requestDisallowInterceptTouchEvent(false);
+        }
+    }
+
+    private float pullRangePx() {
+        return getHeight() * RUBBER_RANGE;
+    }
+
+    /** Raw finger pull (px) -> displayed offset (px). */
+    private float toOffset(float rawPx) {
+        float d = pullRangePx();
+        if (d <= 0f) return 0f;
+        return d * (1f - 1f / (rawPx * RUBBER_C / d + 1f));
+    }
+
+    /** Displayed offset (px) -> raw finger pull (px). Inverse of toOffset. */
+    private float toRawPull(float offsetPx) {
+        float d = pullRangePx();
+        if (d <= 0f) return 0f;
+        float y = Math.min(offsetPx, d * 0.999f);
+        return y / (RUBBER_C * (1f - y / d));
+    }
+
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
-        if (mReboundAnimator != null) {
-            mReboundAnimator.cancel();
+        if (mTopEdgeEffect != null) {
+            mTopEdgeEffect.finish();
+        }
+        if (mBottomEdgeEffect != null) {
+            mBottomEdgeEffect.finish();
+        }
+    }
+
+    /**
+     * One instance per vertical edge. Single source of truth is mOffsetPx (>= 0); both the
+     * drag path and the spring write it through setOffset().
+     */
+    private class ElasticEdgeEffect extends EdgeEffect {
+        private final float mSign;
+        private float mOffsetPx = 0f;
+        private SpringAnimation mSpring;
+
+        ElasticEdgeEffect(Context context, float sign) {
+            super(context);
+            mSign = sign;
+        }
+
+        @Override
+        public void onPull(float deltaDistance) {
+            onPullDistance(deltaDistance, 0.5f);
+        }
+
+        @Override
+        public void onPull(float deltaDistance, float displacement) {
+            onPullDistance(deltaDistance, displacement);
+        }
+
+        /**
+         * deltaDistance is finger movement / view height; positive = further into overscroll,
+         * negative = retracting. Returns how much of it was consumed; RecyclerView scrolls
+         * the content with whatever is left (handoff when pull crosses zero).
+         * deltaDistance == 0 is RecyclerView's "finger went down on an active effect" call:
+         * stopping the spring here is what makes the rebound interruptible.
+         */
+        @Override
+        public float onPullDistance(float deltaDistance, float displacement) {
+            stopSpring();
+            float h = getHeight();
+            if (h <= 0f) return 0f;
+            if (deltaDistance > 0f) {
+                claimTouch();
+            }
+
+            float oldRaw = toRawPull(mOffsetPx);
+            float newRaw = Math.max(0f, oldRaw + deltaDistance * h);
+            setOffset(toOffset(newRaw));
+            return (newRaw - oldRaw) / h;
+        }
+
+        /** RecyclerView tests this against 0, so it remains non-zero during spring motion. */
+        @Override
+        public float getDistance() {
+            float h = getHeight();
+            return h > 0f ? mOffsetPx / h : 0f;
+        }
+
+        @Override
+        public void onRelease() {
+            if (mOffsetPx > 0f) {
+                startSpring(0f);
+            }
+        }
+
+        /** Fling reached the edge with this much velocity (px/s, positive). */
+        @Override
+        public void onAbsorb(int velocity) {
+            startSpring(velocity * ABSORB_SCALE);
+        }
+
+        @Override
+        public boolean isFinished() {
+            return mOffsetPx == 0f && (mSpring == null || !mSpring.isRunning());
+        }
+
+        @Override
+        public void finish() {
+            stopSpring();
+            setOffset(0f);
+            releaseTouch();
+        }
+
+        @Override
+        public boolean draw(Canvas canvas) {
+            return false; // Visual motion is handled by child view translation
+        }
+
+        private void setOffset(float px) {
+            mOffsetPx = px;
+            applyOverscroll(mSign * px);
+        }
+
+        private void stopSpring() {
+            if (mSpring != null && mSpring.isRunning()) {
+                mSpring.cancel();
+            }
+        }
+
+        private void startSpring(float velocity) {
+            stopSpring();
+
+            mSpring = new SpringAnimation(new FloatValueHolder(mOffsetPx));
+            mSpring.setSpring(new SpringForce(0f)
+                    .setStiffness(SPRING_STIFFNESS)
+                    .setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY));
+            mSpring.setStartVelocity(velocity);
+            mSpring.addUpdateListener((anim, value, vel) -> setOffset(Math.max(0f, value)));
+            mSpring.addEndListener((anim, canceled, value, vel) -> {
+                if (!canceled) {
+                    setOffset(0f);
+                    releaseTouch();
+                }
+            });
+            mSpring.start();
         }
     }
 }

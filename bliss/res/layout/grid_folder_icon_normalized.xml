@@ -44,11 +44,11 @@
             android:textSize="32sp"
             android:textStyle="bold"
             android:fontFamily="sans-serif"
-            android:textColor="@android:color/white"
+            android:textColor="?attr/workspaceTextColor"
             android:shadowColor="@android:color/transparent"
             android:shadowRadius="0"
             android:textColorHighlight="?android:attr/colorControlHighlight"
-            android:textColorHint="#99FFFFFF" />
+            android:textColorHint="?attr/workspaceTextColor" />
     </LinearLayout>
 
     <foundation.e.bliss.folder.GridFolderPage

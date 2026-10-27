@@ -48,6 +48,7 @@ import com.android.launcher3.OnAlarmListener;
 import com.android.launcher3.R;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.dragndrop.DragLayer;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.dragndrop.DragOptions;
 import com.android.launcher3.folder.Folder;
 import com.android.launcher3.model.data.ItemInfo;
@@ -97,7 +98,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
         mFolderName.setSelectAllOnFocus(false);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        mFolderName.setHintTextColor(Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText) ? 0x99000000 : 0x99FFFFFF);
         mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         mFolderName.setShadowLayer(0, 0, 0, 0);
         mFooterHeight = getResources().getDimensionPixelSize(R.dimen.grid_folder_footer_height);

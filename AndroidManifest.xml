@@ -57,6 +57,8 @@
             android:resizeableActivity="true"
             android:resumeWhilePausing="true"
             android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:autoRemoveFromRecents="true"
             android:exported="true"
             android:enabled="true">
             <intent-filter>
@@ -66,7 +68,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
-                <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"

@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.icons.FastBitmapDrawable;
 import com.android.launcher3.model.data.AppInfo;
 
@@ -31,11 +32,13 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
     private final List<AppInfo> mFilteredApps = new ArrayList<>();
     private final Map<AppInfo, String> mLowerTitleCache = new HashMap<>();
     private final Collator mCollator = Collator.getInstance(Locale.getDefault());
+    private int mTextColor = 0xFFFFFFFF;
 
     public AppLibrarySearchAdapter(Launcher launcher) {
         mLauncher = launcher;
         mCollator.setStrength(Collator.PRIMARY);
-        setHasStableIds(true);
+        setHasStableIds(false);
+        mTextColor = Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor);
     }
 
     private String mCurrentQuery = "";
@@ -43,6 +46,7 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
     public void setApps(List<AppInfo> apps) {
         mAllApps.clear();
         mLowerTitleCache.clear();
+        mTextColor = Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor);
         if (apps != null) {
             mAllApps.addAll(apps);
             Collections.sort(mAllApps, (a, b) -> {
@@ -140,17 +144,21 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         AppInfo app = mFilteredApps.get(position);
         holder.title.setText(app.title);
+        holder.title.setTextColor(mTextColor);
         FastBitmapDrawable icon = app.newIcon(mLauncher);
         holder.icon.setImageDrawable(icon);
         holder.itemView.setTag(app);
-        holder.itemView.setOnClickListener(v -> {
-            View.OnClickListener clickListener = mLauncher.getItemOnClickListener();
-            if (clickListener != null) {
-                clickListener.onClick(v);
+        holder.icon.setTag(app);
+
+        View.OnClickListener clickListener = v -> {
+            View target = holder.itemView;
+            View.OnClickListener launcherClickListener = mLauncher.getItemOnClickListener();
+            if (launcherClickListener != null) {
+                launcherClickListener.onClick(target);
             } else {
-                mLauncher.startActivitySafely(v, app.getIntent(), app);
+                mLauncher.startActivitySafely(target, app.getIntent(), app);
             }
-            v.postDelayed(() -> {
+            target.postDelayed(() -> {
                 AppLibraryPage alp = mLauncher.getAppLibraryPage();
                 if (alp != null) {
                     alp.exitSearchMode();
@@ -160,7 +168,10 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
                     spotlight.close(false);
                 }
             }, 300);
-        });
+        };
+        holder.itemView.setOnClickListener(clickListener);
+        holder.icon.setOnClickListener(clickListener);
+
         View.OnLongClickListener longClickListener = v -> {
             holder.icon.setTag(app);
             holder.itemView.setTag(app);

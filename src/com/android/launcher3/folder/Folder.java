@@ -20,6 +20,7 @@ import static android.text.TextUtils.isEmpty;
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_EXIT_DELAY;
 import static com.android.launcher3.LauncherState.EDIT_MODE;
 import static com.android.launcher3.LauncherState.NORMAL;
+import static com.android.launcher3.LauncherState.SPRING_LOADED;
 import static com.android.launcher3.compat.AccessibilityManagerCompat.sendCustomAccessibilityEvent;
 import static com.android.launcher3.config.FeatureFlags.ALWAYS_USE_HARDWARE_OPTIMIZATION_FOR_FOLDER_ANIMATIONS;
 import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCHER_FOLDER_LABEL_UPDATED;
@@ -28,6 +29,7 @@ import static com.android.launcher3.testing.shared.TestProtocol.FOLDER_OPENED_ME
 import static com.android.launcher3.util.window.RefreshRateTracker.getSingleFrameMs;
 
 import com.android.launcher3.util.DragTrace;
+import com.android.launcher3.util.Themes;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -301,7 +303,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mFolderName = findViewById(R.id.folder_name);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
         mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         mFolderName.setShadowLayer(0, 0, 0, 0);
         mFolderName.setOnBackKeyListener(this);
@@ -659,6 +661,8 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             mFolderName.setText(R.string.untitled_folder);
             mFolderName.setHint(R.string.untitled_folder);
         }
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        mFolderName.setHintTextColor(Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText) ? 0x99000000 : 0x99FFFFFF);
         // In case any children didn't come across during loading, clean up the folder accordingly
         mFolderIcon.post(() -> {
             if (!isDragActive() && getItemCount() <= 1) {
@@ -1016,6 +1020,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     private void closeComplete(boolean wasAnimated) {
         Log.d("ICON_TRACE", "closeComplete folder=" + mInfo.id + " mDragInProgress=" + mDragInProgress + " itemCount=" + getItemCount());
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
         unregisterBackCallback();
         // TODO: Clear all active animations.
         BaseDragLayer parent = (BaseDragLayer) getParent();
@@ -1115,6 +1122,21 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         return fallback;
     }
 
+    /**
+     * Returns the dynamic page-flip trigger width at the folder card edges.
+     * Confined strictly within the card's outer gutter padding so it never overlaps
+     * or interferes with the side column icons during rearrangement.
+     */
+    private float getPageFlipTriggerWidth() {
+        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
+                ? mContent.getPaddingLeft()
+                : mActivityContext.getDeviceProfile().folderContentPaddingLeftRight;
+        float density = getResources().getDisplayMetrics().density;
+        // Keep trigger zone confined to the card gutter (up to 16dp / contentPadding)
+        // so it never overlaps the side column icons or blocks cell placement.
+        return Math.max(density * 10f, Math.min(contentPadding, density * 16f));
+    }
+
     @Override
     public void onDragOver(DragObject d) {
         if (mScrollPauseAlarm.alarmPending()) {
@@ -1139,8 +1161,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         float x = r[0];
         int currentPage = mContent.getNextPage();
 
-        float cellOverlap = mContent.getCurrentCellLayout().getCellWidth()
-                * ICON_OVERSCROLL_WIDTH_FACTOR;
+        float cellOverlap = getPageFlipTriggerWidth();
         boolean isOutsideLeftEdge = x < cellOverlap;
         boolean isOutsideRightEdge = x > (getWidth() - cellOverlap);
 
@@ -1160,6 +1181,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             if (mScrollHintDir != SCROLL_NONE) {
                 mContent.clearScrollHint();
                 mScrollHintDir = SCROLL_NONE;
+                if (mContent != null) {
+                    mContent.cleanupEmptyPages();
+                }
             }
         }
     }
@@ -1192,6 +1216,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public void completeDragExit() {
         DragTrace.log("Folder.completeDragExit closing folder=" + mInfo.id + " restoring dock/workspace alphas");
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
         if (mIsOpen) {
             close(true);
             mIsOpen = false;
@@ -1232,7 +1259,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                                 ((PageIndicatorDots) pi).setForcedTranslationY(0f);
                                 ((PageIndicatorDots) pi).resetToIdle();
                             }
-                            workspace.showPageIndicatorAtCurrentScroll();
+                            if (launcher.isInState(SPRING_LOADED)) {
+                                workspace.showPageIndicatorAtCurrentScroll();
+                            }
                         }
                     }
                 }
@@ -1284,6 +1313,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (mScrollHintDir != SCROLL_NONE) {
             mContent.clearScrollHint();
             mScrollHintDir = SCROLL_NONE;
+            if (mContent != null) {
+                mContent.cleanupEmptyPages();
+            }
         }
     }
 

@@ -22,7 +22,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2070 | **Bytes**: 79885
+**Lines**: 2113 | **Bytes**: 81683
 
 ```java
 /*
@@ -47,6 +47,7 @@ import static android.text.TextUtils.isEmpty;
 import static com.android.launcher3.LauncherAnimUtils.SPRING_LOADED_EXIT_DELAY;
 import static com.android.launcher3.LauncherState.EDIT_MODE;
 import static com.android.launcher3.LauncherState.NORMAL;
+import static com.android.launcher3.LauncherState.SPRING_LOADED;
 import static com.android.launcher3.compat.AccessibilityManagerCompat.sendCustomAccessibilityEvent;
 import static com.android.launcher3.config.FeatureFlags.ALWAYS_USE_HARDWARE_OPTIMIZATION_FOR_FOLDER_ANIMATIONS;
 import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCHER_FOLDER_LABEL_UPDATED;
@@ -55,6 +56,7 @@ import static com.android.launcher3.testing.shared.TestProtocol.FOLDER_OPENED_ME
 import static com.android.launcher3.util.window.RefreshRateTracker.getSingleFrameMs;
 
 import com.android.launcher3.util.DragTrace;
+import com.android.launcher3.util.Themes;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -260,6 +262,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     private View mCurrentDragView;
     private boolean mIsExternalDrag;
     private boolean mDragInProgress = false;
+    private boolean mDragListenerRegistered = false;
     private boolean mDeleteFolderOnDropCompleted = false;
     private boolean mSuppressFolderDeletion = false;
     private boolean mItemAddedBackToSelfViaIcon = false;
@@ -327,7 +330,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mFolderName = findViewById(R.id.folder_name);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
         mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         mFolderName.setShadowLayer(0, 0, 0, 0);
         mFolderName.setOnBackKeyListener(this);
@@ -426,12 +429,12 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                 }
             }
 
-            int index = getIconsInReadingOrder().indexOf(v);
-            mEmptyCellRank = (index >= 0) ? index : item.rank;
+            mEmptyCellRank = item.rank;
             mCurrentDragView = v;
+            mDragInProgress = true;
             DragTrace.log("Folder.startDrag item=" + (item != null ? item.title : "null") + " rank=" + mEmptyCellRank);
 
-            mDragController.addDragListener(this);
+            registerDragListener();
             if (options.isAccessibleDrag) {
                 mDragController.addDragListener(new AccessibleDragListenerAdapter(
                         mContent, FolderAccessibilityHelper::new) {
@@ -478,7 +481,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             completeDragExit();
         }
         mDragInProgress = false;
-        mDragController.removeDragListener(this);
+        unregisterDragListener();
         if (mContent != null) {
             mContent.cleanupEmptyPages();
         }
@@ -685,6 +688,8 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             mFolderName.setText(R.string.untitled_folder);
             mFolderName.setHint(R.string.untitled_folder);
         }
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        mFolderName.setHintTextColor(Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText) ? 0x99000000 : 0x99FFFFFF);
         // In case any children didn't come across during loading, clean up the folder accordingly
         mFolderIcon.post(() -> {
             if (!isDragActive() && getItemCount() <= 1) {
@@ -796,13 +801,27 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         // Since this folder opened by another controller, it might not get onDrop or
         // onDropComplete. Perform cleanup once drag-n-drop ends.
-        mDragController.addDragListener(this);
+        registerDragListener();
 
         ArrayList<WorkspaceItemInfo> items = new ArrayList<>(mInfo.contents);
         mEmptyCellRank = items.size();
         items.add(null);    // Add an empty spot at the end
 
         animateOpen(items, mEmptyCellRank / mContent.itemsPerPage());
+    }
+
+    private void registerDragListener() {
+        if (!mDragListenerRegistered) {
+            mDragController.addDragListener(this);
+            mDragListenerRegistered = true;
+        }
+    }
+
+    private void unregisterDragListener() {
+        if (mDragListenerRegistered) {
+            mDragController.removeDragListener(this);
+            mDragListenerRegistered = false;
+        }
     }
 
     /**
@@ -1028,6 +1047,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     private void closeComplete(boolean wasAnimated) {
         Log.d("ICON_TRACE", "closeComplete folder=" + mInfo.id + " mDragInProgress=" + mDragInProgress + " itemCount=" + getItemCount());
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
         unregisterBackCallback();
         // TODO: Clear all active animations.
         BaseDragLayer parent = (BaseDragLayer) getParent();
@@ -1127,6 +1149,21 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         return fallback;
     }
 
+    /**
+     * Returns the dynamic page-flip trigger width at the folder card edges.
+     * Confined strictly within the card's outer gutter padding so it never overlaps
+     * or interferes with the side column icons during rearrangement.
+     */
+    private float getPageFlipTriggerWidth() {
+        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
+                ? mContent.getPaddingLeft()
+                : mActivityContext.getDeviceProfile().folderContentPaddingLeftRight;
+        float density = getResources().getDisplayMetrics().density;
+        // Keep trigger zone confined to the card gutter (up to 16dp / contentPadding)
+        // so it never overlaps the side column icons or blocks cell placement.
+        return Math.max(density * 10f, Math.min(contentPadding, density * 16f));
+    }
+
     @Override
     public void onDragOver(DragObject d) {
         if (mScrollPauseAlarm.alarmPending()) {
@@ -1151,8 +1188,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         float x = r[0];
         int currentPage = mContent.getNextPage();
 
-        float cellOverlap = mContent.getCurrentCellLayout().getCellWidth()
-                * ICON_OVERSCROLL_WIDTH_FACTOR;
+        float cellOverlap = getPageFlipTriggerWidth();
         boolean isOutsideLeftEdge = x < cellOverlap;
         boolean isOutsideRightEdge = x > (getWidth() - cellOverlap);
 
@@ -1172,6 +1208,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             if (mScrollHintDir != SCROLL_NONE) {
                 mContent.clearScrollHint();
                 mScrollHintDir = SCROLL_NONE;
+                if (mContent != null) {
+                    mContent.cleanupEmptyPages();
+                }
             }
         }
     }
@@ -1204,6 +1243,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public void completeDragExit() {
         DragTrace.log("Folder.completeDragExit closing folder=" + mInfo.id + " restoring dock/workspace alphas");
+        if (mContent != null) {
+            mContent.cleanupEmptyPages();
+        }
         if (mIsOpen) {
             close(true);
             mIsOpen = false;
@@ -1244,7 +1286,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
                                 ((PageIndicatorDots) pi).setForcedTranslationY(0f);
                                 ((PageIndicatorDots) pi).resetToIdle();
                             }
-                            workspace.showPageIndicatorAtCurrentScroll();
+                            if (launcher.isInState(SPRING_LOADED)) {
+                                workspace.showPageIndicatorAtCurrentScroll();
+                            }
                         }
                     }
                 }
@@ -1296,6 +1340,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         if (mScrollHintDir != SCROLL_NONE) {
             mContent.clearScrollHint();
             mScrollHintDir = SCROLL_NONE;
+            if (mContent != null) {
+                mContent.cleanupEmptyPages();
+            }
         }
     }
 
@@ -1337,6 +1384,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
             try (SuppressInfoChanges s = new SuppressInfoChanges()) {
                 mFolderIcon.onDrop(d, true /* itemReturnedOnFailedDrop */);
+                Collections.sort(mInfo.contents, ITEM_POS_COMPARATOR);
             }
         }
 
@@ -1372,16 +1420,22 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private void updateItemLocationsInDatabaseBatch(boolean isBind) {
-        if (!isBind && mContent != null) {
-            ArrayList<View> icons = getIconsInReadingOrder();
-            if (icons.size() == mInfo.contents.size()) {
-                mInfo.contents.clear();
-                for (int i = 0; i < icons.size(); i++) {
-                    View iconView = icons.get(i);
-                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
-                        mInfo.contents.add((WorkspaceItemInfo) iconView.getTag());
-                    }
+        if (!isBind && mContent != null && mContent.areViewsBound()) {
+            // Reordering updates the visible child positions, while mInfo.contents can retain
+            // its pre-reorder list order. Persist in the live reading order so a successful
+            // drag out does not write the old folder order back to the database.
+            ArrayList<WorkspaceItemInfo> orderedItems = new ArrayList<>();
+            for (View iconView : getIconsInReadingOrder()) {
+                Object tag = iconView.getTag();
+                if (!(tag instanceof WorkspaceItemInfo)) {
+                    orderedItems.clear();
+                    break;
                 }
+                orderedItems.add((WorkspaceItemInfo) tag);
+            }
+            if (orderedItems.size() == mInfo.contents.size()) {
+                mInfo.contents.clear();
+                mInfo.contents.addAll(orderedItems);
             }
         }
 
@@ -1528,10 +1582,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     private boolean isDragActive() {
-        return mDragInProgress || (mLauncherDelegate != null
-                && mLauncherDelegate.getLauncher() != null
-                && mLauncherDelegate.getLauncher().getDragController() != null
-                && mLauncherDelegate.getLauncher().getDragController().isDragging());
+        return mDragInProgress;
     }
 
     // This method keeps track of the first and last item in the folder for the purposes
@@ -1655,21 +1706,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             // Temporarily suppress the listener, as we did all the work already here.
             try (SuppressInfoChanges s = new SuppressInfoChanges()) {
                 mInfo.add(si, mEmptyCellRank, false);
-            }
-
-            ArrayList<View> icons = getIconsInReadingOrder();
-            if (icons.size() == mInfo.contents.size()) {
-                mInfo.contents.clear();
-                FolderGridOrganizer verifier = new FolderGridOrganizer(
-                        mActivityContext.getDeviceProfile()).setFolderInfo(mInfo);
-                for (int i = 0; i < icons.size(); i++) {
-                    View iconView = icons.get(i);
-                    if (iconView.getTag() instanceof WorkspaceItemInfo) {
-                        WorkspaceItemInfo itemInfo = (WorkspaceItemInfo) iconView.getTag();
-                        verifier.updateRankAndPos(itemInfo, i);
-                        mInfo.contents.add(itemInfo);
-                    }
-                }
+                Collections.sort(mInfo.contents, ITEM_POS_COMPARATOR);
             }
 
             // We only need to update the locations if it doesn't get handled in
@@ -1786,17 +1823,23 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
     public List<BubbleTextView> getItemsOnPage(int page) {
         ArrayList<View> allItems = getIconsInReadingOrder();
-        int lastPage = mContent.getPageCount() - 1;
         int totalItemsInFolder = allItems.size();
         int itemsPerPage = mContent.itemsPerPage();
-        int numItemsOnCurrentPage = page == lastPage
-                ? totalItemsInFolder - (itemsPerPage * page)
-                : itemsPerPage;
+        if (page < 0 || itemsPerPage <= 0) {
+            return Collections.emptyList();
+        }
 
-        int startIndex = page * itemsPerPage;
-        int endIndex = Math.min(startIndex + numItemsOnCurrentPage, allItems.size());
+        // The current page can briefly outlive its items while a drag removes the last
+        // shortcuts from it. Derive the range from the live item count and reject a stale
+        // page before calculating an ArrayList capacity.
+        long startIndexLong = (long) page * itemsPerPage;
+        if (startIndexLong >= totalItemsInFolder) {
+            return Collections.emptyList();
+        }
 
-        List<BubbleTextView> itemsOnCurrentPage = new ArrayList<>(numItemsOnCurrentPage);
+        int startIndex = (int) startIndexLong;
+        int endIndex = (int) Math.min(startIndexLong + itemsPerPage, totalItemsInFolder);
+        List<BubbleTextView> itemsOnCurrentPage = new ArrayList<>(endIndex - startIndex);
         for (int i = startIndex; i < endIndex; ++i) {
             itemsOnCurrentPage.add((BubbleTextView) allItems.get(i));
         }
@@ -2779,7 +2822,7 @@ public class FolderAnimationManager {
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 566 | **Bytes**: 21934
+**Lines**: 568 | **Bytes**: 22154
 
 ```java
 /*
@@ -2832,6 +2875,7 @@ import com.android.launcher3.OnAlarmListener;
 import com.android.launcher3.R;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.dragndrop.DragLayer;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.dragndrop.DragOptions;
 import com.android.launcher3.folder.Folder;
 import com.android.launcher3.model.data.ItemInfo;
@@ -2881,7 +2925,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
         mFolderName.setSelectAllOnFocus(false);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
-        mFolderName.setTextColor(Color.WHITE);
+        mFolderName.setTextColor(Themes.getAttrColor(getContext(), R.attr.workspaceTextColor));
+        mFolderName.setHintTextColor(Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText) ? 0x99000000 : 0x99FFFFFF);
         mFolderName.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
         mFolderName.setShadowLayer(0, 0, 0, 0);
         mFooterHeight = getResources().getDimensionPixelSize(R.dimen.grid_folder_footer_height);
@@ -3354,7 +3399,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
 # src/com/android/launcher3/folder/FolderIcon.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
-**Lines**: 1073 | **Bytes**: 41923
+**Lines**: 1072 | **Bytes**: 41875
 
 ```java
 /*
@@ -3693,7 +3738,6 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
     public void onDragEnter(ItemInfo dragInfo) {
         if (mFolder.isDestroyed() || !willAcceptItem(dragInfo)) return;
-        if (mFolder.isDragInProgress()) return;
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) getLayoutParams();
         CellLayout cl = (CellLayout) getParent().getParent();
 
@@ -4436,7 +4480,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 # src/com/android/launcher3/folder/FolderPagedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
-**Lines**: 743 | **Bytes**: 26112
+**Lines**: 824 | **Bytes**: 30045
 
 ```java
 /*
@@ -4489,6 +4533,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.pageindicators.PageIndicatorDots;
 import com.android.launcher3.util.LauncherBindableItemsContainer.ItemOperator;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.util.Thunk;
 import com.android.launcher3.util.ViewCache;
 import com.android.launcher3.views.ActivityContext;
@@ -4654,6 +4699,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) view.getLayoutParams();
         lp.setCellXY(mOrganizer.getPosForRank(rank));
+        if (item != null) {
+            item.rank = rank;
+        }
         getPageAt(pageNo).addViewToCellLayout(view, -1, item.getViewId(), lp, true);
     }
 
@@ -4670,8 +4718,8 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         textView.setOnFocusChangeListener(mFocusIndicatorHelper);
 
         if (MultiModeController.isSingleLayerMode()) {
-            textView.setTextColor(ContextCompat.getColor(getContext(),
-                    R.color.workspace_text_color_light));
+            int textColor = Themes.getAttrColor(getContext(), R.attr.workspaceTextColor);
+            textView.setTextColor(textColor);
         }
 
         CellLayoutLayoutParams lp = (CellLayoutLayoutParams) textView.getLayoutParams();
@@ -4799,6 +4847,9 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
                 CellLayoutLayoutParams lp = (CellLayoutLayoutParams) v.getLayoutParams();
                 ItemInfo info = (ItemInfo) v.getTag();
                 lp.setCellXY(mOrganizer.getPosForRank(rank));
+                if (info instanceof WorkspaceItemInfo) {
+                    ((WorkspaceItemInfo) info).rank = rank;
+                }
                 currentPage.addViewToCellLayout(v, -1, info.getViewId(), lp, true);
 
                 if (mOrganizer.isItemInPreview(rank) && v instanceof BubbleTextView) {
@@ -5039,7 +5090,81 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         if (target == empty) {
             // No animation
             return;
-        } else if (target > empty) {
+        }
+
+        if (pageE == pageToAnimate && pageT == pageToAnimate) {
+            int emptyRow = pagePosE / mGridCountX;
+            int emptyCol = pagePosE % mGridCountX;
+            int targetRow = pagePosT / mGridCountX;
+            int targetCol = pagePosT % mGridCountX;
+
+            CellLayout page = getPageAt(pageToAnimate);
+            if (page == null) {
+                return;
+            }
+
+            if (emptyRow == targetRow) {
+                // Same row: shift items horizontally within this row only
+                int row = emptyRow;
+                if (emptyCol < targetCol) {
+                    for (int col = emptyCol; col < targetCol; col++) {
+                        int nextCol = col + 1;
+                        View v = page.getChildAt(nextCol, row);
+                        if (v != null) {
+                            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                                v.clearAnimation();
+                            }
+                            if (page.animateChildToPosition(v, col, row,
+                                    REORDER_ANIMATION_DURATION, delay, true, true)) {
+                                delay += delayAmount;
+                                delayAmount *= VIEW_REORDER_DELAY_FACTOR;
+                            }
+                            if (v.getTag() instanceof WorkspaceItemInfo) {
+                                ((WorkspaceItemInfo) v.getTag()).rank = pageToAnimate * maxItemsPerPage + row * mGridCountX + col;
+                            }
+                        }
+                    }
+                } else if (emptyCol > targetCol) {
+                    for (int col = emptyCol; col > targetCol; col--) {
+                        int prevCol = col - 1;
+                        View v = page.getChildAt(prevCol, row);
+                        if (v != null) {
+                            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                                v.clearAnimation();
+                            }
+                            if (page.animateChildToPosition(v, col, row,
+                                    REORDER_ANIMATION_DURATION, delay, true, true)) {
+                                delay += delayAmount;
+                                delayAmount *= VIEW_REORDER_DELAY_FACTOR;
+                            }
+                            if (v.getTag() instanceof WorkspaceItemInfo) {
+                                ((WorkspaceItemInfo) v.getTag()).rank = pageToAnimate * maxItemsPerPage + row * mGridCountX + col;
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Different rows: 2D direct swap with the target item (no domino ripple across other rows)
+                View targetView = page.getChildAt(targetCol, targetRow);
+                if (targetView != null) {
+                    if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                        targetView.clearAnimation();
+                    }
+                    page.animateChildToPosition(targetView, emptyCol, emptyRow,
+                            REORDER_ANIMATION_DURATION, 0, true, true);
+                    if (targetView.getTag() instanceof WorkspaceItemInfo) {
+                        ((WorkspaceItemInfo) targetView.getTag()).rank = empty;
+                    }
+                }
+            }
+
+            if (mFolder instanceof GridFolder && ((GridFolder) mFolder).isFolderWobbling()) {
+                ((GridFolder) mFolder).wobbleFolder(true);
+            }
+            return;
+        }
+
+        if (target > empty) {
             // Items will move backwards to make room for the empty cell.
             direction = 1;
 
@@ -5814,7 +5939,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
-**Lines**: 929 | **Bytes**: 35629
+**Lines**: 1005 | **Bytes**: 38176
 
 ```java
 /*
@@ -5936,6 +6061,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         public void setValue(PageIndicatorDots obj, int alpha) {
             obj.mPaginationAlpha = Utilities.boundToRange(alpha, INVISIBLE_ALPHA, VISIBLE_ALPHA);
             obj.invalidate();
+            obj.invalidateOutline();
             obj.syncPillGlassAlpha();
         }
     };
@@ -5949,8 +6075,11 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     private int mActivePage;
     private int mTotalScroll;
     private boolean mShouldAutoHide = true;
-    private int mPaginationAlpha = VISIBLE_ALPHA;
-    private int mToAlpha = VISIBLE_ALPHA;
+    private int mPaginationAlpha = INVISIBLE_ALPHA;
+    private int mToAlpha = INVISIBLE_ALPHA;
+    private boolean mForceDotsMode = false;
+    private int mLastScrollX = -1;
+    private boolean mIsDarkText = false;
 
     private float mCurrentPosition;
     private float mFinalPosition;
@@ -5960,6 +6089,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     private @Nullable ObjectAnimator mAlphaAnimator;
 
     private float[] mEntryAnimationRadiusFactors;
+    private static final boolean ENABLE_SEARCH_PILL_GLASS = true;
     private SearchPillGlassView mPillGlassView;
     private boolean mTouchDownOnPill = false;
 
@@ -5977,7 +6107,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private final Runnable mHidePaginationRunnable = () -> {
-        android.util.Log.d("PageIndicatorDots", "mHidePaginationRunnable executed, animating to INVISIBLE_ALPHA");
         animatePaginationToAlpha(INVISIBLE_ALPHA);
     };
 
@@ -5994,7 +6123,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
         mPaginationPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaginationPaint.setStyle(Style.FILL);
-        mPaginationPaint.setColor(Themes.getAttrColor(context, R.attr.folderPaginationColor));
+        updateThemeColors();
         mDotRadius = getResources().getDimension(R.dimen.page_indicator_dot_size) / 2;
         mCircleGap = DOT_GAP_FACTOR * mDotRadius;
         setOutlineProvider(new MyOutlineProver());
@@ -6006,6 +6135,35 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPillIconPaint.setStyle(Style.STROKE);
         mPillIconPaint.setStrokeCap(Paint.Cap.ROUND);
         mPillTextPaint.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+    }
+
+    private void updateThemeColors() {
+        mIsDarkText = Themes.getAttrBoolean(getContext(), R.attr.isWorkspaceDarkText);
+        if (mPaginationPaint != null) {
+            boolean useWhiteInGlassPill = isWorkspaceIndicator()
+                    && MultiModeController.isSingleLayerMode();
+            mPaginationPaint.setColor((!useWhiteInGlassPill && mIsDarkText)
+                    ? Color.BLACK : Color.WHITE);
+        }
+    }
+
+    @Override
+    protected void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        updateThemeColors();
+        invalidate();
+    }
+
+    public void setForceDotsMode(boolean forceDots) {
+        if (mForceDotsMode != forceDots) {
+            mForceDotsMode = forceDots;
+            mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+            if (forceDots) {
+                animatePaginationToAlpha(VISIBLE_ALPHA);
+            } else if (mShouldAutoHide) {
+                animatePaginationToAlpha(INVISIBLE_ALPHA);
+            }
+        }
     }
 
     private float getPillWidth() {
@@ -6041,7 +6199,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (mPillRect.contains(event.getX(), event.getY())) {
+                    if (!mForceDotsMode && mPillRect.contains(event.getX(), event.getY())) {
                         mTouchDownOnPill = true;
                         return true;
                     }
@@ -6069,11 +6227,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                         mTouchDownOnPill = false;
                         if (mPillRect.contains(event.getX(), event.getY())) {
                             Launcher launcher = Launcher.getLauncher(getContext());
-                            if (launcher != null && launcher.getWorkspace() != null && !launcher.getWorkspace().isWobbling()) {
+                            if (launcher != null && launcher.getWorkspace() != null
+                                    && !launcher.getWorkspace().isWobbling() && !mForceDotsMode) {
+                                android.util.Log.d("SearchPillDebug", "PageIndicatorDots: Opening Spotlight search");
                                 com.android.launcher3.applibrary.view.SpotlightSearchOverlay.show(launcher);
                                 playSoundEffect(android.view.SoundEffectConstants.CLICK);
                                 return true;
                             }
+                            return true; // Consume touch so it never leaks to underlying views
                         }
                     }
                     return false;
@@ -6088,26 +6249,35 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setScroll(int currentScroll, int totalScroll) {
-        android.util.Log.d("PageIndicatorDots", "setScroll: current=" + currentScroll + " total=" + totalScroll
-                + " numPages=" + mNumPages + " shouldAutoHide=" + mShouldAutoHide);
         if (currentScroll == 0 && totalScroll == 0) {
             CURRENT_POSITION.set(this, (float) mActivePage);
-            if (mShouldAutoHide) {
+            mLastScrollX = currentScroll;
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
             return;
         }
 
         if (mNumPages <= 1) {
+            mLastScrollX = currentScroll;
             return;
         }
 
         // Skip scroll update during binding. We will update it when binding completes.
         if (mIsScrollPaused) {
+            mLastScrollX = currentScroll;
             return;
         }
 
-        if (mShouldAutoHide) {
+        boolean isFirstScrollSeed = (mLastScrollX == -1);
+        boolean scrollPositionChanged = !isFirstScrollSeed && (mLastScrollX != currentScroll);
+        mLastScrollX = currentScroll;
+
+        if (mForceDotsMode) {
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+        } else if (scrollPositionChanged && mShouldAutoHide) {
             animatePaginationToAlpha(VISIBLE_ALPHA);
         }
 
@@ -6127,19 +6297,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll < pageToLeftScroll + scrollThreshold) {
             // scroll is within the left page's threshold
             animateToPosition(pageToLeft);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else if (currentScroll > pageToRightScroll - scrollThreshold) {
             // scroll is far enough from left page to go to the right page
             animateToPosition(pageToLeft + 1);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else {
             // scroll is between left and right page
             animateToPosition(pageToLeft + SHIFT_PER_ANIMATION);
-            if (mShouldAutoHide) {
+            if (mShouldAutoHide && !mForceDotsMode) {
                 mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
             }
         }
@@ -6147,11 +6317,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
-        android.util.Log.d("PageIndicatorDots", "setShouldAutoHide called: " + shouldAutoHide);
         mShouldAutoHide = shouldAutoHide;
-        if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA) {
+        if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA && !mForceDotsMode) {
             hideAfterDelay();
-        } else if (!shouldAutoHide) {
+        } else if (!shouldAutoHide || mForceDotsMode) {
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
         }
     }
@@ -6162,14 +6331,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void hideAfterDelay() {
-        android.util.Log.d("PageIndicatorDots", "hideAfterDelay() called, posting runnable for " + PAGINATION_FADE_DELAY + "ms");
+        if (mForceDotsMode) {
+            return;
+        }
         mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
         mDelayedPaginationFadeHandler.postDelayed(mHidePaginationRunnable, PAGINATION_FADE_DELAY);
     }
 
     private void animatePaginationToAlpha(int alpha) {
-        android.util.Log.d("PageIndicatorDots", "animatePaginationToAlpha() targetAlpha=" + alpha
-                + " currentAlpha=" + mPaginationAlpha + " mToAlpha=" + mToAlpha);
         if (alpha == mToAlpha && mPaginationAlpha == alpha) {
             // Ignore the new animation if it is going to the same alpha as the current animation.
             return;
@@ -6189,7 +6358,6 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mAlphaAnimator.addListener(new AnimatorListenerAdapter() {
             @Override
             public void onAnimationEnd(Animator animation) {
-                android.util.Log.d("PageIndicatorDots", "mAlphaAnimator ended, alpha=" + mPaginationAlpha);
                 mAlphaAnimator = null;
             }
         });
@@ -6344,6 +6512,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             mToAlpha = INVISIBLE_ALPHA;
         }
         attachPillGlassIfNeeded();
+        post(this::syncPillGlassBounds);
     }
 
     public void resetToIdle() {
@@ -6353,8 +6522,14 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                 mAlphaAnimator.cancel();
                 mAlphaAnimator = null;
             }
+            if (mAnimator != null) {
+                mAnimator.cancel();
+                mAnimator = null;
+            }
+            mForceDotsMode = false;
             mPaginationAlpha = INVISIBLE_ALPHA;
             mToAlpha = INVISIBLE_ALPHA;
+            syncPillGlassBounds();
             syncPillGlassAlpha();
             invalidate();
         }
@@ -6376,6 +6551,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void attachPillGlassIfNeeded() {
+        if (!ENABLE_SEARCH_PILL_GLASS) {
+            return;
+        }
         if (!isWorkspaceIndicator() || !MultiModeController.isSingleLayerMode()) {
             return;
         }
@@ -6390,11 +6568,28 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
         mPillGlassView = new SearchPillGlassView(getContext());
+        float density = getResources().getDisplayMetrics().density;
+        int pillWidth = Math.round(getPillWidth());
+        int pillHeight = Math.round(26f * density);
+        mPillGlassView.setCornerRadius(pillHeight / 2f);
+        View proxy = parent.findViewById(R.id.glass_wallpaper_proxy);
+        if (proxy == null) {
+            proxy = parent.findViewById(R.id.glass_source);
+        }
+        if (proxy != null) {
+            mPillGlassView.setBackdropSource(proxy);
+        }
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(pillWidth, pillHeight);
+        lp.gravity = Gravity.TOP | Gravity.LEFT;
+        int pillLeftInSelf = (getWidth() > 0 ? (getWidth() - pillWidth) / 2 : 0);
+        int pillTopInSelf = (getHeight() > 0 ? (getHeight() - pillHeight) / 2 : 0);
+        lp.leftMargin = getLeft() + pillLeftInSelf;
+        lp.topMargin = getTop() + pillTopInSelf;
         int myIndex = parent.indexOfChild(this);
         if (myIndex >= 0) {
-            parent.addView(mPillGlassView, myIndex);
+            parent.addView(mPillGlassView, myIndex, lp);
         } else {
-            parent.addView(mPillGlassView);
+            parent.addView(mPillGlassView, lp);
         }
         syncPillGlassBounds();
         syncPillGlassAlpha();
@@ -6419,44 +6614,46 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
         super.onLayout(changed, left, top, right, bottom);
-        if (mPillGlassView != null) {
-            float density = getResources().getDisplayMetrics().density;
-            int pillWidth = (int) getPillWidth();
-            int pillHeight = (int) (26f * density);
-            int pillLeftInSelf = (getWidth() - pillWidth) / 2;
-            int pillTopInSelf = (getHeight() - pillHeight) / 2;
-            int pillX = left + pillLeftInSelf;
-            int pillY = top + pillTopInSelf;
-            mPillGlassView.layout(pillX, pillY, pillX + pillWidth, pillY + pillHeight);
-            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
-            if (lp == null || lp.leftMargin != pillX || lp.topMargin != pillY
-                    || lp.width != pillWidth || lp.height != pillHeight) {
-                post(this::syncPillGlassBounds);
-            }
-        }
+        layoutPillGlassView();
     }
 
-    private void syncPillGlassBounds() {
-        if (mPillGlassView == null) return;
+    private void layoutPillGlassView() {
+        if (mPillGlassView == null || getWidth() <= 0 || getHeight() <= 0) return;
         float density = getResources().getDisplayMetrics().density;
-        int pillWidth = (int) getPillWidth();
-        int pillHeight = (int) (26f * density);
+        int pillWidth = Math.round(getPillWidth());
+        int pillHeight = Math.round(26f * density);
         int pillLeftInSelf = (getWidth() - pillWidth) / 2;
         int pillTopInSelf = (getHeight() - pillHeight) / 2;
         int pillX = getLeft() + pillLeftInSelf;
         int pillY = getTop() + pillTopInSelf;
 
+        if (mPillGlassView.getLeft() == pillX && mPillGlassView.getTop() == pillY
+                && mPillGlassView.getWidth() == pillWidth && mPillGlassView.getHeight() == pillHeight) {
+            return;
+        }
+
         FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
         if (lp != null) {
-            if (lp.leftMargin != pillX || lp.topMargin != pillY
-                    || lp.width != pillWidth || lp.height != pillHeight) {
-                lp.width = pillWidth;
-                lp.height = pillHeight;
-                lp.gravity = Gravity.TOP | Gravity.LEFT;
-                lp.leftMargin = pillX;
-                lp.topMargin = pillY;
-                mPillGlassView.setLayoutParams(lp);
-            }
+            lp.gravity = Gravity.TOP | Gravity.LEFT;
+            lp.leftMargin = pillX;
+            lp.topMargin = pillY;
+            lp.width = pillWidth;
+            lp.height = pillHeight;
+        }
+
+        mPillGlassView.measure(
+                MeasureSpec.makeMeasureSpec(pillWidth, MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(pillHeight, MeasureSpec.EXACTLY));
+        mPillGlassView.layout(pillX, pillY, pillX + pillWidth, pillY + pillHeight);
+        mPillGlassView.invalidate();
+    }
+
+    private void syncPillGlassBounds() {
+        if (mPillGlassView == null || getWidth() <= 0 || getHeight() <= 0) return;
+        layoutPillGlassView();
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) mPillGlassView.getLayoutParams();
+        if (lp != null) {
+            mPillGlassView.setLayoutParams(lp);
         }
     }
 
@@ -6467,12 +6664,16 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
         float effectiveAlpha = getAlpha();
-        if (effectiveAlpha <= 0.02f || getVisibility() != View.VISIBLE) {
-            mPillGlassView.setVisibility(View.GONE);
+        if (effectiveAlpha <= 0f || getVisibility() != View.VISIBLE) {
+            mPillGlassView.setVisibility(View.INVISIBLE);
         } else {
             mPillGlassView.setVisibility(View.VISIBLE);
             mPillGlassView.setAlpha(effectiveAlpha);
         }
+    }
+
+    public SearchPillGlassView getPillGlassView() {
+        return mPillGlassView;
     }
 
     @Override
@@ -6497,22 +6698,18 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         boolean isSingleLayerWorkspace = isWorkspaceIndicator()
                 && MultiModeController.isSingleLayerMode();
 
-        // Two-phase non-overlapping transition between "Search" label and page dots:
-        // [0..115]: "Search" fades out (1 -> 0), dots alpha = 0
-        // [115..140]: clean transition gap (neither drawn on top of the glass pill)
-        // [140..255]: dots fade in (0 -> 255), "Search" alpha = 0
+        // Zero-deadband gamma-corrected crossfade at midpoint 128:
         float pillAlpha;
         int dotAlpha;
         if (isSingleLayerWorkspace) {
-            if (mPaginationAlpha <= 115) {
-                pillAlpha = (115f - mPaginationAlpha) / 115f;
-                dotAlpha = 0;
-            } else if (mPaginationAlpha < 140) {
-                pillAlpha = 0f;
+            if (mPaginationAlpha < 128) {
+                float t = (128f - mPaginationAlpha) / 128f;
+                pillAlpha = (float) Math.sqrt(t);
                 dotAlpha = 0;
             } else {
+                float t = (mPaginationAlpha - 128f) / 127f;
                 pillAlpha = 0f;
-                dotAlpha = Math.round(((mPaginationAlpha - 140f) / 115f) * PAGE_INDICATOR_ALPHA);
+                dotAlpha = Math.round((float) Math.sqrt(t) * PAGE_INDICATOR_ALPHA);
             }
         } else {
             pillAlpha = 0f;
@@ -6526,21 +6723,20 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
 
-        // Draw all page indicators;
+        // Draw all page indicators
         float circleGap = getEffectiveCircleGap();
-        float startX = ((float) getWidth() / 2)
-                - (circleGap * (((float) mNumPages - 1) / 2))
+        float startX = ((float) getWidth() / 2f)
+                - (circleGap * (((float) mNumPages - 1) / 2f))
                 - mDotRadius;
 
         float x = startX + mDotRadius;
-        float y = getHeight() / 2;
+        float y = getHeight() / 2f;
 
-        if (isSingleLayerWorkspace) {
-            mPaginationPaint.setColor(Color.WHITE);
-        }
+        // Always use bright WHITE dots inside the Single Layer glass pill
+        mPaginationPaint.setColor((!isSingleLayerWorkspace && mIsDarkText)
+                ? Color.BLACK : Color.WHITE);
 
         if (mEntryAnimationRadiusFactors != null) {
-            // During entry animation, only draw the circles
             if (mIsRtl) {
                 x = getWidth() - x;
                 circleGap = -circleGap;
@@ -6554,21 +6750,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
                 x += circleGap;
             }
         } else {
-            // Here we draw the dots
             mPaginationPaint.setAlpha((int) (dotAlpha * DOT_ALPHA_FRACTION));
             for (int i = 0; i < mNumPages; i++) {
                 canvas.drawCircle(x, y, mDotRadius, mPaginationPaint);
                 x += circleGap;
             }
 
-            // Here we draw the current page indicator
             mPaginationPaint.setAlpha(dotAlpha);
             canvas.drawRoundRect(getActiveRect(), mDotRadius, mDotRadius, mPaginationPaint);
         }
     }
 
     private void drawSearchPillIfSingleLayer(Canvas canvas, float pillAlpha) {
-        if (!isWorkspaceIndicator() || !foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode()) {
+        if (!isWorkspaceIndicator() || !MultiModeController.isSingleLayerMode()) {
             return;
         }
         float density = getResources().getDisplayMetrics().density;
@@ -6583,31 +6777,34 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             return;
         }
 
-        // Glass frosted pill background - only draw fallback if glass view is absent/hidden
-        if (mPillGlassView == null || mPillGlassView.getVisibility() != View.VISIBLE) {
-            mPillBgPaint.setColor(android.graphics.Color.argb((int) (55 * viewAlpha), 255, 255, 255));
-            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillBgPaint);
-        }
+        // Always use white foreground inside the frosted glass pill
+        int pillFgRgb = 255;
 
-        // Rim stroke - always visible around the pill
-        mPillStrokePaint.setStrokeWidth(0.8f * density);
-        mPillStrokePaint.setColor(android.graphics.Color.argb((int) (40 * viewAlpha), 255, 255, 255));
-        canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillStrokePaint);
+        // Draw fallback frosted background and rim only when SearchPillGlassView is absent/not ready
+        boolean glassReady = (mPillGlassView != null && mPillGlassView.getParent() != null
+                && mPillGlassView.getWidth() > 0 && mPillGlassView.getHeight() > 0
+                && mPillGlassView.getVisibility() == View.VISIBLE);
+        if (!glassReady) {
+            mPillBgPaint.setColor(Color.argb((int) (55 * viewAlpha), 255, 255, 255));
+            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillBgPaint);
+
+            mPillStrokePaint.setStrokeWidth(0.8f * density);
+            mPillStrokePaint.setColor(Color.argb((int) (40 * viewAlpha), 255, 255, 255));
+            canvas.drawRoundRect(mPillRect, pillHeight / 2f, pillHeight / 2f, mPillStrokePaint);
+        }
 
         float contentAlpha = pillAlpha * viewAlpha;
         if (contentAlpha <= 0.02f) {
             return;
         }
 
-        // "Search" text paint (measured first so icon + text can be centered together as one unit)
         String label = "Search";
-        mPillTextPaint.setColor(android.graphics.Color.argb((int) (225 * contentAlpha), 255, 255, 255));
+        mPillTextPaint.setColor(Color.argb((int) (235 * contentAlpha), pillFgRgb, pillFgRgb, pillFgRgb));
         mPillTextPaint.setTextSize(12f * density);
         float textWidth = mPillTextPaint.measureText(label);
 
-        // Magnifying glass icon dimensions
         mPillIconPaint.setStrokeWidth(1.4f * density);
-        mPillIconPaint.setColor(android.graphics.Color.argb((int) (225 * contentAlpha), 255, 255, 255));
+        mPillIconPaint.setColor(Color.argb((int) (235 * contentAlpha), pillFgRgb, pillFgRgb, pillFgRgb));
 
         float iconRadius = 3.5f * density;
         float handleExtent = iconRadius * 0.707f + 3f * density;
@@ -6671,28 +6868,31 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
         @Override
         public void getOutline(View view, Outline outline) {
-            if (mEntryAnimationRadiusFactors == null) {
-                RectF activeRect = getActiveRect();
-                outline.setRoundRect(
-                        (int) activeRect.left,
-                        (int) activeRect.top,
-                        (int) activeRect.right,
-                        (int) activeRect.bottom,
-                        mDotRadius
-                );
-            }
+            float density = getResources().getDisplayMetrics().density;
+            float pillWidth = getPillWidth();
+            float pillHeight = 26f * density;
+            float pillLeft = (getWidth() - pillWidth) / 2f;
+            float pillTop = (getHeight() - pillHeight) / 2f;
+            outline.setRoundRect(
+                    (int) pillLeft,
+                    (int) pillTop,
+                    (int) (pillLeft + pillWidth),
+                    (int) (pillTop + pillHeight),
+                    pillHeight / 2f
+            );
         }
     }
 
     @Override
     public void setTranslationY(float translationY) {
-    }
-
-    public void setForcedTranslationY(float translationY) {
         super.setTranslationY(translationY);
         if (mPillGlassView != null) {
             mPillGlassView.setTranslationY(translationY);
         }
+    }
+
+    public void setForcedTranslationY(float translationY) {
+        setTranslationY(translationY);
     }
 
     /**
@@ -6743,6 +6943,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             lp.bottomMargin = insets.bottom + grid.hotseatBarSizePx + gapPx;
         }
         setLayoutParams(lp);
+        post(this::syncPillGlassBounds);
     }
 }
 ```
@@ -7044,7 +7245,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
-**Lines**: 346 | **Bytes**: 13331
+**Lines**: 359 | **Bytes**: 13877
 
 ```kotlin
 /*
@@ -7342,16 +7543,29 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         val anim = ObjectAnimator.ofPropertyValuesHolder(this, alphaAnim, transAnim).apply {
             duration = 250
             interpolator = Interpolators.EMPHASIZED_DECELERATE
+            addUpdateListener { invalidateGlassButtons() }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
                     if (currentAnimator === animation) {
                         currentAnimator = null
                     }
+                    invalidateGlassButtons()
                 }
             })
             start()
         }
         currentAnimator = anim
+    }
+
+    fun invalidateGlassButtons() {
+        for (i in 0 until editButtonContainer.childCount) {
+            (editButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
+                ?.invalidate()
+        }
+        for (i in 0 until doneButtonContainer.childCount) {
+            (doneButtonContainer.getChildAt(i) as? foundation.e.bliss.glass.JiggleButtonGlassView)
+                ?.invalidate()
+        }
     }
 
     fun hide() {
@@ -7399,7 +7613,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
-**Lines**: 395 | **Bytes**: 14194
+**Lines**: 395 | **Bytes**: 14198
 
 ```kotlin
 /*
@@ -7541,10 +7755,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
         rowsColumn.addView(createDivider(density, dividerHeight))
 
-        // --- Row 3: Edit Wallpaper ---
+        // --- Row 3: Change Wallpaper ---
         val rowEditWallpaper = createRow(
             iconRes = R.drawable.ic_edit_wallpaper,
-            label = "Edit Wallpaper",
+            label = "Change Wallpaper",
             density = density,
             rowHeight = rowHeight
         ) {

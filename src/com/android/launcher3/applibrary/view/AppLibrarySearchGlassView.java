@@ -216,6 +216,7 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
 
         // Standard master glass parameters from GlassConfig (identical to category boxes)
         GlassConfig.applyDefaultConfig(this);
+        setInvalidateOnBackdropScroll(false);
     }
 
     @Override
@@ -229,8 +230,8 @@ public class AppLibrarySearchGlassView extends LiquidGlassView implements Border
         super.onAttachedToWindow();
         GlassConfig.registerView(this);
         setAdaptiveLensScale(false);
-        setRefractionHeight(143f);
-        setBevelWidth(49f);
+        setRefractionHeight(GlassConfig.DEFAULT_REFRACTION_HEIGHT);
+        setBevelWidth(GlassConfig.DEFAULT_BEVEL_WIDTH);
         if (getBackdropSource() == null) {
             View proxy = findWallpaperProxy();
             if (proxy != null) {

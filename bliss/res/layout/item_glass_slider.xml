@@ -43,13 +43,9 @@
         android:textColor="@color/onboarding_text_secondary"
         android:textSize="12sp" />
 
-    <SeekBar
+    <com.android.launcher3.settings.IosSlider
         android:id="@+id/seekbar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:paddingStart="2dp"
-        android:paddingEnd="2dp"
-        android:progressTint="@color/ios_icon_blue"
-        android:thumbTint="@color/ios_icon_blue" />
+        android:layout_height="38dp"
+        android:layout_marginTop="6dp" />
 </LinearLayout>

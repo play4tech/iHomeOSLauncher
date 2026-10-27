@@ -28,4 +28,7 @@ project(':IconLoader').projectDir = new File("$rootDir/libs_systemui", 'iconload
 include ':SearchUiLib'
 project(':SearchUiLib').projectDir = new File("$rootDir/libs_systemui", 'searchuilib')
 
+include ':liquidglass'
+project(':liquidglass').projectDir = new File("$rootDir/libs_systemui", 'liquidglass')
+
 rootProject.name = "iHomeLauncher"

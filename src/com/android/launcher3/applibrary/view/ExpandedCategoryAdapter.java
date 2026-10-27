@@ -12,6 +12,7 @@ import com.android.launcher3.DeviceProfile;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.model.data.AppInfo;
+import com.android.launcher3.util.Themes;
 
 import java.util.List;
 
@@ -51,7 +52,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
         icon.setLayoutParams(lp);
         icon.setCenterVertically(true);
         icon.setDisplay(BubbleTextView.DISPLAY_APP_LIBRARY_EXPANDED);
-        icon.setTextColor(android.graphics.Color.WHITE);
+        icon.setTextColor(Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor));
         // Bind the standard item click listener so clicking an app launches it
         icon.setOnClickListener(mLauncher.getItemOnClickListener());
         return new ViewHolder(icon);

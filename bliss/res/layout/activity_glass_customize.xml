@@ -77,116 +77,173 @@
         <FrameLayout
             android:id="@+id/preview_card_container"
             android:layout_width="match_parent"
-            android:layout_height="195dp"
+            android:layout_height="204dp"
             android:background="@drawable/bg_ios_preview_card"
             android:clipToOutline="true">
 
             <!-- Wallpaper Backdrop -->
-            <ImageView
+            <foundation.e.bliss.glass.PreviewWallpaperView
                 android:id="@+id/preview_wallpaper"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
                 android:contentDescription="Wallpaper Preview" />
 
-            <!-- Top Elements Row (Folder Squircle & Search Pill) -->
+            <!-- Desktop Items Row (3 Apps + 1 Glass Folder) -->
             <LinearLayout
+                android:id="@+id/preview_desktop_row"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_gravity="top"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="24dp"
-                android:paddingEnd="24dp"
-                android:paddingTop="12dp">
+                android:layout_marginTop="14dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp">
 
-                <!-- Folder Squircle Preview -->
+                <!-- Desktop App 1 -->
                 <FrameLayout
-                    android:id="@+id/preview_folder_container"
-                    android:layout_width="52dp"
-                    android:layout_height="52dp">
-
-                    <foundation.e.bliss.glass.FolderGlassView
-                        android:id="@+id/preview_folder_glass"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
-
-                    <!-- Mini 2x2 cluster inside folder -->
-                    <GridLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:columnCount="2"
-                        android:rowCount="2"
-                        android:padding="7dp">
-
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_preview_phone" />
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_preview_messages" />
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_preview_browser" />
-                        <ImageView
-                            android:layout_width="16dp"
-                            android:layout_height="16dp"
-                            android:layout_gravity="center"
-                            android:src="@drawable/ic_preview_camera" />
-                    </GridLayout>
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+                    <foundation.e.bliss.glass.SquircleImageView
+                        android:id="@+id/icon_desktop_1"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_preview_photos" />
                 </FrameLayout>
 
-                <View
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1" />
-
-                <!-- Search Pill Preview -->
+                <!-- Desktop App 2 -->
                 <FrameLayout
-                    android:id="@+id/preview_search_pill_container"
-                    android:layout_width="110dp"
-                    android:layout_height="32dp">
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+                    <foundation.e.bliss.glass.SquircleImageView
+                        android:id="@+id/icon_desktop_2"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_preview_maps" />
+                </FrameLayout>
 
-                    <foundation.e.bliss.glass.SearchPillGlassView
-                        android:id="@+id/preview_search_glass"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent" />
+                <!-- Desktop App 3 -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+                    <foundation.e.bliss.glass.SquircleImageView
+                        android:id="@+id/icon_desktop_3"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_preview_settings" />
+                </FrameLayout>
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="horizontal">
+                <!-- Column 4: Glass Folder Preview -->
+                <FrameLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1">
+                    <FrameLayout
+                        android:id="@+id/preview_folder_container"
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center">
 
-                        <ImageView
-                            android:layout_width="13dp"
-                            android:layout_height="13dp"
-                            android:src="@drawable/ic_allapps_search"
-                            android:tint="#FFFFFFFF" />
+                        <foundation.e.bliss.glass.FolderGlassView
+                            android:id="@+id/preview_folder_glass"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent" />
 
-                        <TextView
+                        <!-- Centered 2x2 cluster inside folder -->
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginStart="5dp"
-                            android:text="Search"
-                            android:textColor="#FFFFFFFF"
-                            android:textSize="12sp"
-                            android:fontFamily="sans-serif-medium" />
-                    </LinearLayout>
+                            android:layout_gravity="center"
+                            android:orientation="vertical">
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center">
+
+                                <foundation.e.bliss.glass.SquircleImageView
+                                    android:id="@+id/folder_mini_1"
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:src="@drawable/ic_preview_phone" />
+
+                                <View
+                                    android:layout_width="4dp"
+                                    android:layout_height="1dp" />
+
+                                <foundation.e.bliss.glass.SquircleImageView
+                                    android:id="@+id/folder_mini_2"
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:src="@drawable/ic_preview_messages" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:orientation="horizontal"
+                                android:gravity="center">
+
+                                <foundation.e.bliss.glass.SquircleImageView
+                                    android:id="@+id/folder_mini_3"
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:src="@drawable/ic_preview_browser" />
+
+                                <View
+                                    android:layout_width="4dp"
+                                    android:layout_height="1dp" />
+
+                                <foundation.e.bliss.glass.SquircleImageView
+                                    android:id="@+id/folder_mini_4"
+                                    android:layout_width="14dp"
+                                    android:layout_height="14dp"
+                                    android:src="@drawable/ic_preview_camera" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </FrameLayout>
                 </FrameLayout>
             </LinearLayout>
+
+            <!-- Search Pill Preview (Centered Horizontally Above Dock) -->
+            <FrameLayout
+                android:id="@+id/preview_search_pill_container"
+                android:layout_width="80dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="80dp">
+
+                <foundation.e.bliss.glass.SearchPillGlassView
+                    android:id="@+id/preview_search_glass"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+
+                <TextView
+                    android:id="@+id/preview_search_text"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center"
+                    android:text="Search"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="11.5sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:includeFontPadding="false" />
+            </FrameLayout>
 
             <!-- Floating Dock Glass Panel -->
             <FrameLayout
                 android:id="@+id/preview_dock_wrapper"
                 android:layout_width="match_parent"
-                android:layout_height="72dp"
+                android:layout_height="66dp"
                 android:layout_gravity="bottom"
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
@@ -213,8 +270,8 @@
                         android:layout_weight="1">
                         <foundation.e.bliss.glass.SquircleImageView
                             android:id="@+id/icon_phone"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_preview_phone" />
                     </FrameLayout>
@@ -226,8 +283,8 @@
                         android:layout_weight="1">
                         <foundation.e.bliss.glass.SquircleImageView
                             android:id="@+id/icon_messages"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_preview_messages" />
                     </FrameLayout>
@@ -239,8 +296,8 @@
                         android:layout_weight="1">
                         <foundation.e.bliss.glass.SquircleImageView
                             android:id="@+id/icon_browser"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_preview_browser" />
                     </FrameLayout>
@@ -252,8 +309,8 @@
                         android:layout_weight="1">
                         <foundation.e.bliss.glass.SquircleImageView
                             android:id="@+id/icon_camera"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
                             android:layout_gravity="center"
                             android:src="@drawable/ic_preview_camera" />
                     </FrameLayout>
@@ -334,6 +391,16 @@
 
                 <include
                     android:id="@+id/slider_blur_amount"
+                    layout="@layout/item_glass_slider" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:layout_marginStart="16dp"
+                    android:background="@color/ios_settings_card_divider" />
+
+                <include
+                    android:id="@+id/slider_white_tint_opacity"
                     layout="@layout/item_glass_slider" />
 
                 <View

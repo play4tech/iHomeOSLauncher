@@ -20,6 +20,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.AttributeSet;
@@ -55,6 +56,7 @@ import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.model.data.AppInfo;
+import com.android.launcher3.util.Themes;
 import com.android.launcher3.views.BaseDragLayer;
 
 import java.util.Arrays;
@@ -70,6 +72,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
     private final Launcher mLauncher;
     private AppLibraryOverlayGlassView mBackdropGlass;
+    private AppLibrarySearchGlassView mSearchGlass;
     private View mSearchContent;
     private View mSearchRow;
     private ExtendedEditText mSearchInput;
@@ -107,6 +110,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     protected void onFinishInflate() {
         super.onFinishInflate();
         mBackdropGlass = findViewById(R.id.spotlight_search_backdrop_glass);
+        mSearchGlass = findViewById(R.id.spotlight_search_glass);
         mSearchContent = findViewById(R.id.spotlight_search_content);
         mSearchRow = findViewById(R.id.spotlight_search_row);
         mSearchInput = findViewById(R.id.spotlight_search_input);
@@ -197,6 +201,30 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         if (mBackdropGlass != null) {
             mBackdropGlass.setOnClickListener(v -> close(true));
         }
+
+        applyThemeColors();
+    }
+
+    private void applyThemeColors() {
+        if (mLauncher == null) return;
+        boolean isDarkText = Themes.getAttrBoolean(mLauncher, R.attr.isWorkspaceDarkText);
+        int textColor = Themes.getAttrColor(mLauncher, R.attr.workspaceTextColor);
+        int hintColor = isDarkText ? 0x99000000 : 0x99FFFFFF;
+
+        if (mSearchInput != null) {
+            mSearchInput.setTextColor(textColor);
+            mSearchInput.setHintTextColor(hintColor);
+        }
+        if (mSearchCancel != null) {
+            mSearchCancel.setTextColor(textColor);
+        }
+        ImageView searchIcon = findViewById(R.id.spotlight_search_icon);
+        if (searchIcon != null) {
+            searchIcon.setImageTintList(ColorStateList.valueOf(textColor));
+        }
+        if (mSearchClear != null) {
+            mSearchClear.setImageTintList(ColorStateList.valueOf(hintColor));
+        }
     }
 
     public static SpotlightSearchOverlay getOpen(Launcher launcher) {
@@ -232,6 +260,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         overlay.mIsOpen = true;
         overlay.mIsClosing = false;
         overlay.mKeyboardHiddenForClose = false;
+        com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(true);
         launcher.getDragLayer().addView(overlay);
         launcher.onDragLayerHierarchyChanged();
 
@@ -242,15 +271,16 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             overlay.mSearchAdapter.setApps(Arrays.asList(apps));
         }
 
-        // Animate entrance
+        // Animate entrance and immediately request soft keyboard
+        overlay.showKeyboard();
         overlay.post(overlay::animateOpen);
         return overlay;
     }
 
     public void prepareForEntrance() {
+        applyThemeColors();
         final float density = getResources().getDisplayMetrics().density;
         final float contentSlidePx = 40f * density;
-        final float rowSlidePx = -24f * density;
         final float cancelSlidePx = 20f * density;
 
         setAlpha(0f);
@@ -264,9 +294,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             mSearchContent.setScaleY(1f);
         }
         if (mSearchRow != null) {
-            mSearchRow.setTranslationY(rowSlidePx);
-            mSearchRow.setScaleX(0.92f);
-            mSearchRow.setScaleY(0.92f);
+            mSearchRow.setTranslationY(0f);
+            mSearchRow.setScaleX(1f);
+            mSearchRow.setScaleY(1f);
             mSearchRow.setAlpha(0f);
         }
         if (mSearchCancel != null) {
@@ -294,7 +324,6 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
         final float density = getResources().getDisplayMetrics().density;
         final float contentSlidePx = 40f * density;
-        final float rowSlidePx = -24f * density;
         final float cancelSlidePx = 20f * density;
 
         prepareForEntrance();
@@ -311,10 +340,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                 mBackdropGlass.setAlpha(progress);
             }
             if (mSearchRow != null) {
-                mSearchRow.setTranslationY((1f - progress) * rowSlidePx);
-                float rowScale = 0.92f + 0.08f * progress;
-                mSearchRow.setScaleX(rowScale);
-                mSearchRow.setScaleY(rowScale);
+                mSearchRow.setTranslationY(0f);
+                mSearchRow.setScaleX(1f);
+                mSearchRow.setScaleY(1f);
                 mSearchRow.setAlpha(Math.min(1f, progress * 1.5f));
             }
             if (mSearchCancel != null) {
@@ -375,9 +403,13 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                     ws.setScaleX(0.95f);
                     ws.setScaleY(0.95f);
                 }
+                if (mSearchGlass != null) {
+                    mSearchGlass.invalidate();
+                }
                 showKeyboard();
             }
         });
+        showKeyboard();
         mOpenCloseAnimator.start();
     }
 
@@ -389,15 +421,22 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mKeyboardHiddenForClose = false;
         if (mSearchInput != null) {
             mSearchInput.requestFocus();
-            postDelayed(() -> {
-                if (mIsClosing || !mIsOpen) {
-                    return;
-                }
-                InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm != null) {
-                    imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
-                }
-            }, 60);
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
+            }
+        }
+    }
+
+    public void hideKeyboardOnScroll() {
+        if (!mIsOpen || mIsClosing) {
+            return;
+        }
+        if (mSearchInput != null) {
+            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(mSearchInput.getWindowToken(), 0);
+            }
         }
     }
 
@@ -422,6 +461,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         }
         mIsClosing = true;
         mIsOpen = false;
+        com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
         hideKeyboard();
 
@@ -527,6 +567,12 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             mSearchContent.setTranslationY(0f);
             mSearchContent.setScaleX(1f);
             mSearchContent.setScaleY(1f);
+        }
+        if (mSearchRow != null) {
+            mSearchRow.setAlpha(1f);
+            mSearchRow.setTranslationY(0f);
+            mSearchRow.setScaleX(1f);
+            mSearchRow.setScaleY(1f);
         }
         if (ws != null) {
             ws.setScaleX(1f);
@@ -657,7 +703,6 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             checkRootImeVisibility();
             return v.onApplyWindowInsets(insets);
         });
-        getViewTreeObserver().addOnGlobalLayoutListener(mImeLayoutListener);
 
         if (mLauncher != null && mLauncher.getAppsView() != null
                 && mLauncher.getAppsView().getAppsStore() != null) {
@@ -722,7 +767,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                 && mLauncher.getAppsView().getAppsStore() != null) {
             mLauncher.getAppsView().getAppsStore().removeUpdateListener(mAppsUpdateListener);
         }
-        getViewTreeObserver().removeOnGlobalLayoutListener(mImeLayoutListener);
+        com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
     }
 

@@ -173,7 +173,7 @@ public class LauncherAppWidgetProviderInfo extends AppWidgetProviderInfo
             minSpanY = Math.min(spanY, minSpanY);
         }
 
-        if (provider != null && foundation.e.bliss.widgets.clock.ClockAppWidgetProvider.Companion.isClockWidget(provider)) {
+        if (provider != null && foundation.e.bliss.widgets.GlassWidgetFactory.isGlassWidget(provider)) {
             spanX = 2;
             spanY = 2;
             minSpanX = 2;

@@ -205,7 +205,7 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     private void init() {
         setEnableSensorHighlight(false);
-        setClipToOutline(true);
+        setClipToOutline(false);
 
         setOutlineProvider(new ViewOutlineProvider() {
             @Override

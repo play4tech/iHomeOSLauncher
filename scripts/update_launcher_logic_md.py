@@ -129,7 +129,8 @@ for part in PARTS.values():
 
 def write_bundle(file_path, title, file_list, description=""):
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    with open(file_path, "w", encoding="utf-8") as out:
+    tmp_path = file_path + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as out:
         out.write(f"# {title}\n\n")
         if description:
             out.write(f"{description}\n\n")
@@ -164,6 +165,19 @@ def write_bundle(file_path, title, file_list, description=""):
                 out.write("\n")
             out.write("```\n\n")
             out.write("---\n\n")
+    for _ in range(5):
+        try:
+            os.replace(tmp_path, file_path)
+            break
+        except PermissionError:
+            time.sleep(0.2)
+    else:
+        import shutil
+        shutil.copyfile(tmp_path, file_path)
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
 
 
 def main():
@@ -176,8 +190,10 @@ def main():
         ALL_FILES,
         f"This master document aggregates all {len(ALL_FILES)} core architectural and functional code logic files and manifests."
     )
-    with open(OUTPUT_FILE_MD, "r", encoding="utf-8") as f_in, open(OUTPUT_FILE_TXT, "w", encoding="utf-8") as f_out:
+    tmp_txt = OUTPUT_FILE_TXT + ".tmp"
+    with open(OUTPUT_FILE_MD, "r", encoding="utf-8") as f_in, open(tmp_txt, "w", encoding="utf-8") as f_out:
         f_out.write(f_in.read())
+    os.replace(tmp_txt, OUTPUT_FILE_TXT)
 
     master_size = os.path.getsize(OUTPUT_FILE_MD)
     print(f"Master file updated: {OUTPUT_FILE_MD} & .txt ({len(ALL_FILES)} files, {master_size} bytes)")
