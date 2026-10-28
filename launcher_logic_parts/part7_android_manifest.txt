@@ -322,7 +322,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # bliss/AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 98 | **Bytes**: 3977
+**Lines**: 84 | **Bytes**: 3364
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -351,20 +351,6 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:exported="false"
             android:taskAffinity=""
             android:theme="@style/Theme.Bliss.Onboarding" />
-
-        <!-- Dummy receiver for the migration of weather app -->
-        <receiver
-            android:name="foundation.e.blisslauncher.features.weather.WeatherAppWidgetProvider"
-            android:exported="false"
-            android:label="@string/app_name"
-            tools:ignore="Instantiatable">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/weather_appwidget_info" />
-        </receiver>
 
         <!-- iOS 2x2 Clock Widget -->
         <receiver
