@@ -87,9 +87,9 @@ android {
 
     if (!versionPropsFile.exists()) {
         versionProps['VERSION_CHANGE'] = '0'
-        versionProps['VERSION_MAJOR'] = '3'
+        versionProps['VERSION_MAJOR'] = '1'
         versionProps['VERSION_MINOR'] = '0'
-        versionProps['VERSION_PATCH'] = '1'
+        versionProps['VERSION_PATCH'] = '0'
         versionProps['VERSION_CODE'] = '3000010'
         versionProps.store(versionPropsFile.newWriter(), null)
     }
@@ -130,12 +130,16 @@ android {
         if (versionPropsFile.canRead()) {
             versionProps.load(new FileInputStream(versionPropsFile))
 
-            def versionMajor = versionProps['VERSION_MAJOR']
-            def versionMinor = versionProps['VERSION_MINOR']
-            def versionPatch = versionProps['VERSION_PATCH']
+            def versionMajor = versionProps['VERSION_MAJOR'] ?: '1'
+            def versionMinor = versionProps['VERSION_MINOR'] ?: '0'
+            def versionPatch = versionProps['VERSION_PATCH'] ?: '0'
 
-            return "${versionMajor}.${versionMinor}.${versionPatch}-beta"
+            if (versionPatch.toInteger() > 0) {
+                return "${versionMajor}.${versionMinor}.${versionPatch}"
+            }
+            return "${versionMajor}.${versionMinor}"
         }
+        return "1.0"
     }
 
     defaultConfig {

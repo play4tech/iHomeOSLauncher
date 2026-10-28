@@ -6181,7 +6181,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 # src/com/android/launcher3/settings/SettingsActivity.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 336 | **Bytes**: 14153
+**Lines**: 336 | **Bytes**: 14158
 
 ```java
 /*
@@ -6486,7 +6486,7 @@ public class SettingsActivity extends FragmentActivity
                 String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 txtFooter.setText("iHome Launcher v" + versionName);
             } catch (Exception e) {
-                txtFooter.setText("iHome Launcher");
+                txtFooter.setText("iHome Launcher v1.0");
             }
         }
     }

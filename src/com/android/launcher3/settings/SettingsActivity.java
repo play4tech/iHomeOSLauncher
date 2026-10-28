@@ -300,7 +300,7 @@ public class SettingsActivity extends FragmentActivity
                 String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 txtFooter.setText("iHome Launcher v" + versionName);
             } catch (Exception e) {
-                txtFooter.setText("iHome Launcher");
+                txtFooter.setText("iHome Launcher v1.0");
             }
         }
     }

@@ -476,7 +476,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:gravity="center"
-                android:text="iHome Launcher"
+                android:text="iHome Launcher v1.0"
                 android:textColor="@color/onboarding_text_secondary"
                 android:textSize="13sp" />
 

@@ -6252,7 +6252,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 # src/com/android/launcher3/settings/SettingsActivity.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 336 | **Bytes**: 14153
+**Lines**: 336 | **Bytes**: 14158
 
 ```java
 /*
@@ -6557,7 +6557,7 @@ public class SettingsActivity extends FragmentActivity
                 String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 txtFooter.setText("iHome Launcher v" + versionName);
             } catch (Exception e) {
-                txtFooter.setText("iHome Launcher");
+                txtFooter.setText("iHome Launcher v1.0");
             }
         }
     }
@@ -30188,7 +30188,7 @@ class SuggestionsProvider(private val context: Context) {
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
-**Lines**: 803 | **Bytes**: 31034
+**Lines**: 881 | **Bytes**: 34372
 
 ```java
 /*
@@ -30268,6 +30268,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     private AppLibrarySearchGlassView mSearchGlass;
     private View mSearchContent;
     private View mSearchRow;
+    private View mSearchContainer;
     private ExtendedEditText mSearchInput;
     private ImageView mSearchClear;
     private TextView mSearchCancel;
@@ -30306,6 +30307,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mSearchGlass = findViewById(R.id.spotlight_search_glass);
         mSearchContent = findViewById(R.id.spotlight_search_content);
         mSearchRow = findViewById(R.id.spotlight_search_row);
+        mSearchContainer = findViewById(R.id.spotlight_search_container);
         mSearchInput = findViewById(R.id.spotlight_search_input);
         mSearchClear = findViewById(R.id.spotlight_search_clear);
         mSearchCancel = findViewById(R.id.spotlight_search_cancel);
@@ -30324,6 +30326,14 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mSearchResultsView.setLayoutManager(new LinearLayoutManager(getContext()));
         mSearchResultsView.setItemAnimator(null);
         mSearchResultsView.setAdapter(mSearchAdapter);
+        mSearchResultsView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    hideKeyboardOnScroll();
+                }
+            }
+        });
 
         if (mIndexScroller != null) {
             mIndexScroller.setOnSectionSelectedListener(section -> {
@@ -30366,7 +30376,15 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             public void afterTextChanged(Editable s) {}
         });
 
+        // Ensure clicking any search bar element activates editing mode
+        View.OnClickListener activateInputClick = v -> activateSearchInput();
         if (mSearchInput != null) {
+            mSearchInput.setOnClickListener(activateInputClick);
+            mSearchInput.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus && mIsOpen && !mIsClosing) {
+                    activateSearchInput();
+                }
+            });
             mSearchInput.setOnBackKeyListener(() -> {
                 Log.d("SpotlightBack", "mSearchInput.onKeyPreIme back key listener fired");
                 close(true);
@@ -30381,6 +30399,20 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                 }
                 return false;
             });
+        }
+
+        if (mSearchContainer != null) {
+            mSearchContainer.setOnClickListener(activateInputClick);
+        }
+        if (mSearchGlass != null) {
+            mSearchGlass.setOnClickListener(activateInputClick);
+        }
+        if (mSearchRow != null) {
+            mSearchRow.setOnClickListener(activateInputClick);
+        }
+        View searchIcon = findViewById(R.id.spotlight_search_icon);
+        if (searchIcon != null) {
+            searchIcon.setOnClickListener(activateInputClick);
         }
 
         if (mSearchClear != null) {
@@ -30431,6 +30463,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             if (child instanceof SpotlightSearchOverlay) {
                 SpotlightSearchOverlay existing = (SpotlightSearchOverlay) child;
                 if (existing.mIsOpen && !existing.mIsClosing) {
+                    existing.activateSearchInput();
                     return existing;
                 }
                 if (existing.mOpenCloseAnimator != null) {
@@ -30464,9 +30497,25 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             overlay.mSearchAdapter.setApps(Arrays.asList(apps));
         }
 
-        // Animate entrance and immediately request soft keyboard
-        overlay.showKeyboard();
+        if (overlay.mSearchInput != null) {
+            overlay.mSearchInput.getViewTreeObserver().addOnGlobalLayoutListener(
+                    new ViewTreeObserver.OnGlobalLayoutListener() {
+                        @Override
+                        public void onGlobalLayout() {
+                            if (overlay.mSearchInput != null) {
+                                overlay.mSearchInput.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                            }
+                            if (overlay.mIsOpen && !overlay.mIsClosing) {
+                                overlay.activateSearchInput();
+                            }
+                        }
+                    });
+        }
+
+        // Animate entrance and immediately request soft keyboard & active editing mode
+        overlay.activateSearchInput();
         overlay.post(overlay::animateOpen);
+        overlay.postDelayed(overlay::activateSearchInput, 50);
         return overlay;
     }
 
@@ -30476,7 +30525,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         final float contentSlidePx = 40f * density;
         final float cancelSlidePx = 20f * density;
 
-        setAlpha(0f);
+        setAlpha(1f);
         if (mBackdropGlass != null) {
             mBackdropGlass.setAlpha(0f);
         }
@@ -30490,7 +30539,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             mSearchRow.setTranslationY(0f);
             mSearchRow.setScaleX(1f);
             mSearchRow.setScaleY(1f);
-            mSearchRow.setAlpha(0f);
+            mSearchRow.setAlpha(1f);
         }
         if (mSearchCancel != null) {
             mSearchCancel.setTranslationX(cancelSlidePx);
@@ -30519,8 +30568,13 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         final float contentSlidePx = 40f * density;
         final float cancelSlidePx = 20f * density;
 
-        prepareForEntrance();
         setAlpha(1f);
+        if (mSearchRow != null) {
+            mSearchRow.setAlpha(1f);
+            mSearchRow.setTranslationY(0f);
+            mSearchRow.setScaleX(1f);
+            mSearchRow.setScaleY(1f);
+        }
 
         Workspace<?> ws = mLauncher.getWorkspace();
 
@@ -30531,12 +30585,6 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
             float progress = (float) animation.getAnimatedValue();
             if (mBackdropGlass != null) {
                 mBackdropGlass.setAlpha(progress);
-            }
-            if (mSearchRow != null) {
-                mSearchRow.setTranslationY(0f);
-                mSearchRow.setScaleX(1f);
-                mSearchRow.setScaleY(1f);
-                mSearchRow.setAlpha(Math.min(1f, progress * 1.5f));
             }
             if (mSearchCancel != null) {
                 mSearchCancel.setTranslationX((1f - progress) * cancelSlidePx);
@@ -30599,26 +30647,42 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
                 if (mSearchGlass != null) {
                     mSearchGlass.invalidate();
                 }
-                showKeyboard();
+                activateSearchInput();
             }
         });
-        showKeyboard();
+        activateSearchInput();
         mOpenCloseAnimator.start();
     }
 
-    public void showKeyboard() {
-        if (mIsClosing || !mIsOpen) {
+    public void activateSearchInput() {
+        if (mSearchInput == null || mIsClosing || !mIsOpen) {
             return;
         }
         mInternalKeyboardHide = false;
         mKeyboardHiddenForClose = false;
-        if (mSearchInput != null) {
+        mSearchInput.setFocusable(true);
+        mSearchInput.setFocusableInTouchMode(true);
+        mSearchInput.setCursorVisible(true);
+        if (!mSearchInput.isFocused()) {
             mSearchInput.requestFocus();
-            InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) {
-                imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
-            }
         }
+        if (mSearchInput.getText() != null) {
+            mSearchInput.setSelection(mSearchInput.getText().length());
+        }
+        InputMethodManager imm = (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.showSoftInput(mSearchInput, InputMethodManager.SHOW_IMPLICIT);
+            mSearchInput.post(() -> {
+                if (mIsOpen && !mIsClosing && mSearchInput != null) {
+                    mSearchInput.requestFocus();
+                    imm.showSoftInput(mSearchInput, 0);
+                }
+            });
+        }
+    }
+
+    public void showKeyboard() {
+        activateSearchInput();
     }
 
     public void hideKeyboardOnScroll() {
@@ -30973,12 +31037,26 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
     }
 
     @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onWindowFocusChanged(hasWindowFocus);
+        if (hasWindowFocus && mIsOpen && !mIsClosing) {
+            activateSearchInput();
+        }
+    }
+
+    @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
                 close(true);
             }
             return true;
+        }
+        if (mSearchInput != null && !mSearchInput.isFocused() && mIsOpen && !mIsClosing) {
+            mSearchInput.setFocusable(true);
+            mSearchInput.setFocusableInTouchMode(true);
+            mSearchInput.requestFocus();
+            return mSearchInput.dispatchKeyEvent(event);
         }
         return super.dispatchKeyEvent(event);
     }

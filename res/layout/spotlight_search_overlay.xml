@@ -4,7 +4,6 @@
     android:id="@+id/spotlight_search_overlay"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:alpha="0"
     android:orientation="vertical"
     android:clipChildren="false"
     android:clipToPadding="false">
@@ -73,6 +72,9 @@
                             android:layout_height="match_parent"
                             android:layout_weight="1"
                             android:background="@android:color/transparent"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true"
+                            android:cursorVisible="true"
                             android:hint="Search"
                             android:textColor="?attr/workspaceTextColor"
                             android:textColorHint="?attr/workspaceTextColor"
