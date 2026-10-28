@@ -177,7 +177,9 @@ public class LauncherAppState implements SafeCloseable {
         onNotificationSettingsChanged(settingsCache.getValue(NOTIFICATION_BADGING_URI));
         mOnTerminateCallback.add(() ->
                 settingsCache.unregister(NOTIFICATION_BADGING_URI, notificationLister));
-        mAppMonitor.onAppCreated(mContext);
+        if (mAppMonitor != null) {
+            mAppMonitor.onAppCreated(mContext);
+        }
         // Register an observer to notify Launcher about Private Space settings toggle.
         registerPrivateSpaceHideWhenLockListener(settingsCache);
     }

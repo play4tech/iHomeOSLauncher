@@ -26,9 +26,10 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.provider.MediaStore
 import android.util.Log
-import android.widget.Toast
 import android.os.Build
+import com.android.launcher3.R
 import com.android.launcher3.util.Executors
+import foundation.e.bliss.glass.LiquidGlassToast
 import foundation.e.bliss.utils.runOnMainThread
 
 object WallpaperPickerHelper {
@@ -70,7 +71,7 @@ object WallpaperPickerHelper {
                 activity.startActivityForResult(pickIntent, REQUEST_PICK_WALLPAPER)
             } catch (ex: Exception) {
                 Log.e(TAG, "Failed to launch gallery picker", ex)
-                Toast.makeText(activity, "Cannot open gallery", Toast.LENGTH_SHORT).show()
+                LiquidGlassToast.show(activity, "Cannot open gallery", R.drawable.ic_ios_warning_circle)
             }
         }
     }
@@ -145,10 +146,10 @@ object WallpaperPickerHelper {
 
             runOnMainThread {
                 if (success) {
-                    Toast.makeText(context, "Wallpaper applied", Toast.LENGTH_SHORT).show()
+                    LiquidGlassToast.show(context, "Wallpaper applied", R.drawable.ic_ios_check_circle)
                 } else {
                     WallpaperLoadingOverlay.dismiss()
-                    Toast.makeText(context, "Failed to apply wallpaper", Toast.LENGTH_SHORT).show()
+                    LiquidGlassToast.show(context, "Failed to apply wallpaper", R.drawable.ic_ios_warning_circle)
                 }
             }
         }

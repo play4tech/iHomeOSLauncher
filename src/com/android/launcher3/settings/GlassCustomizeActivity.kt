@@ -29,6 +29,8 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
@@ -38,7 +40,6 @@ import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
-import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -48,6 +49,7 @@ import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
 import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.icons.LauncherIcons
+import foundation.e.bliss.glass.LiquidGlassToast
 import com.android.launcher3.model.data.ItemInfoWithIcon
 import foundation.e.bliss.glass.FolderGlassView
 import foundation.e.bliss.glass.GlassConfig
@@ -71,6 +73,14 @@ class GlassCustomizeActivity : FragmentActivity() {
 
     private val sliderBindings = mutableListOf<SliderBinding>()
     private val switchBindings = mutableListOf<SwitchBinding>()
+
+    private var isSaving = false
+    private val saveFinishHandler = Handler(Looper.getMainLooper())
+    private val saveFinishRunnable = Runnable {
+        if (!isFinishing && !isDestroyed) {
+            finish()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
@@ -103,16 +113,31 @@ class GlassCustomizeActivity : FragmentActivity() {
 
     private fun initHeader() {
         findViewById<View>(R.id.btn_back)?.setOnClickListener {
-            saveAndFinish()
+            if (isSaving) {
+                saveFinishHandler.removeCallbacks(saveFinishRunnable)
+                finish()
+            } else {
+                saveAndFinish(fromSaveButton = false)
+            }
         }
 
         findViewById<View>(R.id.btn_save)?.setOnClickListener {
-            saveAndFinish()
+            saveAndFinish(fromSaveButton = true)
         }
     }
 
     override fun onBackPressed() {
-        saveAndFinish()
+        if (isSaving) {
+            saveFinishHandler.removeCallbacks(saveFinishRunnable)
+            finish()
+            return
+        }
+        saveAndFinish(fromSaveButton = false)
+    }
+
+    override fun onDestroy() {
+        saveFinishHandler.removeCallbacks(saveFinishRunnable)
+        super.onDestroy()
     }
 
     override fun onPause() {
@@ -560,7 +585,7 @@ class GlassCustomizeActivity : FragmentActivity() {
             sliderBindings.forEach { it.updateFromSettings(currentSettings) }
             switchBindings.forEach { it.updateFromSettings(currentSettings) }
             applyToPreview()
-            Toast.makeText(this, "Reset to default liquid glass parameters", Toast.LENGTH_SHORT).show()
+            LiquidGlassToast.show(this, "Reset to default liquid glass parameters", R.drawable.ic_ios_check_circle)
         }
     }
 
@@ -582,10 +607,19 @@ class GlassCustomizeActivity : FragmentActivity() {
         }
     }
 
-    private fun saveAndFinish() {
+    private fun saveAndFinish(fromSaveButton: Boolean = false) {
+        if (isSaving) return
+
         GlassConfig.saveSettings(this, currentSettings)
-        Toast.makeText(this, "Liquid Glass settings saved", Toast.LENGTH_SHORT).show()
-        finish()
+
+        if (fromSaveButton) {
+            isSaving = true
+            findViewById<View>(R.id.btn_save)?.isEnabled = false
+            LiquidGlassToast.show(this, "Liquid Glass settings saved", R.drawable.ic_ios_check_circle)
+            saveFinishHandler.postDelayed(saveFinishRunnable, 850L)
+        } else {
+            finish()
+        }
     }
 
     // --- Helper Binding Classes ---

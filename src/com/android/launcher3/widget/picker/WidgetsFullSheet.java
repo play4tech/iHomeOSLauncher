@@ -50,7 +50,6 @@ import android.view.animation.Interpolator;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 import android.window.BackEvent;
 
 import androidx.annotation.NonNull;

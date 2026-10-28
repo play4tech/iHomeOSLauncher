@@ -9,7 +9,7 @@ import android.hardware.biometrics.BiometricPrompt;
 import android.os.CancellationSignal;
 import android.os.Handler;
 import android.os.Looper;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import com.android.launcher3.R;
 
@@ -62,8 +62,7 @@ public class LineageUtils {
         } else {
             // Notify the user a secure keyguard is required for protected apps,
             // but allow to set hidden apps
-            Toast.makeText(context, R.string.trust_apps_no_lock_error, Toast.LENGTH_LONG)
-                .show();
+            LiquidGlassToast.show(context, R.string.trust_apps_no_lock_error, R.drawable.ic_ios_warning_circle);
             successRunnable.run();
         }
     }

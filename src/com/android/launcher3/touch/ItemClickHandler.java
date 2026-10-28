@@ -38,7 +38,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.BuildConfig;
@@ -195,10 +195,10 @@ public class ItemClickHandler {
             // Display a message for app pairs that are disabled due to screen size
             boolean isFoldable = InvariantDeviceProfile.INSTANCE.get(launcher)
                     .supportedProfiles.stream().anyMatch(dp -> dp.isTwoPanels);
-            Toast.makeText(launcher, isFoldable
+            LiquidGlassToast.show(launcher, isFoldable
                             ? R.string.app_pair_needs_unfold
                             : R.string.app_pair_unlaunchable_at_screen_size,
-                    Toast.LENGTH_SHORT).show();
+                    R.drawable.ic_ios_warning_circle);
         } else if (appPairIcon.getInfo().isDisabled()) {
             WorkspaceItemInfo app1 = appPairIcon.getInfo().contents.get(0);
             WorkspaceItemInfo app2 = appPairIcon.getInfo().contents.get(1);
@@ -302,7 +302,7 @@ public class ItemClickHandler {
      */
     private static void onClickPendingWidget(PendingAppWidgetHostView v, Launcher launcher) {
         if (launcher.getPackageManager().isSafeMode()) {
-            Toast.makeText(launcher, R.string.safemode_widget_error, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(launcher, R.string.safemode_widget_error, R.drawable.ic_ios_warning_circle);
             return;
         }
 
@@ -397,7 +397,7 @@ public class ItemClickHandler {
         } else {
             if (!TextUtils.isEmpty(shortcut.disabledMessage)) {
                 // Use a message specific to this shortcut, if it has one.
-                Toast.makeText(context, shortcut.disabledMessage, Toast.LENGTH_SHORT).show();
+                LiquidGlassToast.show(context, shortcut.disabledMessage, R.drawable.ic_ios_warning_circle);
                 return true;
             }
             // Otherwise just use a generic error message.
@@ -408,7 +408,7 @@ public class ItemClickHandler {
                     || (shortcut.runtimeStatusFlags & FLAG_DISABLED_LOCKED_USER) != 0) {
                 error = R.string.shortcut_not_available;
             }
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(context, error, R.drawable.ic_ios_warning_circle);
             return true;
         }
     }

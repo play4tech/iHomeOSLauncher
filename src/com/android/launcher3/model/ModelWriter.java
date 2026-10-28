@@ -95,13 +95,14 @@ public class ModelWriter {
             ItemInfo item, int container, int screenId, int cellX, int cellY) {
         CellPos modelPos = mCellPosMapper.mapPresenterToModel(cellX, cellY, screenId, container);
 
-        android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
-                + " title=" + item.title
-                + " container " + item.container + "->" + container
-                + " screen " + item.screenId + "->" + modelPos.screenId
-                + " cell(" + item.cellX + "," + item.cellY + ")->("
-                + modelPos.cellX + "," + modelPos.cellY + ")",
-                new Throwable("caller"));
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
+                    + " title=" + item.title
+                    + " container " + item.container + "->" + container
+                    + " screen " + item.screenId + "->" + modelPos.screenId
+                    + " cell(" + item.cellX + "," + item.cellY + ")->("
+                    + modelPos.cellX + "," + modelPos.cellY + ")");
+        }
 
         item.container = container;
         item.cellX = modelPos.cellX;
@@ -426,10 +427,18 @@ public class ModelWriter {
                     && (mItem.container == Favorites.CONTAINER_DESKTOP
                         || mItem.container == Favorites.CONTAINER_HOTSEAT
                         || mItem.container >= 0)) {
-                ContentWriter writer = new ContentWriter(mContext);
-                mItem.onAddToDatabase(writer);
-                writer.put(Favorites._ID, mItemId);
-                mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+                boolean isItemActive;
+                synchronized (mBgDataModel) {
+                    isItemActive = mBgDataModel.itemsIdMap.containsKey(mItemId);
+                }
+                if (isItemActive) {
+                    ContentWriter writer = new ContentWriter(mContext);
+                    mItem.onAddToDatabase(writer);
+                    writer.put(Favorites._ID, mItemId);
+                    mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+                } else {
+                    FileLog.d(TAG, "Skipping resurrecting deleted item id=" + mItemId + " title=" + mItem.title);
+                }
             }
             updateItemArrays(mItem, mItemId);
         }

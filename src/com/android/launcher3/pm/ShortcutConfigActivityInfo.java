@@ -34,7 +34,7 @@ import android.os.Build;
 import android.os.Process;
 import android.os.UserHandle;
 import android.util.Log;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.Nullable;
 
@@ -96,9 +96,9 @@ public abstract class ShortcutConfigActivityInfo implements ComponentWithLabelAn
             activity.startActivityForResult(intent, requestCode);
             return true;
         } catch (ActivityNotFoundException e) {
-            Toast.makeText(activity, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(activity, R.string.activity_not_found, R.drawable.ic_ios_warning_circle);
         } catch (SecurityException e) {
-            Toast.makeText(activity, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(activity, R.string.activity_not_found, R.drawable.ic_ios_warning_circle);
             Log.e(TAG, "Launcher does not have the permission to launch " + intent
                     + ". Make sure to create a MAIN intent-filter for the corresponding activity "
                     + "or use the exported attribute for this activity.", e);
@@ -147,7 +147,7 @@ public abstract class ShortcutConfigActivityInfo implements ComponentWithLabelAn
                         options.toBundle());
                 return true;
             } catch (IntentSender.SendIntentException e) {
-                Toast.makeText(activity, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+                LiquidGlassToast.show(activity, R.string.activity_not_found, R.drawable.ic_ios_warning_circle);
                 return false;
             }
         }

@@ -260,7 +260,10 @@ public class LauncherModel implements InstallSessionTracker.Callback {
                 }
             }
         }
-        LauncherAppMonitor.getInstanceNoCreate().onReceive(intent);
+        LauncherAppMonitor monitor = LauncherAppMonitor.getInstanceNoCreate();
+        if (monitor != null) {
+            monitor.onReceive(intent);
+        }
     }
 
     /**

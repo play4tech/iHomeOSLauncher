@@ -31,6 +31,7 @@ import androidx.annotation.Nullable;
 
 import com.android.launcher3.LauncherSettings;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.folder.Folder;
 import com.android.launcher3.folder.FolderNameInfos;
 import com.android.launcher3.logger.LauncherAtom;
 import com.android.launcher3.logger.LauncherAtom.Attribute;
@@ -173,8 +174,8 @@ public class FolderInfo extends ItemInfo {
     }
 
     public void addListener(FolderListener listener) {
-        if (listener.getClass().getName().endsWith(".Folder")) {
-            mListeners.removeIf(l -> l.getClass().getName().endsWith(".Folder"));
+        if (listener instanceof Folder) {
+            mListeners.removeIf(l -> l instanceof Folder);
         }
         if (!mListeners.contains(listener)) {
             mListeners.add(listener);

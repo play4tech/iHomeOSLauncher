@@ -74,7 +74,7 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.RotateAnimation;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -1733,17 +1733,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public static int sWidgetDrawCount = 0;
     public static int sWorkspaceFrames = 0;
 
-    private static int getWidgetDoseLimit() {
-        try {
-            Class<?> sp = Class.forName("android.os.SystemProperties");
-            String val = (String) sp.getMethod("get", String.class, String.class)
-                    .invoke(null, "debug.launcher.widget_glass", "-1");
-            return Integer.parseInt(val);
-        } catch (Throwable t) {
-            return -1;
-        }
-    }
-
     /**
      * Invalidates all active Liquid Glass surfaces across visible pages and the dock so that
      * refraction updates live in real-time during user drags, scrolling, and page flings.
@@ -1774,28 +1763,17 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
-                            sWorkspaceFrames++;
-                            int widgetLimit = getWidgetDoseLimit();
-                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
-                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
                                 } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
                                     FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
-                                    if (gv != null) {
-                                        if (widgetLimit >= 0) {
-                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
-                                        }
-                                        if (gv.getVisibility() == VISIBLE) {
-                                            sWidgetDrawCount++;
-                                            gv.invalidate();
-                                        }
-                                        widgetIdx++;
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        gv.invalidate();
                                     }
                                 }
                             }
@@ -1887,28 +1865,17 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
-                            sWorkspaceFrames++;
-                            int widgetLimit = getWidgetDoseLimit();
-                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
-                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
                                 } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
                                     FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
-                                    if (gv != null) {
-                                        if (widgetLimit >= 0) {
-                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
-                                        }
-                                        if (gv.getVisibility() == VISIBLE) {
-                                            sWidgetDrawCount++;
-                                            gv.invalidate();
-                                        }
-                                        widgetIdx++;
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        gv.invalidate();
                                     }
                                 }
                             }
@@ -3224,7 +3191,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                             ((ShortcutAndWidgetContainer) cell.getParent()).setupLp(cell);
                         }
                     }
-                    android.util.Log.d("IconDragLogger", "DROP SUCCESS -> Moved icon '" + (item.title != null ? item.title : "Item") + "' to Cell(" + mTargetCell[0] + ", " + mTargetCell[1] + ")");
+                    if (DEBUG_DRAG_LOG) {
+                        android.util.Log.d("IconDragLogger", "DROP SUCCESS -> Moved icon '" + (item.title != null ? item.title : "Item") + "' to Cell(" + mTargetCell[0] + ", " + mTargetCell[1] + ")");
+                    }
                     post(() -> logIconLocations("AFTER DROP FINAL"));
 
                     if (container != LauncherSettings.Favorites.CONTAINER_HOTSEAT &&
@@ -3417,7 +3386,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             View dropTargetLayout, ItemInfo itemInfo, @Nullable InstanceId logInstanceId) {
         int strId = mLauncher.isHotseatLayout(dropTargetLayout)
                 ? R.string.hotseat_out_of_space : R.string.out_of_space;
-        Toast.makeText(mLauncher, mLauncher.getString(strId), Toast.LENGTH_SHORT).show();
+        LiquidGlassToast.show(mLauncher, strId, R.drawable.ic_ios_warning_circle);
         StatsLogManager.StatsLogger logger = mStatsLogManager.logger().withItemInfo(itemInfo);
         if (logInstanceId != null) {
             logger = logger.withInstanceId(logInstanceId);
@@ -3745,7 +3714,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                             mDragViewVisualCenter[0], (int) mDragViewVisualCenter[1], item.spanX,
                     item.spanY, child, mTargetCell);
 
-            android.util.Log.d("IconDragLogger", "DRAGGING OVER -> Item: '" + (item.title != null ? item.title : "Item") + "' over Target Cell: (" + reorderX + ", " + reorderY + ")");
+            if (DEBUG_DRAG_LOG) {
+                android.util.Log.d("IconDragLogger", "DRAGGING OVER -> Item: '" + (item.title != null ? item.title : "Item") + "' over Target Cell: (" + reorderX + ", " + reorderY + ")");
+            }
             manageReorderOnDragOver(d, targetCellDistance, nearestDropOccupied, minSpanX, minSpanY,
                     reorderX, reorderY);
 
@@ -3891,30 +3862,11 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         float relCenterX = centerX - screenLeft;
 
         float density = getResources().getDisplayMetrics().density;
-        // Dynamic grid-relative page-flip gutter: scales with layout padding and cell width
-        // plus a 2px expansion, clamped with ergonomic safety bounds.
-        float dynamicGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.10f) + 2f;
-        float minGutter = density * 12f;
-        float maxGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.25f);
-        float edgeGutter = Math.max(minGutter, Math.min(maxGutter, dynamicGutter));
-
-        // Dynamic minimum bezel zone: scaled to half padding + 2px, clamped to at least 8dp + 2px
-        float minimumBezelZone = Math.max(density * 8f + 2f, (leftLayout.getPaddingLeft() * 0.5f) + 2f);
-
-        // Dynamic reorder edge clearance: proportional to cell width
-        float reorderEdgeClearance = leftLayout.getCellWidth() * 0.10f;
-
-        float leftReorderRingOuterX = leftLayout.getBoundaryReorderRingOuterX(true);
-        float rightReorderRingOuterX = rightLayout.getLeft() - screenLeft
-                + rightLayout.getBoundaryReorderRingOuterX(false);
-        // Keep a full edge-clearance beyond boundary reorder rings so a slightly shaky drag can
-        // still show the reorder preview before it enters the page-flip zone. If the rings leave
-        // less room, retain a dynamic bezel strip for deliberate paging.
-        float leftEdgeThreshold = Math.max(minimumBezelZone,
-                Math.min(edgeGutter, leftReorderRingOuterX - reorderEdgeClearance));
-        float rightEdgeThreshold = Math.min(screenWidth - minimumBezelZone,
-                Math.max(screenWidth - edgeGutter,
-                        rightReorderRingOuterX + reorderEdgeClearance));
+        // Dynamic grid-relative page-flip gutter: scales with layout padding and cell width.
+        // Configured to 23dp (~69px on 3.0x display) for optimal reach and safe edge-column reordering.
+        float triggerWidth = Math.max(density * 23f, leftLayout.getPaddingLeft() + density * 7f);
+        float leftEdgeThreshold = triggerWidth;
+        float rightEdgeThreshold = screenWidth - triggerWidth;
 
         boolean isAtLeftEdge = (relCenterX <= leftEdgeThreshold
                 || relTouchX <= leftEdgeThreshold);

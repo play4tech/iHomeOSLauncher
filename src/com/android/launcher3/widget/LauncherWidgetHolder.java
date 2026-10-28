@@ -31,7 +31,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Looper;
 import android.util.SparseArray;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -218,7 +218,7 @@ public class LauncherWidgetHolder {
             mWidgetHost.startAppWidgetConfigureActivityForResult(activity, widgetId, 0, requestCode,
                     getConfigurationActivityOptions(activity, widgetId));
         } catch (ActivityNotFoundException | SecurityException e) {
-            Toast.makeText(activity, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(activity, R.string.activity_not_found, R.drawable.ic_ios_warning_circle);
             sendActionCancelled(activity, requestCode);
         }
     }

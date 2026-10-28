@@ -73,7 +73,7 @@
         android:icon="@mipmap/ic_launcher"
         tools:replace="android:label"
         android:label="@string/derived_app_name"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:allowClearUserData="true"
         android:largeHeap="@bool/config_largeHeap"
         android:restoreAnyVersion="true"
@@ -162,9 +162,7 @@
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="true"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
+            android:exported="false"
             android:autoRemoveFromRecents="true" />
 
         <provider

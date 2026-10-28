@@ -300,6 +300,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mContent.setFolder(this);
 
         mPageIndicator = findViewById(R.id.folder_page_indicator);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
         mFolderName = findViewById(R.id.folder_name);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
@@ -878,8 +881,11 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         });
 
         // Footer animation
+        mFolderName.setTranslationX(0);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
         if (mContent.getPageCount() > 1 && !mInfo.hasOption(FolderInfo.FLAG_MULTI_PAGE_ANIMATION)) {
-            mFolderName.setTranslationX(0);
             mPageIndicator.prepareEntryAnimation();
 
             // Do not update the flag if we are in drag mode. The flag will be updated, when we
@@ -1123,18 +1129,26 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     /**
-     * Returns the dynamic page-flip trigger width at the folder card edges.
-     * Confined strictly within the card's outer gutter padding so it never overlaps
-     * or interferes with the side column icons during rearrangement.
+     * Returns the dynamic page-flip trigger width inside the folder card edges.
+     * Configured to 26dp (~78px on 3.0x display) to provide a generous, comfortable
+     * touch target while keeping a safe buffer from the side column icons.
      */
     private float getPageFlipTriggerWidth() {
-        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
-                ? mContent.getPaddingLeft()
-                : mActivityContext.getDeviceProfile().folderContentPaddingLeftRight;
         float density = getResources().getDisplayMetrics().density;
-        // Keep trigger zone confined to the card gutter (up to 16dp / contentPadding)
-        // so it never overlaps the side column icons or blocks cell placement.
-        return Math.max(density * 10f, Math.min(contentPadding, density * 16f));
+        return density * 26f;
+    }
+
+    /**
+     * Returns the extension beyond the folder squircle card boundaries so page flipping
+     * can be comfortably triggered near or past the card edges without prematurely exiting
+     * to the workspace.
+     *
+     * Uses Math.abs(mScrollAreaOffset) + padding to guarantee strictly symmetric, positive
+     * reach regardless of where on the icon the user initiated the drag touch.
+     */
+    public int getPageFlipBeyondGutter() {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.max((int) (density * 28f), Math.abs(mScrollAreaOffset) + (int) (density * 16f));
     }
 
     @Override
@@ -1158,12 +1172,16 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             }
         }
 
-        float x = r[0];
+        float visualX = r[0];
+        float touchX = d.x;
         int currentPage = mContent.getNextPage();
 
         float cellOverlap = getPageFlipTriggerWidth();
-        boolean isOutsideLeftEdge = x < cellOverlap;
-        boolean isOutsideRightEdge = x > (getWidth() - cellOverlap);
+        // Trigger if either the visual center of the icon OR the user's touch finger
+        // enters the edge trigger zone or moves beyond the card edge.
+        boolean isOutsideLeftEdge = visualX < cellOverlap || touchX < cellOverlap;
+        boolean isOutsideRightEdge = visualX > (getWidth() - cellOverlap)
+                || touchX > (getWidth() - cellOverlap);
 
         if (currentPage > 0 && (mContent.mIsRtl ? isOutsideRightEdge : isOutsideLeftEdge)) {
             showScrollHint(SCROLL_LEFT, d);
@@ -1864,8 +1882,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     @Override
     public void getHitRectRelativeToDragLayer(Rect outRect) {
         getHitRect(outRect);
-        outRect.left -= mScrollAreaOffset;
-        outRect.right += mScrollAreaOffset;
+        int pageFlipExtension = getPageFlipBeyondGutter();
+        outRect.left -= pageFlipExtension;
+        outRect.right += pageFlipExtension;
     }
 
     private class OnScrollHintListener implements OnAlarmListener {

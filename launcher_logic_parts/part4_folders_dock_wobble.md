@@ -22,7 +22,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2113 | **Bytes**: 81683
+**Lines**: 2132 | **Bytes**: 82430
 
 ```java
 /*
@@ -327,6 +327,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mContent.setFolder(this);
 
         mPageIndicator = findViewById(R.id.folder_page_indicator);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
         mFolderName = findViewById(R.id.folder_name);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
@@ -905,8 +908,11 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         });
 
         // Footer animation
+        mFolderName.setTranslationX(0);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
         if (mContent.getPageCount() > 1 && !mInfo.hasOption(FolderInfo.FLAG_MULTI_PAGE_ANIMATION)) {
-            mFolderName.setTranslationX(0);
             mPageIndicator.prepareEntryAnimation();
 
             // Do not update the flag if we are in drag mode. The flag will be updated, when we
@@ -1150,18 +1156,26 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     /**
-     * Returns the dynamic page-flip trigger width at the folder card edges.
-     * Confined strictly within the card's outer gutter padding so it never overlaps
-     * or interferes with the side column icons during rearrangement.
+     * Returns the dynamic page-flip trigger width inside the folder card edges.
+     * Configured to 26dp (~78px on 3.0x display) to provide a generous, comfortable
+     * touch target while keeping a safe buffer from the side column icons.
      */
     private float getPageFlipTriggerWidth() {
-        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
-                ? mContent.getPaddingLeft()
-                : mActivityContext.getDeviceProfile().folderContentPaddingLeftRight;
         float density = getResources().getDisplayMetrics().density;
-        // Keep trigger zone confined to the card gutter (up to 16dp / contentPadding)
-        // so it never overlaps the side column icons or blocks cell placement.
-        return Math.max(density * 10f, Math.min(contentPadding, density * 16f));
+        return density * 26f;
+    }
+
+    /**
+     * Returns the extension beyond the folder squircle card boundaries so page flipping
+     * can be comfortably triggered near or past the card edges without prematurely exiting
+     * to the workspace.
+     *
+     * Uses Math.abs(mScrollAreaOffset) + padding to guarantee strictly symmetric, positive
+     * reach regardless of where on the icon the user initiated the drag touch.
+     */
+    public int getPageFlipBeyondGutter() {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.max((int) (density * 28f), Math.abs(mScrollAreaOffset) + (int) (density * 16f));
     }
 
     @Override
@@ -1185,12 +1199,16 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             }
         }
 
-        float x = r[0];
+        float visualX = r[0];
+        float touchX = d.x;
         int currentPage = mContent.getNextPage();
 
         float cellOverlap = getPageFlipTriggerWidth();
-        boolean isOutsideLeftEdge = x < cellOverlap;
-        boolean isOutsideRightEdge = x > (getWidth() - cellOverlap);
+        // Trigger if either the visual center of the icon OR the user's touch finger
+        // enters the edge trigger zone or moves beyond the card edge.
+        boolean isOutsideLeftEdge = visualX < cellOverlap || touchX < cellOverlap;
+        boolean isOutsideRightEdge = visualX > (getWidth() - cellOverlap)
+                || touchX > (getWidth() - cellOverlap);
 
         if (currentPage > 0 && (mContent.mIsRtl ? isOutsideRightEdge : isOutsideLeftEdge)) {
             showScrollHint(SCROLL_LEFT, d);
@@ -1891,8 +1909,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     @Override
     public void getHitRectRelativeToDragLayer(Rect outRect) {
         getHitRect(outRect);
-        outRect.left -= mScrollAreaOffset;
-        outRect.right += mScrollAreaOffset;
+        int pageFlipExtension = getPageFlipBeyondGutter();
+        outRect.left -= pageFlipExtension;
+        outRect.right += pageFlipExtension;
     }
 
     private class OnScrollHintListener implements OnAlarmListener {
@@ -4480,7 +4499,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 # src/com/android/launcher3/folder/FolderPagedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
-**Lines**: 824 | **Bytes**: 30045
+**Lines**: 825 | **Bytes**: 29987
 
 ```java
 /*
@@ -4763,7 +4782,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         addView(page, -1, generateDefaultLayoutParams());
         setEnableOverscroll(getPageCount() > 1);
         if (mPageIndicator != null) {
-            mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+            mPageIndicator.setVisibility(View.VISIBLE);
         }
         return page;
     }
@@ -4873,9 +4892,10 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
         setEnableOverscroll(getPageCount() > 1);
 
-        // Update footer
-        boolean showIndicator = getPageCount() > 1;
-        mPageIndicator.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
+        // Update footer - always show folder page indicator
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
 
         if (mFolder != null && mFolder.mFolderName != null) {
             mFolder.mFolderName.setGravity((mIsRtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
@@ -5298,7 +5318,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         if (removed) {
             setEnableOverscroll(getPageCount() > 1);
             if (mPageIndicator != null) {
-                mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+                mPageIndicator.setVisibility(View.VISIBLE);
             }
             if (getNextPage() >= getPageCount()) {
                 snapToPageImmediately(getPageCount() - 1);
@@ -5939,7 +5959,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
-**Lines**: 1005 | **Bytes**: 38176
+**Lines**: 1044 | **Bytes**: 39619
 
 ```java
 /*
@@ -6135,6 +6155,23 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPillIconPaint.setStyle(Style.STROKE);
         mPillIconPaint.setStrokeCap(Paint.Cap.ROUND);
         mPillTextPaint.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+        }
+    }
+
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        }
     }
 
     private void updateThemeColors() {
@@ -6173,6 +6210,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     private float getEffectiveCircleGap() {
         if (mNumPages <= 1) return mCircleGap;
+        if (!isWorkspaceIndicator()) return mCircleGap;
         float density = getResources().getDisplayMetrics().density;
         float maxDotsSpan = (getPillWidth() - 24f * density) - 2f * mDotRadius;
         float naturalSpan = (mNumPages - 1) * mCircleGap;
@@ -6252,7 +6290,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll == 0 && totalScroll == 0) {
             CURRENT_POSITION.set(this, (float) mActivePage);
             mLastScrollX = currentScroll;
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
             return;
@@ -6277,7 +6315,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             mPaginationAlpha = VISIBLE_ALPHA;
             mToAlpha = VISIBLE_ALPHA;
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
-        } else if (scrollPositionChanged && mShouldAutoHide) {
+        } else if (scrollPositionChanged && mShouldAutoHide && isWorkspaceIndicator()) {
             animatePaginationToAlpha(VISIBLE_ALPHA);
         }
 
@@ -6297,19 +6335,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll < pageToLeftScroll + scrollThreshold) {
             // scroll is within the left page's threshold
             animateToPosition(pageToLeft);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else if (currentScroll > pageToRightScroll - scrollThreshold) {
             // scroll is far enough from left page to go to the right page
             animateToPosition(pageToLeft + 1);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else {
             // scroll is between left and right page
             animateToPosition(pageToLeft + SHIFT_PER_ANIMATION);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
             }
         }
@@ -6317,6 +6355,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            return;
+        }
         mShouldAutoHide = shouldAutoHide;
         if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA && !mForceDotsMode) {
             hideAfterDelay();
@@ -6331,7 +6373,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void hideAfterDelay() {
-        if (mForceDotsMode) {
+        if (!isWorkspaceIndicator() || mForceDotsMode) {
             return;
         }
         mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
@@ -6339,6 +6381,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void animatePaginationToAlpha(int alpha) {
+        if (!isWorkspaceIndicator() && alpha < VISIBLE_ALPHA) {
+            return;
+        }
         if (alpha == mToAlpha && mPaginationAlpha == alpha) {
             // Ignore the new animation if it is going to the same alpha as the current animation.
             return;
@@ -6471,6 +6516,12 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     public void setMarkersCount(int numMarkers) {
         mNumPages = numMarkers;
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        }
 
         // If the last page gets removed we want to go to the previous page.
         if (mNumPages > 0 && mNumPages == mActivePage) {
@@ -6507,7 +6558,12 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (isWorkspaceIndicator() && MultiModeController.isSingleLayerMode() && mShouldAutoHide) {
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        } else if (MultiModeController.isSingleLayerMode() && mShouldAutoHide) {
             mPaginationAlpha = INVISIBLE_ALPHA;
             mToAlpha = INVISIBLE_ALPHA;
         }
@@ -6690,7 +6746,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mNumPages < 2) {
+        if (mNumPages < 1) {
+            return;
+        }
+        if (mNumPages < 2 && isWorkspaceIndicator()) {
             drawSearchPillIfSingleLayer(canvas, 1f);
             return;
         }
@@ -6713,7 +6772,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             }
         } else {
             pillAlpha = 0f;
-            dotAlpha = mPaginationAlpha;
+            dotAlpha = (!isWorkspaceIndicator()) ? PAGE_INDICATOR_ALPHA : mPaginationAlpha;
         }
 
         // Draw iOS Search pill background/rim and (when pillAlpha > 0) "Search" icon + text
@@ -6910,7 +6969,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         @Override
         public void onAnimationEnd(Animator animation) {
             if (!mCancelled) {
-                if (mShouldAutoHide) {
+                if (isWorkspaceIndicator() && mShouldAutoHide) {
                     hideAfterDelay();
                 }
                 mAnimator = null;
@@ -7613,7 +7672,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
-**Lines**: 395 | **Bytes**: 14198
+**Lines**: 394 | **Bytes**: 14170
 
 ```kotlin
 /*
@@ -7660,7 +7719,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.R

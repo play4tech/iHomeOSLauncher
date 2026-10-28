@@ -36,7 +36,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
@@ -245,7 +245,7 @@ public class OptionsPopupView<T extends Context & ActivityContext> extends Arrow
     @Nullable
     public static WidgetsFullSheet openWidgets(Launcher launcher) {
         if (launcher.getPackageManager().isSafeMode()) {
-            Toast.makeText(launcher, R.string.safemode_widget_error, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(launcher, R.string.safemode_widget_error, R.drawable.ic_ios_warning_circle);
             return null;
         } else {
             AbstractFloatingView floatingView = AbstractFloatingView.getTopOpenViewWithType(
@@ -276,7 +276,7 @@ public class OptionsPopupView<T extends Context & ActivityContext> extends Arrow
             String message = launcher.getStringCache() != null
                     ? launcher.getStringCache().disabledByAdminMessage
                     : launcher.getString(R.string.msg_disabled_by_admin);
-            Toast.makeText(launcher, message, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(launcher, message, R.drawable.ic_ios_warning_circle);
             return false;
         }
         Intent intent = new Intent(Intent.ACTION_SET_WALLPAPER)

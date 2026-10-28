@@ -35,7 +35,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
     private val mAppMonitorCallback: LauncherAppMonitorCallback =
         object : LauncherAppMonitorCallback {
             override fun onLoadAllAppsEnd(apps: ArrayList<AppInfo?>?) {
-                MODEL_EXECUTOR.submit(
+                MODEL_EXECUTOR.execute(
                     VerifyIdleAppTask(
                         context,
                         apps,
@@ -50,6 +50,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
             override fun onAppSharedPreferenceChanged(key: String?) {
                 when (key) {
                     BlissPrefs.PREF_SINGLE_LAYER_MODE -> {
+                        updateSingleLayerCache()
                         monitor.launcher.model.forceReload()
                     }
                     BlissPrefs.PREF_NOTIF_COUNT -> idp.onConfigChanged(context)
@@ -76,6 +77,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 
     init {
         prefs = LauncherPrefs.get(context)
+        updateSingleLayerCache()
         monitor.registerCallback(mAppMonitorCallback)
     }
 
@@ -95,13 +97,21 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
         private const val TAG = "MultiModeController"
         private lateinit var prefs: LauncherPrefs
 
+        @Volatile
+        private var sIsSingleLayerModeCached: Boolean = true
+
         @JvmStatic
-        val isSingleLayerMode: Boolean
-            get() = if (Companion::prefs.isInitialized) {
+        fun updateSingleLayerCache() {
+            sIsSingleLayerModeCached = if (Companion::prefs.isInitialized) {
                 prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
             } else {
                 true
             }
+        }
+
+        @JvmStatic
+        val isSingleLayerMode: Boolean
+            get() = sIsSingleLayerModeCached
 
         @JvmStatic
         val isNotifCountEnabled: Boolean

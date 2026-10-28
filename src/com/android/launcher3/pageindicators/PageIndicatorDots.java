@@ -191,6 +191,23 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPillIconPaint.setStyle(Style.STROKE);
         mPillIconPaint.setStrokeCap(Paint.Cap.ROUND);
         mPillTextPaint.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+        }
+    }
+
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        }
     }
 
     private void updateThemeColors() {
@@ -229,6 +246,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     private float getEffectiveCircleGap() {
         if (mNumPages <= 1) return mCircleGap;
+        if (!isWorkspaceIndicator()) return mCircleGap;
         float density = getResources().getDisplayMetrics().density;
         float maxDotsSpan = (getPillWidth() - 24f * density) - 2f * mDotRadius;
         float naturalSpan = (mNumPages - 1) * mCircleGap;
@@ -308,7 +326,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll == 0 && totalScroll == 0) {
             CURRENT_POSITION.set(this, (float) mActivePage);
             mLastScrollX = currentScroll;
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
             return;
@@ -333,7 +351,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             mPaginationAlpha = VISIBLE_ALPHA;
             mToAlpha = VISIBLE_ALPHA;
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
-        } else if (scrollPositionChanged && mShouldAutoHide) {
+        } else if (scrollPositionChanged && mShouldAutoHide && isWorkspaceIndicator()) {
             animatePaginationToAlpha(VISIBLE_ALPHA);
         }
 
@@ -353,19 +371,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll < pageToLeftScroll + scrollThreshold) {
             // scroll is within the left page's threshold
             animateToPosition(pageToLeft);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else if (currentScroll > pageToRightScroll - scrollThreshold) {
             // scroll is far enough from left page to go to the right page
             animateToPosition(pageToLeft + 1);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else {
             // scroll is between left and right page
             animateToPosition(pageToLeft + SHIFT_PER_ANIMATION);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
             }
         }
@@ -373,6 +391,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            return;
+        }
         mShouldAutoHide = shouldAutoHide;
         if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA && !mForceDotsMode) {
             hideAfterDelay();
@@ -387,7 +409,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void hideAfterDelay() {
-        if (mForceDotsMode) {
+        if (!isWorkspaceIndicator() || mForceDotsMode) {
             return;
         }
         mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
@@ -395,6 +417,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void animatePaginationToAlpha(int alpha) {
+        if (!isWorkspaceIndicator() && alpha < VISIBLE_ALPHA) {
+            return;
+        }
         if (alpha == mToAlpha && mPaginationAlpha == alpha) {
             // Ignore the new animation if it is going to the same alpha as the current animation.
             return;
@@ -527,6 +552,12 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     public void setMarkersCount(int numMarkers) {
         mNumPages = numMarkers;
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        }
 
         // If the last page gets removed we want to go to the previous page.
         if (mNumPages > 0 && mNumPages == mActivePage) {
@@ -563,7 +594,12 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (isWorkspaceIndicator() && MultiModeController.isSingleLayerMode() && mShouldAutoHide) {
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        } else if (MultiModeController.isSingleLayerMode() && mShouldAutoHide) {
             mPaginationAlpha = INVISIBLE_ALPHA;
             mToAlpha = INVISIBLE_ALPHA;
         }
@@ -746,7 +782,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mNumPages < 2) {
+        if (mNumPages < 1) {
+            return;
+        }
+        if (mNumPages < 2 && isWorkspaceIndicator()) {
             drawSearchPillIfSingleLayer(canvas, 1f);
             return;
         }
@@ -769,7 +808,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             }
         } else {
             pillAlpha = 0f;
-            dotAlpha = mPaginationAlpha;
+            dotAlpha = (!isWorkspaceIndicator()) ? PAGE_INDICATOR_ALPHA : mPaginationAlpha;
         }
 
         // Draw iOS Search pill background/rim and (when pillAlpha > 0) "Search" icon + text
@@ -966,7 +1005,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         @Override
         public void onAnimationEnd(Animator animation) {
             if (!mCancelled) {
-                if (mShouldAutoHide) {
+                if (isWorkspaceIndicator() && mShouldAutoHide) {
                     hideAfterDelay();
                 }
                 mAnimator = null;

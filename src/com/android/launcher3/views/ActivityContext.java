@@ -48,7 +48,7 @@ import android.view.View.AccessibilityDelegate;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -361,9 +361,7 @@ public interface ActivityContext {
             }
             return options.onEndCallback;
         } catch (PendingIntent.CanceledException e) {
-            Toast.makeText(v.getContext(),
-                    v.getContext().getResources().getText(R.string.shortcut_not_available),
-                    Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(v.getContext(), R.string.shortcut_not_available, R.drawable.ic_ios_warning_circle);
         }
         return null;
     }
@@ -382,7 +380,7 @@ public interface ActivityContext {
         Preconditions.assertUIThread();
         Context context = (Context) this;
         if (isAppBlockedForSafeMode() && !PackageManagerHelper.isSystemApp(context, intent)) {
-            Toast.makeText(context, R.string.safemode_shortcut_error, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(context, R.string.safemode_shortcut_error, R.drawable.ic_ios_warning_circle);
             return null;
         }
 
@@ -436,7 +434,7 @@ public interface ActivityContext {
                 }
             }
             if (e instanceof ActivityNotFoundException) {
-                Toast.makeText(context, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+                LiquidGlassToast.show(context, R.string.activity_not_found, R.drawable.ic_ios_warning_circle);
             }
             Log.e(TAG, "Unable to launch. tag=" + item + " intent=" + intent, e);
         }

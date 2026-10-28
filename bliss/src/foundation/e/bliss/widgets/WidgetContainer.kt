@@ -40,7 +40,6 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import android.widget.Toast
 import androidx.core.view.forEach
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.Launcher
@@ -48,6 +47,7 @@ import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.PendingAddItemInfo
 import com.android.launcher3.R
 import com.android.launcher3.config.FeatureFlags
+import foundation.e.bliss.glass.LiquidGlassToast
 import com.android.launcher3.graphics.FragmentWithPreview
 import com.android.launcher3.widget.LauncherAppWidgetProviderInfo
 import com.android.launcher3.widget.PendingAddShortcutInfo
@@ -537,7 +537,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                     }
 
                 if (tag is PendingAddShortcutInfo) {
-                    Toast.makeText(context, "Please select a widget", Toast.LENGTH_SHORT).show()
+                    LiquidGlassToast.show(context, "Please select a widget", R.drawable.ic_ios_warning_circle)
                 } else if (tag is PendingAddItemInfo) {
                     closeSheet(true)
                     defaultWidgets.add(tag.componentName)

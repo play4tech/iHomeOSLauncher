@@ -30,7 +30,7 @@ import android.view.View;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import com.android.launcher3.AbstractFloatingView;
 import com.android.launcher3.BaseDraggingActivity;
@@ -100,7 +100,7 @@ public class RemoteActionShortcut extends SystemShortcut<BaseDraggingActivity> {
                             Log.e(TAG, "Remote action returned result: " + actionIdentity
                                     + " : " + resultData);
                             if (target != null) {
-                                Toast.makeText(target, resultData, Toast.LENGTH_SHORT).show();
+                                LiquidGlassToast.show(target, resultData, R.drawable.ic_ios_warning_circle);
                             }
                         }
                     },
@@ -109,11 +109,10 @@ public class RemoteActionShortcut extends SystemShortcut<BaseDraggingActivity> {
                     options.toBundle());
         } catch (PendingIntent.CanceledException e) {
             Log.e(TAG, "Remote action canceled: " + actionIdentity, e);
-            Toast.makeText(mTarget, mTarget.getString(
+            LiquidGlassToast.show(mTarget, mTarget.getString(
                     R.string.remote_action_failed,
                     mAction.getTitle()),
-                    Toast.LENGTH_SHORT)
-                    .show();
+                    R.drawable.ic_ios_warning_circle);
         }
     }
 }

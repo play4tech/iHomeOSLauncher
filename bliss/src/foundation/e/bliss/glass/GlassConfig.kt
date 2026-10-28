@@ -75,9 +75,9 @@ object GlassConfig {
     const val DEFAULT_WHITE_BORDER_POSITION: Int = POSITION_SIDES
     const val DEFAULT_WHITE_BORDER_FADE_SPREAD: Float = 35f
 
-    // Subtle milky white translucent glass body tint (16% alpha), matching Apple iOS 26 and liquid_glass_easy
-    const val DEFAULT_GLASS_TINT: Int = 0x28FFFFFF.toInt()
-    const val CURRENT_CONFIG_VERSION: Int = 13
+    // Subtle milky white translucent glass body tint (25% alpha), matching Apple iOS 26 and liquid_glass_easy
+    const val DEFAULT_GLASS_TINT: Int = 0x40FFFFFF.toInt()
+    const val CURRENT_CONFIG_VERSION: Int = 14
 
     // Backward-compatibility aliases
     const val DEFAULT_DISPERSION: Float = DEFAULT_DISPERSION_STRENGTH

@@ -3398,7 +3398,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 # src/com/android/launcher3/LauncherModel.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherModel.java`  
-**Lines**: 719 | **Bytes**: 28410
+**Lines**: 722 | **Bytes**: 28501
 
 ```java
 /*
@@ -3663,7 +3663,10 @@ public class LauncherModel implements InstallSessionTracker.Callback {
                 }
             }
         }
-        LauncherAppMonitor.getInstanceNoCreate().onReceive(intent);
+        LauncherAppMonitor monitor = LauncherAppMonitor.getInstanceNoCreate();
+        if (monitor != null) {
+            monitor.onReceive(intent);
+        }
     }
 
     /**
@@ -4126,7 +4129,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
 # src/com/android/launcher3/model/ModelWriter.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/ModelWriter.java`  
-**Lines**: 581 | **Bytes**: 23312
+**Lines**: 590 | **Bytes**: 23752
 
 ```java
 /*
@@ -4226,13 +4229,14 @@ public class ModelWriter {
             ItemInfo item, int container, int screenId, int cellX, int cellY) {
         CellPos modelPos = mCellPosMapper.mapPresenterToModel(cellX, cellY, screenId, container);
 
-        android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
-                + " title=" + item.title
-                + " container " + item.container + "->" + container
-                + " screen " + item.screenId + "->" + modelPos.screenId
-                + " cell(" + item.cellX + "," + item.cellY + ")->("
-                + modelPos.cellX + "," + modelPos.cellY + ")",
-                new Throwable("caller"));
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
+                    + " title=" + item.title
+                    + " container " + item.container + "->" + container
+                    + " screen " + item.screenId + "->" + modelPos.screenId
+                    + " cell(" + item.cellX + "," + item.cellY + ")->("
+                    + modelPos.cellX + "," + modelPos.cellY + ")");
+        }
 
         item.container = container;
         item.cellX = modelPos.cellX;
@@ -4557,10 +4561,18 @@ public class ModelWriter {
                     && (mItem.container == Favorites.CONTAINER_DESKTOP
                         || mItem.container == Favorites.CONTAINER_HOTSEAT
                         || mItem.container >= 0)) {
-                ContentWriter writer = new ContentWriter(mContext);
-                mItem.onAddToDatabase(writer);
-                writer.put(Favorites._ID, mItemId);
-                mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+                boolean isItemActive;
+                synchronized (mBgDataModel) {
+                    isItemActive = mBgDataModel.itemsIdMap.containsKey(mItemId);
+                }
+                if (isItemActive) {
+                    ContentWriter writer = new ContentWriter(mContext);
+                    mItem.onAddToDatabase(writer);
+                    writer.put(Favorites._ID, mItemId);
+                    mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+                } else {
+                    FileLog.d(TAG, "Skipping resurrecting deleted item id=" + mItemId + " title=" + mItem.title);
+                }
             }
             updateItemArrays(mItem, mItemId);
         }
@@ -5291,7 +5303,7 @@ public class BgDataModel {
 # src/com/android/launcher3/model/LoaderTask.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/LoaderTask.java`  
-**Lines**: 790 | **Bytes**: 34901
+**Lines**: 792 | **Bytes**: 34983
 
 ```java
 /*
@@ -5561,8 +5573,10 @@ public class LoaderTask implements Runnable {
             } finally {
                 Trace.endSection();
             }
-            LauncherAppMonitor.getInstanceNoCreate()
-                    .onLoadAllAppsEnd(new ArrayList<>(mBgAllAppsList.data));
+            LauncherAppMonitor monitor = LauncherAppMonitor.getInstanceNoCreate();
+            if (monitor != null) {
+                monitor.onLoadAllAppsEnd(new ArrayList<>(mBgAllAppsList.data));
+            }
             logASplit("loadAllApps");
 
             if (FeatureFlags.CHANGE_MODEL_DELEGATE_LOADING_ORDER.get()) {
@@ -6650,7 +6664,7 @@ public class ItemInfo {
 # src/com/android/launcher3/model/data/FolderInfo.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/FolderInfo.java`  
-**Lines**: 394 | **Bytes**: 13502
+**Lines**: 395 | **Bytes**: 13500
 
 ```java
 /*
@@ -6686,6 +6700,7 @@ import androidx.annotation.Nullable;
 
 import com.android.launcher3.LauncherSettings;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.folder.Folder;
 import com.android.launcher3.folder.FolderNameInfos;
 import com.android.launcher3.logger.LauncherAtom;
 import com.android.launcher3.logger.LauncherAtom.Attribute;
@@ -6828,8 +6843,8 @@ public class FolderInfo extends ItemInfo {
     }
 
     public void addListener(FolderListener listener) {
-        if (listener.getClass().getName().endsWith(".Folder")) {
-            mListeners.removeIf(l -> l.getClass().getName().endsWith(".Folder"));
+        if (listener instanceof Folder) {
+            mListeners.removeIf(l -> l instanceof Folder);
         }
         if (!mListeners.contains(listener)) {
             mListeners.add(listener);
@@ -7308,7 +7323,7 @@ public class WorkspaceItemInfo extends ItemInfoWithIcon {
 # bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
-**Lines**: 554 | **Bytes**: 22353
+**Lines**: 554 | **Bytes**: 22388
 
 ```kotlin
 /*
@@ -7353,7 +7368,6 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import android.widget.Toast
 import androidx.core.view.forEach
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.Launcher
@@ -7361,6 +7375,7 @@ import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.PendingAddItemInfo
 import com.android.launcher3.R
 import com.android.launcher3.config.FeatureFlags
+import foundation.e.bliss.glass.LiquidGlassToast
 import com.android.launcher3.graphics.FragmentWithPreview
 import com.android.launcher3.widget.LauncherAppWidgetProviderInfo
 import com.android.launcher3.widget.PendingAddShortcutInfo
@@ -7850,7 +7865,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                     }
 
                 if (tag is PendingAddShortcutInfo) {
-                    Toast.makeText(context, "Please select a widget", Toast.LENGTH_SHORT).show()
+                    LiquidGlassToast.show(context, "Please select a widget", R.drawable.ic_ios_warning_circle)
                 } else if (tag is PendingAddItemInfo) {
                     closeSheet(true)
                     defaultWidgets.add(tag.componentName)
@@ -8318,7 +8333,7 @@ object BlissPrefs {
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
-**Lines**: 607 | **Bytes**: 25748
+**Lines**: 616 | **Bytes**: 26773
 
 ```kotlin
 /*
@@ -8665,85 +8680,102 @@ object DefaultHomeLayoutResolver {
             }
         }
 
-        if (!hasClockWidget) {
-            placeWidgetIfMissing(clockProvider, 0, 0, 0, 2, 2)
-        }
-        if (!hasCalendarWidget) {
-            placeWidgetIfMissing(calendarProvider, 0, 2, 0, 2, 2)
-        }
-
-        val workActivities = ArrayList<LauncherActivityInfo>()
-        val personalActivities = ArrayList<LauncherActivityInfo>()
-
-        for (profile in allProfiles) {
-            val isWork = userCache.getUserInfo(profile).isWork
-            val acts = launcherApps?.getActivityList(null, profile) ?: emptyList()
-            if (isWork) {
-                workActivities.addAll(acts)
-            } else {
-                personalActivities.addAll(acts)
+        db.beginTransaction()
+        try {
+            if (!hasClockWidget) {
+                placeWidgetIfMissing(clockProvider, 0, 0, 0, 2, 2)
             }
-        }
+            if (!hasCalendarWidget) {
+                placeWidgetIfMissing(calendarProvider, 0, 2, 0, 2, 2)
+            }
 
-        // 2. Resolve curated roles for personal profile
-        val curatedToPlace = ArrayList<ComponentName>()
-        for (role in CURATED_ROLES) {
-            val resolved = resolveRole(context, role, launcherApps, myUser)
-            if (resolved != null) {
-                val key = ComponentKey(resolved, myUser)
-                if (existingComponentKeys.contains(key) || existingPackages.contains(resolved.packageName)) {
-                    Log.d(TAG, "Role ${role.roleName} resolved to $resolved but already in DB (deduped).")
-                } else {
-                    curatedToPlace.add(resolved)
-                    existingComponents.add(resolved)
-                    existingPackages.add(resolved.packageName)
-                    existingComponentKeys.add(key)
-                    Log.d(TAG, "Role ${role.roleName} resolved to $resolved to be placed on Home Screen.")
+            val workActivities = ArrayList<LauncherActivityInfo>()
+            val personalActivities = ArrayList<LauncherActivityInfo>()
+
+            for (profile in allProfiles) {
+                val userInfo = userCache.getUserInfo(profile)
+                val isWork = userInfo.isWork
+                val isPrivate = userInfo.isPrivate
+                val acts = launcherApps?.getActivityList(null, profile) ?: emptyList()
+                if (isWork) {
+                    workActivities.addAll(acts)
+                } else if (profile == myUser && !isPrivate) {
+                    personalActivities.addAll(acts)
                 }
-            } else {
-                Log.d(TAG, "Role ${role.roleName} not found on device.")
             }
-        }
 
-        // 3. Collect remaining personal activities (sorted alphabetically)
-        val remainingPersonalToPlace = ArrayList<Pair<ComponentName, Long>>()
-        val sortedPersonal = personalActivities.sortedBy { it.label?.toString()?.lowercase() ?: "" }
-        for (act in sortedPersonal) {
-            val comp = act.componentName
-            val key = ComponentKey(comp, act.user)
-            if (!existingComponentKeys.contains(key)) {
-                val serial = userCache.getSerialNumberForUser(act.user)
-                remainingPersonalToPlace.add(Pair(comp, serial))
-                existingComponentKeys.add(key)
-                existingComponents.add(comp)
+            // 2. Resolve curated roles for personal profile
+            val curatedToPlace = ArrayList<ComponentName>()
+            for (role in CURATED_ROLES) {
+                val resolved = resolveRole(context, role, launcherApps, myUser)
+                if (resolved != null) {
+                    val key = ComponentKey(resolved, myUser)
+                    if (existingComponentKeys.contains(key) || existingPackages.contains(resolved.packageName)) {
+                        Log.d(TAG, "Role ${role.roleName} resolved to $resolved but already in DB (deduped).")
+                    } else {
+                        curatedToPlace.add(resolved)
+                        existingComponents.add(resolved)
+                        existingPackages.add(resolved.packageName)
+                        existingComponentKeys.add(key)
+                        Log.d(TAG, "Role ${role.roleName} resolved to $resolved to be placed on Home Screen.")
+                    }
+                } else {
+                    Log.d(TAG, "Role ${role.roleName} not found on device.")
+                }
             }
-        }
 
-        // 4. Reserve the last 2 cells on Screen 0 so it stays clean and not too crowded
-        val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
-        val totalCellsScreen0 = numCols * numRows
-        for (idx in (totalCellsScreen0 - 2) until totalCellsScreen0) {
-            if (idx >= 0) {
-                val rx = idx % numCols
-                val ry = idx / numCols
-                reservedCellsScreen0.add(Pair(rx, ry))
+            // 3. Collect remaining personal activities (sorted alphabetically)
+            val remainingPersonalToPlace = ArrayList<Pair<ComponentName, Long>>()
+            val sortedPersonal = personalActivities.sortedBy { it.label?.toString()?.lowercase() ?: "" }
+            for (act in sortedPersonal) {
+                val comp = act.componentName
+                val key = ComponentKey(comp, act.user)
+                if (!existingComponentKeys.contains(key)) {
+                    val serial = userCache.getSerialNumberForUser(act.user)
+                    remainingPersonalToPlace.add(Pair(comp, serial))
+                    existingComponentKeys.add(key)
+                    existingComponents.add(comp)
+                }
             }
-        }
 
-        var currentScreen = 0
-        var currentX = 0
-        var currentY = 0
+            // 4. Reserve the last 2 cells on Screen 0 so it stays clean and not too crowded
+            val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
+            val totalCellsScreen0 = numCols * numRows
+            for (idx in (totalCellsScreen0 - 2) until totalCellsScreen0) {
+                if (idx >= 0) {
+                    val rx = idx % numCols
+                    val ry = idx / numCols
+                    reservedCellsScreen0.add(Pair(rx, ry))
+                }
+            }
 
-        fun getNextAvailableCell(): Triple<Int, Int, Int> {
-            while (true) {
-                val occupiedOnScreen = occupiedCellsByScreen.getOrPut(currentScreen) { HashSet() }
-                val cell = Pair(currentX, currentY)
-                val isReserved = (currentScreen == 0 && reservedCellsScreen0.contains(cell))
-                val isOccupied = occupiedOnScreen.contains(cell)
+            var currentScreen = 0
+            var currentX = 0
+            var currentY = 0
 
-                if (!isOccupied && !isReserved) {
-                    val result = Triple(currentScreen, currentX, currentY)
-                    occupiedOnScreen.add(cell)
+            fun getNextAvailableCell(): Triple<Int, Int, Int> {
+                while (true) {
+                    val occupiedOnScreen = occupiedCellsByScreen.getOrPut(currentScreen) { HashSet() }
+                    val cell = Pair(currentX, currentY)
+                    val isReserved = (currentScreen == 0 && reservedCellsScreen0.contains(cell))
+                    val isOccupied = occupiedOnScreen.contains(cell)
+
+                    if (!isOccupied && !isReserved) {
+                        val result = Triple(currentScreen, currentX, currentY)
+                        occupiedOnScreen.add(cell)
+                        currentX++
+                        if (currentX >= numCols) {
+                            currentX = 0
+                            currentY++
+                            if (currentY >= numRows) {
+                                currentScreen++
+                                currentX = 0
+                                currentY = 0
+                            }
+                        }
+                        return result
+                    }
+
                     currentX++
                     if (currentX >= numCols) {
                         currentX = 0
@@ -8754,116 +8786,108 @@ object DefaultHomeLayoutResolver {
                             currentY = 0
                         }
                     }
-                    return result
-                }
-
-                currentX++
-                if (currentX >= numCols) {
-                    currentX = 0
-                    currentY++
-                    if (currentY >= numRows) {
-                        currentScreen++
-                        currentX = 0
-                        currentY = 0
-                    }
                 }
             }
-        }
 
-        // 5. Place curated personal apps
-        for (component in curatedToPlace) {
-            val (screen, cellX, cellY) = getNextAvailableCell()
-            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setComponent(component)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-            }
-            val values = ContentValues().apply {
-                put(Favorites._ID, dbHelper.generateNewItemId())
-                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                put(Favorites.SCREEN, screen)
-                put(Favorites.CELLX, cellX)
-                put(Favorites.CELLY, cellY)
-                put(Favorites.SPANX, 1)
-                put(Favorites.SPANY, 1)
-                put(Favorites.INTENT, launchIntent.toUri(0))
-                put(Favorites.PROFILE_ID, userSerial)
-                put(Favorites.MODIFIED, System.currentTimeMillis())
-            }
-            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
-        }
-
-        // 6. Place Work folder if work profile apps exist
-        if (workActivities.isNotEmpty()) {
-            val (folderScreen, folderCellX, folderCellY) = getNextAvailableCell()
-            val folderId = dbHelper.generateNewItemId()
-            val folderValues = ContentValues().apply {
-                put(Favorites._ID, folderId)
-                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_FOLDER)
-                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                put(Favorites.SCREEN, folderScreen)
-                put(Favorites.CELLX, folderCellX)
-                put(Favorites.CELLY, folderCellY)
-                put(Favorites.SPANX, 1)
-                put(Favorites.SPANY, 1)
-                put(Favorites.TITLE, "Work")
-                put(Favorites.PROFILE_ID, userSerial)
-                put(Favorites.MODIFIED, System.currentTimeMillis())
-            }
-            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, folderValues)
-
-            var workRank = 0
-            for (workAct in workActivities) {
-                val workUserSerial = userCache.getSerialNumberForUser(workAct.user)
+            // 5. Place curated personal apps
+            for (component in curatedToPlace) {
+                val (screen, cellX, cellY) = getNextAvailableCell()
                 val launchIntent = Intent(Intent.ACTION_MAIN).apply {
                     addCategory(Intent.CATEGORY_LAUNCHER)
-                    setComponent(workAct.componentName)
+                    setComponent(component)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 }
-                val itemValues = ContentValues().apply {
+                val values = ContentValues().apply {
                     put(Favorites._ID, dbHelper.generateNewItemId())
                     put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                    put(Favorites.CONTAINER, folderId)
-                    put(Favorites.SCREEN, 0)
-                    put(Favorites.CELLX, 0)
-                    put(Favorites.CELLY, 0)
+                    put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                    put(Favorites.SCREEN, screen)
+                    put(Favorites.CELLX, cellX)
+                    put(Favorites.CELLY, cellY)
                     put(Favorites.SPANX, 1)
                     put(Favorites.SPANY, 1)
-                    put(Favorites.RANK, workRank++)
                     put(Favorites.INTENT, launchIntent.toUri(0))
-                    put(Favorites.PROFILE_ID, workUserSerial)
+                    put(Favorites.PROFILE_ID, userSerial)
                     put(Favorites.MODIFIED, System.currentTimeMillis())
                 }
-                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, itemValues)
-                existingComponents.add(workAct.componentName)
-                existingPackages.add(workAct.componentName.packageName)
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
             }
-            Log.d(TAG, "Created 'Work' folder on screen $folderScreen with ${workActivities.size} apps.")
-        }
 
-        // 7. Place all remaining personal apps across screens
-        for ((component, serial) in remainingPersonalToPlace) {
-            val (screen, cellX, cellY) = getNextAvailableCell()
-            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setComponent(component)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            // 6. Place Work folder if work profile apps exist
+            if (workActivities.isNotEmpty()) {
+                val (folderScreen, folderCellX, folderCellY) = getNextAvailableCell()
+                val folderId = dbHelper.generateNewItemId()
+                val folderValues = ContentValues().apply {
+                    put(Favorites._ID, folderId)
+                    put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_FOLDER)
+                    put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                    put(Favorites.SCREEN, folderScreen)
+                    put(Favorites.CELLX, folderCellX)
+                    put(Favorites.CELLY, folderCellY)
+                    put(Favorites.SPANX, 1)
+                    put(Favorites.SPANY, 1)
+                    put(Favorites.TITLE, "Work")
+                    put(Favorites.PROFILE_ID, userSerial)
+                    put(Favorites.MODIFIED, System.currentTimeMillis())
+                }
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, folderValues)
+
+                var workRank = 0
+                for (workAct in workActivities) {
+                    val workUserSerial = userCache.getSerialNumberForUser(workAct.user)
+                    val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_LAUNCHER)
+                        setComponent(workAct.componentName)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                    }
+                    val itemValues = ContentValues().apply {
+                        put(Favorites._ID, dbHelper.generateNewItemId())
+                        put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                        put(Favorites.CONTAINER, folderId)
+                        put(Favorites.SCREEN, 0)
+                        put(Favorites.CELLX, 0)
+                        put(Favorites.CELLY, 0)
+                        put(Favorites.SPANX, 1)
+                        put(Favorites.SPANY, 1)
+                        put(Favorites.RANK, workRank++)
+                        put(Favorites.INTENT, launchIntent.toUri(0))
+                        put(Favorites.PROFILE_ID, workUserSerial)
+                        put(Favorites.MODIFIED, System.currentTimeMillis())
+                    }
+                    dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, itemValues)
+                    existingComponents.add(workAct.componentName)
+                    existingPackages.add(workAct.componentName.packageName)
+                }
+                Log.d(TAG, "Created 'Work' folder on screen $folderScreen with ${workActivities.size} apps.")
             }
-            val values = ContentValues().apply {
-                put(Favorites._ID, dbHelper.generateNewItemId())
-                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                put(Favorites.SCREEN, screen)
-                put(Favorites.CELLX, cellX)
-                put(Favorites.CELLY, cellY)
-                put(Favorites.SPANX, 1)
-                put(Favorites.SPANY, 1)
-                put(Favorites.INTENT, launchIntent.toUri(0))
-                put(Favorites.PROFILE_ID, serial)
-                put(Favorites.MODIFIED, System.currentTimeMillis())
+
+            // 7. Place all remaining personal apps across screens
+            for ((component, serial) in remainingPersonalToPlace) {
+                val (screen, cellX, cellY) = getNextAvailableCell()
+                val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    setComponent(component)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                }
+                val values = ContentValues().apply {
+                    put(Favorites._ID, dbHelper.generateNewItemId())
+                    put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                    put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                    put(Favorites.SCREEN, screen)
+                    put(Favorites.CELLX, cellX)
+                    put(Favorites.CELLY, cellY)
+                    put(Favorites.SPANX, 1)
+                    put(Favorites.SPANY, 1)
+                    put(Favorites.INTENT, launchIntent.toUri(0))
+                    put(Favorites.PROFILE_ID, serial)
+                    put(Favorites.MODIFIED, System.currentTimeMillis())
+                }
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
             }
-            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
+
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
 
         Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has Clock and Calendar widgets at top and last 2 slots blank.")

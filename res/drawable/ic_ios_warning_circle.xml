@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="20"
+    android:viewportHeight="20">
+    <!-- Apple System Orange circle badge -->
+    <path
+        android:fillColor="#FF9500"
+        android:pathData="M10,0 C15.52,0 20,4.48 20,10 C20,15.52 15.52,20 10,20 C4.48,20 0,15.52 0,10 C0,4.48 4.48,0 10,0 Z"/>
+    <!-- White exclamation mark -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"
+        android:pathData="M10,5.5 L10,11"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M10,13.5 C10.6,13.5 11.1,14.0 11.1,14.6 C11.1,15.2 10.6,15.7 10,15.7 C9.4,15.7 8.9,15.2 8.9,14.6 C8.9,14.0 9.4,13.5 10,13.5 Z"/>
+</vector>

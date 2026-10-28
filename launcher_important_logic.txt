@@ -88,7 +88,7 @@ This master document aggregates all 78 core architectural and functional code lo
 # src/com/android/launcher3/Launcher.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4146 | **Bytes**: 175056
+**Lines**: 4190 | **Bytes**: 177630
 
 ```java
 /*
@@ -454,6 +454,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             new KeyboardShortcutsDelegate(this);
 
     private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
+    private boolean mHasLaunchedOnboarding = false;
 
     public LauncherInteractionController getInteractionController() {
         return mInteractionController;
@@ -598,13 +599,6 @@ public class Launcher extends StatefulActivity<LauncherState>
     protected void onCreate(Bundle savedInstanceState) {
         Logger.plant();
 
-        if (!BuildConfig.DEBUG) {
-            try {
-                Telemetry.init(BuildConfig.SENTRY_DSN, getApplication(), true);
-            } catch (Exception e) {
-                Logger.e(TAG, "Failed to initialize Sentry");
-            }
-        }
 
         mStartupLatencyLogger = createStartupLatencyLogger(
                 sIsNewProcess
@@ -1685,11 +1679,25 @@ public class Launcher extends StatefulActivity<LauncherState>
 
                         // If the hotseat has lost its child views (e.g. dropped due to an orientation race),
                         // trigger a rebind to restore the dock icons immediately!
+                        // Guard against cold-boot in-progress loads and intentionally empty docks.
                         if (mHotseat.getShortcutsAndWidgets() != null
                                 && mHotseat.getShortcutsAndWidgets().getChildCount() == 0
-                                && mModel != null) {
-                            Log.w(TAG, "Hotseat has 0 children on resume - rebinding callbacks to restore dock icons");
-                            mModel.rebindCallbacks();
+                                && mModel != null
+                                && mModel.isModelLoaded()
+                                && !isWorkspaceLoading()) {
+                            boolean modelHasHotseatItems = false;
+                            synchronized (mModel.mBgDataModel) {
+                                for (ItemInfo item : mModel.mBgDataModel.workspaceItems) {
+                                    if (item.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT) {
+                                        modelHasHotseatItems = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (modelHasHotseatItems) {
+                                Log.w(TAG, "Hotseat has 0 children on resume despite model having hotseat items - rebinding callbacks");
+                                mModel.rebindCallbacks();
+                            }
                         }
                     }
                 }
@@ -1707,17 +1715,53 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            try {
-                Intent onboardingIntent = new Intent(this,
-                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
-                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(onboardingIntent);
-            } catch (Exception e) {
-                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+            if (isExistingInstall()) {
+                LauncherPrefs.get(this).putSync(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE.to(true));
+            } else if (!mHasLaunchedOnboarding) {
+                mHasLaunchedOnboarding = true;
+                try {
+                    Intent onboardingIntent = new Intent(this,
+                            Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                    onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                    startActivity(onboardingIntent);
+                } catch (Exception e) {
+                    android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+                }
             }
         }
 
         TraceHelper.INSTANCE.endSection();
+    }
+
+    private boolean isExistingInstall() {
+        try {
+            android.app.role.RoleManager roleManager = getSystemService(android.app.role.RoleManager.class);
+            if (roleManager != null && roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                return true;
+            }
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
+                    homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfo != null && resolveInfo.activityInfo != null
+                    && getPackageName().equals(resolveInfo.activityInfo.packageName)) {
+                return true;
+            }
+            if (mDeviceProfile != null && mDeviceProfile.inv != null) {
+                java.io.File gridDb = getDatabasePath(mDeviceProfile.inv.numColumns + "_by_" + mDeviceProfile.inv.numRows + ".db");
+                if (gridDb != null && gridDb.exists() && gridDb.length() > 0) {
+                    return true;
+                }
+            }
+            java.io.File launcherDb = getDatabasePath(LauncherFiles.LAUNCHER_DB);
+            if (launcherDb != null && launcherDb.exists() && launcherDb.length() > 0) {
+                return true;
+            }
+            java.io.File iconsDb = getDatabasePath(LauncherFiles.APP_ICONS_DB);
+            if (iconsDb != null && iconsDb.exists() && iconsDb.length() > 0) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     @Override
@@ -4244,7 +4288,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 # src/com/android/launcher3/LauncherApplication.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
-**Lines**: 132 | **Bytes**: 5504
+**Lines**: 147 | **Bytes**: 6023
 
 ```java
 /*
@@ -4281,6 +4325,14 @@ public class LauncherApplication extends Application {
         setupUncaughtExceptionHandler();
         MainProcessInitializer.initialize(this);
         foundation.e.bliss.glass.GlassConfig.disableSensors(this);
+
+        if (!BuildConfig.DEBUG && BuildConfig.SENTRY_DSN != null && !BuildConfig.SENTRY_DSN.isEmpty()) {
+            try {
+                foundation.e.lib.telemetry.Telemetry.init(BuildConfig.SENTRY_DSN, this, true);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize Sentry", e);
+            }
+        }
     }
 
     private void setupUncaughtExceptionHandler() {
@@ -4288,8 +4340,7 @@ public class LauncherApplication extends Application {
                 Thread.getDefaultUncaughtExceptionHandler();
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-            boolean isMainThread = Looper.getMainLooper().getThread() == thread;
-            if (!isMainThread && shouldSuppressException(thread, throwable)) {
+            if (shouldSuppressException(thread, throwable)) {
                 Log.w(TAG, "Suppressed external/OEM crash on thread ["
                         + (thread != null ? thread.getName() : "unknown") + "]: "
                         + (throwable != null ? throwable.toString() : "null"), throwable);
@@ -4302,12 +4353,22 @@ public class LauncherApplication extends Application {
         });
     }
 
+    private static boolean isLauncherOwnedThread(Thread thread) {
+        if (thread == null) return false;
+        if (Looper.getMainLooper().getThread() == thread) return true;
+        String name = thread.getName();
+        if (name == null) return false;
+        return name.equals("launcher-loader")
+                || name.equals("BackgroundExecutor")
+                || name.equals("UiThreadHelper")
+                || name.startsWith("preinflate-")
+                || name.startsWith("IconCache-");
+    }
+
     private static boolean shouldSuppressException(Thread thread, Throwable throwable) {
-        if (throwable == null) {
+        if (throwable == null || isLauncherOwnedThread(thread)) {
             return false;
         }
-
-        boolean isMainThread = Looper.getMainLooper().getThread() == thread;
 
         Throwable current = throwable;
         int depth = 0;
@@ -4340,20 +4401,18 @@ public class LauncherApplication extends Application {
                         return true;
                     }
 
-                    // On background threads: if the crash originates in an appwidget / remoteviews / third-party component
-                    if (!isMainThread && (className.contains(".widget.") || className.contains(".appwidget."))) {
-                        if (!className.startsWith("com.android.launcher3")
-                                && !className.startsWith("foundation.e.bliss")
-                                && !className.startsWith("com.ihome.launcher")) {
-                            return true;
-                        }
+                    // On background threads: if the crash originates in an appwidget / remoteviews component
+                    if (className.startsWith("android.appwidget.")
+                            || className.contains("RemoteViews")
+                            || className.startsWith("com.android.server.appwidget.")) {
+                        return true;
                     }
                 }
             }
 
             // Also on background threads, catch LinkageError (NoSuchMethodError, NoClassDefFoundError, etc.)
             // caused by vendor OEM code calling hidden/removed framework APIs on Android 16
-            if (!isMainThread && (current instanceof LinkageError)) {
+            if (current instanceof LinkageError) {
                 boolean containsLauncherCode = false;
                 if (stack != null) {
                     for (StackTraceElement element : stack) {
@@ -4385,7 +4444,7 @@ public class LauncherApplication extends Application {
 # src/com/android/launcher3/LauncherAppState.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
-**Lines**: 293 | **Bytes**: 12466
+**Lines**: 295 | **Bytes**: 12515
 
 ```java
 /*
@@ -4567,7 +4626,9 @@ public class LauncherAppState implements SafeCloseable {
         onNotificationSettingsChanged(settingsCache.getValue(NOTIFICATION_BADGING_URI));
         mOnTerminateCallback.add(() ->
                 settingsCache.unregister(NOTIFICATION_BADGING_URI, notificationLister));
-        mAppMonitor.onAppCreated(mContext);
+        if (mAppMonitor != null) {
+            mAppMonitor.onAppCreated(mContext);
+        }
         // Register an observer to notify Launcher about Private Space settings toggle.
         registerPrivateSpaceHideWhenLockListener(settingsCache);
     }
@@ -6191,7 +6252,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 # src/com/android/launcher3/settings/SettingsActivity.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 326 | **Bytes**: 13362
+**Lines**: 336 | **Bytes**: 14153
 
 ```java
 /*
@@ -6220,6 +6281,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
@@ -6255,6 +6317,7 @@ public class SettingsActivity extends FragmentActivity
 
     private static final String TAG = "SettingsActivity";
     private static final int REQUEST_CODE_ROLE = 1001;
+    private long mRoleRequestStartTime = 0;
 
     @VisibleForTesting
     static final String DEVELOPER_OPTIONS_KEY = "pref_developer_options";
@@ -6275,6 +6338,7 @@ public class SettingsActivity extends FragmentActivity
         setContentView(R.layout.activity_settings_ios);
 
         setupSystemBars();
+        LauncherPrefs.getPrefs(this).edit().remove(InvariantDeviceProfile.KEY_WORKSPACE_LOCK).apply();
         initViews();
     }
 
@@ -6334,6 +6398,7 @@ public class SettingsActivity extends FragmentActivity
         if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
             try {
                 Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME);
+                mRoleRequestStartTime = SystemClock.elapsedRealtime();
                 startActivityForResult(intent, REQUEST_CODE_ROLE);
                 return;
             } catch (Exception e) {
@@ -6362,9 +6427,15 @@ public class SettingsActivity extends FragmentActivity
             RoleManager roleManager = getSystemService(RoleManager.class);
             boolean isDefault = roleManager != null && roleManager.isRoleHeld(RoleManager.ROLE_HOME);
             if (!isDefault) {
-                // OEMs like Vivo OriginOS and Xiaomi HyperOS silently cancel ROLE_HOME intent
-                openHomeSettingsFallback();
+                long elapsed = SystemClock.elapsedRealtime() - mRoleRequestStartTime;
+                // Only open fallback if the role intent was silently dismissed almost instantaneously (< 250ms)
+                // by OEMs like Xiaomi HyperOS or Vivo OriginOS. If the user was shown the dialog and explicitly
+                // tapped Cancel, respect their cancellation and do not force open System Settings.
+                if (mRoleRequestStartTime > 0 && elapsed < 250) {
+                    openHomeSettingsFallback();
+                }
             }
+            mRoleRequestStartTime = 0;
             updateDefaultLauncherState();
         }
     }
@@ -6398,17 +6469,7 @@ public class SettingsActivity extends FragmentActivity
                     getContentResolver(), "notification_badging", 1) == 1;
             switchBadges.setOnCheckedChangeListener(null);
             switchBadges.setChecked(badgingEnabled);
-            switchBadges.setOnCheckedChangeListener((btn, isChecked) -> {
-                try {
-                    Settings.Secure.putInt(getContentResolver(), "notification_badging", isChecked ? 1 : 0);
-                } catch (Exception e) {
-                    try {
-                        startActivity(new Intent("android.settings.NOTIFICATION_SETTINGS"));
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Failed to launch notification settings", ex);
-                    }
-                }
-            });
+            switchBadges.setOnCheckedChangeListener((btn, isChecked) -> handleBadgingToggle(switchBadges, isChecked));
         } else {
             txtSubtitle.setText("Notification access required — tap to grant");
             txtSubtitle.setTextColor(getColor(R.color.ios_icon_orange));
@@ -6427,6 +6488,28 @@ public class SettingsActivity extends FragmentActivity
             switchCount.setOnCheckedChangeListener((btn, isChecked) -> {
                 LauncherPrefs.getPrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
             });
+        }
+    }
+
+    private void handleBadgingToggle(Switch switchBadges, boolean isChecked) {
+        try {
+            Settings.Secure.putInt(getContentResolver(), "notification_badging", isChecked ? 1 : 0);
+        } catch (Exception e) {
+            // Revert switch visually because writing to Settings.Secure requires WRITE_SECURE_SETTINGS
+            switchBadges.post(() -> {
+                switchBadges.setOnCheckedChangeListener(null);
+                switchBadges.setChecked(!isChecked);
+                switchBadges.setOnCheckedChangeListener((btn, checked) -> handleBadgingToggle(switchBadges, checked));
+            });
+            try {
+                Bundle extras = new Bundle();
+                extras.putString(EXTRA_FRAGMENT_HIGHLIGHT_KEY, "notification_badging");
+                Intent intent = new Intent("android.settings.NOTIFICATION_SETTINGS")
+                        .putExtra(":settings:show_fragment_args", extras);
+                startActivity(intent);
+            } catch (Exception ex) {
+                Log.e(TAG, "Failed to launch notification settings", ex);
+            }
         }
     }
 
@@ -6455,18 +6538,6 @@ public class SettingsActivity extends FragmentActivity
             switchAddToHome.setOnCheckedChangeListener((btn, isChecked) -> {
                 LauncherPrefs.getPrefs(this).edit()
                         .putBoolean(SessionCommitReceiver.ADD_ICON_PREFERENCE_KEY, isChecked).apply();
-            });
-        }
-
-        // Lock Layout
-        Switch switchLockLayout = findViewById(R.id.switch_lock_layout);
-        if (switchLockLayout != null) {
-            boolean isLocked = LauncherPrefs.getPrefs(this)
-                    .getBoolean(InvariantDeviceProfile.KEY_WORKSPACE_LOCK, false);
-            switchLockLayout.setChecked(isLocked);
-            switchLockLayout.setOnCheckedChangeListener((btn, isChecked) -> {
-                LauncherPrefs.getPrefs(this).edit()
-                        .putBoolean(InvariantDeviceProfile.KEY_WORKSPACE_LOCK, isChecked).apply();
             });
         }
 
@@ -6526,7 +6597,7 @@ public class SettingsActivity extends FragmentActivity
 # src/com/android/launcher3/Workspace.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
-**Lines**: 5362 | **Bytes**: 234470
+**Lines**: 5314 | **Bytes**: 231648
 
 ```java
 /*
@@ -6605,7 +6676,7 @@ import android.view.animation.AnimationUtils;
 import android.view.animation.RotateAnimation;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -8264,17 +8335,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public static int sWidgetDrawCount = 0;
     public static int sWorkspaceFrames = 0;
 
-    private static int getWidgetDoseLimit() {
-        try {
-            Class<?> sp = Class.forName("android.os.SystemProperties");
-            String val = (String) sp.getMethod("get", String.class, String.class)
-                    .invoke(null, "debug.launcher.widget_glass", "-1");
-            return Integer.parseInt(val);
-        } catch (Throwable t) {
-            return -1;
-        }
-    }
-
     /**
      * Invalidates all active Liquid Glass surfaces across visible pages and the dock so that
      * refraction updates live in real-time during user drags, scrolling, and page flings.
@@ -8305,28 +8365,17 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
-                            sWorkspaceFrames++;
-                            int widgetLimit = getWidgetDoseLimit();
-                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
-                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
                                 } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
                                     FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
-                                    if (gv != null) {
-                                        if (widgetLimit >= 0) {
-                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
-                                        }
-                                        if (gv.getVisibility() == VISIBLE) {
-                                            sWidgetDrawCount++;
-                                            gv.invalidate();
-                                        }
-                                        widgetIdx++;
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        gv.invalidate();
                                     }
                                 }
                             }
@@ -8418,28 +8467,17 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     if (page instanceof CellLayout) {
                         ShortcutAndWidgetContainer container = ((CellLayout) page).getShortcutsAndWidgets();
                         if (container != null) {
-                            sWorkspaceFrames++;
-                            int widgetLimit = getWidgetDoseLimit();
-                            int widgetIdx = 0;
                             for (int i = 0; i < container.getChildCount(); i++) {
                                 View child = container.getChildAt(i);
                                 if (child instanceof FolderIcon) {
                                     FolderGlassView gv = ((FolderIcon) child).getGlassView();
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
-                                        sFolderDrawCount++;
                                         gv.invalidate();
                                     }
                                 } else if (child instanceof foundation.e.bliss.widgets.GlassWidgetHostView) {
                                     FolderGlassView gv = ((foundation.e.bliss.widgets.GlassWidgetHostView) child).getGlassView();
-                                    if (gv != null) {
-                                        if (widgetLimit >= 0) {
-                                            gv.setVisibility(widgetIdx < widgetLimit ? VISIBLE : INVISIBLE);
-                                        }
-                                        if (gv.getVisibility() == VISIBLE) {
-                                            sWidgetDrawCount++;
-                                            gv.invalidate();
-                                        }
-                                        widgetIdx++;
+                                    if (gv != null && gv.getVisibility() == VISIBLE) {
+                                        gv.invalidate();
                                     }
                                 }
                             }
@@ -9755,7 +9793,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                             ((ShortcutAndWidgetContainer) cell.getParent()).setupLp(cell);
                         }
                     }
-                    android.util.Log.d("IconDragLogger", "DROP SUCCESS -> Moved icon '" + (item.title != null ? item.title : "Item") + "' to Cell(" + mTargetCell[0] + ", " + mTargetCell[1] + ")");
+                    if (DEBUG_DRAG_LOG) {
+                        android.util.Log.d("IconDragLogger", "DROP SUCCESS -> Moved icon '" + (item.title != null ? item.title : "Item") + "' to Cell(" + mTargetCell[0] + ", " + mTargetCell[1] + ")");
+                    }
                     post(() -> logIconLocations("AFTER DROP FINAL"));
 
                     if (container != LauncherSettings.Favorites.CONTAINER_HOTSEAT &&
@@ -9948,7 +9988,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             View dropTargetLayout, ItemInfo itemInfo, @Nullable InstanceId logInstanceId) {
         int strId = mLauncher.isHotseatLayout(dropTargetLayout)
                 ? R.string.hotseat_out_of_space : R.string.out_of_space;
-        Toast.makeText(mLauncher, mLauncher.getString(strId), Toast.LENGTH_SHORT).show();
+        LiquidGlassToast.show(mLauncher, strId, R.drawable.ic_ios_warning_circle);
         StatsLogManager.StatsLogger logger = mStatsLogManager.logger().withItemInfo(itemInfo);
         if (logInstanceId != null) {
             logger = logger.withInstanceId(logInstanceId);
@@ -10276,7 +10316,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                             mDragViewVisualCenter[0], (int) mDragViewVisualCenter[1], item.spanX,
                     item.spanY, child, mTargetCell);
 
-            android.util.Log.d("IconDragLogger", "DRAGGING OVER -> Item: '" + (item.title != null ? item.title : "Item") + "' over Target Cell: (" + reorderX + ", " + reorderY + ")");
+            if (DEBUG_DRAG_LOG) {
+                android.util.Log.d("IconDragLogger", "DRAGGING OVER -> Item: '" + (item.title != null ? item.title : "Item") + "' over Target Cell: (" + reorderX + ", " + reorderY + ")");
+            }
             manageReorderOnDragOver(d, targetCellDistance, nearestDropOccupied, minSpanX, minSpanY,
                     reorderX, reorderY);
 
@@ -10422,30 +10464,11 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         float relCenterX = centerX - screenLeft;
 
         float density = getResources().getDisplayMetrics().density;
-        // Dynamic grid-relative page-flip gutter: scales with layout padding and cell width
-        // plus a 2px expansion, clamped with ergonomic safety bounds.
-        float dynamicGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.10f) + 2f;
-        float minGutter = density * 12f;
-        float maxGutter = leftLayout.getPaddingLeft() + (leftLayout.getCellWidth() * 0.25f);
-        float edgeGutter = Math.max(minGutter, Math.min(maxGutter, dynamicGutter));
-
-        // Dynamic minimum bezel zone: scaled to half padding + 2px, clamped to at least 8dp + 2px
-        float minimumBezelZone = Math.max(density * 8f + 2f, (leftLayout.getPaddingLeft() * 0.5f) + 2f);
-
-        // Dynamic reorder edge clearance: proportional to cell width
-        float reorderEdgeClearance = leftLayout.getCellWidth() * 0.10f;
-
-        float leftReorderRingOuterX = leftLayout.getBoundaryReorderRingOuterX(true);
-        float rightReorderRingOuterX = rightLayout.getLeft() - screenLeft
-                + rightLayout.getBoundaryReorderRingOuterX(false);
-        // Keep a full edge-clearance beyond boundary reorder rings so a slightly shaky drag can
-        // still show the reorder preview before it enters the page-flip zone. If the rings leave
-        // less room, retain a dynamic bezel strip for deliberate paging.
-        float leftEdgeThreshold = Math.max(minimumBezelZone,
-                Math.min(edgeGutter, leftReorderRingOuterX - reorderEdgeClearance));
-        float rightEdgeThreshold = Math.min(screenWidth - minimumBezelZone,
-                Math.max(screenWidth - edgeGutter,
-                        rightReorderRingOuterX + reorderEdgeClearance));
+        // Dynamic grid-relative page-flip gutter: scales with layout padding and cell width.
+        // Configured to 23dp (~69px on 3.0x display) for optimal reach and safe edge-column reordering.
+        float triggerWidth = Math.max(density * 23f, leftLayout.getPaddingLeft() + density * 7f);
+        float leftEdgeThreshold = triggerWidth;
+        float rightEdgeThreshold = screenWidth - triggerWidth;
 
         boolean isAtLeftEdge = (relCenterX <= leftEdgeThreshold
                 || relTouchX <= leftEdgeThreshold);
@@ -12844,7 +12867,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
-**Lines**: 553 | **Bytes**: 25658
+**Lines**: 553 | **Bytes**: 25735
 
 ```java
 /*
@@ -12887,7 +12910,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import com.android.launcher3.BubbleTextView;
 import com.android.launcher3.BuildConfig;
@@ -13044,10 +13067,10 @@ public class ItemClickHandler {
             // Display a message for app pairs that are disabled due to screen size
             boolean isFoldable = InvariantDeviceProfile.INSTANCE.get(launcher)
                     .supportedProfiles.stream().anyMatch(dp -> dp.isTwoPanels);
-            Toast.makeText(launcher, isFoldable
+            LiquidGlassToast.show(launcher, isFoldable
                             ? R.string.app_pair_needs_unfold
                             : R.string.app_pair_unlaunchable_at_screen_size,
-                    Toast.LENGTH_SHORT).show();
+                    R.drawable.ic_ios_warning_circle);
         } else if (appPairIcon.getInfo().isDisabled()) {
             WorkspaceItemInfo app1 = appPairIcon.getInfo().contents.get(0);
             WorkspaceItemInfo app2 = appPairIcon.getInfo().contents.get(1);
@@ -13151,7 +13174,7 @@ public class ItemClickHandler {
      */
     private static void onClickPendingWidget(PendingAppWidgetHostView v, Launcher launcher) {
         if (launcher.getPackageManager().isSafeMode()) {
-            Toast.makeText(launcher, R.string.safemode_widget_error, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(launcher, R.string.safemode_widget_error, R.drawable.ic_ios_warning_circle);
             return;
         }
 
@@ -13246,7 +13269,7 @@ public class ItemClickHandler {
         } else {
             if (!TextUtils.isEmpty(shortcut.disabledMessage)) {
                 // Use a message specific to this shortcut, if it has one.
-                Toast.makeText(context, shortcut.disabledMessage, Toast.LENGTH_SHORT).show();
+                LiquidGlassToast.show(context, shortcut.disabledMessage, R.drawable.ic_ios_warning_circle);
                 return true;
             }
             // Otherwise just use a generic error message.
@@ -13257,7 +13280,7 @@ public class ItemClickHandler {
                     || (shortcut.runtimeStatusFlags & FLAG_DISABLED_LOCKED_USER) != 0) {
                 error = R.string.shortcut_not_available;
             }
-            Toast.makeText(context, error, Toast.LENGTH_SHORT).show();
+            LiquidGlassToast.show(context, error, R.drawable.ic_ios_warning_circle);
             return true;
         }
     }
@@ -13645,7 +13668,7 @@ public class ItemLongClickListener {
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
-**Lines**: 115 | **Bytes**: 3885
+**Lines**: 125 | **Bytes**: 4181
 
 ```kotlin
 /*
@@ -13685,7 +13708,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
     private val mAppMonitorCallback: LauncherAppMonitorCallback =
         object : LauncherAppMonitorCallback {
             override fun onLoadAllAppsEnd(apps: ArrayList<AppInfo?>?) {
-                MODEL_EXECUTOR.submit(
+                MODEL_EXECUTOR.execute(
                     VerifyIdleAppTask(
                         context,
                         apps,
@@ -13700,6 +13723,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
             override fun onAppSharedPreferenceChanged(key: String?) {
                 when (key) {
                     BlissPrefs.PREF_SINGLE_LAYER_MODE -> {
+                        updateSingleLayerCache()
                         monitor.launcher.model.forceReload()
                     }
                     BlissPrefs.PREF_NOTIF_COUNT -> idp.onConfigChanged(context)
@@ -13726,6 +13750,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 
     init {
         prefs = LauncherPrefs.get(context)
+        updateSingleLayerCache()
         monitor.registerCallback(mAppMonitorCallback)
     }
 
@@ -13745,13 +13770,21 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
         private const val TAG = "MultiModeController"
         private lateinit var prefs: LauncherPrefs
 
+        @Volatile
+        private var sIsSingleLayerModeCached: Boolean = true
+
         @JvmStatic
-        val isSingleLayerMode: Boolean
-            get() = if (Companion::prefs.isInitialized) {
+        fun updateSingleLayerCache() {
+            sIsSingleLayerModeCached = if (Companion::prefs.isInitialized) {
                 prefs.get(LauncherPrefs.IS_SINGLE_LAYER_ENABLED)
             } else {
                 true
             }
+        }
+
+        @JvmStatic
+        val isSingleLayerMode: Boolean
+            get() = sIsSingleLayerModeCached
 
         @JvmStatic
         val isNotifCountEnabled: Boolean
@@ -21214,7 +21247,7 @@ public interface DropTarget {
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2113 | **Bytes**: 81683
+**Lines**: 2132 | **Bytes**: 82430
 
 ```java
 /*
@@ -21519,6 +21552,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mContent.setFolder(this);
 
         mPageIndicator = findViewById(R.id.folder_page_indicator);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
         mFolderName = findViewById(R.id.folder_name);
         mFolderName.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32);
         mFolderName.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
@@ -22097,8 +22133,11 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         });
 
         // Footer animation
+        mFolderName.setTranslationX(0);
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
         if (mContent.getPageCount() > 1 && !mInfo.hasOption(FolderInfo.FLAG_MULTI_PAGE_ANIMATION)) {
-            mFolderName.setTranslationX(0);
             mPageIndicator.prepareEntryAnimation();
 
             // Do not update the flag if we are in drag mode. The flag will be updated, when we
@@ -22342,18 +22381,26 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     }
 
     /**
-     * Returns the dynamic page-flip trigger width at the folder card edges.
-     * Confined strictly within the card's outer gutter padding so it never overlaps
-     * or interferes with the side column icons during rearrangement.
+     * Returns the dynamic page-flip trigger width inside the folder card edges.
+     * Configured to 26dp (~78px on 3.0x display) to provide a generous, comfortable
+     * touch target while keeping a safe buffer from the side column icons.
      */
     private float getPageFlipTriggerWidth() {
-        int contentPadding = (mContent != null && mContent.getPaddingLeft() > 0)
-                ? mContent.getPaddingLeft()
-                : mActivityContext.getDeviceProfile().folderContentPaddingLeftRight;
         float density = getResources().getDisplayMetrics().density;
-        // Keep trigger zone confined to the card gutter (up to 16dp / contentPadding)
-        // so it never overlaps the side column icons or blocks cell placement.
-        return Math.max(density * 10f, Math.min(contentPadding, density * 16f));
+        return density * 26f;
+    }
+
+    /**
+     * Returns the extension beyond the folder squircle card boundaries so page flipping
+     * can be comfortably triggered near or past the card edges without prematurely exiting
+     * to the workspace.
+     *
+     * Uses Math.abs(mScrollAreaOffset) + padding to guarantee strictly symmetric, positive
+     * reach regardless of where on the icon the user initiated the drag touch.
+     */
+    public int getPageFlipBeyondGutter() {
+        float density = getResources().getDisplayMetrics().density;
+        return Math.max((int) (density * 28f), Math.abs(mScrollAreaOffset) + (int) (density * 16f));
     }
 
     @Override
@@ -22377,12 +22424,16 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
             }
         }
 
-        float x = r[0];
+        float visualX = r[0];
+        float touchX = d.x;
         int currentPage = mContent.getNextPage();
 
         float cellOverlap = getPageFlipTriggerWidth();
-        boolean isOutsideLeftEdge = x < cellOverlap;
-        boolean isOutsideRightEdge = x > (getWidth() - cellOverlap);
+        // Trigger if either the visual center of the icon OR the user's touch finger
+        // enters the edge trigger zone or moves beyond the card edge.
+        boolean isOutsideLeftEdge = visualX < cellOverlap || touchX < cellOverlap;
+        boolean isOutsideRightEdge = visualX > (getWidth() - cellOverlap)
+                || touchX > (getWidth() - cellOverlap);
 
         if (currentPage > 0 && (mContent.mIsRtl ? isOutsideRightEdge : isOutsideLeftEdge)) {
             showScrollHint(SCROLL_LEFT, d);
@@ -23083,8 +23134,9 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
     @Override
     public void getHitRectRelativeToDragLayer(Rect outRect) {
         getHitRect(outRect);
-        outRect.left -= mScrollAreaOffset;
-        outRect.right += mScrollAreaOffset;
+        int pageFlipExtension = getPageFlipBeyondGutter();
+        outRect.left -= pageFlipExtension;
+        outRect.right += pageFlipExtension;
     }
 
     private class OnScrollHintListener implements OnAlarmListener {
@@ -25672,7 +25724,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 # src/com/android/launcher3/folder/FolderPagedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
-**Lines**: 824 | **Bytes**: 30045
+**Lines**: 825 | **Bytes**: 29987
 
 ```java
 /*
@@ -25955,7 +26007,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         addView(page, -1, generateDefaultLayoutParams());
         setEnableOverscroll(getPageCount() > 1);
         if (mPageIndicator != null) {
-            mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+            mPageIndicator.setVisibility(View.VISIBLE);
         }
         return page;
     }
@@ -26065,9 +26117,10 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
         setEnableOverscroll(getPageCount() > 1);
 
-        // Update footer
-        boolean showIndicator = getPageCount() > 1;
-        mPageIndicator.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
+        // Update footer - always show folder page indicator
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
 
         if (mFolder != null && mFolder.mFolderName != null) {
             mFolder.mFolderName.setGravity((mIsRtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
@@ -26490,7 +26543,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         if (removed) {
             setEnableOverscroll(getPageCount() > 1);
             if (mPageIndicator != null) {
-                mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+                mPageIndicator.setVisibility(View.VISIBLE);
             }
             if (getNextPage() >= getPageCount()) {
                 snapToPageImmediately(getPageCount() - 1);
@@ -27131,7 +27184,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
-**Lines**: 1005 | **Bytes**: 38176
+**Lines**: 1044 | **Bytes**: 39619
 
 ```java
 /*
@@ -27327,6 +27380,23 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPillIconPaint.setStyle(Style.STROKE);
         mPillIconPaint.setStrokeCap(Paint.Cap.ROUND);
         mPillTextPaint.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+        }
+    }
+
+    @Override
+    protected void onFinishInflate() {
+        super.onFinishInflate();
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        }
     }
 
     private void updateThemeColors() {
@@ -27365,6 +27435,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     private float getEffectiveCircleGap() {
         if (mNumPages <= 1) return mCircleGap;
+        if (!isWorkspaceIndicator()) return mCircleGap;
         float density = getResources().getDisplayMetrics().density;
         float maxDotsSpan = (getPillWidth() - 24f * density) - 2f * mDotRadius;
         float naturalSpan = (mNumPages - 1) * mCircleGap;
@@ -27444,7 +27515,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll == 0 && totalScroll == 0) {
             CURRENT_POSITION.set(this, (float) mActivePage);
             mLastScrollX = currentScroll;
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
             return;
@@ -27469,7 +27540,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             mPaginationAlpha = VISIBLE_ALPHA;
             mToAlpha = VISIBLE_ALPHA;
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
-        } else if (scrollPositionChanged && mShouldAutoHide) {
+        } else if (scrollPositionChanged && mShouldAutoHide && isWorkspaceIndicator()) {
             animatePaginationToAlpha(VISIBLE_ALPHA);
         }
 
@@ -27489,19 +27560,19 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         if (currentScroll < pageToLeftScroll + scrollThreshold) {
             // scroll is within the left page's threshold
             animateToPosition(pageToLeft);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else if (currentScroll > pageToRightScroll - scrollThreshold) {
             // scroll is far enough from left page to go to the right page
             animateToPosition(pageToLeft + 1);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 hideAfterDelay();
             }
         } else {
             // scroll is between left and right page
             animateToPosition(pageToLeft + SHIFT_PER_ANIMATION);
-            if (mShouldAutoHide && !mForceDotsMode) {
+            if (isWorkspaceIndicator() && mShouldAutoHide && !mForceDotsMode) {
                 mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
             }
         }
@@ -27509,6 +27580,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     public void setShouldAutoHide(boolean shouldAutoHide) {
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            return;
+        }
         mShouldAutoHide = shouldAutoHide;
         if (shouldAutoHide && mPaginationAlpha > INVISIBLE_ALPHA && !mForceDotsMode) {
             hideAfterDelay();
@@ -27523,7 +27598,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void hideAfterDelay() {
-        if (mForceDotsMode) {
+        if (!isWorkspaceIndicator() || mForceDotsMode) {
             return;
         }
         mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
@@ -27531,6 +27606,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     }
 
     private void animatePaginationToAlpha(int alpha) {
+        if (!isWorkspaceIndicator() && alpha < VISIBLE_ALPHA) {
+            return;
+        }
         if (alpha == mToAlpha && mPaginationAlpha == alpha) {
             // Ignore the new animation if it is going to the same alpha as the current animation.
             return;
@@ -27663,6 +27741,12 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     public void setMarkersCount(int numMarkers) {
         mNumPages = numMarkers;
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        }
 
         // If the last page gets removed we want to go to the previous page.
         if (mNumPages > 0 && mNumPages == mActivePage) {
@@ -27699,7 +27783,12 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (isWorkspaceIndicator() && MultiModeController.isSingleLayerMode() && mShouldAutoHide) {
+        if (!isWorkspaceIndicator()) {
+            mShouldAutoHide = false;
+            mPaginationAlpha = VISIBLE_ALPHA;
+            mToAlpha = VISIBLE_ALPHA;
+            setVisibility(View.VISIBLE);
+        } else if (MultiModeController.isSingleLayerMode() && mShouldAutoHide) {
             mPaginationAlpha = INVISIBLE_ALPHA;
             mToAlpha = INVISIBLE_ALPHA;
         }
@@ -27882,7 +27971,10 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
     @Override
     protected void onDraw(Canvas canvas) {
-        if (mNumPages < 2) {
+        if (mNumPages < 1) {
+            return;
+        }
+        if (mNumPages < 2 && isWorkspaceIndicator()) {
             drawSearchPillIfSingleLayer(canvas, 1f);
             return;
         }
@@ -27905,7 +27997,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             }
         } else {
             pillAlpha = 0f;
-            dotAlpha = mPaginationAlpha;
+            dotAlpha = (!isWorkspaceIndicator()) ? PAGE_INDICATOR_ALPHA : mPaginationAlpha;
         }
 
         // Draw iOS Search pill background/rim and (when pillAlpha > 0) "Search" icon + text
@@ -28102,7 +28194,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         @Override
         public void onAnimationEnd(Animator animation) {
             if (!mCancelled) {
-                if (mShouldAutoHide) {
+                if (isWorkspaceIndicator() && mShouldAutoHide) {
                     hideAfterDelay();
                 }
                 mAnimator = null;
@@ -28805,7 +28897,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
-**Lines**: 395 | **Bytes**: 14198
+**Lines**: 394 | **Bytes**: 14170
 
 ```kotlin
 /*
@@ -28852,7 +28944,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.R
@@ -29287,7 +29378,7 @@ public class RemovedAppStore {
 # src/com/android/launcher3/applibrary/model/CategoryProvider.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
-**Lines**: 494 | **Bytes**: 24803
+**Lines**: 509 | **Bytes**: 25467
 
 ```kotlin
 package com.android.launcher3.applibrary.model
@@ -29303,7 +29394,7 @@ class CategoryProvider(private val context: Context) {
 
     companion object {
         private const val PREFS_NAME = "app_library_category_overrides"
-        private const val RESOLVED_CACHE_PREFS = "app_library_resolved_categories"
+        private const val RESOLVED_CACHE_PREFS = "app_library_resolved_categories_v2"
 
         @Volatile
         private var INSTANCE: CategoryProvider? = null
@@ -29413,17 +29504,17 @@ class CategoryProvider(private val context: Context) {
         // 2. Known Package DB (Highest priority for accuracy)
         getCategoryByPackage(packageName)?.let { return it }
 
-        // 3. Developer Rules (e.g. Adobe, Microsoft)
-        getCategoryByDeveloper(packageName)?.let { return it }
-
-        // 4. Keyword Rules based on App Name
-        getCategoryByKeyword(appName)?.let { return it }
-
-        // 5. ApplicationInfo.category (API 26+)
+        // 3. ApplicationInfo.category (API 26+) - Official system/Play Store declared category
         val appCat = getAppInfoCategory(packageName)
-        if (appCat != null) {
+        if (appCat != null && appCat != ApplicationInfo.CATEGORY_UNDEFINED) {
             getCategoryByAppInfoCategory(appCat, appName, packageName)?.let { return it }
         }
+
+        // 4. Developer Rules (e.g. Adobe, Microsoft)
+        getCategoryByDeveloper(packageName)?.let { return it }
+
+        // 5. Keyword Rules based on App Name
+        getCategoryByKeyword(appName)?.let { return it }
 
         // 6. Fallback
         return AppLibraryCategory.OTHER
@@ -29633,6 +29724,21 @@ class CategoryProvider(private val context: Context) {
         }
     }
 
+    private fun containsWord(text: String, word: String): Boolean {
+        val len = text.length
+        val wlen = word.length
+        var start = 0
+        while (start <= len - wlen) {
+            val idx = text.indexOf(word, start)
+            if (idx == -1) return false
+            val before = idx == 0 || !text[idx - 1].isLetterOrDigit()
+            val after = (idx + wlen == len) || !text[idx + wlen].isLetterOrDigit()
+            if (before && after) return true
+            start = idx + 1
+        }
+        return false
+    }
+
     private fun getCategoryByKeyword(appName: String): AppLibraryCategory? {
         // App Stores & Essential Utilities first (prevent "store" triggering shopping)
         if (appName.contains("play store") || appName.contains("app store") ||
@@ -29677,7 +29783,7 @@ class CategoryProvider(private val context: Context) {
             appName.contains("contact") || appName.contains("message") ||
             appName.contains("sms") || appName.contains("chat") ||
             appName.contains("messenger") || appName.contains("social") ||
-            appName.contains("meet") || appName.contains("call") || appName.contains("talk")) {
+            appName.contains("meet") || containsWord(appName, "call") || appName.contains("talk")) {
             return AppLibraryCategory.SOCIAL
         }
 
@@ -29693,7 +29799,7 @@ class CategoryProvider(private val context: Context) {
         if (appName.contains("photo") || appName.contains("camera") ||
             appName.contains("gallery") || appName.contains("draw") ||
             appName.contains("paint") || appName.contains("edit") ||
-            appName.contains("design") || appName.contains("art") ||
+            appName.contains("design") || containsWord(appName, "art") ||
             appName.contains("canvas") || appName.contains("studio")) {
             return AppLibraryCategory.CREATIVITY
         }
@@ -29711,14 +29817,14 @@ class CategoryProvider(private val context: Context) {
         if (appName.contains("travel") || appName.contains("map") ||
             appName.contains("nav") || appName.contains("transit") ||
             appName.contains("ride") || appName.contains("taxi") ||
-            appName.contains("cab") || appName.contains("flight") ||
+            containsWord(appName, "cab") || appName.contains("flight") ||
             appName.contains("hotel") || appName.contains("trip")) {
             return AppLibraryCategory.TRAVEL
         }
 
         // Shopping & Food (stores, markets, delivery)
         if (appName.contains("shop") || appName.contains("store") ||
-            appName.contains("food") || appName.contains("eat") ||
+            appName.contains("food") || containsWord(appName, "eat") ||
             appName.contains("restaurant") || appName.contains("delivery") ||
             appName.contains("grocery") || appName.contains("order")) {
             return AppLibraryCategory.SHOPPING_FOOD
@@ -29727,7 +29833,7 @@ class CategoryProvider(private val context: Context) {
         // Health & Fitness
         if (appName.contains("health") || appName.contains("fitness") ||
             appName.contains("workout") || appName.contains("gym") ||
-            appName.contains("diet") || appName.contains("run") ||
+            appName.contains("diet") || containsWord(appName, "run") ||
             appName.contains("step") || appName.contains("meditation") ||
             appName.contains("yoga")) {
             return AppLibraryCategory.HEALTH_FITNESS
@@ -33475,7 +33581,7 @@ public class AppLibraryIndexScrollerView extends View {
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
-**Lines**: 518 | **Bytes**: 20230
+**Lines**: 517 | **Bytes**: 20202
 
 ```kotlin
 package com.android.launcher3.applibrary.view
@@ -33510,7 +33616,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Insettable
 import com.android.launcher3.Launcher
@@ -38208,7 +38313,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 # src/com/android/launcher3/LauncherModel.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherModel.java`  
-**Lines**: 719 | **Bytes**: 28410
+**Lines**: 722 | **Bytes**: 28501
 
 ```java
 /*
@@ -38473,7 +38578,10 @@ public class LauncherModel implements InstallSessionTracker.Callback {
                 }
             }
         }
-        LauncherAppMonitor.getInstanceNoCreate().onReceive(intent);
+        LauncherAppMonitor monitor = LauncherAppMonitor.getInstanceNoCreate();
+        if (monitor != null) {
+            monitor.onReceive(intent);
+        }
     }
 
     /**
@@ -38936,7 +39044,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
 # src/com/android/launcher3/model/ModelWriter.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/ModelWriter.java`  
-**Lines**: 581 | **Bytes**: 23312
+**Lines**: 590 | **Bytes**: 23752
 
 ```java
 /*
@@ -39036,13 +39144,14 @@ public class ModelWriter {
             ItemInfo item, int container, int screenId, int cellX, int cellY) {
         CellPos modelPos = mCellPosMapper.mapPresenterToModel(cellX, cellY, screenId, container);
 
-        android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
-                + " title=" + item.title
-                + " container " + item.container + "->" + container
-                + " screen " + item.screenId + "->" + modelPos.screenId
-                + " cell(" + item.cellX + "," + item.cellY + ")->("
-                + modelPos.cellX + "," + modelPos.cellY + ")",
-                new Throwable("caller"));
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            android.util.Log.d("ICON_TRACE", "updateItemInfoProps id=" + item.id
+                    + " title=" + item.title
+                    + " container " + item.container + "->" + container
+                    + " screen " + item.screenId + "->" + modelPos.screenId
+                    + " cell(" + item.cellX + "," + item.cellY + ")->("
+                    + modelPos.cellX + "," + modelPos.cellY + ")");
+        }
 
         item.container = container;
         item.cellX = modelPos.cellX;
@@ -39367,10 +39476,18 @@ public class ModelWriter {
                     && (mItem.container == Favorites.CONTAINER_DESKTOP
                         || mItem.container == Favorites.CONTAINER_HOTSEAT
                         || mItem.container >= 0)) {
-                ContentWriter writer = new ContentWriter(mContext);
-                mItem.onAddToDatabase(writer);
-                writer.put(Favorites._ID, mItemId);
-                mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+                boolean isItemActive;
+                synchronized (mBgDataModel) {
+                    isItemActive = mBgDataModel.itemsIdMap.containsKey(mItemId);
+                }
+                if (isItemActive) {
+                    ContentWriter writer = new ContentWriter(mContext);
+                    mItem.onAddToDatabase(writer);
+                    writer.put(Favorites._ID, mItemId);
+                    mModel.getModelDbController().insert(getFavoritesTableName(), writer.getValues(mContext));
+                } else {
+                    FileLog.d(TAG, "Skipping resurrecting deleted item id=" + mItemId + " title=" + mItem.title);
+                }
             }
             updateItemArrays(mItem, mItemId);
         }
@@ -40101,7 +40218,7 @@ public class BgDataModel {
 # src/com/android/launcher3/model/LoaderTask.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/LoaderTask.java`  
-**Lines**: 790 | **Bytes**: 34901
+**Lines**: 792 | **Bytes**: 34983
 
 ```java
 /*
@@ -40371,8 +40488,10 @@ public class LoaderTask implements Runnable {
             } finally {
                 Trace.endSection();
             }
-            LauncherAppMonitor.getInstanceNoCreate()
-                    .onLoadAllAppsEnd(new ArrayList<>(mBgAllAppsList.data));
+            LauncherAppMonitor monitor = LauncherAppMonitor.getInstanceNoCreate();
+            if (monitor != null) {
+                monitor.onLoadAllAppsEnd(new ArrayList<>(mBgAllAppsList.data));
+            }
             logASplit("loadAllApps");
 
             if (FeatureFlags.CHANGE_MODEL_DELEGATE_LOADING_ORDER.get()) {
@@ -41460,7 +41579,7 @@ public class ItemInfo {
 # src/com/android/launcher3/model/data/FolderInfo.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/FolderInfo.java`  
-**Lines**: 394 | **Bytes**: 13502
+**Lines**: 395 | **Bytes**: 13500
 
 ```java
 /*
@@ -41496,6 +41615,7 @@ import androidx.annotation.Nullable;
 
 import com.android.launcher3.LauncherSettings;
 import com.android.launcher3.Utilities;
+import com.android.launcher3.folder.Folder;
 import com.android.launcher3.folder.FolderNameInfos;
 import com.android.launcher3.logger.LauncherAtom;
 import com.android.launcher3.logger.LauncherAtom.Attribute;
@@ -41638,8 +41758,8 @@ public class FolderInfo extends ItemInfo {
     }
 
     public void addListener(FolderListener listener) {
-        if (listener.getClass().getName().endsWith(".Folder")) {
-            mListeners.removeIf(l -> l.getClass().getName().endsWith(".Folder"));
+        if (listener instanceof Folder) {
+            mListeners.removeIf(l -> l instanceof Folder);
         }
         if (!mListeners.contains(listener)) {
             mListeners.add(listener);
@@ -42118,7 +42238,7 @@ public class WorkspaceItemInfo extends ItemInfoWithIcon {
 # bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
-**Lines**: 554 | **Bytes**: 22353
+**Lines**: 554 | **Bytes**: 22388
 
 ```kotlin
 /*
@@ -42163,7 +42283,6 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
-import android.widget.Toast
 import androidx.core.view.forEach
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.Launcher
@@ -42171,6 +42290,7 @@ import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.PendingAddItemInfo
 import com.android.launcher3.R
 import com.android.launcher3.config.FeatureFlags
+import foundation.e.bliss.glass.LiquidGlassToast
 import com.android.launcher3.graphics.FragmentWithPreview
 import com.android.launcher3.widget.LauncherAppWidgetProviderInfo
 import com.android.launcher3.widget.PendingAddShortcutInfo
@@ -42660,7 +42780,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
                     }
 
                 if (tag is PendingAddShortcutInfo) {
-                    Toast.makeText(context, "Please select a widget", Toast.LENGTH_SHORT).show()
+                    LiquidGlassToast.show(context, "Please select a widget", R.drawable.ic_ios_warning_circle)
                 } else if (tag is PendingAddItemInfo) {
                     closeSheet(true)
                     defaultWidgets.add(tag.componentName)
@@ -43128,7 +43248,7 @@ object BlissPrefs {
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
-**Lines**: 607 | **Bytes**: 25748
+**Lines**: 616 | **Bytes**: 26773
 
 ```kotlin
 /*
@@ -43475,85 +43595,102 @@ object DefaultHomeLayoutResolver {
             }
         }
 
-        if (!hasClockWidget) {
-            placeWidgetIfMissing(clockProvider, 0, 0, 0, 2, 2)
-        }
-        if (!hasCalendarWidget) {
-            placeWidgetIfMissing(calendarProvider, 0, 2, 0, 2, 2)
-        }
-
-        val workActivities = ArrayList<LauncherActivityInfo>()
-        val personalActivities = ArrayList<LauncherActivityInfo>()
-
-        for (profile in allProfiles) {
-            val isWork = userCache.getUserInfo(profile).isWork
-            val acts = launcherApps?.getActivityList(null, profile) ?: emptyList()
-            if (isWork) {
-                workActivities.addAll(acts)
-            } else {
-                personalActivities.addAll(acts)
+        db.beginTransaction()
+        try {
+            if (!hasClockWidget) {
+                placeWidgetIfMissing(clockProvider, 0, 0, 0, 2, 2)
             }
-        }
+            if (!hasCalendarWidget) {
+                placeWidgetIfMissing(calendarProvider, 0, 2, 0, 2, 2)
+            }
 
-        // 2. Resolve curated roles for personal profile
-        val curatedToPlace = ArrayList<ComponentName>()
-        for (role in CURATED_ROLES) {
-            val resolved = resolveRole(context, role, launcherApps, myUser)
-            if (resolved != null) {
-                val key = ComponentKey(resolved, myUser)
-                if (existingComponentKeys.contains(key) || existingPackages.contains(resolved.packageName)) {
-                    Log.d(TAG, "Role ${role.roleName} resolved to $resolved but already in DB (deduped).")
-                } else {
-                    curatedToPlace.add(resolved)
-                    existingComponents.add(resolved)
-                    existingPackages.add(resolved.packageName)
-                    existingComponentKeys.add(key)
-                    Log.d(TAG, "Role ${role.roleName} resolved to $resolved to be placed on Home Screen.")
+            val workActivities = ArrayList<LauncherActivityInfo>()
+            val personalActivities = ArrayList<LauncherActivityInfo>()
+
+            for (profile in allProfiles) {
+                val userInfo = userCache.getUserInfo(profile)
+                val isWork = userInfo.isWork
+                val isPrivate = userInfo.isPrivate
+                val acts = launcherApps?.getActivityList(null, profile) ?: emptyList()
+                if (isWork) {
+                    workActivities.addAll(acts)
+                } else if (profile == myUser && !isPrivate) {
+                    personalActivities.addAll(acts)
                 }
-            } else {
-                Log.d(TAG, "Role ${role.roleName} not found on device.")
             }
-        }
 
-        // 3. Collect remaining personal activities (sorted alphabetically)
-        val remainingPersonalToPlace = ArrayList<Pair<ComponentName, Long>>()
-        val sortedPersonal = personalActivities.sortedBy { it.label?.toString()?.lowercase() ?: "" }
-        for (act in sortedPersonal) {
-            val comp = act.componentName
-            val key = ComponentKey(comp, act.user)
-            if (!existingComponentKeys.contains(key)) {
-                val serial = userCache.getSerialNumberForUser(act.user)
-                remainingPersonalToPlace.add(Pair(comp, serial))
-                existingComponentKeys.add(key)
-                existingComponents.add(comp)
+            // 2. Resolve curated roles for personal profile
+            val curatedToPlace = ArrayList<ComponentName>()
+            for (role in CURATED_ROLES) {
+                val resolved = resolveRole(context, role, launcherApps, myUser)
+                if (resolved != null) {
+                    val key = ComponentKey(resolved, myUser)
+                    if (existingComponentKeys.contains(key) || existingPackages.contains(resolved.packageName)) {
+                        Log.d(TAG, "Role ${role.roleName} resolved to $resolved but already in DB (deduped).")
+                    } else {
+                        curatedToPlace.add(resolved)
+                        existingComponents.add(resolved)
+                        existingPackages.add(resolved.packageName)
+                        existingComponentKeys.add(key)
+                        Log.d(TAG, "Role ${role.roleName} resolved to $resolved to be placed on Home Screen.")
+                    }
+                } else {
+                    Log.d(TAG, "Role ${role.roleName} not found on device.")
+                }
             }
-        }
 
-        // 4. Reserve the last 2 cells on Screen 0 so it stays clean and not too crowded
-        val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
-        val totalCellsScreen0 = numCols * numRows
-        for (idx in (totalCellsScreen0 - 2) until totalCellsScreen0) {
-            if (idx >= 0) {
-                val rx = idx % numCols
-                val ry = idx / numCols
-                reservedCellsScreen0.add(Pair(rx, ry))
+            // 3. Collect remaining personal activities (sorted alphabetically)
+            val remainingPersonalToPlace = ArrayList<Pair<ComponentName, Long>>()
+            val sortedPersonal = personalActivities.sortedBy { it.label?.toString()?.lowercase() ?: "" }
+            for (act in sortedPersonal) {
+                val comp = act.componentName
+                val key = ComponentKey(comp, act.user)
+                if (!existingComponentKeys.contains(key)) {
+                    val serial = userCache.getSerialNumberForUser(act.user)
+                    remainingPersonalToPlace.add(Pair(comp, serial))
+                    existingComponentKeys.add(key)
+                    existingComponents.add(comp)
+                }
             }
-        }
 
-        var currentScreen = 0
-        var currentX = 0
-        var currentY = 0
+            // 4. Reserve the last 2 cells on Screen 0 so it stays clean and not too crowded
+            val reservedCellsScreen0 = HashSet<Pair<Int, Int>>()
+            val totalCellsScreen0 = numCols * numRows
+            for (idx in (totalCellsScreen0 - 2) until totalCellsScreen0) {
+                if (idx >= 0) {
+                    val rx = idx % numCols
+                    val ry = idx / numCols
+                    reservedCellsScreen0.add(Pair(rx, ry))
+                }
+            }
 
-        fun getNextAvailableCell(): Triple<Int, Int, Int> {
-            while (true) {
-                val occupiedOnScreen = occupiedCellsByScreen.getOrPut(currentScreen) { HashSet() }
-                val cell = Pair(currentX, currentY)
-                val isReserved = (currentScreen == 0 && reservedCellsScreen0.contains(cell))
-                val isOccupied = occupiedOnScreen.contains(cell)
+            var currentScreen = 0
+            var currentX = 0
+            var currentY = 0
 
-                if (!isOccupied && !isReserved) {
-                    val result = Triple(currentScreen, currentX, currentY)
-                    occupiedOnScreen.add(cell)
+            fun getNextAvailableCell(): Triple<Int, Int, Int> {
+                while (true) {
+                    val occupiedOnScreen = occupiedCellsByScreen.getOrPut(currentScreen) { HashSet() }
+                    val cell = Pair(currentX, currentY)
+                    val isReserved = (currentScreen == 0 && reservedCellsScreen0.contains(cell))
+                    val isOccupied = occupiedOnScreen.contains(cell)
+
+                    if (!isOccupied && !isReserved) {
+                        val result = Triple(currentScreen, currentX, currentY)
+                        occupiedOnScreen.add(cell)
+                        currentX++
+                        if (currentX >= numCols) {
+                            currentX = 0
+                            currentY++
+                            if (currentY >= numRows) {
+                                currentScreen++
+                                currentX = 0
+                                currentY = 0
+                            }
+                        }
+                        return result
+                    }
+
                     currentX++
                     if (currentX >= numCols) {
                         currentX = 0
@@ -43564,116 +43701,108 @@ object DefaultHomeLayoutResolver {
                             currentY = 0
                         }
                     }
-                    return result
-                }
-
-                currentX++
-                if (currentX >= numCols) {
-                    currentX = 0
-                    currentY++
-                    if (currentY >= numRows) {
-                        currentScreen++
-                        currentX = 0
-                        currentY = 0
-                    }
                 }
             }
-        }
 
-        // 5. Place curated personal apps
-        for (component in curatedToPlace) {
-            val (screen, cellX, cellY) = getNextAvailableCell()
-            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setComponent(component)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
-            }
-            val values = ContentValues().apply {
-                put(Favorites._ID, dbHelper.generateNewItemId())
-                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                put(Favorites.SCREEN, screen)
-                put(Favorites.CELLX, cellX)
-                put(Favorites.CELLY, cellY)
-                put(Favorites.SPANX, 1)
-                put(Favorites.SPANY, 1)
-                put(Favorites.INTENT, launchIntent.toUri(0))
-                put(Favorites.PROFILE_ID, userSerial)
-                put(Favorites.MODIFIED, System.currentTimeMillis())
-            }
-            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
-        }
-
-        // 6. Place Work folder if work profile apps exist
-        if (workActivities.isNotEmpty()) {
-            val (folderScreen, folderCellX, folderCellY) = getNextAvailableCell()
-            val folderId = dbHelper.generateNewItemId()
-            val folderValues = ContentValues().apply {
-                put(Favorites._ID, folderId)
-                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_FOLDER)
-                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                put(Favorites.SCREEN, folderScreen)
-                put(Favorites.CELLX, folderCellX)
-                put(Favorites.CELLY, folderCellY)
-                put(Favorites.SPANX, 1)
-                put(Favorites.SPANY, 1)
-                put(Favorites.TITLE, "Work")
-                put(Favorites.PROFILE_ID, userSerial)
-                put(Favorites.MODIFIED, System.currentTimeMillis())
-            }
-            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, folderValues)
-
-            var workRank = 0
-            for (workAct in workActivities) {
-                val workUserSerial = userCache.getSerialNumberForUser(workAct.user)
+            // 5. Place curated personal apps
+            for (component in curatedToPlace) {
+                val (screen, cellX, cellY) = getNextAvailableCell()
                 val launchIntent = Intent(Intent.ACTION_MAIN).apply {
                     addCategory(Intent.CATEGORY_LAUNCHER)
-                    setComponent(workAct.componentName)
+                    setComponent(component)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
                 }
-                val itemValues = ContentValues().apply {
+                val values = ContentValues().apply {
                     put(Favorites._ID, dbHelper.generateNewItemId())
                     put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                    put(Favorites.CONTAINER, folderId)
-                    put(Favorites.SCREEN, 0)
-                    put(Favorites.CELLX, 0)
-                    put(Favorites.CELLY, 0)
+                    put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                    put(Favorites.SCREEN, screen)
+                    put(Favorites.CELLX, cellX)
+                    put(Favorites.CELLY, cellY)
                     put(Favorites.SPANX, 1)
                     put(Favorites.SPANY, 1)
-                    put(Favorites.RANK, workRank++)
                     put(Favorites.INTENT, launchIntent.toUri(0))
-                    put(Favorites.PROFILE_ID, workUserSerial)
+                    put(Favorites.PROFILE_ID, userSerial)
                     put(Favorites.MODIFIED, System.currentTimeMillis())
                 }
-                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, itemValues)
-                existingComponents.add(workAct.componentName)
-                existingPackages.add(workAct.componentName.packageName)
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
             }
-            Log.d(TAG, "Created 'Work' folder on screen $folderScreen with ${workActivities.size} apps.")
-        }
 
-        // 7. Place all remaining personal apps across screens
-        for ((component, serial) in remainingPersonalToPlace) {
-            val (screen, cellX, cellY) = getNextAvailableCell()
-            val launchIntent = Intent(Intent.ACTION_MAIN).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-                setComponent(component)
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+            // 6. Place Work folder if work profile apps exist
+            if (workActivities.isNotEmpty()) {
+                val (folderScreen, folderCellX, folderCellY) = getNextAvailableCell()
+                val folderId = dbHelper.generateNewItemId()
+                val folderValues = ContentValues().apply {
+                    put(Favorites._ID, folderId)
+                    put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_FOLDER)
+                    put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                    put(Favorites.SCREEN, folderScreen)
+                    put(Favorites.CELLX, folderCellX)
+                    put(Favorites.CELLY, folderCellY)
+                    put(Favorites.SPANX, 1)
+                    put(Favorites.SPANY, 1)
+                    put(Favorites.TITLE, "Work")
+                    put(Favorites.PROFILE_ID, userSerial)
+                    put(Favorites.MODIFIED, System.currentTimeMillis())
+                }
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, folderValues)
+
+                var workRank = 0
+                for (workAct in workActivities) {
+                    val workUserSerial = userCache.getSerialNumberForUser(workAct.user)
+                    val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                        addCategory(Intent.CATEGORY_LAUNCHER)
+                        setComponent(workAct.componentName)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                    }
+                    val itemValues = ContentValues().apply {
+                        put(Favorites._ID, dbHelper.generateNewItemId())
+                        put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                        put(Favorites.CONTAINER, folderId)
+                        put(Favorites.SCREEN, 0)
+                        put(Favorites.CELLX, 0)
+                        put(Favorites.CELLY, 0)
+                        put(Favorites.SPANX, 1)
+                        put(Favorites.SPANY, 1)
+                        put(Favorites.RANK, workRank++)
+                        put(Favorites.INTENT, launchIntent.toUri(0))
+                        put(Favorites.PROFILE_ID, workUserSerial)
+                        put(Favorites.MODIFIED, System.currentTimeMillis())
+                    }
+                    dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, itemValues)
+                    existingComponents.add(workAct.componentName)
+                    existingPackages.add(workAct.componentName.packageName)
+                }
+                Log.d(TAG, "Created 'Work' folder on screen $folderScreen with ${workActivities.size} apps.")
             }
-            val values = ContentValues().apply {
-                put(Favorites._ID, dbHelper.generateNewItemId())
-                put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
-                put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
-                put(Favorites.SCREEN, screen)
-                put(Favorites.CELLX, cellX)
-                put(Favorites.CELLY, cellY)
-                put(Favorites.SPANX, 1)
-                put(Favorites.SPANY, 1)
-                put(Favorites.INTENT, launchIntent.toUri(0))
-                put(Favorites.PROFILE_ID, serial)
-                put(Favorites.MODIFIED, System.currentTimeMillis())
+
+            // 7. Place all remaining personal apps across screens
+            for ((component, serial) in remainingPersonalToPlace) {
+                val (screen, cellX, cellY) = getNextAvailableCell()
+                val launchIntent = Intent(Intent.ACTION_MAIN).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
+                    setComponent(component)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+                }
+                val values = ContentValues().apply {
+                    put(Favorites._ID, dbHelper.generateNewItemId())
+                    put(Favorites.ITEM_TYPE, Favorites.ITEM_TYPE_APPLICATION)
+                    put(Favorites.CONTAINER, Favorites.CONTAINER_DESKTOP)
+                    put(Favorites.SCREEN, screen)
+                    put(Favorites.CELLX, cellX)
+                    put(Favorites.CELLY, cellY)
+                    put(Favorites.SPANX, 1)
+                    put(Favorites.SPANY, 1)
+                    put(Favorites.INTENT, launchIntent.toUri(0))
+                    put(Favorites.PROFILE_ID, serial)
+                    put(Favorites.MODIFIED, System.currentTimeMillis())
+                }
+                dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
             }
-            dbHelper.dbInsertAndCheck(db, Favorites.TABLE_NAME_ALL, values)
+
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
         }
 
         Log.d(TAG, "Completed default layout population: all apps placed, Screen 0 has Clock and Calendar widgets at top and last 2 slots blank.")
@@ -43744,7 +43873,7 @@ object DefaultHomeLayoutResolver {
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 211 | **Bytes**: 9510
+**Lines**: 209 | **Bytes**: 9430
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -43822,7 +43951,7 @@ object DefaultHomeLayoutResolver {
         android:icon="@mipmap/ic_launcher"
         tools:replace="android:label"
         android:label="@string/derived_app_name"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:allowClearUserData="true"
         android:largeHeap="@bool/config_largeHeap"
         android:restoreAnyVersion="true"
@@ -43911,9 +44040,7 @@ object DefaultHomeLayoutResolver {
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="true"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
+            android:exported="false"
             android:autoRemoveFromRecents="true" />
 
         <provider

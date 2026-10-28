@@ -93,6 +93,9 @@ class OnboardingActivity : Activity() {
                 "step2", "notification" -> showStep(Step.NOTIFICATION_ACCESS)
                 "step3", "tips", "customize" -> showStep(Step.CUSTOMIZE_TIPS)
             }
+        } else if (!isDefaultStepNeeded && !isNotificationStepNeeded) {
+            completeOnboarding()
+            return
         } else if (isDefaultStepNeeded) {
             showStep(Step.DEFAULT_LAUNCHER)
         } else if (isNotificationStepNeeded) {
@@ -235,7 +238,8 @@ class OnboardingActivity : Activity() {
                 restrictedHintText.visibility = View.GONE
                 tipsCard.visibility = View.VISIBLE
                 primaryButton.setText(R.string.onboarding_customize_action)
-                secondaryButton.visibility = View.GONE
+                secondaryButton.setText(R.string.onboarding_default_skip)
+                secondaryButton.visibility = View.VISIBLE
             }
         }
     }
@@ -367,27 +371,7 @@ class OnboardingActivity : Activity() {
 
     private fun handleBackNavigation() {
         if (isFinishing || isDestroyed) return
-        when (currentStep) {
-            Step.CUSTOMIZE_TIPS -> {
-                if (isNotificationStepNeeded) {
-                    showStep(Step.NOTIFICATION_ACCESS)
-                } else if (isDefaultStepNeeded) {
-                    showStep(Step.DEFAULT_LAUNCHER)
-                } else {
-                    completeOnboarding()
-                }
-            }
-            Step.NOTIFICATION_ACCESS -> {
-                if (isDefaultStepNeeded) {
-                    showStep(Step.DEFAULT_LAUNCHER)
-                } else {
-                    completeOnboarding()
-                }
-            }
-            Step.DEFAULT_LAUNCHER -> {
-                completeOnboarding()
-            }
-        }
+        completeOnboarding()
     }
 
     override fun onDestroy() {

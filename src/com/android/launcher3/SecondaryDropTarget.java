@@ -32,7 +32,7 @@ import android.util.ArrayMap;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.Nullable;
 
@@ -310,11 +310,7 @@ public class SecondaryDropTarget extends ButtonDropTarget implements OnAlarmList
         if (cn == null) {
             // System applications cannot be installed. For now, show a toast explaining that.
             // We may give them the option of disabling apps this way.
-            Toast.makeText(
-                    context,
-                    R.string.uninstall_system_app_text,
-                    Toast.LENGTH_SHORT
-            ).show();
+            LiquidGlassToast.show(context, R.string.uninstall_system_app_text, R.drawable.ic_ios_warning_circle);
             return null;
         }
         try {

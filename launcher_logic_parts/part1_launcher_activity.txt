@@ -17,7 +17,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/Launcher.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4146 | **Bytes**: 175056
+**Lines**: 4190 | **Bytes**: 177630
 
 ```java
 /*
@@ -383,6 +383,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             new KeyboardShortcutsDelegate(this);
 
     private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
+    private boolean mHasLaunchedOnboarding = false;
 
     public LauncherInteractionController getInteractionController() {
         return mInteractionController;
@@ -527,13 +528,6 @@ public class Launcher extends StatefulActivity<LauncherState>
     protected void onCreate(Bundle savedInstanceState) {
         Logger.plant();
 
-        if (!BuildConfig.DEBUG) {
-            try {
-                Telemetry.init(BuildConfig.SENTRY_DSN, getApplication(), true);
-            } catch (Exception e) {
-                Logger.e(TAG, "Failed to initialize Sentry");
-            }
-        }
 
         mStartupLatencyLogger = createStartupLatencyLogger(
                 sIsNewProcess
@@ -1614,11 +1608,25 @@ public class Launcher extends StatefulActivity<LauncherState>
 
                         // If the hotseat has lost its child views (e.g. dropped due to an orientation race),
                         // trigger a rebind to restore the dock icons immediately!
+                        // Guard against cold-boot in-progress loads and intentionally empty docks.
                         if (mHotseat.getShortcutsAndWidgets() != null
                                 && mHotseat.getShortcutsAndWidgets().getChildCount() == 0
-                                && mModel != null) {
-                            Log.w(TAG, "Hotseat has 0 children on resume - rebinding callbacks to restore dock icons");
-                            mModel.rebindCallbacks();
+                                && mModel != null
+                                && mModel.isModelLoaded()
+                                && !isWorkspaceLoading()) {
+                            boolean modelHasHotseatItems = false;
+                            synchronized (mModel.mBgDataModel) {
+                                for (ItemInfo item : mModel.mBgDataModel.workspaceItems) {
+                                    if (item.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT) {
+                                        modelHasHotseatItems = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (modelHasHotseatItems) {
+                                Log.w(TAG, "Hotseat has 0 children on resume despite model having hotseat items - rebinding callbacks");
+                                mModel.rebindCallbacks();
+                            }
                         }
                     }
                 }
@@ -1636,17 +1644,53 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            try {
-                Intent onboardingIntent = new Intent(this,
-                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
-                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(onboardingIntent);
-            } catch (Exception e) {
-                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+            if (isExistingInstall()) {
+                LauncherPrefs.get(this).putSync(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE.to(true));
+            } else if (!mHasLaunchedOnboarding) {
+                mHasLaunchedOnboarding = true;
+                try {
+                    Intent onboardingIntent = new Intent(this,
+                            Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                    onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                    startActivity(onboardingIntent);
+                } catch (Exception e) {
+                    android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+                }
             }
         }
 
         TraceHelper.INSTANCE.endSection();
+    }
+
+    private boolean isExistingInstall() {
+        try {
+            android.app.role.RoleManager roleManager = getSystemService(android.app.role.RoleManager.class);
+            if (roleManager != null && roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                return true;
+            }
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
+                    homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfo != null && resolveInfo.activityInfo != null
+                    && getPackageName().equals(resolveInfo.activityInfo.packageName)) {
+                return true;
+            }
+            if (mDeviceProfile != null && mDeviceProfile.inv != null) {
+                java.io.File gridDb = getDatabasePath(mDeviceProfile.inv.numColumns + "_by_" + mDeviceProfile.inv.numRows + ".db");
+                if (gridDb != null && gridDb.exists() && gridDb.length() > 0) {
+                    return true;
+                }
+            }
+            java.io.File launcherDb = getDatabasePath(LauncherFiles.LAUNCHER_DB);
+            if (launcherDb != null && launcherDb.exists() && launcherDb.length() > 0) {
+                return true;
+            }
+            java.io.File iconsDb = getDatabasePath(LauncherFiles.APP_ICONS_DB);
+            if (iconsDb != null && iconsDb.exists() && iconsDb.length() > 0) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     @Override
@@ -4173,7 +4217,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 # src/com/android/launcher3/LauncherApplication.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
-**Lines**: 132 | **Bytes**: 5504
+**Lines**: 147 | **Bytes**: 6023
 
 ```java
 /*
@@ -4210,6 +4254,14 @@ public class LauncherApplication extends Application {
         setupUncaughtExceptionHandler();
         MainProcessInitializer.initialize(this);
         foundation.e.bliss.glass.GlassConfig.disableSensors(this);
+
+        if (!BuildConfig.DEBUG && BuildConfig.SENTRY_DSN != null && !BuildConfig.SENTRY_DSN.isEmpty()) {
+            try {
+                foundation.e.lib.telemetry.Telemetry.init(BuildConfig.SENTRY_DSN, this, true);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize Sentry", e);
+            }
+        }
     }
 
     private void setupUncaughtExceptionHandler() {
@@ -4217,8 +4269,7 @@ public class LauncherApplication extends Application {
                 Thread.getDefaultUncaughtExceptionHandler();
 
         Thread.setDefaultUncaughtExceptionHandler((thread, throwable) -> {
-            boolean isMainThread = Looper.getMainLooper().getThread() == thread;
-            if (!isMainThread && shouldSuppressException(thread, throwable)) {
+            if (shouldSuppressException(thread, throwable)) {
                 Log.w(TAG, "Suppressed external/OEM crash on thread ["
                         + (thread != null ? thread.getName() : "unknown") + "]: "
                         + (throwable != null ? throwable.toString() : "null"), throwable);
@@ -4231,12 +4282,22 @@ public class LauncherApplication extends Application {
         });
     }
 
+    private static boolean isLauncherOwnedThread(Thread thread) {
+        if (thread == null) return false;
+        if (Looper.getMainLooper().getThread() == thread) return true;
+        String name = thread.getName();
+        if (name == null) return false;
+        return name.equals("launcher-loader")
+                || name.equals("BackgroundExecutor")
+                || name.equals("UiThreadHelper")
+                || name.startsWith("preinflate-")
+                || name.startsWith("IconCache-");
+    }
+
     private static boolean shouldSuppressException(Thread thread, Throwable throwable) {
-        if (throwable == null) {
+        if (throwable == null || isLauncherOwnedThread(thread)) {
             return false;
         }
-
-        boolean isMainThread = Looper.getMainLooper().getThread() == thread;
 
         Throwable current = throwable;
         int depth = 0;
@@ -4269,20 +4330,18 @@ public class LauncherApplication extends Application {
                         return true;
                     }
 
-                    // On background threads: if the crash originates in an appwidget / remoteviews / third-party component
-                    if (!isMainThread && (className.contains(".widget.") || className.contains(".appwidget."))) {
-                        if (!className.startsWith("com.android.launcher3")
-                                && !className.startsWith("foundation.e.bliss")
-                                && !className.startsWith("com.ihome.launcher")) {
-                            return true;
-                        }
+                    // On background threads: if the crash originates in an appwidget / remoteviews component
+                    if (className.startsWith("android.appwidget.")
+                            || className.contains("RemoteViews")
+                            || className.startsWith("com.android.server.appwidget.")) {
+                        return true;
                     }
                 }
             }
 
             // Also on background threads, catch LinkageError (NoSuchMethodError, NoClassDefFoundError, etc.)
             // caused by vendor OEM code calling hidden/removed framework APIs on Android 16
-            if (!isMainThread && (current instanceof LinkageError)) {
+            if (current instanceof LinkageError) {
                 boolean containsLauncherCode = false;
                 if (stack != null) {
                     for (StackTraceElement element : stack) {
@@ -4314,7 +4373,7 @@ public class LauncherApplication extends Application {
 # src/com/android/launcher3/LauncherAppState.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
-**Lines**: 293 | **Bytes**: 12466
+**Lines**: 295 | **Bytes**: 12515
 
 ```java
 /*
@@ -4496,7 +4555,9 @@ public class LauncherAppState implements SafeCloseable {
         onNotificationSettingsChanged(settingsCache.getValue(NOTIFICATION_BADGING_URI));
         mOnTerminateCallback.add(() ->
                 settingsCache.unregister(NOTIFICATION_BADGING_URI, notificationLister));
-        mAppMonitor.onAppCreated(mContext);
+        if (mAppMonitor != null) {
+            mAppMonitor.onAppCreated(mContext);
+        }
         // Register an observer to notify Launcher about Private Space settings toggle.
         registerPrivateSpaceHideWhenLockListener(settingsCache);
     }
@@ -6120,7 +6181,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 # src/com/android/launcher3/settings/SettingsActivity.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 326 | **Bytes**: 13362
+**Lines**: 336 | **Bytes**: 14153
 
 ```java
 /*
@@ -6149,6 +6210,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
@@ -6184,6 +6246,7 @@ public class SettingsActivity extends FragmentActivity
 
     private static final String TAG = "SettingsActivity";
     private static final int REQUEST_CODE_ROLE = 1001;
+    private long mRoleRequestStartTime = 0;
 
     @VisibleForTesting
     static final String DEVELOPER_OPTIONS_KEY = "pref_developer_options";
@@ -6204,6 +6267,7 @@ public class SettingsActivity extends FragmentActivity
         setContentView(R.layout.activity_settings_ios);
 
         setupSystemBars();
+        LauncherPrefs.getPrefs(this).edit().remove(InvariantDeviceProfile.KEY_WORKSPACE_LOCK).apply();
         initViews();
     }
 
@@ -6263,6 +6327,7 @@ public class SettingsActivity extends FragmentActivity
         if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
             try {
                 Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME);
+                mRoleRequestStartTime = SystemClock.elapsedRealtime();
                 startActivityForResult(intent, REQUEST_CODE_ROLE);
                 return;
             } catch (Exception e) {
@@ -6291,9 +6356,15 @@ public class SettingsActivity extends FragmentActivity
             RoleManager roleManager = getSystemService(RoleManager.class);
             boolean isDefault = roleManager != null && roleManager.isRoleHeld(RoleManager.ROLE_HOME);
             if (!isDefault) {
-                // OEMs like Vivo OriginOS and Xiaomi HyperOS silently cancel ROLE_HOME intent
-                openHomeSettingsFallback();
+                long elapsed = SystemClock.elapsedRealtime() - mRoleRequestStartTime;
+                // Only open fallback if the role intent was silently dismissed almost instantaneously (< 250ms)
+                // by OEMs like Xiaomi HyperOS or Vivo OriginOS. If the user was shown the dialog and explicitly
+                // tapped Cancel, respect their cancellation and do not force open System Settings.
+                if (mRoleRequestStartTime > 0 && elapsed < 250) {
+                    openHomeSettingsFallback();
+                }
             }
+            mRoleRequestStartTime = 0;
             updateDefaultLauncherState();
         }
     }
@@ -6327,17 +6398,7 @@ public class SettingsActivity extends FragmentActivity
                     getContentResolver(), "notification_badging", 1) == 1;
             switchBadges.setOnCheckedChangeListener(null);
             switchBadges.setChecked(badgingEnabled);
-            switchBadges.setOnCheckedChangeListener((btn, isChecked) -> {
-                try {
-                    Settings.Secure.putInt(getContentResolver(), "notification_badging", isChecked ? 1 : 0);
-                } catch (Exception e) {
-                    try {
-                        startActivity(new Intent("android.settings.NOTIFICATION_SETTINGS"));
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Failed to launch notification settings", ex);
-                    }
-                }
-            });
+            switchBadges.setOnCheckedChangeListener((btn, isChecked) -> handleBadgingToggle(switchBadges, isChecked));
         } else {
             txtSubtitle.setText("Notification access required — tap to grant");
             txtSubtitle.setTextColor(getColor(R.color.ios_icon_orange));
@@ -6356,6 +6417,28 @@ public class SettingsActivity extends FragmentActivity
             switchCount.setOnCheckedChangeListener((btn, isChecked) -> {
                 LauncherPrefs.getPrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
             });
+        }
+    }
+
+    private void handleBadgingToggle(Switch switchBadges, boolean isChecked) {
+        try {
+            Settings.Secure.putInt(getContentResolver(), "notification_badging", isChecked ? 1 : 0);
+        } catch (Exception e) {
+            // Revert switch visually because writing to Settings.Secure requires WRITE_SECURE_SETTINGS
+            switchBadges.post(() -> {
+                switchBadges.setOnCheckedChangeListener(null);
+                switchBadges.setChecked(!isChecked);
+                switchBadges.setOnCheckedChangeListener((btn, checked) -> handleBadgingToggle(switchBadges, checked));
+            });
+            try {
+                Bundle extras = new Bundle();
+                extras.putString(EXTRA_FRAGMENT_HIGHLIGHT_KEY, "notification_badging");
+                Intent intent = new Intent("android.settings.NOTIFICATION_SETTINGS")
+                        .putExtra(":settings:show_fragment_args", extras);
+                startActivity(intent);
+            } catch (Exception ex) {
+                Log.e(TAG, "Failed to launch notification settings", ex);
+            }
         }
     }
 
@@ -6384,18 +6467,6 @@ public class SettingsActivity extends FragmentActivity
             switchAddToHome.setOnCheckedChangeListener((btn, isChecked) -> {
                 LauncherPrefs.getPrefs(this).edit()
                         .putBoolean(SessionCommitReceiver.ADD_ICON_PREFERENCE_KEY, isChecked).apply();
-            });
-        }
-
-        // Lock Layout
-        Switch switchLockLayout = findViewById(R.id.switch_lock_layout);
-        if (switchLockLayout != null) {
-            boolean isLocked = LauncherPrefs.getPrefs(this)
-                    .getBoolean(InvariantDeviceProfile.KEY_WORKSPACE_LOCK, false);
-            switchLockLayout.setChecked(isLocked);
-            switchLockLayout.setOnCheckedChangeListener((btn, isChecked) -> {
-                LauncherPrefs.getPrefs(this).edit()
-                        .putBoolean(InvariantDeviceProfile.KEY_WORKSPACE_LOCK, isChecked).apply();
             });
         }
 

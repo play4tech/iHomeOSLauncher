@@ -30,7 +30,6 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Insettable
 import com.android.launcher3.Launcher

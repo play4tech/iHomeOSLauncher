@@ -23,11 +23,12 @@ import android.graphics.Canvas
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
-import android.widget.Toast
+import com.android.launcher3.R
 import com.android.launcher3.util.Executors
 import com.android.launcher3.util.MainThreadInitializedObject
 import foundation.e.bliss.blur.BlurWallpaperFilter
 import foundation.e.bliss.blur.WallpaperFilter
+import foundation.e.bliss.glass.LiquidGlassToast
 import foundation.e.bliss.utils.runOnMainThread
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -80,7 +81,7 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
                                 notifyListeners()
                             } else {
                                 if (error is OutOfMemoryError) {
-                                    Toast.makeText(context, "Blur Failed! (OOM)", Toast.LENGTH_LONG).show()
+                                    LiquidGlassToast.show(context, "Blur Failed! (OOM)", R.drawable.ic_ios_warning_circle)
                                 }
                                 blurSizes = null
                                 notifyListeners()

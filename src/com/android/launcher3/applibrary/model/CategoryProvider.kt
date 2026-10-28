@@ -11,7 +11,7 @@ class CategoryProvider(private val context: Context) {
 
     companion object {
         private const val PREFS_NAME = "app_library_category_overrides"
-        private const val RESOLVED_CACHE_PREFS = "app_library_resolved_categories"
+        private const val RESOLVED_CACHE_PREFS = "app_library_resolved_categories_v2"
 
         @Volatile
         private var INSTANCE: CategoryProvider? = null
@@ -121,17 +121,17 @@ class CategoryProvider(private val context: Context) {
         // 2. Known Package DB (Highest priority for accuracy)
         getCategoryByPackage(packageName)?.let { return it }
 
-        // 3. Developer Rules (e.g. Adobe, Microsoft)
-        getCategoryByDeveloper(packageName)?.let { return it }
-
-        // 4. Keyword Rules based on App Name
-        getCategoryByKeyword(appName)?.let { return it }
-
-        // 5. ApplicationInfo.category (API 26+)
+        // 3. ApplicationInfo.category (API 26+) - Official system/Play Store declared category
         val appCat = getAppInfoCategory(packageName)
-        if (appCat != null) {
+        if (appCat != null && appCat != ApplicationInfo.CATEGORY_UNDEFINED) {
             getCategoryByAppInfoCategory(appCat, appName, packageName)?.let { return it }
         }
+
+        // 4. Developer Rules (e.g. Adobe, Microsoft)
+        getCategoryByDeveloper(packageName)?.let { return it }
+
+        // 5. Keyword Rules based on App Name
+        getCategoryByKeyword(appName)?.let { return it }
 
         // 6. Fallback
         return AppLibraryCategory.OTHER
@@ -341,6 +341,21 @@ class CategoryProvider(private val context: Context) {
         }
     }
 
+    private fun containsWord(text: String, word: String): Boolean {
+        val len = text.length
+        val wlen = word.length
+        var start = 0
+        while (start <= len - wlen) {
+            val idx = text.indexOf(word, start)
+            if (idx == -1) return false
+            val before = idx == 0 || !text[idx - 1].isLetterOrDigit()
+            val after = (idx + wlen == len) || !text[idx + wlen].isLetterOrDigit()
+            if (before && after) return true
+            start = idx + 1
+        }
+        return false
+    }
+
     private fun getCategoryByKeyword(appName: String): AppLibraryCategory? {
         // App Stores & Essential Utilities first (prevent "store" triggering shopping)
         if (appName.contains("play store") || appName.contains("app store") ||
@@ -385,7 +400,7 @@ class CategoryProvider(private val context: Context) {
             appName.contains("contact") || appName.contains("message") ||
             appName.contains("sms") || appName.contains("chat") ||
             appName.contains("messenger") || appName.contains("social") ||
-            appName.contains("meet") || appName.contains("call") || appName.contains("talk")) {
+            appName.contains("meet") || containsWord(appName, "call") || appName.contains("talk")) {
             return AppLibraryCategory.SOCIAL
         }
 
@@ -401,7 +416,7 @@ class CategoryProvider(private val context: Context) {
         if (appName.contains("photo") || appName.contains("camera") ||
             appName.contains("gallery") || appName.contains("draw") ||
             appName.contains("paint") || appName.contains("edit") ||
-            appName.contains("design") || appName.contains("art") ||
+            appName.contains("design") || containsWord(appName, "art") ||
             appName.contains("canvas") || appName.contains("studio")) {
             return AppLibraryCategory.CREATIVITY
         }
@@ -419,14 +434,14 @@ class CategoryProvider(private val context: Context) {
         if (appName.contains("travel") || appName.contains("map") ||
             appName.contains("nav") || appName.contains("transit") ||
             appName.contains("ride") || appName.contains("taxi") ||
-            appName.contains("cab") || appName.contains("flight") ||
+            containsWord(appName, "cab") || appName.contains("flight") ||
             appName.contains("hotel") || appName.contains("trip")) {
             return AppLibraryCategory.TRAVEL
         }
 
         // Shopping & Food (stores, markets, delivery)
         if (appName.contains("shop") || appName.contains("store") ||
-            appName.contains("food") || appName.contains("eat") ||
+            appName.contains("food") || containsWord(appName, "eat") ||
             appName.contains("restaurant") || appName.contains("delivery") ||
             appName.contains("grocery") || appName.contains("order")) {
             return AppLibraryCategory.SHOPPING_FOOD
@@ -435,7 +450,7 @@ class CategoryProvider(private val context: Context) {
         // Health & Fitness
         if (appName.contains("health") || appName.contains("fitness") ||
             appName.contains("workout") || appName.contains("gym") ||
-            appName.contains("diet") || appName.contains("run") ||
+            appName.contains("diet") || containsWord(appName, "run") ||
             appName.contains("step") || appName.contains("meditation") ||
             appName.contains("yoga")) {
             return AppLibraryCategory.HEALTH_FITNESS

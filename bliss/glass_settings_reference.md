@@ -19,7 +19,7 @@ Version: Config Version 5 (Refraction Inward iOS match)
 | **Displacement Scale** | `pref_glass_displacement_scale` | `43.0f` | Maximum pixel displacement for refractive bending. |
 | **Elasticity** | `pref_glass_elasticity` | `0.15f` | Dynamic spring/inertia response factor during motion. |
 | **Edge Softness** | `pref_glass_edge_softness` | `2.0f` | Anti-aliasing radius / softness of the glass boundary. |
-| **Glass Tint** | `pref_glass_tint` | `0x28FFFFFF` (`687865855`) | 16% alpha pure white translucent milky glass body tint (matches Apple iOS). |
+| **Glass Tint** | `pref_glass_tint` | `0x40FFFFFF` (`1090519039`) | 25% alpha pure white translucent milky glass body tint (matches Apple iOS). |
 | **Adaptive Tint** | `pref_glass_enable_adaptive_tint` | `false` | Whether to dynamically adapt glass tint from wallpaper palette. |
 | **Refraction No Fold** | `pref_glass_refraction_no_fold` | `false` | Prevents edge reflection folding if enabled. |
 | **Refraction Outward** | `pref_glass_refraction_outward` | `false` | **Crucial iOS Match:** `false` samples inward (`refractDir = -1.0f`), deflecting dock refraction lines to the **left**. (`true` was convex/outward, deflecting lines to the right). |
@@ -67,8 +67,8 @@ Version: Config Version 5 (Refraction Inward iOS match)
 
 ```xml
 <map>
-    <int name="pref_glass_config_version" value="13" />
-    <int name="pref_glass_tint" value="687865855" />
+    <int name="pref_glass_config_version" value="14" />
+    <int name="pref_glass_tint" value="1090519039" />
     <float name="pref_glass_refraction_height" value="143.0" />
     <float name="pref_glass_bevel_width" value="65.0" />
     <float name="pref_glass_refraction_falloff" value="2.94" />

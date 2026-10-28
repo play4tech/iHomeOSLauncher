@@ -33,7 +33,7 @@ import android.os.Process;
 import android.os.UserHandle;
 import android.text.TextUtils;
 import android.util.Log;
-import android.widget.Toast;
+import foundation.e.bliss.glass.LiquidGlassToast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -192,7 +192,7 @@ public class PackageManagerHelper {
             try {
                 mLauncherApps.startAppDetailsActivity(componentName, info.user, sourceBounds, opts);
             } catch (SecurityException | ActivityNotFoundException e) {
-                Toast.makeText(mContext, R.string.activity_not_found, Toast.LENGTH_SHORT).show();
+                LiquidGlassToast.show(mContext, R.string.activity_not_found, R.drawable.ic_ios_warning_circle);
                 Log.e(TAG, "Unable to launch settings", e);
             }
         }

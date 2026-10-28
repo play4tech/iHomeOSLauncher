@@ -40,7 +40,6 @@ __pycache__/
 /scratch_*
 /test_results/
 /com/
-/docs/
 /applib_*.xml
 /chk_test.xml
 /cur_*.xml

@@ -20,7 +20,9 @@ import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Rect
@@ -42,6 +44,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Insettable
 import com.android.launcher3.Launcher
@@ -63,7 +66,11 @@ class LiquidGlassToast @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : AbstractFloatingView(context, attrs, defStyleAttr), Insettable {
 
-    private val launcher: Launcher = Launcher.getLauncher(context)
+    private val launcher: Launcher? = try {
+        Launcher.getLauncher(context)
+    } catch (e: Exception) {
+        null
+    }
     private var messageText: CharSequence = ""
     private var iconRes: Int = R.drawable.ic_ios_check_circle
 
@@ -213,43 +220,65 @@ class LiquidGlassToast @JvmOverloads constructor(
 
     private fun updateBackdropSource() {
         if (!::glassBg.isInitialized) return
-        val expandedCategory = com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView.getOpen(launcher)
-        val spotlightOverlay = launcher.findViewById<View>(R.id.spotlight_search_overlay)?.takeIf { it.visibility == View.VISIBLE }
-        val openFolder = com.android.launcher3.folder.Folder.getOpen(launcher)
-        if (spotlightOverlay != null) {
-            glassBg.backdropSource = spotlightOverlay
-        } else if (expandedCategory != null) {
-            glassBg.backdropSource = expandedCategory
-        } else if (openFolder != null) {
-            glassBg.backdropSource = openFolder
+        val currentLauncher = launcher
+        if (currentLauncher != null) {
+            val expandedCategory = com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView.getOpen(currentLauncher)
+            val spotlightOverlay = currentLauncher.findViewById<View>(R.id.spotlight_search_overlay)?.takeIf { it.visibility == View.VISIBLE }
+            val openFolder = com.android.launcher3.folder.Folder.getOpen(currentLauncher)
+            if (spotlightOverlay != null) {
+                glassBg.backdropSource = spotlightOverlay
+            } else if (expandedCategory != null) {
+                glassBg.backdropSource = expandedCategory
+            } else if (openFolder != null) {
+                glassBg.backdropSource = openFolder
+            } else {
+                glassBg.bindToWallpaper()
+            }
         } else {
             glassBg.bindToWallpaper()
         }
     }
 
     private fun showInternal() {
-        val dragLayer = launcher.dragLayer ?: return
+        val targetContainer: ViewGroup = launcher?.dragLayer ?: run {
+            val activity = (context as? Activity)
+                ?: ((context as? ContextWrapper)?.baseContext as? Activity)
+            activity?.let {
+                (it.window?.decorView as? ViewGroup) ?: (it.findViewById<ViewGroup>(android.R.id.content))
+            }
+        } ?: return
+
         buildUI()
 
         val density = resources.displayMetrics.density
         val res = resources
         val sbarId = res.getIdentifier("status_bar_height", "dimen", "android")
         val systemStatusBarHeight = if (sbarId > 0) res.getDimensionPixelSize(sbarId) else (32 * density).toInt()
-        val insetsTop = launcher.deviceProfile?.insets?.top ?: systemStatusBarHeight
+        val insetsTop = launcher?.deviceProfile?.insets?.top ?: systemStatusBarHeight
         val effectiveStatusBarHeight = maxOf(insetsTop, systemStatusBarHeight)
         topOffsetPx = effectiveStatusBarHeight + (10 * density).toInt()
 
-        val lp = BaseDragLayer.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT
-        ).apply {
-            gravity = Gravity.TOP
-            topMargin = topOffsetPx
-            ignoreInsets = true
+        val lp = if (targetContainer is BaseDragLayer<*>) {
+            BaseDragLayer.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP
+                topMargin = topOffsetPx
+                ignoreInsets = true
+            }
+        } else {
+            FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                gravity = Gravity.TOP
+                topMargin = topOffsetPx
+            }
         }
         layoutParams = lp
-        elevation = 500f
-        dragLayer.addView(this)
+        elevation = 2000f
+        targetContainer.addView(this)
         mIsOpen = true
 
         updateBackdropSource()
@@ -309,17 +338,19 @@ class LiquidGlassToast @JvmOverloads constructor(
                 interpolator = AccelerateInterpolator()
                 addListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator) {
-                        launcher.dragLayer?.removeView(this@LiquidGlassToast)
+                        (parent as? ViewGroup)?.removeView(this@LiquidGlassToast)
                     }
                 })
                 start()
             }
         } else {
-            launcher.dragLayer?.removeView(this)
+            (parent as? ViewGroup)?.removeView(this)
         }
     }
 
     override fun isOfType(type: Int): Boolean {
+        // Ephemeral HUD toasts must not be wiped out by general closeAllOpenViews(TYPE_ALL) cleanups
+        if (type == TYPE_ALL) return false
         return (type and TYPE_SNACKBAR) != 0
     }
 
@@ -333,6 +364,12 @@ class LiquidGlassToast @JvmOverloads constructor(
             message: CharSequence,
             @DrawableRes iconResId: Int = R.drawable.ic_ios_check_circle
         ): LiquidGlassToast {
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                Handler(Looper.getMainLooper()).post {
+                    show(launcher, message, iconResId)
+                }
+                return LiquidGlassToast(launcher)
+            }
             closeOpenViews(launcher, false, TYPE_SNACKBAR)
             val toast = LiquidGlassToast(launcher).apply {
                 this.messageText = message
@@ -340,6 +377,61 @@ class LiquidGlassToast @JvmOverloads constructor(
             }
             toast.showInternal()
             return toast
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun show(
+            launcher: Launcher,
+            @StringRes messageResId: Int,
+            @DrawableRes iconResId: Int = R.drawable.ic_ios_check_circle
+        ): LiquidGlassToast {
+            return show(launcher, launcher.getString(messageResId), iconResId)
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun show(
+            context: Context,
+            message: CharSequence,
+            @DrawableRes iconResId: Int = R.drawable.ic_ios_check_circle
+        ): LiquidGlassToast? {
+            if (Looper.myLooper() != Looper.getMainLooper()) {
+                Handler(Looper.getMainLooper()).post {
+                    show(context, message, iconResId)
+                }
+                return null
+            }
+            val launcher: Launcher? = try {
+                Launcher.getLauncher(context)
+            } catch (e: Exception) {
+                null
+            }
+            if (launcher != null) {
+                return show(launcher, message, iconResId)
+            }
+            val activity = (context as? Activity)
+                ?: ((context as? ContextWrapper)?.baseContext as? Activity)
+            if (activity != null) {
+                val toast = LiquidGlassToast(activity).apply {
+                    this.messageText = message
+                    this.iconRes = iconResId
+                }
+                toast.showInternal()
+                return toast
+            }
+            android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+            return null
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun show(
+            context: Context,
+            @StringRes messageResId: Int,
+            @DrawableRes iconResId: Int = R.drawable.ic_ios_check_circle
+        ): LiquidGlassToast? {
+            return show(context, context.getString(messageResId), iconResId)
         }
     }
 }

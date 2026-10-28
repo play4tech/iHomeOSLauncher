@@ -16,7 +16,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 211 | **Bytes**: 9510
+**Lines**: 209 | **Bytes**: 9430
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -94,7 +94,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
         android:icon="@mipmap/ic_launcher"
         tools:replace="android:label"
         android:label="@string/derived_app_name"
-        android:usesCleartextTraffic="true"
+        android:usesCleartextTraffic="false"
         android:allowClearUserData="true"
         android:largeHeap="@bool/config_largeHeap"
         android:restoreAnyVersion="true"
@@ -183,9 +183,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
             android:theme="@style/Theme.Bliss.Onboarding"
-            android:exported="true"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true"
+            android:exported="false"
             android:autoRemoveFromRecents="true" />
 
         <provider

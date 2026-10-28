@@ -361,6 +361,7 @@ public class Launcher extends StatefulActivity<LauncherState>
             new KeyboardShortcutsDelegate(this);
 
     private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
+    private boolean mHasLaunchedOnboarding = false;
 
     public LauncherInteractionController getInteractionController() {
         return mInteractionController;
@@ -505,13 +506,6 @@ public class Launcher extends StatefulActivity<LauncherState>
     protected void onCreate(Bundle savedInstanceState) {
         Logger.plant();
 
-        if (!BuildConfig.DEBUG) {
-            try {
-                Telemetry.init(BuildConfig.SENTRY_DSN, getApplication(), true);
-            } catch (Exception e) {
-                Logger.e(TAG, "Failed to initialize Sentry");
-            }
-        }
 
         mStartupLatencyLogger = createStartupLatencyLogger(
                 sIsNewProcess
@@ -1592,11 +1586,25 @@ public class Launcher extends StatefulActivity<LauncherState>
 
                         // If the hotseat has lost its child views (e.g. dropped due to an orientation race),
                         // trigger a rebind to restore the dock icons immediately!
+                        // Guard against cold-boot in-progress loads and intentionally empty docks.
                         if (mHotseat.getShortcutsAndWidgets() != null
                                 && mHotseat.getShortcutsAndWidgets().getChildCount() == 0
-                                && mModel != null) {
-                            Log.w(TAG, "Hotseat has 0 children on resume - rebinding callbacks to restore dock icons");
-                            mModel.rebindCallbacks();
+                                && mModel != null
+                                && mModel.isModelLoaded()
+                                && !isWorkspaceLoading()) {
+                            boolean modelHasHotseatItems = false;
+                            synchronized (mModel.mBgDataModel) {
+                                for (ItemInfo item : mModel.mBgDataModel.workspaceItems) {
+                                    if (item.container == LauncherSettings.Favorites.CONTAINER_HOTSEAT) {
+                                        modelHasHotseatItems = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (modelHasHotseatItems) {
+                                Log.w(TAG, "Hotseat has 0 children on resume despite model having hotseat items - rebinding callbacks");
+                                mModel.rebindCallbacks();
+                            }
                         }
                     }
                 }
@@ -1614,17 +1622,53 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            try {
-                Intent onboardingIntent = new Intent(this,
-                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
-                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                startActivity(onboardingIntent);
-            } catch (Exception e) {
-                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+            if (isExistingInstall()) {
+                LauncherPrefs.get(this).putSync(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE.to(true));
+            } else if (!mHasLaunchedOnboarding) {
+                mHasLaunchedOnboarding = true;
+                try {
+                    Intent onboardingIntent = new Intent(this,
+                            Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                    onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                    startActivity(onboardingIntent);
+                } catch (Exception e) {
+                    android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
+                }
             }
         }
 
         TraceHelper.INSTANCE.endSection();
+    }
+
+    private boolean isExistingInstall() {
+        try {
+            android.app.role.RoleManager roleManager = getSystemService(android.app.role.RoleManager.class);
+            if (roleManager != null && roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
+                return true;
+            }
+            Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
+            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
+                    homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
+            if (resolveInfo != null && resolveInfo.activityInfo != null
+                    && getPackageName().equals(resolveInfo.activityInfo.packageName)) {
+                return true;
+            }
+            if (mDeviceProfile != null && mDeviceProfile.inv != null) {
+                java.io.File gridDb = getDatabasePath(mDeviceProfile.inv.numColumns + "_by_" + mDeviceProfile.inv.numRows + ".db");
+                if (gridDb != null && gridDb.exists() && gridDb.length() > 0) {
+                    return true;
+                }
+            }
+            java.io.File launcherDb = getDatabasePath(LauncherFiles.LAUNCHER_DB);
+            if (launcherDb != null && launcherDb.exists() && launcherDb.length() > 0) {
+                return true;
+            }
+            java.io.File iconsDb = getDatabasePath(LauncherFiles.APP_ICONS_DB);
+            if (iconsDb != null && iconsDb.exists() && iconsDb.length() > 0) {
+                return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     @Override

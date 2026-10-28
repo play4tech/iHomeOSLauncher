@@ -265,8 +265,10 @@ public class LoaderTask implements Runnable {
             } finally {
                 Trace.endSection();
             }
-            LauncherAppMonitor.getInstanceNoCreate()
-                    .onLoadAllAppsEnd(new ArrayList<>(mBgAllAppsList.data));
+            LauncherAppMonitor monitor = LauncherAppMonitor.getInstanceNoCreate();
+            if (monitor != null) {
+                monitor.onLoadAllAppsEnd(new ArrayList<>(mBgAllAppsList.data));
+            }
             logASplit("loadAllApps");
 
             if (FeatureFlags.CHANGE_MODEL_DELEGATE_LOADING_ORDER.get()) {

@@ -278,7 +278,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         addView(page, -1, generateDefaultLayoutParams());
         setEnableOverscroll(getPageCount() > 1);
         if (mPageIndicator != null) {
-            mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+            mPageIndicator.setVisibility(View.VISIBLE);
         }
         return page;
     }
@@ -388,9 +388,10 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
         setEnableOverscroll(getPageCount() > 1);
 
-        // Update footer
-        boolean showIndicator = getPageCount() > 1;
-        mPageIndicator.setVisibility(showIndicator ? View.VISIBLE : View.GONE);
+        // Update footer - always show folder page indicator
+        if (mPageIndicator != null) {
+            mPageIndicator.setVisibility(View.VISIBLE);
+        }
 
         if (mFolder != null && mFolder.mFolderName != null) {
             mFolder.mFolderName.setGravity((mIsRtl ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
@@ -813,7 +814,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
         if (removed) {
             setEnableOverscroll(getPageCount() > 1);
             if (mPageIndicator != null) {
-                mPageIndicator.setVisibility(getPageCount() > 1 ? View.VISIBLE : View.GONE);
+                mPageIndicator.setVisibility(View.VISIBLE);
             }
             if (getNextPage() >= getPageCount()) {
                 snapToPageImmediately(getPageCount() - 1);

@@ -24,6 +24,7 @@ import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
@@ -59,6 +60,7 @@ public class SettingsActivity extends FragmentActivity
 
     private static final String TAG = "SettingsActivity";
     private static final int REQUEST_CODE_ROLE = 1001;
+    private long mRoleRequestStartTime = 0;
 
     @VisibleForTesting
     static final String DEVELOPER_OPTIONS_KEY = "pref_developer_options";
@@ -79,6 +81,7 @@ public class SettingsActivity extends FragmentActivity
         setContentView(R.layout.activity_settings_ios);
 
         setupSystemBars();
+        LauncherPrefs.getPrefs(this).edit().remove(InvariantDeviceProfile.KEY_WORKSPACE_LOCK).apply();
         initViews();
     }
 
@@ -138,6 +141,7 @@ public class SettingsActivity extends FragmentActivity
         if (roleManager != null && roleManager.isRoleAvailable(RoleManager.ROLE_HOME)) {
             try {
                 Intent intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_HOME);
+                mRoleRequestStartTime = SystemClock.elapsedRealtime();
                 startActivityForResult(intent, REQUEST_CODE_ROLE);
                 return;
             } catch (Exception e) {
@@ -166,9 +170,15 @@ public class SettingsActivity extends FragmentActivity
             RoleManager roleManager = getSystemService(RoleManager.class);
             boolean isDefault = roleManager != null && roleManager.isRoleHeld(RoleManager.ROLE_HOME);
             if (!isDefault) {
-                // OEMs like Vivo OriginOS and Xiaomi HyperOS silently cancel ROLE_HOME intent
-                openHomeSettingsFallback();
+                long elapsed = SystemClock.elapsedRealtime() - mRoleRequestStartTime;
+                // Only open fallback if the role intent was silently dismissed almost instantaneously (< 250ms)
+                // by OEMs like Xiaomi HyperOS or Vivo OriginOS. If the user was shown the dialog and explicitly
+                // tapped Cancel, respect their cancellation and do not force open System Settings.
+                if (mRoleRequestStartTime > 0 && elapsed < 250) {
+                    openHomeSettingsFallback();
+                }
             }
+            mRoleRequestStartTime = 0;
             updateDefaultLauncherState();
         }
     }
@@ -202,17 +212,7 @@ public class SettingsActivity extends FragmentActivity
                     getContentResolver(), "notification_badging", 1) == 1;
             switchBadges.setOnCheckedChangeListener(null);
             switchBadges.setChecked(badgingEnabled);
-            switchBadges.setOnCheckedChangeListener((btn, isChecked) -> {
-                try {
-                    Settings.Secure.putInt(getContentResolver(), "notification_badging", isChecked ? 1 : 0);
-                } catch (Exception e) {
-                    try {
-                        startActivity(new Intent("android.settings.NOTIFICATION_SETTINGS"));
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Failed to launch notification settings", ex);
-                    }
-                }
-            });
+            switchBadges.setOnCheckedChangeListener((btn, isChecked) -> handleBadgingToggle(switchBadges, isChecked));
         } else {
             txtSubtitle.setText("Notification access required — tap to grant");
             txtSubtitle.setTextColor(getColor(R.color.ios_icon_orange));
@@ -231,6 +231,28 @@ public class SettingsActivity extends FragmentActivity
             switchCount.setOnCheckedChangeListener((btn, isChecked) -> {
                 LauncherPrefs.getPrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
             });
+        }
+    }
+
+    private void handleBadgingToggle(Switch switchBadges, boolean isChecked) {
+        try {
+            Settings.Secure.putInt(getContentResolver(), "notification_badging", isChecked ? 1 : 0);
+        } catch (Exception e) {
+            // Revert switch visually because writing to Settings.Secure requires WRITE_SECURE_SETTINGS
+            switchBadges.post(() -> {
+                switchBadges.setOnCheckedChangeListener(null);
+                switchBadges.setChecked(!isChecked);
+                switchBadges.setOnCheckedChangeListener((btn, checked) -> handleBadgingToggle(switchBadges, checked));
+            });
+            try {
+                Bundle extras = new Bundle();
+                extras.putString(EXTRA_FRAGMENT_HIGHLIGHT_KEY, "notification_badging");
+                Intent intent = new Intent("android.settings.NOTIFICATION_SETTINGS")
+                        .putExtra(":settings:show_fragment_args", extras);
+                startActivity(intent);
+            } catch (Exception ex) {
+                Log.e(TAG, "Failed to launch notification settings", ex);
+            }
         }
     }
 
@@ -259,18 +281,6 @@ public class SettingsActivity extends FragmentActivity
             switchAddToHome.setOnCheckedChangeListener((btn, isChecked) -> {
                 LauncherPrefs.getPrefs(this).edit()
                         .putBoolean(SessionCommitReceiver.ADD_ICON_PREFERENCE_KEY, isChecked).apply();
-            });
-        }
-
-        // Lock Layout
-        Switch switchLockLayout = findViewById(R.id.switch_lock_layout);
-        if (switchLockLayout != null) {
-            boolean isLocked = LauncherPrefs.getPrefs(this)
-                    .getBoolean(InvariantDeviceProfile.KEY_WORKSPACE_LOCK, false);
-            switchLockLayout.setChecked(isLocked);
-            switchLockLayout.setOnCheckedChangeListener((btn, isChecked) -> {
-                LauncherPrefs.getPrefs(this).edit()
-                        .putBoolean(InvariantDeviceProfile.KEY_WORKSPACE_LOCK, isChecked).apply();
             });
         }
 
