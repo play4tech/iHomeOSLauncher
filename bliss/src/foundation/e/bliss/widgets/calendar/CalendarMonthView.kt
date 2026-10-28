@@ -80,12 +80,14 @@ class CalendarMonthView @JvmOverloads constructor(
                 addAction(Intent.ACTION_TIMEZONE_CHANGED)
                 addAction(Intent.ACTION_TIME_TICK)
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(timeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-            } else {
-                context.registerReceiver(timeReceiver, filter)
-            }
-            isReceiverRegistered = true
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(timeReceiver, filter, Context.RECEIVER_EXPORTED)
+                } else {
+                    context.registerReceiver(timeReceiver, filter)
+                }
+                isReceiverRegistered = true
+            } catch (ignored: Throwable) {}
         }
         invalidate()
     }

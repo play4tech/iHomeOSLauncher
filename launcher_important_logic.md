@@ -43873,7 +43873,7 @@ object DefaultHomeLayoutResolver {
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 209 | **Bytes**: 9430
+**Lines**: 209 | **Bytes**: 9414
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -43929,12 +43929,12 @@ object DefaultHomeLayoutResolver {
     -->
     <permission
         android:name="${applicationId}.permission.READ_SETTINGS"
-        android:protectionLevel="signatureOrSystem"
+        android:protectionLevel="signature"
         android:label="@string/permlab_read_settings"
         android:description="@string/permdesc_read_settings"/>
     <permission
         android:name="${applicationId}.permission.WRITE_SETTINGS"
-        android:protectionLevel="signatureOrSystem"
+        android:protectionLevel="signature"
         android:label="@string/permlab_write_settings"
         android:description="@string/permdesc_write_settings"/>
 
