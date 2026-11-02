@@ -52,34 +52,48 @@
     max-width: 920px;
     margin: 14px auto -70px;
     border-radius: 980px;
-    background: rgba(255, 255, 255, 0.82);
-    -webkit-backdrop-filter: saturate(180%) blur(32px);
-    backdrop-filter: saturate(180%) blur(32px);
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.18) 50%, rgba(255, 255, 255, 0.32) 100%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%) brightness(1.04);
+    backdrop-filter: blur(28px) saturate(190%) brightness(1.04);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow:
+      0 16px 36px -4px rgba(0, 0, 0, 0.09),
+      0 4px 12px rgba(0, 0, 0, 0.03),
+      inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95),
+      inset 0 -1.5px 2px 0 rgba(0, 0, 0, 0.08),
+      inset 0 0 16px 0 rgba(255, 255, 255, 0.25);
+    position: relative;
+    overflow: hidden;
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
+  .nav::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 50%;
+    border-radius: 980px 980px 0 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0.02) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .nav::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 980px;
+    background: linear-gradient(90deg, rgba(255, 59, 48, 0.035) 0%, transparent 12%, transparent 88%, rgba(0, 122, 255, 0.045) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
   .nav.dark {
-    background: rgba(29, 29, 31, 0.72);
-    border-color: rgba(255, 255, 255, 0.16);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, rgba(35, 35, 38, 0.65) 0%, rgba(20, 20, 22, 0.45) 100%);
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.45),
+      inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.28),
+      inset 0 0 16px 0 rgba(255, 255, 255, 0.04);
   }
   .nav.dark .title, .nav.dark a.l { color: #f5f5f7; }
   .nav.dark a.l:hover { color: #ffffff; }
-  .nav.refract {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(255, 255, 255, 0.35);
-    -webkit-backdrop-filter: url(#lg-refract);
-    backdrop-filter: url(#lg-refract);
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1px 1px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.25);
-  }
-  .nav.lg-on {
-    box-shadow: none;
-    background: none;
-    border: 0;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-  }
   .nav .in {
     position: relative;
     z-index: 1;
@@ -155,7 +169,9 @@
     padding: 136px 22px 0;
     overflow: hidden;
     color: var(--text);
-    background: #ffffff;
+    background:
+      radial-gradient(900px 200px at 50% 40px, rgba(0, 113, 227, 0.07) 0%, rgba(175, 82, 222, 0.035) 45%, transparent 75%),
+      #ffffff;
   }
   .kicker {
     font-size: 14px;
@@ -890,15 +906,6 @@
 </head>
 <body>
 
-<!-- WebGL / SVG Refraction filter fallback -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <filter id="lg-refract" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
-    <feImage id="lg-map" href="" x="0" y="0" width="920" height="56" preserveAspectRatio="none" result="map"/>
-    <feDisplacementMap in="SourceGraphic" in2="map" scale="70" xChannelSelector="R" yChannelSelector="G" result="bent"/>
-    <feColorMatrix in="bent" type="saturate" values="1.5"/>
-  </filter>
-</svg>
-
 <div id="lg-root">
 
 <!-- Floating Optical Glass Capsule Navigation -->
@@ -1236,85 +1243,25 @@
 
 </div>
 
-<!-- LiquidGlass Dynamic Refraction & Dark Mode Sync -->
+<!-- Glass Dynamic Sync & Local Nav Controller -->
 <script type="module">
   const nav = document.querySelector('.nav');
-  const root = document.getElementById('lg-root');
   const darkZones = [...document.querySelectorAll('.dark')];
-  let lg = null, queued = 0;
+  let queued = 0;
 
-  // Switch nav text & capsule tint depending on what is behind it
+  // Dynamically adapt nav tint and contrast as it glides over dark sections
   const sync = () => {
     const y = nav.getBoundingClientRect().top + 28;
     nav.classList.toggle('dark', darkZones.some(el => {
       const r = el.getBoundingClientRect();
       return r.top <= y && r.bottom >= y;
     }));
-    if (lg) lg.markChanged();
   };
+
   addEventListener('scroll', () => {
     if (!queued) queued = requestAnimationFrame(() => { queued = 0; sync(); });
   }, { passive: true });
   sync();
-
-  // Refraction fallback: SVG displacement map as a backdrop-filter (Chromium only)
-  const isChromium = !!navigator.userAgentData?.brands?.some(b => /Chromium/.test(b.brand));
-  const buildMap = () => {
-    const w = Math.round(nav.offsetWidth), h = Math.round(nav.offsetHeight), e = 36;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><defs>
-      <linearGradient id="x" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="rgb(0,0,0)"/><stop offset="${e/w}" stop-color="rgb(128,0,0)"/><stop offset="${1-e/w}" stop-color="rgb(128,0,0)"/><stop offset="1" stop-color="rgb(255,0,0)"/></linearGradient>
-      <linearGradient id="y" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="rgb(0,0,0)"/><stop offset="0.3" stop-color="rgb(0,128,0)"/><stop offset="0.7" stop-color="rgb(0,128,0)"/><stop offset="1" stop-color="rgb(0,255,0)"/></linearGradient></defs>
-      <rect width="${w}" height="${h}" fill="rgb(128,128,0)"/>
-      <rect width="${w}" height="${h}" rx="${h/2}" fill="url(#x)"/>
-      <rect width="${w}" height="${h}" rx="${h/2}" fill="url(#y)" style="mix-blend-mode:screen"/></svg>`;
-    const m = document.getElementById('lg-map');
-    m.setAttribute('href', 'data:image/svg+xml,' + encodeURIComponent(svg));
-    m.setAttribute('width', w);
-    m.setAttribute('height', h);
-  };
-  if (isChromium) {
-    buildMap();
-    nav.classList.add('refract');
-    addEventListener('resize', buildMap);
-  }
-
-  const note = t => {
-    document.documentElement.dataset.liquidglass = t;
-    if (!/[?&]lgdebug/.test(location.search)) return;
-    let b = document.getElementById('lgdbg') || document.body.appendChild(Object.assign(document.createElement('div'), { id: 'lgdbg' }));
-    b.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99;background:#000c;color:#fff;font:12px/1.3 monospace;padding:6px 8px;border-radius:6px;max-width:90vw';
-    b.textContent = 'liquidglass: ' + t + ' | svg-refraction: ' + (isChromium ? 'on' : 'off (not Chromium)');
-  };
-  note('pending');
-
-  const hasWebGL = (() => { try { return !!document.createElement('canvas').getContext('webgl'); } catch { return false; } })();
-  if (hasWebGL && (innerWidth >= 735 || /[?&]lg=1/.test(location.search))) {
-    try {
-      await document.fonts.ready;
-      nav.dataset.config = JSON.stringify({
-        cornerRadius: 28,
-        zRadius: 28,
-        refraction: 1,
-        blurAmount: 0.35,
-        chromAberration: 0.1,
-        edgeHighlight: 0.25,
-        specular: 0.5,
-        fresnel: 1,
-        saturation: 0.15,
-        shadowOpacity: 0.25,
-        shadowSpread: 10
-      });
-      const mod = await import('https://cdn.jsdelivr.net/npm/@ybouane/liquidglass@1.0.3/dist/index.js');
-      lg = await mod.LiquidGlass.init({ root, glassElements: [nav] });
-      nav.classList.add('lg-on');
-      note('on');
-      console.log('LiquidGlass active');
-      document.querySelectorAll('details').forEach(d => d.addEventListener('toggle', () => lg.markChanged()));
-    } catch (err) {
-      note('failed: ' + (err && err.message || err));
-      console.warn('LiquidGlass failed, using CSS fallback:', err);
-    }
-  }
 </script>
 </body>
 </html>
