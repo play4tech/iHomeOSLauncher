@@ -26,7 +26,7 @@ object DefaultWidgets {
         ComponentName("foundation.e.advancedprivacy", "foundation.e.advancedprivacy.Widget")
     val oldWeatherWidget =
         ComponentName(
-            "com.ihome.launcher",
+            "com.ihomeos.launcher",
             "foundation.e.blisslauncher.features.weather.WeatherAppWidgetProvider"
         )
     val weatherWidget =

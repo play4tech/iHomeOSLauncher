@@ -3,25 +3,25 @@ package foundation.e.bliss.widgets.clock
 import android.content.Context
 import android.content.Intent
 import android.provider.AlarmClock
+import android.view.View
 import com.android.launcher3.R
 import foundation.e.bliss.widgets.BaseGlassWidgetHostView
 
 /**
- * 2x2 Glass Clock Widget Host View.
+ * 2x2 Glass Analog Clock Widget Host View.
  *
  * Backed by [BaseGlassWidgetHostView] which provides the live Liquid Glass squircle
  * with dynamic optical refraction and wallpaper sampling, identical to CalendarDayWidgetHostView.
  */
-class ClockWidgetHostView(context: Context) :
-    BaseGlassWidgetHostView(
-        context,
-        R.string.clock_widget_label,
-        DigitalClockView(context).apply {
-            isClickable = false
-            isFocusable = false
-            elevation = 2f
-        }
-    ) {
+open class ClockWidgetHostView @JvmOverloads constructor(
+    context: Context,
+    labelResId: Int = R.string.clock_widget_label,
+    contentView: View = IosAnalogClockView(context).apply {
+        isClickable = false
+        isFocusable = false
+        elevation = 2f
+    }
+) : BaseGlassWidgetHostView(context, labelResId, contentView) {
 
     override fun performClick(): Boolean {
         try {

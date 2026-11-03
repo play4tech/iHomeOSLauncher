@@ -836,7 +836,7 @@ class SuggestionsProvider(private val context: Context) {
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
-**Lines**: 881 | **Bytes**: 34372
+**Lines**: 891 | **Bytes**: 34791
 
 ```java
 /*
@@ -877,6 +877,7 @@ import android.view.animation.Interpolator;
 import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.window.BackEvent;
@@ -895,6 +896,7 @@ import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
+import com.android.launcher3.ads.AdManager;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.util.Themes;
@@ -1138,6 +1140,11 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         launcher.getDragLayer().addView(overlay);
         launcher.onDragLayerHierarchyChanged();
 
+        FrameLayout adContainer = overlay.findViewById(R.id.spotlight_search_ad_banner_container);
+        if (adContainer != null) {
+            AdManager.loadBanner(launcher, adContainer);
+        }
+
         // Load apps
         AppInfo[] apps = launcher.getAppsView() != null && launcher.getAppsView().getAppsStore() != null
                 ? launcher.getAppsView().getAppsStore().getApps() : null;
@@ -1369,6 +1376,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
         hideKeyboard();
+
+        FrameLayout adContainer = findViewById(R.id.spotlight_search_ad_banner_container);
+        AdManager.destroyBanner(adContainer);
 
         if (mBackdropGlass != null) mBackdropGlass.animate().cancel();
         if (mSearchContent != null) mSearchContent.animate().cancel();
@@ -3799,7 +3809,7 @@ public class MiniClusterView extends View {
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
-**Lines**: 349 | **Bytes**: 13346
+**Lines**: 358 | **Bytes**: 13763
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -3815,6 +3825,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -3825,6 +3836,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.InsettableFrameLayout;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.ads.AdManager;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.applibrary.model.CategoryData;
 import android.graphics.PointF;
@@ -4047,6 +4059,8 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     }
 
     private void removeViewFromDragLayer() {
+        FrameLayout adContainer = findViewById(R.id.expanded_category_ad_banner_container);
+        AdManager.destroyBanner(adContainer);
         restoreBackgroundViews();
         DragLayer dragLayer = Launcher.getLauncher(getContext()).getDragLayer();
         dragLayer.removeView(this);
@@ -4114,6 +4128,11 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
         dragLayer.addView(view);
         launcher.onDragLayerHierarchyChanged();
+
+        FrameLayout adContainer = view.findViewById(R.id.expanded_category_ad_banner_container);
+        if (adContainer != null) {
+            AdManager.loadBanner(launcher, adContainer);
+        }
 
         View glass = view.findViewById(R.id.app_library_overlay_glass);
         if (glass instanceof AppLibraryOverlayGlassView) {

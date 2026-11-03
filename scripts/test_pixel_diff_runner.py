@@ -56,7 +56,7 @@ def set_opt(early_out, fetch_collapse, hoist):
     run_adb(f"shell setprop debug.launcher.hoist {1 if hoist else 0}")
 
 def go_page(page_idx):
-    run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+    run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
     time.sleep(0.5)
     for _ in range(3):
         run_adb("shell input swipe 200 1000 850 1000 120")

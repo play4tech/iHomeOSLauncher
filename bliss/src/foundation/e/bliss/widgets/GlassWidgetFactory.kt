@@ -11,6 +11,7 @@ import foundation.e.bliss.widgets.calendar.CalendarMonthWidgetHostView
 import foundation.e.bliss.widgets.clock.ClockAppWidgetProvider
 import foundation.e.bliss.widgets.clock.ClockWidgetHostView
 import foundation.e.bliss.widgets.clock.DigitalClockAppWidgetProvider
+import foundation.e.bliss.widgets.clock.DigitalClockWidgetHostView
 
 object GlassWidgetFactory {
 
@@ -27,8 +28,10 @@ object GlassWidgetFactory {
     fun createHostView(context: Context, appWidgetId: Int, appWidget: AppWidgetProviderInfo?): LauncherAppWidgetHostView? {
         val provider = appWidget?.provider ?: return null
         return when {
-            ClockAppWidgetProvider.isClockWidget(provider) ||
             DigitalClockAppWidgetProvider.isDigitalClockWidget(provider) -> {
+                DigitalClockWidgetHostView(context).apply { setAppWidget(appWidgetId, appWidget) }
+            }
+            ClockAppWidgetProvider.isClockWidget(provider) -> {
                 ClockWidgetHostView(context).apply { setAppWidget(appWidgetId, appWidget) }
             }
             CalendarDayAppWidgetProvider.isCalendarDayWidget(provider) -> {

@@ -53,11 +53,11 @@ When taking screenshots or bringing the launcher to the foreground on an emulato
 **Always explicitly open the launcher before taking a screenshot or verifying UI**:
 - For the standard **`withoutQuickstep`** variant (default):
   ```bash
-  adb shell am start -n com.ihome.launcher/com.android.launcher3.Launcher
+  adb shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher
   ```
 - For the **`withQuickstep`** variant (if used):
   ```bash
-  adb shell am start -n com.ihome.launcher/com.android.launcher3.uioverrides.QuickstepLauncher
+  adb shell am start -n com.ihomeos.launcher/com.android.launcher3.uioverrides.QuickstepLauncher
   ```
 
 After running the command, wait a few seconds (e.g., `sleep 2`) to ensure the launcher has fully rendered before capturing:

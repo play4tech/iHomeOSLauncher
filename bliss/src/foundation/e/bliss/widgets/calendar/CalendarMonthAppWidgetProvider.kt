@@ -18,6 +18,8 @@ class CalendarMonthAppWidgetProvider : AppWidgetProvider() {
     companion object {
         @JvmField
         val COMPONENT_NAME =
+            ComponentName("com.ihomeos.launcher", CalendarMonthAppWidgetProvider::class.java.name)
+        val LEGACY_COMPONENT_NAME =
             ComponentName("com.ihome.launcher", CalendarMonthAppWidgetProvider::class.java.name)
 
         @JvmStatic
@@ -25,6 +27,7 @@ class CalendarMonthAppWidgetProvider : AppWidgetProvider() {
             if (provider == null) return false
             return provider.className == CalendarMonthAppWidgetProvider::class.java.name ||
                 provider == COMPONENT_NAME ||
+                provider == LEGACY_COMPONENT_NAME ||
                 provider.shortClassName.endsWith("CalendarMonthAppWidgetProvider")
         }
     }

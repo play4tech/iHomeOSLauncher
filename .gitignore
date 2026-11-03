@@ -56,3 +56,6 @@ __pycache__/
 /uidump*.xml
 /vivo_*.xml
 /window_dump.xml
+keystore.properties
+*.keystore
+

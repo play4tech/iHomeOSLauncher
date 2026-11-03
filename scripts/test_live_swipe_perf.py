@@ -10,7 +10,7 @@ def run_adb(cmd):
     return run_cmd(f"adb {cmd}")
 
 def parse_gfxinfo():
-    out = run_adb("shell dumpsys gfxinfo com.ihome.launcher framestats")
+    out = run_adb("shell dumpsys gfxinfo com.ihomeos.launcher framestats")
     lines = out.splitlines()
     in_profile = False
     frames = []
@@ -33,7 +33,7 @@ def parse_gfxinfo():
     return frames
 
 def go_page_1():
-    run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+    run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
     time.sleep(0.3)
     for _ in range(3):
         run_adb("shell input swipe 200 1000 850 1000 120")
@@ -42,7 +42,7 @@ def go_page_1():
     time.sleep(0.3)
 
 def go_app_library():
-    run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+    run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
     time.sleep(0.3)
     for _ in range(4):
         run_adb("shell input swipe 850 1000 200 1000 120")
@@ -143,7 +143,7 @@ def run_entry_swipes():
     entry_frames = []
     for i in range(10):
         go_page_1()
-        run_adb("shell dumpsys gfxinfo com.ihome.launcher reset")
+        run_adb("shell dumpsys gfxinfo com.ihomeos.launcher reset")
         time.sleep(0.15)
         run_adb("shell input swipe 850 1000 200 1000 350")
         time.sleep(0.4)
@@ -157,7 +157,7 @@ def run_exit_swipes():
     exit_frames = []
     for i in range(10):
         go_app_library()
-        run_adb("shell dumpsys gfxinfo com.ihome.launcher reset")
+        run_adb("shell dumpsys gfxinfo com.ihomeos.launcher reset")
         time.sleep(0.15)
         run_adb("shell input swipe 200 1000 850 1000 350")
         time.sleep(0.4)

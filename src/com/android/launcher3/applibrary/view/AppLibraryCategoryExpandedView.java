@@ -11,6 +11,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -21,6 +22,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.InsettableFrameLayout;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.ads.AdManager;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.applibrary.model.CategoryData;
 import android.graphics.PointF;
@@ -243,6 +245,8 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     }
 
     private void removeViewFromDragLayer() {
+        FrameLayout adContainer = findViewById(R.id.expanded_category_ad_banner_container);
+        AdManager.destroyBanner(adContainer);
         restoreBackgroundViews();
         DragLayer dragLayer = Launcher.getLauncher(getContext()).getDragLayer();
         dragLayer.removeView(this);
@@ -310,6 +314,11 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
         dragLayer.addView(view);
         launcher.onDragLayerHierarchyChanged();
+
+        FrameLayout adContainer = view.findViewById(R.id.expanded_category_ad_banner_container);
+        if (adContainer != null) {
+            AdManager.loadBanner(launcher, adContainer);
+        }
 
         View glass = view.findViewById(R.id.app_library_overlay_glass);
         if (glass instanceof AppLibraryOverlayGlassView) {

@@ -15,7 +15,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, asdict
 from typing import Callable, List, Optional, Dict, Any
 
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 ACTIVITY = "com.android.launcher3.Launcher"
 
 @dataclass

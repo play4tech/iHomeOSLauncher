@@ -15,7 +15,7 @@
   ~  along with this program.  If not, see <https://www.gnu.org/licenses/>.
   -->
 <resources>
-    <string name="app_name">iHome Launcher</string>
+    <string name="app_name">iHomeOS Launcher</string>
     <string name="edit">Edit</string>
     <string name="search">Search</string>
     <string name="suggestions">SUGGESTIONS</string>
@@ -32,10 +32,19 @@
     <string name="remove_widgets">Remove Widgets</string>
     <string name="show_notification_count">Show notification count</string>
     <string name="add_to_widget_Screen">Add to -1 screen</string>
-    <string name="pref_glass_dock_title">Liquid glass dock</string>
+    <string name="pref_glass_dock_title">Glass dock</string>
     <string name="pref_glass_dock_summary">Use advanced refraction effect for the dock background</string>
 
     <!-- First-run Onboarding Strings -->
+    <string name="onboarding_step_1_of_5">Step 1 of 5</string>
+    <string name="onboarding_step_2_of_5">Step 2 of 5</string>
+    <string name="onboarding_step_3_of_5">Step 3 of 5</string>
+    <string name="onboarding_step_4_of_5">Step 4 of 5</string>
+    <string name="onboarding_step_5_of_5">Step 5 of 5</string>
+    <string name="onboarding_step_1_of_4">Step 1 of 4</string>
+    <string name="onboarding_step_2_of_4">Step 2 of 4</string>
+    <string name="onboarding_step_3_of_4">Step 3 of 4</string>
+    <string name="onboarding_step_4_of_4">Step 4 of 4</string>
     <string name="onboarding_step_1_of_3">Step 1 of 3</string>
     <string name="onboarding_step_2_of_3">Step 2 of 3</string>
     <string name="onboarding_step_3_of_3">Step 3 of 3</string>
@@ -54,17 +63,39 @@
     <string name="onboarding_notification_restricted_hint">If the switch is disabled in Settings, tap ⋮ in the top right corner and choose \'Allow restricted settings\'.</string>
     <string name="onboarding_notification_action">Allow</string>
     <string name="onboarding_notification_skip">Not now</string>
+    <string name="onboarding_wallpaper_title">Choose Wallpaper</string>
+    <string name="onboarding_wallpaper_body">Personalize your home screen. You can change this anytime.</string>
+    <string name="onboarding_wallpaper_action">Next</string>
     <string name="onboarding_customize_title">Wallpaper &amp; Widgets</string>
     <string name="onboarding_customize_body">Personalize your layout anytime with widgets and wallpapers.</string>
     <string name="onboarding_customize_wallpaper_title">Change Wallpaper</string>
     <string name="onboarding_customize_wallpaper_body">Touch &amp; hold the screen, tap Edit in the top left, and select Change Wallpaper and choose your wallpaper to change it.</string>
     <string name="onboarding_customize_widget_title">Add Widgets</string>
     <string name="onboarding_customize_widget_body">In the same Edit menu, select Add Widget to place widgets directly on your home screen.</string>
-    <string name="onboarding_customize_action">Get Started</string>
+    <string name="onboarding_customize_action">Next</string>
+    <string name="onboarding_pro_title">Upgrade to Pro</string>
+    <string name="onboarding_pro_body">Unlock the full power of iHome Launcher with all premium features.</string>
+    <string name="onboarding_pro_feature_adfree_title">100% Ad-Free</string>
+    <string name="onboarding_pro_feature_adfree_body">Enjoy a clean, distraction-free home screen with zero ads.</string>
+    <string name="onboarding_pro_feature_glass_title">Full Glass &amp; Effects</string>
+    <string name="onboarding_pro_feature_glass_body">Unlock all live optical refraction, blur, and color tint settings.</string>
+    <string name="onboarding_pro_feature_lifetime_title">Lifetime Purchase</string>
+    <string name="onboarding_pro_feature_lifetime_body">Pay once, own forever. Restore anytime on all your devices.</string>
+    <string name="onboarding_pro_action">Upgrade to Pro</string>
+    <string name="onboarding_pro_action_price">Upgrade to Pro — %s</string>
+    <string name="onboarding_pro_skip">Continue with Free Version</string>
+    <string name="onboarding_pro_restore">Restore Purchases</string>
+    <string name="onboarding_pro_restoring">Checking Google Play purchases…</string>
+    <string name="onboarding_pro_restored">Pro license restored successfully!</string>
+    <string name="onboarding_pro_restore_none">No existing Pro purchases found.</string>
 
     <!-- iOS 2x2 Analog Clock Widget -->
     <string name="clock_widget_label">Clock</string>
     <string name="clock_widget_description">Analog Clock</string>
+
+    <!-- iOS 2x2 Digital Seconds Clock Widget -->
+    <string name="digital_clock_widget_label">Clock</string>
+    <string name="digital_clock_widget_description">Digital Seconds Clock</string>
 
     <!-- iOS 2x2 Calendar Widgets -->
     <string name="calendar_widget_label">Calendar</string>
@@ -72,4 +103,9 @@
     <string name="calendar_day_widget_description">Current day and date</string>
     <string name="calendar_month_widget_label">Month</string>
     <string name="calendar_month_widget_description">Monthly calendar</string>
+
+    <!-- Google AdMob & Ads Configuration -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-9761037758602551~2072311679</string>
+    <string name="admob_banner_id" translatable="false">ca-app-pub-9761037758602551/6442801523</string>
+    <string name="admob_interstitial_id" translatable="false">ca-app-pub-9761037758602551/2089070656</string>
 </resources>

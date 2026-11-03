@@ -14,7 +14,7 @@ import subprocess
 import uiautomator2 as u2
 
 SERIAL = "emulator-5554"
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 ACTIVITY = "com.android.launcher3.Launcher"
 
 # Screen metrics for emulator-5554 (720x1600)

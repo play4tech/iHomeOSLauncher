@@ -353,6 +353,15 @@ class LauncherPrefs(private val encryptedContext: Context) {
         @JvmField
         val FIRST_RUN_ONBOARDING_DONE =
             nonRestorableItem("launcher.first_run_onboarding_done", false)
+        @JvmField
+        val ICON_SIZE_SCALE =
+            nonRestorableItem("pref_icon_size_scale", 1.0f)
+        @JvmField
+        val PRO_USER_ENABLED =
+            nonRestorableItem("pref_pro_user_enabled", false, EncryptionType.MOVE_TO_DEVICE_PROTECTED)
+        @JvmField
+        val CUSTOMIZE_GLASS_FIRST_RUN_DONE =
+            nonRestorableItem("pref_customize_glass_first_run_done", false, EncryptionType.MOVE_TO_DEVICE_PROTECTED)
         @JvmField val ENABLE_TWOLINE_ALLAPPS_TOGGLE =
                 backedUpItem("pref_enable_two_line_toggle", false)
         @JvmField

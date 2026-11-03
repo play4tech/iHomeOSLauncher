@@ -18,14 +18,20 @@ class ClockAppWidgetProvider : AppWidgetProvider() {
     companion object {
         @JvmField
         val COMPONENT_NAME =
+            ComponentName("com.ihomeos.launcher", ClockAppWidgetProvider::class.java.name)
+        val LEGACY_COMPONENT_NAME =
             ComponentName("com.ihome.launcher", ClockAppWidgetProvider::class.java.name)
 
         @JvmStatic
         fun isClockWidget(provider: ComponentName?): Boolean {
             if (provider == null) return false
-            return provider.className == ClockAppWidgetProvider::class.java.name ||
+            val className = provider.className
+            val shortClassName = provider.shortClassName
+            return className == ClockAppWidgetProvider::class.java.name ||
                 provider == COMPONENT_NAME ||
-                provider.shortClassName.endsWith("ClockAppWidgetProvider")
+                provider == LEGACY_COMPONENT_NAME ||
+                shortClassName == ".ClockAppWidgetProvider" ||
+                shortClassName == "ClockAppWidgetProvider"
         }
     }
 }

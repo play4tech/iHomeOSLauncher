@@ -16,7 +16,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 209 | **Bytes**: 9414
+**Lines**: 237 | **Bytes**: 10721
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -64,6 +64,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <uses-permission android:name="android.permission.BIND_APPWIDGET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <!--
     Permissions required for read/write access to the workspace data. These permission name
@@ -100,6 +102,11 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
         android:restoreAnyVersion="true"
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true" >
+
+        <!-- Google AdMob Application ID (Required to prevent initialization crash) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id" />
 
         <!-- Intent received when a session is committed -->
         <receiver
@@ -182,6 +189,27 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
         <activity
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="false"
+            android:autoRemoveFromRecents="true" />
+
+        <activity
+            android:name="com.android.launcher3.settings.IconSizeCustomizeActivity"
+            android:label="Customize Icon Size"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="false"
+            android:autoRemoveFromRecents="true" />
+
+        <activity
+            android:name="com.android.launcher3.settings.AppLibraryOnlyActivity"
+            android:label="App Library Only"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="false"
+            android:autoRemoveFromRecents="true" />
+
+        <activity
+            android:name="com.android.launcher3.settings.OpenSourceLicensesActivity"
+            android:label="Open Source Licenses"
             android:theme="@style/Theme.Bliss.Onboarding"
             android:exported="false"
             android:autoRemoveFromRecents="true" />
@@ -322,14 +350,12 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # bliss/AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 84 | **Bytes**: 3364
+**Lines**: 81 | **Bytes**: 3244
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
-    <uses-permission android:name="foundation.e.pwaplayer.provider.READ_WRITE" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -348,8 +374,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:name="foundation.e.blisslauncher.features.onboarding.OnboardingActivity"
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:taskAffinity=""
+            android:exported="true"
             android:theme="@style/Theme.Bliss.Onboarding" />
 
         <!-- iOS 2x2 Clock Widget -->

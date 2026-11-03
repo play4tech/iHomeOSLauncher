@@ -36,6 +36,10 @@ public class AppLibraryOverlayGlassView extends LiquidGlassView {
         setDispersionStrength(0f);
         setEnableSensorHighlight(false);
         setEnableAdaptiveTint(false);
+        setEnableEdgeHighlight(false);
+        setEdgeHighlightOpacity(0f);
+        setAdaptiveLensScale(false);
+        setFlatEdges(true, true, true, true);
         setBlurAmount(0.28f);
         setGlassTint(Color.BLACK, 0.38f);
         setEnablePressEffect(false);

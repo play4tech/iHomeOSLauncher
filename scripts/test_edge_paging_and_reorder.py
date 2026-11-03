@@ -9,7 +9,7 @@ import subprocess
 import uiautomator2 as u2
 
 SERIAL = "693a9b29"
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 ACTIVITY = "com.android.launcher3.Launcher"
 
 def adb(*args):

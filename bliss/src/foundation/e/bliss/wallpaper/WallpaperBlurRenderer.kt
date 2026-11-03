@@ -57,6 +57,10 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
             return
         }
 
+        if (bitmapChanged) {
+            blurSizes = null
+        }
+
         if (bitmapChanged || isFirstBuild) {
             isFirstBuild = false
             regenerateBlur(environment.wallpaper)
@@ -114,7 +118,10 @@ class WallpaperBlurRenderer(val context: Context) : WallpaperEnvironmentBuilder.
     }
 
     private fun notifyListeners() {
-        runOnMainThread { mListeners.forEach { it.onBlurCacheUpdated(blurSizes) } }
+        runOnMainThread {
+            mListeners.forEach { it.onBlurCacheUpdated(blurSizes) }
+            foundation.e.bliss.glass.GlassConfig.invalidateAll()
+        }
     }
 
     fun addListener(listener: Listener) {

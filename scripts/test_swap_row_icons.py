@@ -8,7 +8,7 @@ print("Device connected. Screen state:", d.info.get("screenOn"))
 
 # Wake device and launch Launcher
 subprocess.run(["adb", "-s", SERIAL, "shell", "input", "keyevent", "KEYCODE_WAKEUP"])
-subprocess.run(["adb", "-s", SERIAL, "shell", "am", "start", "-n", "com.ihome.launcher/com.android.launcher3.Launcher"])
+subprocess.run(["adb", "-s", SERIAL, "shell", "am", "start", "-n", "com.ihomeos.launcher/com.android.launcher3.Launcher"])
 time.sleep(1.0)
 
 x_icon = d(text="X")

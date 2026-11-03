@@ -71,7 +71,7 @@ def set_shader_opt(enabled: bool):
 
 def ensure_home_page(page_idx):
     # 0 = Page 0, 1 = Page 1, 2 = App Library
-    run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+    run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
     time.sleep(0.8)
     # Go to Page 0 first by swiping right several times
     for _ in range(4):

@@ -1,10 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="20dp"
-    android:height="20dp"
+    android:width="24dp"
+    android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+
+    <!-- Top track line segments -->
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M3,17v2h6v-2H3zm0,-10v2h10V7H3zm10,16v-2h8v-2h-8v-2h-2v6h2zM7,9v2H3v2h4v2h2V9H7zm14,4v-2H11v2h10zm0,-6V5H15V3h-2v6h2V7h6z" />
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 3.5,6.5 L 6.5,6.5" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 11.5,6.5 L 20.5,6.5" />
+
+    <!-- Top slider knob (center: 9.0, 6.5) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M 9,3.8 A 2.7,2.7 0 1,1 9,9.2 A 2.7,2.7 0 1,1 9,3.8 M 9,5.2 A 1.3,1.3 0 1,0 9,7.8 A 1.3,1.3 0 1,0 9,5.2 Z" />
+
+    <!-- Middle track line segments -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 3.5,12 L 12.5,12" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 17.5,12 L 20.5,12" />
+
+    <!-- Middle slider knob (center: 15.0, 12.0) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M 15,9.3 A 2.7,2.7 0 1,1 15,14.7 A 2.7,2.7 0 1,1 15,9.3 M 15,10.7 A 1.3,1.3 0 1,0 15,13.3 A 1.3,1.3 0 1,0 15,10.7 Z" />
+
+    <!-- Bottom track line segments -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 3.5,17.5 L 8,17.5" />
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.8"
+        android:strokeLineCap="round"
+        android:pathData="M 13,17.5 L 20.5,17.5" />
+
+    <!-- Bottom slider knob (center: 10.5, 17.5) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M 10.5,14.8 A 2.7,2.7 0 1,1 10.5,20.2 A 2.7,2.7 0 1,1 10.5,14.8 M 10.5,16.2 A 1.3,1.3 0 1,0 10.5,18.8 A 1.3,1.3 0 1,0 10.5,16.2 Z" />
 </vector>

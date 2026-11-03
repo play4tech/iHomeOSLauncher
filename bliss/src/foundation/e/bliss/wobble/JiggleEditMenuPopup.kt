@@ -45,6 +45,7 @@ import android.widget.TextView
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
 import com.android.launcher3.views.BaseDragLayer
 import com.android.launcher3.views.OptionsPopupView
 import foundation.e.bliss.glass.PopupGlassView
@@ -110,7 +111,9 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            OptionsPopupView.openWidgets(launcher)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                OptionsPopupView.openWidgets(launcher)
+            }
         }
         rowsColumn.addView(rowAddWidget)
         menuRows.add(rowAddWidget)
@@ -125,10 +128,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            try {
-                launcher.startActivity(Intent(launcher, com.android.launcher3.settings.SettingsActivity::class.java))
-            } catch (e: Exception) {
-                android.util.Log.e("JiggleEditMenuPopup", "Error launching settings", e)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                try {
+                    launcher.startActivity(Intent(launcher, com.android.launcher3.settings.SettingsActivity::class.java))
+                } catch (e: Exception) {
+                    android.util.Log.e("JiggleEditMenuPopup", "Error launching settings", e)
+                }
             }
         }
         rowsColumn.addView(rowCustomize)
@@ -144,8 +149,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            launcher.workspace?.wobbleLayouts(false)
-            WallpaperPickerHelper.launchGalleryPicker(launcher)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                launcher.workspace?.wobbleLayouts(false)
+                WallpaperPickerHelper.launchGalleryPicker(launcher)
+            }
         }
         rowsColumn.addView(rowEditWallpaper)
         menuRows.add(rowEditWallpaper)
@@ -384,6 +391,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         @JvmStatic
         fun showPopup(anchorView: View): JiggleEditMenuPopup {
             val launcher = Launcher.getLauncher(anchorView.context)
+            AdManager.preloadInterstitial(launcher)
             AbstractFloatingView.closeOpenViews(launcher, false, TYPE_OPTIONS_POPUP)
             val popup = JiggleEditMenuPopup(anchorView.context)
             popup.show(anchorView)

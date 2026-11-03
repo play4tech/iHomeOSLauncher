@@ -39,6 +39,10 @@ allprojects {
             implementation libs.androidx.core
             implementation libs.androidx.appcompat
         }
+
+        project.configurations.configureEach {
+            exclude group: 'javax.inject', module: 'javax.inject'
+        }
     }
 
     tasks.withType(KotlinCompile).configureEach {
@@ -154,6 +158,13 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    def keystorePropertiesFile = file("$rootDir/keystore.properties")
+    def hasKeystoreProperties = keystorePropertiesFile.canRead()
+    def keystoreProperties = new Properties()
+    if (hasKeystoreProperties) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    }
+
     signingConfigs {
         debugConfig {
             storeFile file("$rootDir/keystore/testkey.jks")
@@ -167,6 +178,20 @@ android {
             storePassword 'platform'
             keyAlias 'platform'
             keyPassword 'platform'
+        }
+
+        releaseConfig {
+            if (hasKeystoreProperties) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            } else {
+                storeFile file("$rootDir/keystore/testkey.jks")
+                storePassword 'testkey'
+                keyAlias 'testkey'
+                keyPassword 'testkey'
+            }
         }
     }
 
@@ -190,7 +215,7 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.debugConfig
+            signingConfig signingConfigs.releaseConfig
         }
 
     }
@@ -209,7 +234,7 @@ android {
 
         bliss {
             dimension "app"
-            applicationId 'com.ihome.launcher'
+            applicationId 'com.ihomeos.launcher'
             isDefault true
         }
 
@@ -361,6 +386,15 @@ dependencies {
     implementation libs.square.okhttp
     implementation libs.square.retrofit
     implementation(libs.androidx.window)
+    implementation(libs.play.billing) {
+        exclude group: 'javax.inject', module: 'javax.inject'
+    }
+    implementation(libs.google.ads) {
+        exclude group: 'javax.inject', module: 'javax.inject'
+    }
+    implementation(libs.google.ump) {
+        exclude group: 'javax.inject', module: 'javax.inject'
+    }
 
     implementation project(':IconLoader')
 

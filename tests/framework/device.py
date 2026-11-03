@@ -7,7 +7,7 @@ import time
 import subprocess
 import uiautomator2 as u2
 
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 ACTIVITY = "com.android.launcher3.Launcher"
 
 class LauncherDevice:

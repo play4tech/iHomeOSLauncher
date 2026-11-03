@@ -22,7 +22,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2132 | **Bytes**: 82430
+**Lines**: 2172 | **Bytes**: 83412
 
 ```java
 /*
@@ -162,7 +162,8 @@ import foundation.e.bliss.multimode.MultiModeController;
  */
 public class Folder extends AbstractFloatingView implements ClipPathView, DragSource,
         View.OnLongClickListener, DropTarget, FolderListener, TextView.OnEditorActionListener,
-        View.OnFocusChangeListener, DragListener, ExtendedEditText.OnBackKeyListener {
+        View.OnFocusChangeListener, DragListener, ExtendedEditText.OnBackKeyListener,
+        KeyboardInsetAnimationCallback.KeyboardInsetListener {
     private static final String TAG = "Launcher.Folder";
     private static final boolean DEBUG = false;
 
@@ -570,6 +571,45 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
 
         return windowInsets;
+    }
+
+    @Override
+    public void setTranslationY(float translationY) {
+        float old = getTranslationY();
+        super.setTranslationY(translationY);
+        if (Float.compare(old, translationY) != 0) {
+            invalidateFolderGlass();
+        }
+    }
+
+    @Override
+    public void setTranslationX(float translationX) {
+        float old = getTranslationX();
+        super.setTranslationX(translationX);
+        if (Float.compare(old, translationX) != 0) {
+            invalidateFolderGlass();
+        }
+    }
+
+    public View getGlassView() {
+        return null;
+    }
+
+    public void invalidateFolderGlass() {
+        View glass = getGlassView();
+        if (glass != null) {
+            glass.invalidate();
+        }
+    }
+
+    @Override
+    public void onTranslationStart() {
+        invalidateFolderGlass();
+    }
+
+    @Override
+    public void onTranslationEnd() {
+        invalidateFolderGlass();
     }
 
     public FolderIcon getFolderIcon() {
@@ -2841,7 +2881,7 @@ public class FolderAnimationManager {
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 568 | **Bytes**: 22154
+**Lines**: 573 | **Bytes**: 22235
 
 ```java
 /*
@@ -2976,6 +3016,11 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 mGridFolderPage.addView(mGlassView, 0, lp);
             }
         }
+    }
+
+    @Override
+    public View getGlassView() {
+        return mGlassView;
     }
 
     @Override
@@ -7672,7 +7717,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
-**Lines**: 394 | **Bytes**: 14170
+**Lines**: 402 | **Bytes**: 14528
 
 ```kotlin
 /*
@@ -7722,6 +7767,7 @@ import android.widget.TextView
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
 import com.android.launcher3.views.BaseDragLayer
 import com.android.launcher3.views.OptionsPopupView
 import foundation.e.bliss.glass.PopupGlassView
@@ -7787,7 +7833,9 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            OptionsPopupView.openWidgets(launcher)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                OptionsPopupView.openWidgets(launcher)
+            }
         }
         rowsColumn.addView(rowAddWidget)
         menuRows.add(rowAddWidget)
@@ -7802,10 +7850,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            try {
-                launcher.startActivity(Intent(launcher, com.android.launcher3.settings.SettingsActivity::class.java))
-            } catch (e: Exception) {
-                android.util.Log.e("JiggleEditMenuPopup", "Error launching settings", e)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                try {
+                    launcher.startActivity(Intent(launcher, com.android.launcher3.settings.SettingsActivity::class.java))
+                } catch (e: Exception) {
+                    android.util.Log.e("JiggleEditMenuPopup", "Error launching settings", e)
+                }
             }
         }
         rowsColumn.addView(rowCustomize)
@@ -7821,8 +7871,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            launcher.workspace?.wobbleLayouts(false)
-            WallpaperPickerHelper.launchGalleryPicker(launcher)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                launcher.workspace?.wobbleLayouts(false)
+                WallpaperPickerHelper.launchGalleryPicker(launcher)
+            }
         }
         rowsColumn.addView(rowEditWallpaper)
         menuRows.add(rowEditWallpaper)
@@ -8061,6 +8113,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         @JvmStatic
         fun showPopup(anchorView: View): JiggleEditMenuPopup {
             val launcher = Launcher.getLauncher(anchorView.context)
+            AdManager.preloadInterstitial(launcher)
             AbstractFloatingView.closeOpenViews(launcher, false, TYPE_OPTIONS_POPUP)
             val popup = JiggleEditMenuPopup(anchorView.context)
             popup.show(anchorView)
@@ -8075,7 +8128,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # src/com/android/launcher3/util/RemovedAppStore.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
-**Lines**: 69 | **Bytes**: 2877
+**Lines**: 81 | **Bytes**: 3497
 
 ```java
 /*
@@ -8138,6 +8191,18 @@ public class RemovedAppStore {
             updated.remove(componentName);
             prefs.edit().putStringSet(PREF_REMOVED_APPS, updated).apply();
         }
+    }
+
+    public static synchronized Set<String> getRemovedApps(Context context) {
+        if (context == null) return Collections.emptySet();
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        return new HashSet<>(prefs.getStringSet(PREF_REMOVED_APPS, Collections.emptySet()));
+    }
+
+    public static synchronized int getRemovedCount(Context context) {
+        if (context == null) return 0;
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        return prefs.getStringSet(PREF_REMOVED_APPS, Collections.emptySet()).size();
     }
 
     public static synchronized void clearAll(Context context) {

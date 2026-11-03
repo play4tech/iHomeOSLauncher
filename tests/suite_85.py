@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from tests.framework.test_case import TestCase, PreconditionError
 from tests.framework.runner import TestRunner
 
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 
 # =============================================================================
 # REUSABLE ACTION & SETUP HELPERS
@@ -434,7 +434,7 @@ def action_tc60(dev, insp):
         dev.restore_clean_fixture()
     before = len(insp.get_workspace_icons())
     assert before > 0, "Must have icons before restart"
-    dev.adb("shell", "am", "force-stop", "com.ihome.launcher")
+    dev.adb("shell", "am", "force-stop", "com.ihomeos.launcher")
     time.sleep(1.0)
     dev.ensure_launcher_ready()
     time.sleep(1.5)
@@ -544,9 +544,9 @@ def action_tc74(dev, insp):
     dev.press_key("back")
 
 def action_tc75(dev, insp):
-    dev.adb("shell", "cmd", "notification", "post", "-S", "bigtext", "-t", "Test", "com.ihome.launcher", "TestMessage")
+    dev.adb("shell", "cmd", "notification", "post", "-S", "bigtext", "-t", "Test", "com.ihomeos.launcher", "TestMessage")
     time.sleep(1.0)
-    dev.adb("shell", "cmd", "notification", "cancel", "com.ihome.launcher", "0")
+    dev.adb("shell", "cmd", "notification", "cancel", "com.ihomeos.launcher", "0")
     time.sleep(0.5)
 
 def action_tc76(dev, insp):
@@ -592,7 +592,7 @@ def action_tc82(dev, insp):
     assert not dev.is_folder_open(), "Folder did not close after Home key press"
 
 def action_tc83(dev, insp):
-    dev.adb("shell", "am", "broadcast", "-a", "android.intent.action.PACKAGE_CHANGED", "-d", "package:com.ihome.launcher")
+    dev.adb("shell", "am", "broadcast", "-a", "android.intent.action.PACKAGE_CHANGED", "-d", "package:com.ihomeos.launcher")
     time.sleep(0.5)
 
 def action_tc84(dev, insp):

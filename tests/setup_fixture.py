@@ -1,13 +1,13 @@
 """
 Helper utility to establish, verify, and restore clean hermetic fixtures for Launcher3 testing.
-Works on retail/emulator builds via `run-as com.ihome.launcher` without requiring root.
+Works on retail/emulator builds via `run-as com.ihomeos.launcher` without requiring root.
 """
 
 import subprocess
 import time
 import re
 
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 ACTIVITY = "com.android.launcher3.Launcher"
 
 def run_adb(serial, *args):

@@ -12,20 +12,26 @@ class DigitalClockAppWidgetProvider : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // In-process ClockWidgetHostView renders directly; no RemoteViews update needed.
+        // In-process DigitalClockWidgetHostView renders directly; no RemoteViews update needed.
     }
 
     companion object {
         @JvmField
         val COMPONENT_NAME =
+            ComponentName("com.ihomeos.launcher", DigitalClockAppWidgetProvider::class.java.name)
+        val LEGACY_COMPONENT_NAME =
             ComponentName("com.ihome.launcher", DigitalClockAppWidgetProvider::class.java.name)
 
         @JvmStatic
         fun isDigitalClockWidget(provider: ComponentName?): Boolean {
             if (provider == null) return false
-            return provider.className == DigitalClockAppWidgetProvider::class.java.name ||
+            val className = provider.className
+            val shortClassName = provider.shortClassName
+            return className == DigitalClockAppWidgetProvider::class.java.name ||
                 provider == COMPONENT_NAME ||
-                provider.shortClassName.endsWith("DigitalClockAppWidgetProvider")
+                provider == LEGACY_COMPONENT_NAME ||
+                shortClassName == ".DigitalClockAppWidgetProvider" ||
+                shortClassName == "DigitalClockAppWidgetProvider"
         }
     }
 }

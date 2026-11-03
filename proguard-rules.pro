@@ -52,6 +52,8 @@
 
 # Silence warnings about classes that are available at runtime
 # These rules are generated automatically by the Android Gradle plugin.
+-dontwarn dalvik.system.**
+-dontwarn android.renderscript.**
 -dontwarn android.animation.AnimationHandler*
 -dontwarn android.content.om.**
 -dontwarn android.content.pm.**
@@ -100,6 +102,24 @@
 -keepattributes InnerClasses
 
 -keep class com.android.** { *; }
+
+# Google Play Billing Library
+-keep class com.android.billingclient.api.** { *; }
+
+# Google Mobile Ads (AdMob) & UMP SDK
+-keep class com.google.android.gms.ads.** { *; }
+-keep interface com.google.android.gms.ads.** { *; }
+-keep class com.google.android.ump.** { *; }
+-keep interface com.google.android.ump.** { *; }
+
+# Keep Liquid Glass library classes, fields, and methods for reflection and shaders
+-keep class com.example.liquidglass.** {
+  *;
+}
+
+# Keep app package and foundation classes
+-keep class com.ihomeos.launcher.** { *; }
+-keep class foundation.e.bliss.** { *; }
 
 -dontwarn android.compat.annotation.UnsupportedAppUsage
 -dontwarn com.android.aconfig.annotations.AssumeFalseForR8

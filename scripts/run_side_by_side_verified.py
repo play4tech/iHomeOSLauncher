@@ -113,7 +113,7 @@ def run_suite(pkg):
 
 if __name__ == "__main__":
     v_applib, v_spot = run_suite("foundation.e.blisslauncher")
-    h_applib, h_spot = run_suite("com.ihome.launcher")
+    h_applib, h_spot = run_suite("com.ihomeos.launcher")
     
     print("\n" + "=" * 80)
     print("                      OFFICIAL HEAD vs VIVO BENCHMARK                      ")

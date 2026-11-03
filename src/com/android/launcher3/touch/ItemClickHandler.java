@@ -109,7 +109,8 @@ public class ItemClickHandler {
             }
         }
 
-        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
+        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView
+                || v instanceof foundation.e.bliss.widgets.clock.DigitalClockWidgetHostView) {
             if (!workspace.isWobbling()) {
                 onClickClockWidget(v.getContext());
                 return;

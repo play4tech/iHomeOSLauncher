@@ -56,5 +56,14 @@
                 android:clipToPadding="false" />
 
         </LinearLayout>
+
+        <!-- Bottom-Pinned Banner Container (Pro users: GONE) -->
+        <FrameLayout
+            android:id="@+id/expanded_category_ad_banner_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|center_horizontal"
+            android:paddingBottom="12dp"
+            android:visibility="gone" />
     </FrameLayout>
 </com.android.launcher3.applibrary.view.AppLibraryCategoryExpandedView>

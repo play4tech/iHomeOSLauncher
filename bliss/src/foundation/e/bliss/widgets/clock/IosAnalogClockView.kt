@@ -23,6 +23,12 @@ class IosAnalogClockView @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
 
+    var dialScale: Float = 0.83f
+
+    private val dialShadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.argb(35, 0, 0, 0)
+    }
     private val facePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
         color = Color.WHITE
@@ -68,6 +74,7 @@ class IosAnalogClockView @JvmOverloads constructor(
     private val fontMetrics = Paint.FontMetrics()
     private var calendar: Calendar = Calendar.getInstance()
     private var isRunning = false
+    private var isReceiverRegistered = false
 
     private val tickRunnable = object : Runnable {
         override fun run() {
@@ -111,6 +118,9 @@ class IosAnalogClockView @JvmOverloads constructor(
     }
 
     private fun drawStaticDial(canvas: Canvas, cx: Float, cy: Float, radius: Float) {
+        // Subtle drop shadow under circular dial
+        canvas.drawCircle(cx, cy + radius * 0.025f, radius, dialShadowPaint)
+
         // 1. Pure white circular clock face
         canvas.drawCircle(cx, cy, radius, facePaint)
 
@@ -164,7 +174,7 @@ class IosAnalogClockView @JvmOverloads constructor(
 
         val cx = w / 2f
         val cy = h / 2f
-        val radius = min(w, h) / 2f
+        val radius = (min(w, h) / 2f) * dialScale
 
         // Draw static dial directly to canvas (pure white circle, ticks, numbers)
         drawStaticDial(canvas, cx, cy, radius)
@@ -214,26 +224,34 @@ class IosAnalogClockView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_TIME_CHANGED)
-            addAction(Intent.ACTION_TIMEZONE_CHANGED)
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                context.registerReceiver(timeReceiver, filter, Context.RECEIVER_EXPORTED)
-            } else {
-                context.registerReceiver(timeReceiver, filter)
+        if (!isReceiverRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_DATE_CHANGED)
+                addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+                addAction(Intent.ACTION_TIME_TICK)
             }
-        } catch (ignored: Exception) {}
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(timeReceiver, filter, Context.RECEIVER_EXPORTED)
+                } else {
+                    context.registerReceiver(timeReceiver, filter)
+                }
+                isReceiverRegistered = true
+            } catch (ignored: Exception) {}
+        }
         updateRunningState()
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         stopTicker()
-        try {
-            context.unregisterReceiver(timeReceiver)
-        } catch (ignored: Exception) {}
+        if (isReceiverRegistered) {
+            try {
+                context.unregisterReceiver(timeReceiver)
+            } catch (ignored: Exception) {}
+            isReceiverRegistered = false
+        }
     }
 
     override fun onVisibilityAggregated(isVisible: Boolean) {

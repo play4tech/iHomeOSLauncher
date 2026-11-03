@@ -10,7 +10,7 @@ print("=== STARTING POD REVEAL & OVERSCROLL AUDIT ===")
 run_adb("logcat -c")
 
 # 2. Open App Library
-run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
 time.sleep(0.5)
 # Go to App Library (page 2)
 for _ in range(4):

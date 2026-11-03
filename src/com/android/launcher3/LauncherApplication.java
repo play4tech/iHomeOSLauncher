@@ -126,6 +126,7 @@ public class LauncherApplication extends Application {
                         String className = element.getClassName();
                         if (className != null && (className.startsWith("com.android.launcher3")
                                 || className.startsWith("foundation.e.bliss")
+                                || className.startsWith("com.ihomeos.launcher")
                                 || className.startsWith("com.ihome.launcher"))) {
                             containsLauncherCode = true;
                             break;

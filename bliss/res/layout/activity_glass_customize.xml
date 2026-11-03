@@ -249,7 +249,7 @@
                 android:layout_marginEnd="16dp"
                 android:layout_marginBottom="12dp">
 
-                <!-- The Liquid Glass Panel -->
+                <!-- The Glass Panel -->
                 <foundation.e.bliss.glass.PreviewDockGlassView
                     android:id="@+id/preview_dock_glass"
                     android:layout_width="match_parent"
@@ -602,5 +602,16 @@
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- AdMob Banner Container (Strictly pinned at bottom, isolated from sliders, hidden for Pro) -->
+    <FrameLayout
+        android:id="@+id/ad_banner_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@color/ios_settings_bg"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone" />
 
 </LinearLayout>

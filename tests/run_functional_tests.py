@@ -11,7 +11,7 @@ import subprocess
 import re
 import xml.etree.ElementTree as ET
 
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 ACTIVITY = "com.android.launcher3.Launcher"
 
 class AdbTester:

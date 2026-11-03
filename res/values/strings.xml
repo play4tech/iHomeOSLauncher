@@ -21,7 +21,7 @@
     <skip />
 
     <!-- Application name -->
-    <string name="app_name">iHome Launcher</string>
+    <string name="app_name">iHomeOS Launcher</string>
     <!-- Work folder name -->
     <string name="work_folder_name">Work</string>
     <!-- Displayed when user selects a shortcut for an app that was uninstalled [CHAR_LIMIT=none]-->
@@ -490,7 +490,7 @@
 
     <!-- iOS 2x2 Clock Widgets -->
     <string name="clock_widget_label">Clock</string>
-    <string name="clock_widget_description">Clock</string>
+    <string name="clock_widget_description">Analog Clock</string>
     <string name="digital_clock_widget_label">Clock</string>
     <string name="digital_clock_widget_description">Digital Seconds Clock</string>
 
@@ -500,4 +500,9 @@
     <string name="calendar_day_widget_description">Current day and date</string>
     <string name="calendar_month_widget_label">Month</string>
     <string name="calendar_month_widget_description">Monthly calendar</string>
+
+    <!-- Google AdMob & Ads Configuration -->
+    <string name="admob_app_id" translatable="false">ca-app-pub-9761037758602551~2072311679</string>
+    <string name="admob_banner_id" translatable="false">ca-app-pub-9761037758602551/6442801523</string>
+    <string name="admob_interstitial_id" translatable="false">ca-app-pub-9761037758602551/2089070656</string>
 </resources>

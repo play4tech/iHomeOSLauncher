@@ -10,7 +10,7 @@ print("Starting Scenario Verification Suite on device:", SERIAL)
 # Ensure screen is on and unlocked
 d.screen_on()
 subprocess.run(["adb", "-s", SERIAL, "shell", "wm", "dismiss-keyguard"])
-subprocess.run(["adb", "-s", SERIAL, "shell", "am", "start", "-n", "com.ihome.launcher/com.android.launcher3.Launcher"])
+subprocess.run(["adb", "-s", SERIAL, "shell", "am", "start", "-n", "com.ihomeos.launcher/com.android.launcher3.Launcher"])
 time.sleep(1.5)
 
 # -------------------------------------------------------------

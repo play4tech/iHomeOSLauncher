@@ -98,6 +98,7 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
     public static final String KEY_SHOW_DESKTOP_LABELS = "pref_desktop_show_labels";
     public static final String KEY_SHOW_DRAWER_LABELS = "pref_drawer_show_labels";
     public static final String KEY_WORKSPACE_LOCK = "pref_workspace_lock";
+    public static final String KEY_ICON_SIZE_SCALE = "pref_icon_size_scale";
 
     // Constants that affects the interpolation curve between statically defined device profile
     // buckets.
@@ -361,6 +362,7 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
             case KEY_ALLAPPS_THEMED_ICONS:
             case KEY_SHOW_DESKTOP_LABELS:
             case KEY_SHOW_DRAWER_LABELS:
+            case KEY_ICON_SIZE_SCALE:
                 onConfigChanged(mContext);
                 break;
         }
@@ -426,12 +428,23 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
 
         inlineNavButtonsEndSpacing = closestProfile.inlineNavButtonsEndSpacing;
 
-        iconSize = displayOption.iconSizes;
-        float maxIconSize = iconSize[0];
-        for (int i = 1; i < iconSize.length; i++) {
-            maxIconSize = Math.max(maxIconSize, iconSize[i]);
+        float iconScale = 1.0f;
+        try {
+            iconScale = LauncherPrefs.get(context).get(LauncherPrefs.ICON_SIZE_SCALE);
+            iconScale = Utilities.boundToRange(iconScale, 0.80f, 1.15f);
+        } catch (Exception ignored) {
         }
-        iconBitmapSize = ResourceUtils.pxFromDp(maxIconSize, metrics);
+
+        iconSize = new float[displayOption.iconSizes.length];
+        for (int i = 0; i < displayOption.iconSizes.length; i++) {
+            iconSize[i] = displayOption.iconSizes[i] * iconScale;
+        }
+        float maxIconSize = displayOption.iconSizes[0];
+        for (int i = 1; i < displayOption.iconSizes.length; i++) {
+            maxIconSize = Math.max(maxIconSize, displayOption.iconSizes[i]);
+        }
+        float maxBitmapDp = Math.max(maxIconSize, maxIconSize * iconScale);
+        iconBitmapSize = ResourceUtils.pxFromDp(maxBitmapDp, metrics);
         fillResIconDpi = getLauncherIconDensity(iconBitmapSize);
 
         iconTextSize = displayOption.textSizes;
@@ -458,7 +471,10 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
 
         allAppsCellSize = displayOption.allAppsCellSize;
         allAppsBorderSpaces = displayOption.allAppsBorderSpaces;
-        allAppsIconSize = displayOption.allAppsIconSizes;
+        allAppsIconSize = new float[displayOption.allAppsIconSizes.length];
+        for (int i = 0; i < displayOption.allAppsIconSizes.length; i++) {
+            allAppsIconSize[i] = displayOption.allAppsIconSizes[i] * iconScale;
+        }
         allAppsIconTextSize = displayOption.allAppsIconTextSizes;
 
         inlineQsb = closestProfile.inlineQsb;
@@ -535,7 +551,8 @@ public class InvariantDeviceProfile implements OnSharedPreferenceChangeListener 
     private Object[] toModelState() {
         return new Object[]{
                 numColumns, numRows, numSearchContainerColumns, numDatabaseHotseatIcons,
-                iconBitmapSize, fillResIconDpi, numDatabaseAllAppsColumns, dbFile};
+                iconBitmapSize, fillResIconDpi, numDatabaseAllAppsColumns, dbFile,
+                iconSize != null && iconSize.length > 0 ? iconSize[INDEX_DEFAULT] : 0f};
     }
 
     /** Updates IDP using the provided context. Notifies listeners of change. */

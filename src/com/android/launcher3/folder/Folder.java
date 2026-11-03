@@ -135,7 +135,8 @@ import foundation.e.bliss.multimode.MultiModeController;
  */
 public class Folder extends AbstractFloatingView implements ClipPathView, DragSource,
         View.OnLongClickListener, DropTarget, FolderListener, TextView.OnEditorActionListener,
-        View.OnFocusChangeListener, DragListener, ExtendedEditText.OnBackKeyListener {
+        View.OnFocusChangeListener, DragListener, ExtendedEditText.OnBackKeyListener,
+        KeyboardInsetAnimationCallback.KeyboardInsetListener {
     private static final String TAG = "Launcher.Folder";
     private static final boolean DEBUG = false;
 
@@ -543,6 +544,45 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
 
         return windowInsets;
+    }
+
+    @Override
+    public void setTranslationY(float translationY) {
+        float old = getTranslationY();
+        super.setTranslationY(translationY);
+        if (Float.compare(old, translationY) != 0) {
+            invalidateFolderGlass();
+        }
+    }
+
+    @Override
+    public void setTranslationX(float translationX) {
+        float old = getTranslationX();
+        super.setTranslationX(translationX);
+        if (Float.compare(old, translationX) != 0) {
+            invalidateFolderGlass();
+        }
+    }
+
+    public View getGlassView() {
+        return null;
+    }
+
+    public void invalidateFolderGlass() {
+        View glass = getGlassView();
+        if (glass != null) {
+            glass.invalidate();
+        }
+    }
+
+    @Override
+    public void onTranslationStart() {
+        invalidateFolderGlass();
+    }
+
+    @Override
+    public void onTranslationEnd() {
+        invalidateFolderGlass();
     }
 
     public FolderIcon getFolderIcon() {

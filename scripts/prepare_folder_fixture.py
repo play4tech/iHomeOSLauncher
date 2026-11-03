@@ -7,7 +7,7 @@ import sqlite3
 import subprocess
 import time
 
-PACKAGE = "com.ihome.launcher"
+PACKAGE = "com.ihomeos.launcher"
 
 def run_adb(*args):
     cmd = ["adb", "-s", "emulator-5554"] + list(args)

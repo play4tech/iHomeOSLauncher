@@ -84,7 +84,7 @@ def main():
     adb("shell settings put system min_refresh_rate 60.0")
     
     run_bench("foundation.e.blisslauncher", "HEAD Build")
-    run_bench("com.ihome.launcher", "Vivo Build")
+    run_bench("com.ihomeos.launcher", "Vivo Build")
 
 if __name__ == "__main__":
     main()

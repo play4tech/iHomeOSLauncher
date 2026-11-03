@@ -133,7 +133,187 @@
                 android:textSize="12sp"
                 android:visibility="gone" />
 
-            <!-- Customize Tips Card (Step 3: Wallpaper & Widgets) -->
+            <!-- Wallpaper Grid Container (Step 3: Wallpaper Selection) -->
+            <LinearLayout
+                android:id="@+id/onboarding_wallpaper_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- Row 1: Wallpaper 1 and 2 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <!-- Wallpaper 1 Card -->
+                    <FrameLayout
+                        android:id="@+id/onboarding_wallpaper_card_1"
+                        android:layout_width="0dp"
+                        android:layout_height="180dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_onboarding_wallpaper_card"
+                        android:clipToOutline="true"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_img_1"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/wallpaper_thumb_1"
+                            android:contentDescription="@null" />
+
+                        <View
+                            android:id="@+id/onboarding_wallpaper_border_1"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_onboarding_wallpaper_selected"
+                            android:visibility="visible" />
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_badge_1"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="8dp"
+                            android:src="@drawable/ic_onboarding_check_badge"
+                            android:contentDescription="@null"
+                            android:visibility="visible" />
+                    </FrameLayout>
+
+                    <!-- Wallpaper 2 Card -->
+                    <FrameLayout
+                        android:id="@+id/onboarding_wallpaper_card_2"
+                        android:layout_width="0dp"
+                        android:layout_height="180dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_onboarding_wallpaper_card"
+                        android:clipToOutline="true"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_img_2"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/wallpaper_thumb_2"
+                            android:contentDescription="@null" />
+
+                        <View
+                            android:id="@+id/onboarding_wallpaper_border_2"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_onboarding_wallpaper_selected"
+                            android:visibility="gone" />
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_badge_2"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="8dp"
+                            android:src="@drawable/ic_onboarding_check_badge"
+                            android:contentDescription="@null"
+                            android:visibility="gone" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <!-- Row 2: Wallpaper 3 and 4 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <!-- Wallpaper 3 Card -->
+                    <FrameLayout
+                        android:id="@+id/onboarding_wallpaper_card_3"
+                        android:layout_width="0dp"
+                        android:layout_height="180dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="8dp"
+                        android:background="@drawable/bg_onboarding_wallpaper_card"
+                        android:clipToOutline="true"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_img_3"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/wallpaper_thumb_3"
+                            android:contentDescription="@null" />
+
+                        <View
+                            android:id="@+id/onboarding_wallpaper_border_3"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_onboarding_wallpaper_selected"
+                            android:visibility="gone" />
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_badge_3"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="8dp"
+                            android:src="@drawable/ic_onboarding_check_badge"
+                            android:contentDescription="@null"
+                            android:visibility="gone" />
+                    </FrameLayout>
+
+                    <!-- Wallpaper 4 Card -->
+                    <FrameLayout
+                        android:id="@+id/onboarding_wallpaper_card_4"
+                        android:layout_width="0dp"
+                        android:layout_height="180dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_onboarding_wallpaper_card"
+                        android:clipToOutline="true"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_img_4"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:scaleType="centerCrop"
+                            android:src="@drawable/wallpaper_thumb_4"
+                            android:contentDescription="@null" />
+
+                        <View
+                            android:id="@+id/onboarding_wallpaper_border_4"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:background="@drawable/bg_onboarding_wallpaper_selected"
+                            android:visibility="gone" />
+
+                        <ImageView
+                            android:id="@+id/onboarding_wallpaper_badge_4"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="bottom|end"
+                            android:layout_margin="8dp"
+                            android:src="@drawable/ic_onboarding_check_badge"
+                            android:contentDescription="@null"
+                            android:visibility="gone" />
+                    </FrameLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Customize Tips Card (Step 4: Wallpaper & Widgets) -->
             <LinearLayout
                 android:id="@+id/onboarding_tips_card"
                 android:layout_width="match_parent"
@@ -239,6 +419,172 @@
 
             </LinearLayout>
 
+            <!-- Pro Benefits Card (Step 5: Upgrade to Pro) -->
+            <LinearLayout
+                android:id="@+id/onboarding_pro_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/bg_onboarding_info_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+
+                <!-- Feature 1: 100% Ad-Free -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <FrameLayout
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_onboarding_info_icon">
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_pro_adfree"
+                            android:contentDescription="@null" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/onboarding_pro_feature_adfree_title"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/onboarding_pro_feature_adfree_body"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="13sp"
+                            android:lineSpacingExtra="1dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Subtle Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:layout_marginStart="52dp"
+                    android:background="#15000000" />
+
+                <!-- Feature 2: Full Glass & Effects -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <FrameLayout
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_onboarding_info_icon">
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_pro_glass"
+                            android:contentDescription="@null" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/onboarding_pro_feature_glass_title"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/onboarding_pro_feature_glass_body"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="13sp"
+                            android:lineSpacingExtra="1dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Subtle Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:layout_marginStart="52dp"
+                    android:background="#15000000" />
+
+                <!-- Feature 3: Lifetime Purchase -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <FrameLayout
+                        android:layout_width="38dp"
+                        android:layout_height="38dp"
+                        android:background="@drawable/bg_onboarding_info_icon">
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_pro_lifetime"
+                            android:contentDescription="@null" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/onboarding_pro_feature_lifetime_title"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/onboarding_pro_feature_lifetime_body"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="13sp"
+                            android:lineSpacingExtra="1dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+
         </LinearLayout>
     </ScrollView>
 
@@ -278,6 +624,24 @@
             android:textColor="@color/onboarding_btn_secondary_text"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/onboarding_btn_restore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="12dp"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:text="@string/onboarding_pro_restore"
+            android:textColor="@color/onboarding_text_secondary"
+            android:textSize="13sp"
+            android:visibility="gone" />
     </LinearLayout>
 
 </LinearLayout>

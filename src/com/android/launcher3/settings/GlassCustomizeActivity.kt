@@ -35,6 +35,7 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.SeekBar
@@ -47,8 +48,12 @@ import androidx.fragment.app.FragmentActivity
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
+import com.android.launcher3.ads.ConsentManager
+import com.android.launcher3.billing.BillingManager
 import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.icons.LauncherIcons
+import com.google.android.gms.ads.AdView
 import foundation.e.bliss.glass.LiquidGlassToast
 import com.android.launcher3.model.data.ItemInfoWithIcon
 import foundation.e.bliss.glass.FolderGlassView
@@ -73,6 +78,8 @@ class GlassCustomizeActivity : FragmentActivity() {
 
     private val sliderBindings = mutableListOf<SliderBinding>()
     private val switchBindings = mutableListOf<SwitchBinding>()
+
+    private var bannerAdView: AdView? = null
 
     private var isSaving = false
     private val saveFinishHandler = Handler(Looper.getMainLooper())
@@ -100,6 +107,7 @@ class GlassCustomizeActivity : FragmentActivity() {
         initSliders()
         initSwitches()
         initResetButton()
+        initAds()
     }
 
     private fun setupSystemBars() {
@@ -135,14 +143,42 @@ class GlassCustomizeActivity : FragmentActivity() {
         saveAndFinish(fromSaveButton = false)
     }
 
-    override fun onDestroy() {
-        saveFinishHandler.removeCallbacks(saveFinishRunnable)
-        super.onDestroy()
+    override fun onResume() {
+        super.onResume()
+        bannerAdView?.resume()
     }
 
     override fun onPause() {
         super.onPause()
+        bannerAdView?.pause()
         GlassConfig.saveSettings(this, currentSettings)
+    }
+
+    override fun onDestroy() {
+        saveFinishHandler.removeCallbacks(saveFinishRunnable)
+        bannerAdView?.destroy()
+        bannerAdView = null
+        super.onDestroy()
+    }
+
+    private fun initAds() {
+        if (BillingManager.isProUser(this)) return
+
+        ConsentManager.gatherConsent(this) { canRequestAds ->
+            if (canRequestAds && !isFinishing && !isDestroyed) {
+                AdManager.initialize(this) {
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                            if (container != null) {
+                                bannerAdView = AdManager.loadBanner(this, container)
+                            }
+                            AdManager.preloadInterstitial(this)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun initPreview() {
@@ -521,7 +557,7 @@ class GlassCustomizeActivity : FragmentActivity() {
         bindSwitch(
             containerId = R.id.switch_border_enabled,
             title = "Black Outline Border",
-            subtitle = "Thin black border around liquid glass edges",
+            subtitle = "Thin black border around glass edges",
             getter = { it.borderEnabled },
             setter = { s, v -> s.borderEnabled = v }
         )
@@ -530,7 +566,7 @@ class GlassCustomizeActivity : FragmentActivity() {
         bindSwitch(
             containerId = R.id.switch_edge_highlight,
             title = "Specular Edge Highlight",
-            subtitle = "Signature iOS specular highlight along the rim",
+            subtitle = "Signature specular highlight along the rim",
             getter = { it.enableEdgeHighlight },
             setter = { s, v -> s.enableEdgeHighlight = v }
         )
@@ -585,7 +621,7 @@ class GlassCustomizeActivity : FragmentActivity() {
             sliderBindings.forEach { it.updateFromSettings(currentSettings) }
             switchBindings.forEach { it.updateFromSettings(currentSettings) }
             applyToPreview()
-            LiquidGlassToast.show(this, "Reset to default liquid glass parameters", R.drawable.ic_ios_check_circle)
+            LiquidGlassToast.show(this, "Reset to default glass parameters", R.drawable.ic_ios_check_circle)
         }
     }
 
@@ -612,13 +648,23 @@ class GlassCustomizeActivity : FragmentActivity() {
 
         GlassConfig.saveSettings(this, currentSettings)
 
+        val proceedFinish = {
+            AdManager.showInterstitialOnExitIfEligible(this) {
+                if (!isFinishing && !isDestroyed) {
+                    finish()
+                }
+            }
+        }
+
         if (fromSaveButton) {
             isSaving = true
             findViewById<View>(R.id.btn_save)?.isEnabled = false
-            LiquidGlassToast.show(this, "Liquid Glass settings saved", R.drawable.ic_ios_check_circle)
-            saveFinishHandler.postDelayed(saveFinishRunnable, 850L)
+            LiquidGlassToast.show(this, "Glass settings saved", R.drawable.ic_ios_check_circle)
+            saveFinishHandler.postDelayed({
+                proceedFinish()
+            }, 850L)
         } else {
-            finish()
+            proceedFinish()
         }
     }
 

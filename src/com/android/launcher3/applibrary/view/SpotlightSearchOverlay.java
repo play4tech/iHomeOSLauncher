@@ -36,6 +36,7 @@ import android.view.animation.Interpolator;
 import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.window.BackEvent;
@@ -54,6 +55,7 @@ import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
+import com.android.launcher3.ads.AdManager;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.util.Themes;
@@ -297,6 +299,11 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         launcher.getDragLayer().addView(overlay);
         launcher.onDragLayerHierarchyChanged();
 
+        FrameLayout adContainer = overlay.findViewById(R.id.spotlight_search_ad_banner_container);
+        if (adContainer != null) {
+            AdManager.loadBanner(launcher, adContainer);
+        }
+
         // Load apps
         AppInfo[] apps = launcher.getAppsView() != null && launcher.getAppsView().getAppsStore() != null
                 ? launcher.getAppsView().getAppsStore().getApps() : null;
@@ -528,6 +535,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
         hideKeyboard();
+
+        FrameLayout adContainer = findViewById(R.id.spotlight_search_ad_banner_container);
+        AdManager.destroyBanner(adContainer);
 
         if (mBackdropGlass != null) mBackdropGlass.animate().cancel();
         if (mSearchContent != null) mSearchContent.animate().cancel();

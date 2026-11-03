@@ -28,6 +28,7 @@ import com.android.launcher3.LauncherPrefs
 import com.example.liquidglass.GlassAccessibilityMode
 import com.example.liquidglass.GlassMaterial
 import com.example.liquidglass.LiquidGlassView
+import foundation.e.bliss.utils.runOnMainThread
 
 /**
  * Master configuration object defining single source of truth for all Liquid Glass surfaces across
@@ -199,27 +200,19 @@ object GlassConfig {
     }
 
     private var sensorsPermanentlyDisabled = false
-    private var dummyListenerView: android.view.View? = null
+    private var disableSensorsAttempted = false
 
     @JvmStatic
     fun disableSensors(context: Context) {
+        if (disableSensorsAttempted && sensorsPermanentlyDisabled) return
         try {
             val cls = Class.forName("com.example.liquidglass.LightSourceController")
             val lightDirXField = cls.getDeclaredField("lightDirX").apply { isAccessible = true }
             val lightDirYField = cls.getDeclaredField("lightDirY").apply { isAccessible = true }
-            val lastNotifiedXField = cls.getDeclaredField("lastNotifiedX").apply { isAccessible = true }
-            val lastNotifiedYField = cls.getDeclaredField("lastNotifiedY").apply { isAccessible = true }
-            val registeredField = cls.getDeclaredField("registered").apply { isAccessible = true }
-            val listenersField = cls.getDeclaredField("listeners").apply { isAccessible = true }
 
             // Lock specular light direction permanently to top/bottom: X = 0.0 (no sides), Y = 1.0 (top and bottom specular)
             lightDirXField.setFloat(null, 0.0f)
             lightDirYField.setFloat(null, 1.0f)
-            lastNotifiedXField.setFloat(null, 0.0f)
-            lastNotifiedYField.setFloat(null, 1.0f)
-
-            // Mark registered = true so LightSourceController.register() never registers a listener
-            registeredField.setBoolean(null, true)
 
             if (!sensorsPermanentlyDisabled) {
                 val instanceField = cls.getDeclaredField("INSTANCE").apply { isAccessible = true }
@@ -231,24 +224,28 @@ object GlassConfig {
                 sensorsPermanentlyDisabled = true
                 android.util.Log.d("GlassConfig", "disableSensors: Locked specular lightDir to (0.0, 1.0)")
             }
+        } catch (e: Throwable) {
+            if (!disableSensorsAttempted) {
+                android.util.Log.e("GlassConfig", "disableSensors failed", e)
+            }
+        } finally {
+            disableSensorsAttempted = true
+        }
+    }
 
-            // Keep a dummy view in listeners permanently so listeners.isEmpty() is NEVER true,
-            // preventing unregister() from resetting registered to false.
-            @Suppress("UNCHECKED_CAST")
-            val listeners = listenersField.get(null) as? java.util.LinkedHashSet<android.view.View>
-            if (listeners != null) {
-                synchronized(listeners) {
-                    if (dummyListenerView == null) {
-                        dummyListenerView = android.view.View(context.applicationContext)
-                    }
-                    val dummy = dummyListenerView
-                    if (dummy != null && !listeners.contains(dummy)) {
-                        listeners.add(dummy)
-                    }
+    @JvmStatic
+    fun invalidateAll() {
+        runOnMainThread {
+            val viewsCopy = synchronized(registeredViews) {
+                registeredViews.toList()
+            }
+            for (v in viewsCopy) {
+                try {
+                    v.invalidate()
+                } catch (e: Exception) {
+                    // ignore recycled or detached views
                 }
             }
-        } catch (e: Throwable) {
-            android.util.Log.e("GlassConfig", "disableSensors failed", e)
         }
     }
 
@@ -416,7 +413,7 @@ object GlassConfig {
         glassView.enableEdgeHighlight = settings.enableEdgeHighlight
         glassView.edgeHighlightBorderWidth = settings.edgeHighlightBorderWidth
         glassView.edgeHighlightOpacity = settings.edgeHighlightOpacity
-        glassView.enableSensorHighlight = true
+        glassView.enableSensorHighlight = false
         glassView.enableAdaptiveTint = settings.enableAdaptiveTint
         try {
             val powerSaveField = LiquidGlassView::class.java.getDeclaredField("a11yPowerSave").apply { isAccessible = true }

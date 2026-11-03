@@ -63,6 +63,174 @@
                 android:textSize="32sp"
                 android:textStyle="bold" />
 
+            <!-- SECTION 0: PREMIUM -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginBottom="6dp"
+                android:text="PREMIUM"
+                android:textColor="@color/ios_settings_section_title"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <!-- Card 0: Pro Unlock & Restore -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="22dp"
+                android:background="@drawable/bg_ios_settings_card"
+                android:orientation="vertical">
+
+                <!-- Row 1: Upgrade to Pro -->
+                <LinearLayout
+                    android:id="@+id/row_upgrade_pro"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
+
+                    <FrameLayout
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_ios_icon_container"
+                        android:backgroundTint="@color/ios_icon_orange">
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_ios_pro_star" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="iHomeOS Pro"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="16sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/txt_pro_subtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="100% Ad-free &amp; premium features"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <!-- Buy Button -->
+                    <TextView
+                        android:id="@+id/btn_buy_pro"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_ios_btn_action"
+                        android:paddingStart="14dp"
+                        android:paddingEnd="14dp"
+                        android:paddingTop="6dp"
+                        android:paddingBottom="6dp"
+                        android:text="Upgrade"
+                        android:textColor="#FFFFFF"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <!-- Active Badge (when already Pro) -->
+                    <TextView
+                        android:id="@+id/badge_pro_active"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_ios_badge_default"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:paddingTop="4dp"
+                        android:paddingBottom="4dp"
+                        android:text="✓ Active"
+                        android:textColor="#34C759"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- Divider -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:layout_marginStart="62dp"
+                    android:background="@color/ios_settings_card_divider" />
+
+                <!-- Row 2: Restore Purchases -->
+                <LinearLayout
+                    android:id="@+id/row_restore_purchases"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
+
+                    <FrameLayout
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_ios_icon_container"
+                        android:backgroundTint="@color/ios_icon_blue">
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_ios_restore" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Restore Purchases"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Restore existing Pro purchase on this device"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_ios_chevron_right" />
+                </LinearLayout>
+
+            </LinearLayout>
+
             <!-- SECTION 1: DEFAULT LAUNCHER -->
             <TextView
                 android:layout_width="match_parent"
@@ -124,7 +292,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="iHome Launcher is set as default"
+                        android:text="iHomeOS Launcher is set as default"
                         android:textColor="@color/onboarding_text_secondary"
                         android:textSize="12sp" />
                 </LinearLayout>
@@ -392,16 +560,157 @@
                         android:track="@drawable/ios_switch_track"
                         android:thumb="@drawable/ios_switch_thumb" />
                 </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:layout_marginStart="62dp"
+                    android:background="@color/ios_settings_card_divider" />
+
+                <!-- Row 2: Customize Icon Size -->
+                <LinearLayout
+                    android:id="@+id/row_customize_icon_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
+
+                    <FrameLayout
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_ios_icon_container"
+                        android:backgroundTint="@color/ios_icon_blue">
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_apps" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Customize Icon Size"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Preview &amp; scale apps and folders"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/txt_icon_size_summary"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:text="100%"
+                        android:textColor="@color/onboarding_text_secondary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_ios_chevron_right" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="0.5dp"
+                    android:layout_marginStart="62dp"
+                    android:background="@color/ios_settings_card_divider" />
+
+                <!-- Row 3: App Library Only -->
+                <LinearLayout
+                    android:id="@+id/row_app_library_only"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
+
+                    <FrameLayout
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_ios_icon_container"
+                        android:backgroundTint="@color/ios_icon_indigo">
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_ios_app_library" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="App Library Only"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:id="@+id/txt_app_library_only_subtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="Keep selected apps off your Home Screen"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/txt_app_library_only_count"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="6dp"
+                        android:text=""
+                        android:textColor="@color/onboarding_text_secondary"
+                        android:textSize="15sp" />
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_ios_chevron_right" />
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- SECTION 4: LIQUID GLASS -->
+            <!-- SECTION 4: GLASS -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="22dp"
                 android:layout_marginBottom="6dp"
-                android:text="LIQUID GLASS"
+                android:text="GLASS"
                 android:textColor="@color/ios_settings_section_title"
                 android:textSize="12sp"
                 android:textStyle="bold" />
@@ -469,6 +778,81 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- SECTION 5: ABOUT & LEGAL -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="22dp"
+                android:layout_marginBottom="6dp"
+                android:text="ABOUT &amp; LEGAL"
+                android:textColor="@color/ios_settings_section_title"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <!-- Card 5 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_ios_settings_card"
+                android:orientation="vertical">
+
+                <!-- Row 1: Open Source Licenses -->
+                <LinearLayout
+                    android:id="@+id/row_open_source_licenses"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground">
+
+                    <FrameLayout
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="@drawable/bg_ios_icon_container"
+                        android:backgroundTint="@color/ios_icon_indigo">
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_ios_license" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="14dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Open Source Licenses"
+                            android:textColor="@color/onboarding_text_primary"
+                            android:textSize="16sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="GPL-3.0, Apache-2.0, MIT &amp; third-party notices"
+                            android:textColor="@color/onboarding_text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_ios_chevron_right" />
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- FOOTER -->
             <TextView
                 android:id="@+id/txt_footer_version"
@@ -476,7 +860,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:gravity="center"
-                android:text="iHome Launcher v1.0"
+                android:text="iHomeOS Launcher v1.0"
                 android:textColor="@color/onboarding_text_secondary"
                 android:textSize="13sp" />
 

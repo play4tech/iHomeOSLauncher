@@ -3,7 +3,7 @@ import time
 import sys
 
 DEVICE = "10.247.83.170:5555"
-PKG = "com.ihome.launcher"
+PKG = "com.ihomeos.launcher"
 
 def adb(cmd):
     full = f"adb -s {DEVICE} {cmd}"

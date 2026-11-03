@@ -18,7 +18,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/Workspace.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
-**Lines**: 5314 | **Bytes**: 231648
+**Lines**: 5320 | **Bytes**: 232088
 
 ```java
 /*
@@ -1798,6 +1798,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
                                         gv.invalidate();
                                     }
+                                    child.invalidate();
+                                } else if (child instanceof foundation.e.bliss.widgets.RoundedWidgetView) {
+                                    child.invalidate();
                                 }
                             }
                         }
@@ -1900,6 +1903,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
                                         gv.invalidate();
                                     }
+                                    child.invalidate();
+                                } else if (child instanceof foundation.e.bliss.widgets.RoundedWidgetView) {
+                                    child.invalidate();
                                 }
                             }
                         }
@@ -6288,7 +6294,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
-**Lines**: 553 | **Bytes**: 25735
+**Lines**: 554 | **Bytes**: 25827
 
 ```java
 /*
@@ -6402,7 +6408,8 @@ public class ItemClickHandler {
             }
         }
 
-        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
+        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView
+                || v instanceof foundation.e.bliss.widgets.clock.DigitalClockWidgetHostView) {
             if (!workspace.isWobbling()) {
                 onClickClockWidget(v.getContext());
                 return;

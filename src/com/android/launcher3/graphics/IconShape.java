@@ -60,8 +60,9 @@ import java.util.List;
  */
 public abstract class IconShape {
 
-    private static IconShape sInstance = new Circle();
-    private static float sNormalizationScale = ICON_VISIBLE_AREA_FACTOR;
+    public static final float SQUIRCLE_NORMALIZATION_SCALE = 0.8125f;
+    private static IconShape sInstance = new RoundedSquare(0.45f);
+    private static float sNormalizationScale = SQUIRCLE_NORMALIZATION_SCALE;
 
     public static IconShape getShape() {
         return sInstance;
@@ -492,8 +493,6 @@ public abstract class IconShape {
         // The ratio parameter here is relative to half-size (radius), so 0.45 gives
         // corner_radius = 0.45 * (icon_size / 2) = 0.225 * icon_size — matching iOS exactly.
         sInstance = new RoundedSquare(0.45f);
-        AdaptiveIconDrawable drawable = new AdaptiveIconDrawable(
-                new ColorDrawable(Color.BLACK), new ColorDrawable(Color.BLACK));
-        sNormalizationScale = IconNormalizer.normalizeAdaptiveIcon(drawable, 200, null);
+        sNormalizationScale = SQUIRCLE_NORMALIZATION_SCALE;
     }
 }

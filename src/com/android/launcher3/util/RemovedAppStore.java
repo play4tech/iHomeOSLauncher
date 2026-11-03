@@ -60,6 +60,18 @@ public class RemovedAppStore {
         }
     }
 
+    public static synchronized Set<String> getRemovedApps(Context context) {
+        if (context == null) return Collections.emptySet();
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        return new HashSet<>(prefs.getStringSet(PREF_REMOVED_APPS, Collections.emptySet()));
+    }
+
+    public static synchronized int getRemovedCount(Context context) {
+        if (context == null) return 0;
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        return prefs.getStringSet(PREF_REMOVED_APPS, Collections.emptySet()).size();
+    }
+
     public static synchronized void clearAll(Context context) {
         if (context == null) return;
         SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());

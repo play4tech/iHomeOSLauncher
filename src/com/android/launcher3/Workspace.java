@@ -1775,6 +1775,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
                                         gv.invalidate();
                                     }
+                                    child.invalidate();
+                                } else if (child instanceof foundation.e.bliss.widgets.RoundedWidgetView) {
+                                    child.invalidate();
                                 }
                             }
                         }
@@ -1877,6 +1880,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
                                         gv.invalidate();
                                     }
+                                    child.invalidate();
+                                } else if (child instanceof foundation.e.bliss.widgets.RoundedWidgetView) {
+                                    child.invalidate();
                                 }
                             }
                         }

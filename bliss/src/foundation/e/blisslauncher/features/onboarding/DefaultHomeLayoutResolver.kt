@@ -91,6 +91,7 @@ object DefaultHomeLayoutResolver {
                 Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_WEATHER")
             ),
             listOf(
+                "com.ihomeos.launcher.features.weather",
                 "com.ihome.launcher.features.weather",
                 "foundation.e.blisslauncher.features.weather",
                 "com.google.android.apps.weather",

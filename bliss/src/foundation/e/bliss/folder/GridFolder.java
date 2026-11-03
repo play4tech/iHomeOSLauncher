@@ -133,6 +133,11 @@ public class GridFolder extends Folder implements OnAlarmListener {
     }
 
     @Override
+    public View getGlassView() {
+        return mGlassView;
+    }
+
+    @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int contentWidth = getContentAreaWidth();
         int contentHeight = getContentAreaHeight();

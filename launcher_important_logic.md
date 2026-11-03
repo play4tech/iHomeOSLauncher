@@ -1,6 +1,6 @@
 # iHome / Bliss Launcher - Consolidated Core Logic for Gemini Analysis
 
-This master document aggregates all 78 core architectural and functional code logic files and manifests.
+This master document aggregates all 79 core architectural and functional code logic files and manifests.
 
 ## Table of Contents
 
@@ -11,6 +11,7 @@ This master document aggregates all 78 core architectural and functional code lo
 - [src/com/android/launcher3/LauncherState.java](#srccomandroidlauncher3LauncherStatejava)
 - [src/com/android/launcher3/states/RotationHelper.java](#srccomandroidlauncher3statesRotationHelperjava)
 - [src/com/android/launcher3/settings/SettingsActivity.java](#srccomandroidlauncher3settingsSettingsActivityjava)
+- [src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt](#srccomandroidlauncher3settingsAppLibraryOnlyActivitykt)
 - [src/com/android/launcher3/Workspace.java](#srccomandroidlauncher3Workspacejava)
 - [src/com/android/launcher3/WorkspaceLayoutManager.java](#srccomandroidlauncher3WorkspaceLayoutManagerjava)
 - [src/com/android/launcher3/WorkspaceStateTransitionAnimation.java](#srccomandroidlauncher3WorkspaceStateTransitionAnimationjava)
@@ -88,7 +89,7 @@ This master document aggregates all 78 core architectural and functional code lo
 # src/com/android/launcher3/Launcher.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4190 | **Bytes**: 177630
+**Lines**: 4185 | **Bytes**: 177031
 
 ```java
 /*
@@ -568,6 +569,13 @@ public class Launcher extends StatefulActivity<LauncherState>
         @Override
         public void onWallpaperChanged(Bitmap bitmap) {
             updateStatusBarAppearance();
+            if (mWorkspace != null) {
+                mWorkspace.post(() -> {
+                    if (mWorkspace != null) {
+                        mWorkspace.invalidateGlassSurfaces();
+                    }
+                });
+            }
         }
 
         @Override
@@ -1634,12 +1642,32 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         foundation.e.bliss.wallpaper.WallpaperRepository repo =
                 foundation.e.bliss.wallpaper.WallpaperRepository.getInstanceNoCreate();
-        if (repo != null && repo.getCurrentWallpaper() == null) {
-            repo.updateAsync();
+        if (repo != null) {
+            if (repo.getCurrentWallpaper() == null) {
+                repo.updateAsync();
+            } else {
+                repo.checkWallpaperChanged();
+            }
         }
 
         if (mNotificationWatchdog != null) {
             mNotificationWatchdog.check();
+        }
+
+        if (!com.android.launcher3.billing.BillingManager.isProUser(this)) {
+            if (com.android.launcher3.ads.ConsentManager.canRequestAds(this)) {
+                com.android.launcher3.ads.AdManager.initialize(this, () -> {
+                    com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                });
+            } else {
+                com.android.launcher3.ads.ConsentManager.gatherConsent(this, (canRequest) -> {
+                    if (canRequest) {
+                        com.android.launcher3.ads.AdManager.initialize(this, () -> {
+                            com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                        });
+                    }
+                });
+            }
         }
 
         KeyguardManager km = getSystemService(KeyguardManager.class);
@@ -1715,9 +1743,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            if (isExistingInstall()) {
-                LauncherPrefs.get(this).putSync(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE.to(true));
-            } else if (!mHasLaunchedOnboarding) {
+            if (!mHasLaunchedOnboarding) {
                 mHasLaunchedOnboarding = true;
                 try {
                     Intent onboardingIntent = new Intent(this,
@@ -1731,37 +1757,6 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         TraceHelper.INSTANCE.endSection();
-    }
-
-    private boolean isExistingInstall() {
-        try {
-            android.app.role.RoleManager roleManager = getSystemService(android.app.role.RoleManager.class);
-            if (roleManager != null && roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
-                return true;
-            }
-            Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
-                    homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
-            if (resolveInfo != null && resolveInfo.activityInfo != null
-                    && getPackageName().equals(resolveInfo.activityInfo.packageName)) {
-                return true;
-            }
-            if (mDeviceProfile != null && mDeviceProfile.inv != null) {
-                java.io.File gridDb = getDatabasePath(mDeviceProfile.inv.numColumns + "_by_" + mDeviceProfile.inv.numRows + ".db");
-                if (gridDb != null && gridDb.exists() && gridDb.length() > 0) {
-                    return true;
-                }
-            }
-            java.io.File launcherDb = getDatabasePath(LauncherFiles.LAUNCHER_DB);
-            if (launcherDb != null && launcherDb.exists() && launcherDb.length() > 0) {
-                return true;
-            }
-            java.io.File iconsDb = getDatabasePath(LauncherFiles.APP_ICONS_DB);
-            if (iconsDb != null && iconsDb.exists() && iconsDb.length() > 0) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-        return false;
     }
 
     @Override
@@ -3698,8 +3693,9 @@ public class Launcher extends StatefulActivity<LauncherState>
      * @param progress Transition progress from 0 to 1; where 0 => home and 1 => widgets.
      */
     public void onWidgetsTransition(float progress) {
-        float scale = Utilities.mapToRange(progress, 0f, 1f, 1f,
-                mDeviceProfile.bottomSheetWorkspaceScale, EMPHASIZED);
+        float targetScale = mDeviceProfile.bottomSheetWorkspaceScale;
+        float scale = (targetScale == 1f) ? 1f : Utilities.mapToRange(progress, 0f, 1f, 1f,
+                targetScale, EMPHASIZED);
         WORKSPACE_WIDGET_SCALE.set(getWorkspace(), scale);
         HOTSEAT_WIDGET_SCALE.set(getHotseat(), scale);
     }
@@ -4288,7 +4284,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 # src/com/android/launcher3/LauncherApplication.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
-**Lines**: 147 | **Bytes**: 6023
+**Lines**: 148 | **Bytes**: 6103
 
 ```java
 /*
@@ -4419,6 +4415,7 @@ public class LauncherApplication extends Application {
                         String className = element.getClassName();
                         if (className != null && (className.startsWith("com.android.launcher3")
                                 || className.startsWith("foundation.e.bliss")
+                                || className.startsWith("com.ihomeos.launcher")
                                 || className.startsWith("com.ihome.launcher"))) {
                             containsLauncherCode = true;
                             break;
@@ -6252,7 +6249,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 # src/com/android/launcher3/settings/SettingsActivity.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 336 | **Bytes**: 14158
+**Lines**: 480 | **Bytes**: 19519
 
 ```java
 /*
@@ -6288,6 +6285,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.WindowCompat;
@@ -6304,8 +6302,10 @@ import com.android.launcher3.InvariantDeviceProfile;
 import com.android.launcher3.LauncherPrefs;
 import com.android.launcher3.R;
 import com.android.launcher3.SessionCommitReceiver;
+import com.android.launcher3.billing.BillingManager;
 import com.android.launcher3.notification.NotificationListener;
 
+import foundation.e.bliss.glass.LiquidGlassToast;
 import foundation.e.bliss.multimode.MultiModeController;
 import foundation.e.bliss.preferences.BlissPrefs;
 
@@ -6330,6 +6330,12 @@ public class SettingsActivity extends FragmentActivity
 
     public static final String SAVE_HIGHLIGHTED_KEY = "android:preference_highlighted";
     public static final String KEY_TRUST_APPS = "pref_trust_apps";
+
+    private BillingManager mBillingManager;
+    private final kotlin.jvm.functions.Function1<Boolean, kotlin.Unit> mProListener = isPro -> {
+        updateProStateUi(isPro);
+        return kotlin.Unit.INSTANCE;
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -6360,8 +6366,88 @@ public class SettingsActivity extends FragmentActivity
         }
 
         // Initialize preferences and toggles
+        initBillingSection();
         initSwitches();
+        initIconSizeRow();
+        initAppLibraryOnlyRow();
+        initLegalRow();
         initFooter();
+    }
+
+    private void initBillingSection() {
+        mBillingManager = BillingManager.getInstance(this);
+
+        View rowUpgrade = findViewById(R.id.row_upgrade_pro);
+        View btnBuy = findViewById(R.id.btn_buy_pro);
+        View rowRestore = findViewById(R.id.row_restore_purchases);
+
+        View.OnClickListener buyClickListener = v -> {
+            Log.i("SettingsActivity", "Upgrade/Buy Pro clicked");
+            Toast.makeText(this, "Connecting to Google Play...", Toast.LENGTH_SHORT).show();
+            mBillingManager.launchPurchaseFlow(this, error -> {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                });
+                return kotlin.Unit.INSTANCE;
+            });
+        };
+
+        if (rowUpgrade != null) {
+            rowUpgrade.setOnClickListener(buyClickListener);
+        }
+        if (btnBuy != null) {
+            btnBuy.setOnClickListener(buyClickListener);
+        }
+
+        if (rowRestore != null) {
+            rowRestore.setOnClickListener(v -> {
+                Log.i("SettingsActivity", "Restore Purchases clicked");
+                Toast.makeText(this, "Checking Google Play purchases...", Toast.LENGTH_SHORT).show();
+                mBillingManager.restorePurchases((success, message) -> {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                    });
+                    return kotlin.Unit.INSTANCE;
+                });
+            });
+        }
+
+        mBillingManager.addProStatusListener(mProListener);
+    }
+
+    private void updateProStateUi(boolean isPro) {
+        runOnUiThread(() -> {
+            TextView txtSubtitle = findViewById(R.id.txt_pro_subtitle);
+            TextView btnBuy = findViewById(R.id.btn_buy_pro);
+            View badgeActive = findViewById(R.id.badge_pro_active);
+            View rowUpgrade = findViewById(R.id.row_upgrade_pro);
+
+            if (txtSubtitle == null || btnBuy == null || badgeActive == null || rowUpgrade == null) {
+                return;
+            }
+
+            if (isPro) {
+                txtSubtitle.setText("Pro Active — Enjoy full ad-free experience");
+                btnBuy.setVisibility(View.GONE);
+                badgeActive.setVisibility(View.VISIBLE);
+                rowUpgrade.setClickable(false);
+            } else {
+                String price = mBillingManager.getFormattedPrice();
+                btnBuy.setText(price.isEmpty() ? "Upgrade" : price);
+                btnBuy.setVisibility(View.VISIBLE);
+                badgeActive.setVisibility(View.GONE);
+                rowUpgrade.setClickable(true);
+            }
+        });
+    }
+
+    private void initLegalRow() {
+        View rowLegal = findViewById(R.id.row_open_source_licenses);
+        if (rowLegal != null) {
+            rowLegal.setOnClickListener(v -> {
+                startActivity(new Intent(this, OpenSourceLicensesActivity.class));
+            });
+        }
     }
 
     private void updateDefaultLauncherState() {
@@ -6378,13 +6464,13 @@ public class SettingsActivity extends FragmentActivity
         }
 
         if (isDefault) {
-            txtStatus.setText("iHome Launcher is set as default");
+            txtStatus.setText("iHomeOS Launcher is set as default");
             layoutBadge.setVisibility(View.VISIBLE);
             btnSetDefault.setVisibility(View.GONE);
             card.setOnClickListener(null);
             card.setClickable(false);
         } else {
-            txtStatus.setText("Tap to set iHome Launcher as default");
+            txtStatus.setText("Tap to set iHomeOS Launcher as default");
             layoutBadge.setVisibility(View.GONE);
             btnSetDefault.setVisibility(View.VISIBLE);
             card.setClickable(true);
@@ -6550,14 +6636,59 @@ public class SettingsActivity extends FragmentActivity
         }
     }
 
+    private void initIconSizeRow() {
+        View rowIconSize = findViewById(R.id.row_customize_icon_size);
+        if (rowIconSize != null) {
+            rowIconSize.setOnClickListener(v -> {
+                startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+            });
+        }
+        updateIconSizeSummary();
+    }
+
+    private void initAppLibraryOnlyRow() {
+        View rowAppLibraryOnly = findViewById(R.id.row_app_library_only);
+        if (rowAppLibraryOnly != null) {
+            rowAppLibraryOnly.setOnClickListener(v -> {
+                startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+            });
+        }
+        updateAppLibraryOnlySummary();
+    }
+
+    private void updateAppLibraryOnlySummary() {
+        TextView txtSummary = findViewById(R.id.txt_app_library_only_count);
+        if (txtSummary != null) {
+            int count = com.android.launcher3.util.RemovedAppStore.getRemovedCount(this);
+            if (count > 0) {
+                txtSummary.setText(count + (count == 1 ? " app" : " apps"));
+            } else {
+                txtSummary.setText("");
+            }
+        }
+    }
+
+    private void updateIconSizeSummary() {
+        TextView txtSummary = findViewById(R.id.txt_icon_size_summary);
+        if (txtSummary != null) {
+            float scale = 1.0f;
+            try {
+                scale = LauncherPrefs.get(this).get(LauncherPrefs.ICON_SIZE_SCALE);
+            } catch (Exception ignored) {
+            }
+            int percent = Math.round(scale * 100f);
+            txtSummary.setText(percent + "%");
+        }
+    }
+
     private void initFooter() {
         TextView txtFooter = findViewById(R.id.txt_footer_version);
         if (txtFooter != null) {
             try {
                 String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                txtFooter.setText("iHome Launcher v" + versionName);
+                txtFooter.setText("iHomeOS Launcher v" + versionName);
             } catch (Exception e) {
-                txtFooter.setText("iHome Launcher v1.0");
+                txtFooter.setText("iHomeOS Launcher v1.0");
             }
         }
     }
@@ -6567,6 +6698,16 @@ public class SettingsActivity extends FragmentActivity
         super.onResume();
         updateDefaultLauncherState();
         updateNotificationAccessState();
+        updateIconSizeSummary();
+        updateAppLibraryOnlySummary();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mBillingManager != null) {
+            mBillingManager.removeProStatusListener(mProListener);
+        }
     }
 
     @Override
@@ -6594,10 +6735,396 @@ public class SettingsActivity extends FragmentActivity
 
 ---
 
+# src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt
+
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt`  
+**Lines**: 377 | **Bytes**: 14572
+
+```kotlin
+/*
+ * Copyright (C) 2024 MURENA SAS
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.android.launcher3.settings
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.pm.LauncherActivityInfo
+import android.content.pm.LauncherApps
+import android.content.res.Configuration
+import android.graphics.drawable.Drawable
+import android.os.Bundle
+import android.os.UserHandle
+import android.os.UserManager
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.ProgressBar
+import android.widget.Switch
+import android.widget.TextView
+import androidx.core.view.WindowCompat
+import androidx.fragment.app.FragmentActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.android.launcher3.LauncherAppState
+import com.android.launcher3.LauncherSettings
+import com.android.launcher3.R
+import com.android.launcher3.util.Executors
+import com.android.launcher3.util.RemovedAppStore
+import foundation.e.bliss.glass.LiquidGlassToast
+import foundation.e.bliss.glass.SquircleImageView
+import java.util.Locale
+
+/**
+ * Manages applications that are set to "App Library Only" (hidden from the Home Screen).
+ * Allows users to toggle whether an application appears on the Home Screen grid/dock
+ * or is kept exclusively in the App Library.
+ */
+class AppLibraryOnlyActivity : FragmentActivity() {
+
+    data class AppItem(
+        val componentName: ComponentName,
+        val user: UserHandle,
+        val label: String,
+        val icon: Drawable,
+        var isAppLibraryOnly: Boolean,
+        val initialIsAppLibraryOnly: Boolean
+    )
+
+    private val allApps = mutableListOf<AppItem>()
+    private val displayedApps = mutableListOf<AppItem>()
+    private lateinit var adapter: AppLibraryOnlyAdapter
+
+    private lateinit var editSearch: EditText
+    private lateinit var btnClearSearch: ImageView
+    private lateinit var txtSectionTitle: TextView
+    private lateinit var txtEmptyState: TextView
+    private lateinit var progressLoading: ProgressBar
+    private lateinit var recyclerView: RecyclerView
+
+    private var isSaving = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        setTheme(R.style.Theme_Bliss_Onboarding)
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_app_library_only)
+
+        setupSystemBars()
+        initViews()
+        loadApps()
+    }
+
+    private fun setupSystemBars() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val isDark = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+                Configuration.UI_MODE_NIGHT_YES
+        val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+        insetsController.isAppearanceLightStatusBars = !isDark
+        insetsController.isAppearanceLightNavigationBars = !isDark
+    }
+
+    private fun initViews() {
+        findViewById<View>(R.id.btn_back)?.setOnClickListener {
+            applyChangesAndFinish()
+        }
+
+        findViewById<View>(R.id.btn_done)?.setOnClickListener {
+            applyChangesAndFinish()
+        }
+
+        editSearch = findViewById(R.id.edit_search)!!
+        btnClearSearch = findViewById(R.id.btn_clear_search)!!
+        txtSectionTitle = findViewById(R.id.txt_section_title)!!
+        txtEmptyState = findViewById(R.id.txt_empty_state)!!
+        progressLoading = findViewById(R.id.progress_loading)!!
+        recyclerView = findViewById(R.id.recycler_apps)!!
+        recyclerView.itemAnimator = null
+
+        adapter = AppLibraryOnlyAdapter(displayedApps) {
+            updateSectionHeader()
+        }
+
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.adapter = adapter
+        recyclerView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(rv: RecyclerView, newState: Int) {
+                if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+                    hideKeyboard()
+                }
+            }
+        })
+
+        editSearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                val query = s?.toString()?.trim() ?: ""
+                btnClearSearch.visibility = if (query.isNotEmpty()) View.VISIBLE else View.GONE
+                filterApps(query)
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        btnClearSearch.setOnClickListener {
+            editSearch.setText("")
+            hideKeyboard()
+        }
+    }
+
+    private fun hideKeyboard() {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+        imm?.hideSoftInputFromWindow(editSearch.windowToken, 0)
+    }
+
+    private fun loadApps() {
+        progressLoading.visibility = View.VISIBLE
+        txtEmptyState.visibility = View.GONE
+
+        Executors.THREAD_POOL_EXECUTOR.execute {
+            val launcherApps = getSystemService(LauncherApps::class.java) ?: return@execute
+            val userManager = getSystemService(UserManager::class.java) ?: return@execute
+            val removedApps = RemovedAppStore.getRemovedApps(applicationContext)
+            val myPackage = packageName
+            val densityDpi = resources.displayMetrics.densityDpi
+            val appState = LauncherAppState.getInstanceNoCreate()
+            val iconCache = appState?.iconCache
+
+            val loadedList = mutableListOf<AppItem>()
+
+            for (user in userManager.userProfiles) {
+                val activities: List<LauncherActivityInfo> = try {
+                    launcherApps.getActivityList(null, user)
+                } catch (e: Exception) {
+                    emptyList()
+                }
+
+                for (info in activities) {
+                    val pkg = info.applicationInfo.packageName
+                    if (pkg == myPackage) continue
+
+                    val cn = info.componentName
+                    val label = try {
+                        info.label?.toString() ?: pkg
+                    } catch (e: Exception) {
+                        pkg
+                    }
+                    val icon = try {
+                        if (iconCache != null) {
+                            val appInfo = com.android.launcher3.model.data.AppInfo(applicationContext, info, user)
+                            iconCache.getTitleAndIcon(appInfo, info, false)
+                            appInfo.newIcon(applicationContext)
+                        } else {
+                            info.getBadgedIcon(densityDpi)
+                        }
+                    } catch (e: Exception) {
+                        try {
+                            info.getBadgedIcon(densityDpi)
+                        } catch (e2: Exception) {
+                            packageManager.defaultActivityIcon
+                        }
+                    }
+                    val isRemoved = removedApps.contains(cn.flattenToString())
+
+                    loadedList.add(
+                        AppItem(
+                            componentName = cn,
+                            user = user,
+                            label = label,
+                            icon = icon,
+                            isAppLibraryOnly = isRemoved,
+                            initialIsAppLibraryOnly = isRemoved
+                        )
+                    )
+                }
+            }
+
+            loadedList.sortBy { it.label.lowercase(Locale.getDefault()) }
+
+            runOnUiThread {
+                progressLoading.visibility = View.GONE
+                allApps.clear()
+                allApps.addAll(loadedList)
+                filterApps(editSearch.text.toString().trim())
+            }
+        }
+    }
+
+    private fun filterApps(query: String) {
+        displayedApps.clear()
+        if (query.isEmpty()) {
+            displayedApps.addAll(allApps)
+        } else {
+            val lower = query.lowercase(Locale.getDefault())
+            for (app in allApps) {
+                if (app.label.lowercase(Locale.getDefault()).contains(lower)) {
+                    displayedApps.add(app)
+                }
+            }
+        }
+        adapter.notifyDataSetChanged()
+        updateSectionHeader()
+
+        txtEmptyState.visibility = if (displayedApps.isEmpty()) View.VISIBLE else View.GONE
+        recyclerView.visibility = if (displayedApps.isEmpty()) View.GONE else View.VISIBLE
+    }
+
+    private fun updateSectionHeader() {
+        val total = displayedApps.size
+        val hiddenCount = allApps.count { it.isAppLibraryOnly }
+        if (editSearch.text.isNullOrEmpty()) {
+            txtSectionTitle.text = if (hiddenCount > 0) {
+                "ALL APPS ($total) • $hiddenCount IN APP LIBRARY ONLY"
+            } else {
+                "ALL APPS ($total)"
+            }
+        } else {
+            txtSectionTitle.text = "MATCHING APPS ($total)"
+        }
+    }
+
+    override fun onBackPressed() {
+        applyChangesAndFinish()
+    }
+
+    private fun applyChangesAndFinish() {
+        if (isSaving) return
+        isSaving = true
+
+        val modified = allApps.filter { it.isAppLibraryOnly != it.initialIsAppLibraryOnly }
+        if (modified.isEmpty()) {
+            finish()
+            return
+        }
+
+        // Apply changes to RemovedAppStore immediately
+        val context = applicationContext
+        for (item in modified) {
+            val flatCn = item.componentName.flattenToString()
+            if (item.isAppLibraryOnly) {
+                RemovedAppStore.markRemoved(context, flatCn)
+            } else {
+                RemovedAppStore.unmarkRemoved(context, flatCn)
+            }
+        }
+
+        LiquidGlassToast.show(this, "Home Screen updated", R.drawable.ic_ios_check_circle)
+
+        // Perform DB sync & model reload on MODEL_EXECUTOR
+        Executors.MODEL_EXECUTOR.execute {
+            try {
+                val appState = LauncherAppState.getInstanceNoCreate()
+                if (appState != null) {
+                    val dbController = appState.model.modelDbController
+                    val tableName = LauncherSettings.Favorites.getFavoritesTableName()
+
+                    val newlyHidden = modified.filter { it.isAppLibraryOnly }
+                    for (item in newlyHidden) {
+                        val flatCn = item.componentName.flattenToString()
+                        dbController.delete(tableName, "intent LIKE ?", arrayOf("%$flatCn%"))
+                        if (tableName != LauncherSettings.Favorites.TABLE_NAME) {
+                            dbController.delete(
+                                LauncherSettings.Favorites.TABLE_NAME,
+                                "intent LIKE ?",
+                                arrayOf("%$flatCn%")
+                            )
+                        }
+                    }
+
+                    dbController.deleteEmptyFolders()
+
+                    Executors.MAIN_EXECUTOR.execute {
+                        appState.model.forceReload()
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("AppLibraryOnlyActivity", "Error committing workspace changes", e)
+            }
+        }
+
+        finish()
+    }
+
+    class AppLibraryOnlyAdapter(
+        private val items: List<AppItem>,
+        private val onStateToggled: () -> Unit
+    ) : RecyclerView.Adapter<AppLibraryOnlyAdapter.ViewHolder>() {
+
+        class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val rowItem: View = view.findViewById(R.id.row_app_item)!!
+            val imgIcon: SquircleImageView = view.findViewById(R.id.img_app_icon)!!
+            val txtName: TextView = view.findViewById(R.id.txt_app_name)!!
+            val txtStatus: TextView = view.findViewById(R.id.txt_app_status)!!
+            val switchState: Switch = view.findViewById(R.id.switch_app_state)!!
+            val dividerLine: View = view.findViewById(R.id.divider_line)!!
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_app_library_only, parent, false)
+            return ViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            val item = items[position]
+
+            holder.imgIcon.setImageDrawable(item.icon)
+            holder.txtName.text = item.label
+
+            bindToggleState(holder, item)
+
+            holder.rowItem.setOnClickListener {
+                item.isAppLibraryOnly = !item.isAppLibraryOnly
+                holder.switchState.isChecked = item.isAppLibraryOnly
+                bindStatusText(holder, item)
+                onStateToggled()
+            }
+
+            holder.dividerLine.visibility = if (position == items.size - 1) View.GONE else View.VISIBLE
+        }
+
+        private fun bindToggleState(holder: ViewHolder, item: AppItem) {
+            bindStatusText(holder, item)
+            holder.switchState.setOnCheckedChangeListener(null)
+            holder.switchState.isChecked = item.isAppLibraryOnly
+        }
+
+        private fun bindStatusText(holder: ViewHolder, item: AppItem) {
+            if (item.isAppLibraryOnly) {
+                holder.txtStatus.text = "App Library Only"
+                holder.txtStatus.setTextColor(holder.itemView.context.getColor(R.color.ios_icon_indigo))
+            } else {
+                holder.txtStatus.text = "Shown on Home Screen"
+                holder.txtStatus.setTextColor(holder.itemView.context.getColor(R.color.onboarding_text_secondary))
+            }
+        }
+
+        override fun getItemCount(): Int = items.size
+    }
+}
+```
+
+---
+
 # src/com/android/launcher3/Workspace.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
-**Lines**: 5314 | **Bytes**: 231648
+**Lines**: 5320 | **Bytes**: 232088
 
 ```java
 /*
@@ -8377,6 +8904,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
                                         gv.invalidate();
                                     }
+                                    child.invalidate();
+                                } else if (child instanceof foundation.e.bliss.widgets.RoundedWidgetView) {
+                                    child.invalidate();
                                 }
                             }
                         }
@@ -8479,6 +9009,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                                     if (gv != null && gv.getVisibility() == VISIBLE) {
                                         gv.invalidate();
                                     }
+                                    child.invalidate();
+                                } else if (child instanceof foundation.e.bliss.widgets.RoundedWidgetView) {
+                                    child.invalidate();
                                 }
                             }
                         }
@@ -12867,7 +13400,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
-**Lines**: 553 | **Bytes**: 25735
+**Lines**: 554 | **Bytes**: 25827
 
 ```java
 /*
@@ -12981,7 +13514,8 @@ public class ItemClickHandler {
             }
         }
 
-        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
+        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView
+                || v instanceof foundation.e.bliss.widgets.clock.DigitalClockWidgetHostView) {
             if (!workspace.isWobbling()) {
                 onClickClockWidget(v.getContext());
                 return;
@@ -21247,7 +21781,7 @@ public interface DropTarget {
 # src/com/android/launcher3/folder/Folder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2132 | **Bytes**: 82430
+**Lines**: 2172 | **Bytes**: 83412
 
 ```java
 /*
@@ -21387,7 +21921,8 @@ import foundation.e.bliss.multimode.MultiModeController;
  */
 public class Folder extends AbstractFloatingView implements ClipPathView, DragSource,
         View.OnLongClickListener, DropTarget, FolderListener, TextView.OnEditorActionListener,
-        View.OnFocusChangeListener, DragListener, ExtendedEditText.OnBackKeyListener {
+        View.OnFocusChangeListener, DragListener, ExtendedEditText.OnBackKeyListener,
+        KeyboardInsetAnimationCallback.KeyboardInsetListener {
     private static final String TAG = "Launcher.Folder";
     private static final boolean DEBUG = false;
 
@@ -21795,6 +22330,45 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         }
 
         return windowInsets;
+    }
+
+    @Override
+    public void setTranslationY(float translationY) {
+        float old = getTranslationY();
+        super.setTranslationY(translationY);
+        if (Float.compare(old, translationY) != 0) {
+            invalidateFolderGlass();
+        }
+    }
+
+    @Override
+    public void setTranslationX(float translationX) {
+        float old = getTranslationX();
+        super.setTranslationX(translationX);
+        if (Float.compare(old, translationX) != 0) {
+            invalidateFolderGlass();
+        }
+    }
+
+    public View getGlassView() {
+        return null;
+    }
+
+    public void invalidateFolderGlass() {
+        View glass = getGlassView();
+        if (glass != null) {
+            glass.invalidate();
+        }
+    }
+
+    @Override
+    public void onTranslationStart() {
+        invalidateFolderGlass();
+    }
+
+    @Override
+    public void onTranslationEnd() {
+        invalidateFolderGlass();
     }
 
     public FolderIcon getFolderIcon() {
@@ -24066,7 +24640,7 @@ public class FolderAnimationManager {
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
-**Lines**: 568 | **Bytes**: 22154
+**Lines**: 573 | **Bytes**: 22235
 
 ```java
 /*
@@ -24201,6 +24775,11 @@ public class GridFolder extends Folder implements OnAlarmListener {
                 mGridFolderPage.addView(mGlassView, 0, lp);
             }
         }
+    }
+
+    @Override
+    public View getGlassView() {
+        return mGlassView;
     }
 
     @Override
@@ -28897,7 +29476,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
-**Lines**: 394 | **Bytes**: 14170
+**Lines**: 402 | **Bytes**: 14528
 
 ```kotlin
 /*
@@ -28947,6 +29526,7 @@ import android.widget.TextView
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.Launcher
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
 import com.android.launcher3.views.BaseDragLayer
 import com.android.launcher3.views.OptionsPopupView
 import foundation.e.bliss.glass.PopupGlassView
@@ -29012,7 +29592,9 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            OptionsPopupView.openWidgets(launcher)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                OptionsPopupView.openWidgets(launcher)
+            }
         }
         rowsColumn.addView(rowAddWidget)
         menuRows.add(rowAddWidget)
@@ -29027,10 +29609,12 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            try {
-                launcher.startActivity(Intent(launcher, com.android.launcher3.settings.SettingsActivity::class.java))
-            } catch (e: Exception) {
-                android.util.Log.e("JiggleEditMenuPopup", "Error launching settings", e)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                try {
+                    launcher.startActivity(Intent(launcher, com.android.launcher3.settings.SettingsActivity::class.java))
+                } catch (e: Exception) {
+                    android.util.Log.e("JiggleEditMenuPopup", "Error launching settings", e)
+                }
             }
         }
         rowsColumn.addView(rowCustomize)
@@ -29046,8 +29630,10 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             rowHeight = rowHeight
         ) {
             close(true)
-            launcher.workspace?.wobbleLayouts(false)
-            WallpaperPickerHelper.launchGalleryPicker(launcher)
+            AdManager.showInterstitialWithCooldown(launcher) {
+                launcher.workspace?.wobbleLayouts(false)
+                WallpaperPickerHelper.launchGalleryPicker(launcher)
+            }
         }
         rowsColumn.addView(rowEditWallpaper)
         menuRows.add(rowEditWallpaper)
@@ -29286,6 +29872,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         @JvmStatic
         fun showPopup(anchorView: View): JiggleEditMenuPopup {
             val launcher = Launcher.getLauncher(anchorView.context)
+            AdManager.preloadInterstitial(launcher)
             AbstractFloatingView.closeOpenViews(launcher, false, TYPE_OPTIONS_POPUP)
             val popup = JiggleEditMenuPopup(anchorView.context)
             popup.show(anchorView)
@@ -29300,7 +29887,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 # src/com/android/launcher3/util/RemovedAppStore.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
-**Lines**: 69 | **Bytes**: 2877
+**Lines**: 81 | **Bytes**: 3497
 
 ```java
 /*
@@ -29363,6 +29950,18 @@ public class RemovedAppStore {
             updated.remove(componentName);
             prefs.edit().putStringSet(PREF_REMOVED_APPS, updated).apply();
         }
+    }
+
+    public static synchronized Set<String> getRemovedApps(Context context) {
+        if (context == null) return Collections.emptySet();
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        return new HashSet<>(prefs.getStringSet(PREF_REMOVED_APPS, Collections.emptySet()));
+    }
+
+    public static synchronized int getRemovedCount(Context context) {
+        if (context == null) return 0;
+        SharedPreferences prefs = LauncherPrefs.getPrefs(context.getApplicationContext());
+        return prefs.getStringSet(PREF_REMOVED_APPS, Collections.emptySet()).size();
     }
 
     public static synchronized void clearAll(Context context) {
@@ -30188,7 +30787,7 @@ class SuggestionsProvider(private val context: Context) {
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
-**Lines**: 881 | **Bytes**: 34372
+**Lines**: 891 | **Bytes**: 34791
 
 ```java
 /*
@@ -30229,6 +30828,7 @@ import android.view.animation.Interpolator;
 import android.view.animation.PathInterpolator;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.window.BackEvent;
@@ -30247,6 +30847,7 @@ import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.Workspace;
+import com.android.launcher3.ads.AdManager;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.model.data.AppInfo;
 import com.android.launcher3.util.Themes;
@@ -30490,6 +31091,11 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         launcher.getDragLayer().addView(overlay);
         launcher.onDragLayerHierarchyChanged();
 
+        FrameLayout adContainer = overlay.findViewById(R.id.spotlight_search_ad_banner_container);
+        if (adContainer != null) {
+            AdManager.loadBanner(launcher, adContainer);
+        }
+
         // Load apps
         AppInfo[] apps = launcher.getAppsView() != null && launcher.getAppsView().getAppsStore() != null
                 ? launcher.getAppsView().getAppsStore().getApps() : null;
@@ -30721,6 +31327,9 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         com.example.liquidglass.LiquidGlassView.setBackdropScrollListenerPaused(false);
         unregisterBackCallback();
         hideKeyboard();
+
+        FrameLayout adContainer = findViewById(R.id.spotlight_search_ad_banner_container);
+        AdManager.destroyBanner(adContainer);
 
         if (mBackdropGlass != null) mBackdropGlass.animate().cancel();
         if (mSearchContent != null) mSearchContent.animate().cancel();
@@ -33151,7 +33760,7 @@ public class MiniClusterView extends View {
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
-**Lines**: 349 | **Bytes**: 13346
+**Lines**: 358 | **Bytes**: 13763
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -33167,6 +33776,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -33177,6 +33787,7 @@ import com.android.launcher3.Insettable;
 import com.android.launcher3.InsettableFrameLayout;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.R;
+import com.android.launcher3.ads.AdManager;
 import com.android.launcher3.util.Themes;
 import com.android.launcher3.applibrary.model.CategoryData;
 import android.graphics.PointF;
@@ -33399,6 +34010,8 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
     }
 
     private void removeViewFromDragLayer() {
+        FrameLayout adContainer = findViewById(R.id.expanded_category_ad_banner_container);
+        AdManager.destroyBanner(adContainer);
         restoreBackgroundViews();
         DragLayer dragLayer = Launcher.getLauncher(getContext()).getDragLayer();
         dragLayer.removeView(this);
@@ -33466,6 +34079,11 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
         dragLayer.addView(view);
         launcher.onDragLayerHierarchyChanged();
+
+        FrameLayout adContainer = view.findViewById(R.id.expanded_category_ad_banner_container);
+        if (adContainer != null) {
+            AdManager.loadBanner(launcher, adContainer);
+        }
 
         View glass = view.findViewById(R.id.app_library_overlay_glass);
         if (glass instanceof AppLibraryOverlayGlassView) {
@@ -43242,7 +43860,7 @@ class WidgetsDbHelper(context: Context) :
 # bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
-**Lines**: 40 | **Bytes**: 1459
+**Lines**: 40 | **Bytes**: 1461
 
 ```kotlin
 /*
@@ -43273,7 +43891,7 @@ object DefaultWidgets {
         ComponentName("foundation.e.advancedprivacy", "foundation.e.advancedprivacy.Widget")
     val oldWeatherWidget =
         ComponentName(
-            "com.ihome.launcher",
+            "com.ihomeos.launcher",
             "foundation.e.blisslauncher.features.weather.WeatherAppWidgetProvider"
         )
     val weatherWidget =
@@ -43326,7 +43944,7 @@ object BlissPrefs {
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
-**Lines**: 616 | **Bytes**: 26773
+**Lines**: 617 | **Bytes**: 26830
 
 ```kotlin
 /*
@@ -43422,6 +44040,7 @@ object DefaultHomeLayoutResolver {
                 Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_WEATHER")
             ),
             listOf(
+                "com.ihomeos.launcher.features.weather",
                 "com.ihome.launcher.features.weather",
                 "foundation.e.blisslauncher.features.weather",
                 "com.google.android.apps.weather",
@@ -43951,7 +44570,7 @@ object DefaultHomeLayoutResolver {
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 209 | **Bytes**: 9414
+**Lines**: 237 | **Bytes**: 10721
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -43999,6 +44618,8 @@ object DefaultHomeLayoutResolver {
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
+    <uses-permission android:name="android.permission.BIND_APPWIDGET" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
 
     <!--
     Permissions required for read/write access to the workspace data. These permission name
@@ -44035,6 +44656,11 @@ object DefaultHomeLayoutResolver {
         android:restoreAnyVersion="true"
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true" >
+
+        <!-- Google AdMob Application ID (Required to prevent initialization crash) -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="@string/admob_app_id" />
 
         <!-- Intent received when a session is committed -->
         <receiver
@@ -44117,6 +44743,27 @@ object DefaultHomeLayoutResolver {
         <activity
             android:name="com.android.launcher3.settings.GlassCustomizeActivity"
             android:label="Customize Glass Effect"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="false"
+            android:autoRemoveFromRecents="true" />
+
+        <activity
+            android:name="com.android.launcher3.settings.IconSizeCustomizeActivity"
+            android:label="Customize Icon Size"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="false"
+            android:autoRemoveFromRecents="true" />
+
+        <activity
+            android:name="com.android.launcher3.settings.AppLibraryOnlyActivity"
+            android:label="App Library Only"
+            android:theme="@style/Theme.Bliss.Onboarding"
+            android:exported="false"
+            android:autoRemoveFromRecents="true" />
+
+        <activity
+            android:name="com.android.launcher3.settings.OpenSourceLicensesActivity"
+            android:label="Open Source Licenses"
             android:theme="@style/Theme.Bliss.Onboarding"
             android:exported="false"
             android:autoRemoveFromRecents="true" />
@@ -44257,14 +44904,12 @@ object DefaultHomeLayoutResolver {
 # bliss/AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 84 | **Bytes**: 3364
+**Lines**: 81 | **Bytes**: 3244
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-
-    <uses-permission android:name="foundation.e.pwaplayer.provider.READ_WRITE" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -44283,8 +44928,7 @@ object DefaultHomeLayoutResolver {
             android:name="foundation.e.blisslauncher.features.onboarding.OnboardingActivity"
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:taskAffinity=""
+            android:exported="true"
             android:theme="@style/Theme.Bliss.Onboarding" />
 
         <!-- iOS 2x2 Clock Widget -->

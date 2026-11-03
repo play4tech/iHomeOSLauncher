@@ -113,7 +113,7 @@ def run_spotlight_benchmark(pkg, activity):
 
 if __name__ == "__main__":
     vivo_pkg = "foundation.e.blisslauncher"
-    head_pkg = "com.ihome.launcher"
+    head_pkg = "com.ihomeos.launcher"
     act = "com.android.launcher3.Launcher"
     
     print("=========================================")
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     v_spot = run_spotlight_benchmark(vivo_pkg, act)
     
     print("\n=========================================")
-    print("BENCHMARK 2: HEAD BUILD (com.ihome.launcher)")
+    print("BENCHMARK 2: HEAD BUILD (com.ihomeos.launcher)")
     print("=========================================")
     adb(f"shell cmd package set-home-activity {head_pkg}/{act}")
     h_applib = run_applib_benchmark(head_pkg, act)

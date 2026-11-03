@@ -468,8 +468,12 @@ public class DeviceProfile {
                         /* name= */ "config_wallpaperMaxScale",
                         /* defType= */ "dimen",
                         /* defPackage= */ "android"));
-                bottomSheetDepth = Utilities.mapToRange(maxWallpaperScale * workspaceContentScale,
-                        maxWallpaperScale, 1f, 0f, 1f, LINEAR);
+                if (Float.compare(maxWallpaperScale, 1f) == 0 || maxWallpaperScale <= 0f) {
+                    bottomSheetDepth = 1f;
+                } else {
+                    bottomSheetDepth = Utilities.mapToRange(maxWallpaperScale * workspaceContentScale,
+                            maxWallpaperScale, 1f, 0f, 1f, LINEAR);
+                }
             }
         } else {
             bottomSheetWorkspaceScale = 1f;
@@ -1283,9 +1287,8 @@ public class DeviceProfile {
 
         updateHotseatSizes(iconSizePx);
 
-        // Folder icon
-        int visibleIcon = (int) Math.ceil(iconSizePx * IconShape.getNormalizationScale());
-        folderIconSizePx = visibleIcon;
+        // Folder icon: exactly match the squircle app icon size
+        folderIconSizePx = Math.round(iconSizePx * IconShape.getNormalizationScale());
         folderIconOffsetYPx = (iconSizePx - folderIconSizePx) / 2;
 
         // Update widget padding:
@@ -2168,6 +2171,8 @@ public class DeviceProfile {
                 prefix + pxToDpStr("cellLayoutPaddingPx.bottom", cellLayoutPaddingPx.bottom));
 
         writer.println(prefix + pxToDpStr("iconSizePx", iconSizePx));
+        writer.println(prefix + pxToDpStr("folderIconSizePx", folderIconSizePx));
+        writer.println(prefix + pxToDpStr("folderIconOffsetYPx", folderIconOffsetYPx));
         writer.println(prefix + pxToDpStr("iconTextSizePx", iconTextSizePx));
         writer.println(prefix + pxToDpStr("iconDrawablePaddingPx", iconDrawablePaddingPx));
 

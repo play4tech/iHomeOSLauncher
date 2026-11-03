@@ -2,8 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="foundation.e.pwaplayer.provider.READ_WRITE" />
-
     <application
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
@@ -21,8 +19,7 @@
             android:name="foundation.e.blisslauncher.features.onboarding.OnboardingActivity"
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
-            android:exported="false"
-            android:taskAffinity=""
+            android:exported="true"
             android:theme="@style/Theme.Bliss.Onboarding" />
 
         <!-- iOS 2x2 Clock Widget -->

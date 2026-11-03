@@ -175,8 +175,8 @@ def run_launcher_bench(pkg, other_pkg):
     return applib_stats, spot_stats
 
 if __name__ == "__main__":
-    v_applib, v_spot = run_launcher_bench("foundation.e.blisslauncher", "com.ihome.launcher")
-    h_applib, h_spot = run_launcher_bench("com.ihome.launcher", "foundation.e.blisslauncher")
+    v_applib, v_spot = run_launcher_bench("foundation.e.blisslauncher", "com.ihomeos.launcher")
+    h_applib, h_spot = run_launcher_bench("com.ihomeos.launcher", "foundation.e.blisslauncher")
     
     print("\n" + "=" * 80)
     print("                 OFFICIAL VERIFIED SIDE-BY-SIDE BENCHMARK                 ")

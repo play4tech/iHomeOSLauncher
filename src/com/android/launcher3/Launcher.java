@@ -475,6 +475,13 @@ public class Launcher extends StatefulActivity<LauncherState>
         @Override
         public void onWallpaperChanged(Bitmap bitmap) {
             updateStatusBarAppearance();
+            if (mWorkspace != null) {
+                mWorkspace.post(() -> {
+                    if (mWorkspace != null) {
+                        mWorkspace.invalidateGlassSurfaces();
+                    }
+                });
+            }
         }
 
         @Override
@@ -1541,12 +1548,32 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         foundation.e.bliss.wallpaper.WallpaperRepository repo =
                 foundation.e.bliss.wallpaper.WallpaperRepository.getInstanceNoCreate();
-        if (repo != null && repo.getCurrentWallpaper() == null) {
-            repo.updateAsync();
+        if (repo != null) {
+            if (repo.getCurrentWallpaper() == null) {
+                repo.updateAsync();
+            } else {
+                repo.checkWallpaperChanged();
+            }
         }
 
         if (mNotificationWatchdog != null) {
             mNotificationWatchdog.check();
+        }
+
+        if (!com.android.launcher3.billing.BillingManager.isProUser(this)) {
+            if (com.android.launcher3.ads.ConsentManager.canRequestAds(this)) {
+                com.android.launcher3.ads.AdManager.initialize(this, () -> {
+                    com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                });
+            } else {
+                com.android.launcher3.ads.ConsentManager.gatherConsent(this, (canRequest) -> {
+                    if (canRequest) {
+                        com.android.launcher3.ads.AdManager.initialize(this, () -> {
+                            com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                        });
+                    }
+                });
+            }
         }
 
         KeyguardManager km = getSystemService(KeyguardManager.class);
@@ -1622,9 +1649,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            if (isExistingInstall()) {
-                LauncherPrefs.get(this).putSync(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE.to(true));
-            } else if (!mHasLaunchedOnboarding) {
+            if (!mHasLaunchedOnboarding) {
                 mHasLaunchedOnboarding = true;
                 try {
                     Intent onboardingIntent = new Intent(this,
@@ -1638,37 +1663,6 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         TraceHelper.INSTANCE.endSection();
-    }
-
-    private boolean isExistingInstall() {
-        try {
-            android.app.role.RoleManager roleManager = getSystemService(android.app.role.RoleManager.class);
-            if (roleManager != null && roleManager.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)) {
-                return true;
-            }
-            Intent homeIntent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
-            android.content.pm.ResolveInfo resolveInfo = getPackageManager().resolveActivity(
-                    homeIntent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY);
-            if (resolveInfo != null && resolveInfo.activityInfo != null
-                    && getPackageName().equals(resolveInfo.activityInfo.packageName)) {
-                return true;
-            }
-            if (mDeviceProfile != null && mDeviceProfile.inv != null) {
-                java.io.File gridDb = getDatabasePath(mDeviceProfile.inv.numColumns + "_by_" + mDeviceProfile.inv.numRows + ".db");
-                if (gridDb != null && gridDb.exists() && gridDb.length() > 0) {
-                    return true;
-                }
-            }
-            java.io.File launcherDb = getDatabasePath(LauncherFiles.LAUNCHER_DB);
-            if (launcherDb != null && launcherDb.exists() && launcherDb.length() > 0) {
-                return true;
-            }
-            java.io.File iconsDb = getDatabasePath(LauncherFiles.APP_ICONS_DB);
-            if (iconsDb != null && iconsDb.exists() && iconsDb.length() > 0) {
-                return true;
-            }
-        } catch (Exception ignored) {}
-        return false;
     }
 
     @Override
@@ -3605,8 +3599,9 @@ public class Launcher extends StatefulActivity<LauncherState>
      * @param progress Transition progress from 0 to 1; where 0 => home and 1 => widgets.
      */
     public void onWidgetsTransition(float progress) {
-        float scale = Utilities.mapToRange(progress, 0f, 1f, 1f,
-                mDeviceProfile.bottomSheetWorkspaceScale, EMPHASIZED);
+        float targetScale = mDeviceProfile.bottomSheetWorkspaceScale;
+        float scale = (targetScale == 1f) ? 1f : Utilities.mapToRange(progress, 0f, 1f, 1f,
+                targetScale, EMPHASIZED);
         WORKSPACE_WIDGET_SCALE.set(getWorkspace(), scale);
         HOTSEAT_WIDGET_SCALE.set(getHotseat(), scale);
     }

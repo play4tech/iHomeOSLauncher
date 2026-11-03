@@ -65,6 +65,9 @@ class WallpaperRepository(val context: Context) {
     var isTopLight = false
         private set
 
+    var currentLoadedWallpaperId: Int = -1
+        private set
+
     init {
         wallpaperChangeReceiver.register(context, Intent.ACTION_WALLPAPER_CHANGED)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
@@ -214,6 +217,7 @@ class WallpaperRepository(val context: Context) {
 
         isFallbackWallpaper = fallback
         currentWallpaper = wallpaper
+        currentLoadedWallpaperId = currentWallpaperId
         val colors = currentColors
         isTopLight = computeIsTopLight(wallpaper, colors)
         runOnMainThread {
@@ -251,6 +255,11 @@ class WallpaperRepository(val context: Context) {
     fun updateDirectly(bitmap: Bitmap) {
         isFallbackWallpaper = false
         currentWallpaper = bitmap
+        currentLoadedWallpaperId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            mWallpaperManager.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+        } else {
+            -1
+        }
         isTopLight = computeIsTopLight(bitmap, currentColors)
         runOnMainThread {
             mListeners.forEach {
@@ -258,6 +267,21 @@ class WallpaperRepository(val context: Context) {
                 it.onTopLuminanceChanged(isTopLight)
             }
         }
+    }
+
+    fun checkWallpaperChanged(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val systemId = mWallpaperManager.getWallpaperId(WallpaperManager.FLAG_SYSTEM)
+            if (systemId != -1 && systemId != currentLoadedWallpaperId) {
+                android.util.Log.d(
+                    "WallpaperRepository",
+                    "Wallpaper change detected via checkWallpaperChanged: current=$currentLoadedWallpaperId, system=$systemId"
+                )
+                updateAsync()
+                return true
+            }
+        }
+        return false
     }
 
     fun computeIsTopLight(bitmap: Bitmap?, colors: WallpaperColors?): Boolean {

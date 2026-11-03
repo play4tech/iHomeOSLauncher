@@ -10,7 +10,7 @@ def run_adb(cmd):
     return run_cmd(f"adb {cmd}")
 
 def parse_gfxinfo():
-    out = run_adb("shell dumpsys gfxinfo com.ihome.launcher framestats")
+    out = run_adb("shell dumpsys gfxinfo com.ihomeos.launcher framestats")
     lines = out.splitlines()
     in_profile = False
     frames = []
@@ -33,7 +33,7 @@ def parse_gfxinfo():
     return frames
 
 def ensure_app_library():
-    run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+    run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
     time.sleep(0.4)
     # Swipe left 4 times to guarantee we are on App Library (rightmost screen)
     for _ in range(4):
@@ -52,7 +52,7 @@ def run_vertical_test():
     all_frames = []
     print("Executing 10 vertical scrolls & flings in App Library...")
     for i in range(10):
-        run_adb("shell dumpsys gfxinfo com.ihome.launcher reset")
+        run_adb("shell dumpsys gfxinfo com.ihomeos.launcher reset")
         time.sleep(0.1)
         if i % 2 == 0:
             # Fling down (content moves up)

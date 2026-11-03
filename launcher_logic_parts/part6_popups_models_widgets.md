@@ -8249,7 +8249,7 @@ class WidgetsDbHelper(context: Context) :
 # bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
-**Lines**: 40 | **Bytes**: 1459
+**Lines**: 40 | **Bytes**: 1461
 
 ```kotlin
 /*
@@ -8280,7 +8280,7 @@ object DefaultWidgets {
         ComponentName("foundation.e.advancedprivacy", "foundation.e.advancedprivacy.Widget")
     val oldWeatherWidget =
         ComponentName(
-            "com.ihome.launcher",
+            "com.ihomeos.launcher",
             "foundation.e.blisslauncher.features.weather.WeatherAppWidgetProvider"
         )
     val weatherWidget =
@@ -8333,7 +8333,7 @@ object BlissPrefs {
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
-**Lines**: 616 | **Bytes**: 26773
+**Lines**: 617 | **Bytes**: 26830
 
 ```kotlin
 /*
@@ -8429,6 +8429,7 @@ object DefaultHomeLayoutResolver {
                 Intent(Intent.ACTION_MAIN).addCategory("android.intent.category.APP_WEATHER")
             ),
             listOf(
+                "com.ihomeos.launcher.features.weather",
                 "com.ihome.launcher.features.weather",
                 "foundation.e.blisslauncher.features.weather",
                 "com.google.android.apps.weather",

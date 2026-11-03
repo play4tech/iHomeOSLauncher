@@ -31,6 +31,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Switch;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.WindowCompat;
@@ -47,8 +48,10 @@ import com.android.launcher3.InvariantDeviceProfile;
 import com.android.launcher3.LauncherPrefs;
 import com.android.launcher3.R;
 import com.android.launcher3.SessionCommitReceiver;
+import com.android.launcher3.billing.BillingManager;
 import com.android.launcher3.notification.NotificationListener;
 
+import foundation.e.bliss.glass.LiquidGlassToast;
 import foundation.e.bliss.multimode.MultiModeController;
 import foundation.e.bliss.preferences.BlissPrefs;
 
@@ -73,6 +76,12 @@ public class SettingsActivity extends FragmentActivity
 
     public static final String SAVE_HIGHLIGHTED_KEY = "android:preference_highlighted";
     public static final String KEY_TRUST_APPS = "pref_trust_apps";
+
+    private BillingManager mBillingManager;
+    private final kotlin.jvm.functions.Function1<Boolean, kotlin.Unit> mProListener = isPro -> {
+        updateProStateUi(isPro);
+        return kotlin.Unit.INSTANCE;
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -103,8 +112,88 @@ public class SettingsActivity extends FragmentActivity
         }
 
         // Initialize preferences and toggles
+        initBillingSection();
         initSwitches();
+        initIconSizeRow();
+        initAppLibraryOnlyRow();
+        initLegalRow();
         initFooter();
+    }
+
+    private void initBillingSection() {
+        mBillingManager = BillingManager.getInstance(this);
+
+        View rowUpgrade = findViewById(R.id.row_upgrade_pro);
+        View btnBuy = findViewById(R.id.btn_buy_pro);
+        View rowRestore = findViewById(R.id.row_restore_purchases);
+
+        View.OnClickListener buyClickListener = v -> {
+            Log.i("SettingsActivity", "Upgrade/Buy Pro clicked");
+            Toast.makeText(this, "Connecting to Google Play...", Toast.LENGTH_SHORT).show();
+            mBillingManager.launchPurchaseFlow(this, error -> {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+                });
+                return kotlin.Unit.INSTANCE;
+            });
+        };
+
+        if (rowUpgrade != null) {
+            rowUpgrade.setOnClickListener(buyClickListener);
+        }
+        if (btnBuy != null) {
+            btnBuy.setOnClickListener(buyClickListener);
+        }
+
+        if (rowRestore != null) {
+            rowRestore.setOnClickListener(v -> {
+                Log.i("SettingsActivity", "Restore Purchases clicked");
+                Toast.makeText(this, "Checking Google Play purchases...", Toast.LENGTH_SHORT).show();
+                mBillingManager.restorePurchases((success, message) -> {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+                    });
+                    return kotlin.Unit.INSTANCE;
+                });
+            });
+        }
+
+        mBillingManager.addProStatusListener(mProListener);
+    }
+
+    private void updateProStateUi(boolean isPro) {
+        runOnUiThread(() -> {
+            TextView txtSubtitle = findViewById(R.id.txt_pro_subtitle);
+            TextView btnBuy = findViewById(R.id.btn_buy_pro);
+            View badgeActive = findViewById(R.id.badge_pro_active);
+            View rowUpgrade = findViewById(R.id.row_upgrade_pro);
+
+            if (txtSubtitle == null || btnBuy == null || badgeActive == null || rowUpgrade == null) {
+                return;
+            }
+
+            if (isPro) {
+                txtSubtitle.setText("Pro Active — Enjoy full ad-free experience");
+                btnBuy.setVisibility(View.GONE);
+                badgeActive.setVisibility(View.VISIBLE);
+                rowUpgrade.setClickable(false);
+            } else {
+                String price = mBillingManager.getFormattedPrice();
+                btnBuy.setText(price.isEmpty() ? "Upgrade" : price);
+                btnBuy.setVisibility(View.VISIBLE);
+                badgeActive.setVisibility(View.GONE);
+                rowUpgrade.setClickable(true);
+            }
+        });
+    }
+
+    private void initLegalRow() {
+        View rowLegal = findViewById(R.id.row_open_source_licenses);
+        if (rowLegal != null) {
+            rowLegal.setOnClickListener(v -> {
+                startActivity(new Intent(this, OpenSourceLicensesActivity.class));
+            });
+        }
     }
 
     private void updateDefaultLauncherState() {
@@ -121,13 +210,13 @@ public class SettingsActivity extends FragmentActivity
         }
 
         if (isDefault) {
-            txtStatus.setText("iHome Launcher is set as default");
+            txtStatus.setText("iHomeOS Launcher is set as default");
             layoutBadge.setVisibility(View.VISIBLE);
             btnSetDefault.setVisibility(View.GONE);
             card.setOnClickListener(null);
             card.setClickable(false);
         } else {
-            txtStatus.setText("Tap to set iHome Launcher as default");
+            txtStatus.setText("Tap to set iHomeOS Launcher as default");
             layoutBadge.setVisibility(View.GONE);
             btnSetDefault.setVisibility(View.VISIBLE);
             card.setClickable(true);
@@ -293,14 +382,59 @@ public class SettingsActivity extends FragmentActivity
         }
     }
 
+    private void initIconSizeRow() {
+        View rowIconSize = findViewById(R.id.row_customize_icon_size);
+        if (rowIconSize != null) {
+            rowIconSize.setOnClickListener(v -> {
+                startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+            });
+        }
+        updateIconSizeSummary();
+    }
+
+    private void initAppLibraryOnlyRow() {
+        View rowAppLibraryOnly = findViewById(R.id.row_app_library_only);
+        if (rowAppLibraryOnly != null) {
+            rowAppLibraryOnly.setOnClickListener(v -> {
+                startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+            });
+        }
+        updateAppLibraryOnlySummary();
+    }
+
+    private void updateAppLibraryOnlySummary() {
+        TextView txtSummary = findViewById(R.id.txt_app_library_only_count);
+        if (txtSummary != null) {
+            int count = com.android.launcher3.util.RemovedAppStore.getRemovedCount(this);
+            if (count > 0) {
+                txtSummary.setText(count + (count == 1 ? " app" : " apps"));
+            } else {
+                txtSummary.setText("");
+            }
+        }
+    }
+
+    private void updateIconSizeSummary() {
+        TextView txtSummary = findViewById(R.id.txt_icon_size_summary);
+        if (txtSummary != null) {
+            float scale = 1.0f;
+            try {
+                scale = LauncherPrefs.get(this).get(LauncherPrefs.ICON_SIZE_SCALE);
+            } catch (Exception ignored) {
+            }
+            int percent = Math.round(scale * 100f);
+            txtSummary.setText(percent + "%");
+        }
+    }
+
     private void initFooter() {
         TextView txtFooter = findViewById(R.id.txt_footer_version);
         if (txtFooter != null) {
             try {
                 String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                txtFooter.setText("iHome Launcher v" + versionName);
+                txtFooter.setText("iHomeOS Launcher v" + versionName);
             } catch (Exception e) {
-                txtFooter.setText("iHome Launcher v1.0");
+                txtFooter.setText("iHomeOS Launcher v1.0");
             }
         }
     }
@@ -310,6 +444,16 @@ public class SettingsActivity extends FragmentActivity
         super.onResume();
         updateDefaultLauncherState();
         updateNotificationAccessState();
+        updateIconSizeSummary();
+        updateAppLibraryOnlySummary();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mBillingManager != null) {
+            mBillingManager.removeProStatusListener(mProListener);
+        }
     }
 
     @Override

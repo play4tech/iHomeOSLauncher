@@ -31,4 +31,4 @@ project(':SearchUiLib').projectDir = new File("$rootDir/libs_systemui", 'searchu
 include ':liquidglass'
 project(':liquidglass').projectDir = new File("$rootDir/libs_systemui", 'liquidglass')
 
-rootProject.name = "iHomeLauncher"
+rootProject.name = "iHomeOSLauncher"

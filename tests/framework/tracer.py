@@ -12,10 +12,10 @@ class DragTracer:
         self.pid_after: Optional[str] = None
 
     def get_launcher_pid(self) -> Optional[str]:
-        """Queries the current PID of com.ihome.launcher."""
+        """Queries the current PID of com.ihomeos.launcher."""
         try:
             res = subprocess.run(
-                ["adb", "-s", self.serial, "shell", "pidof", "com.ihome.launcher"],
+                ["adb", "-s", self.serial, "shell", "pidof", "com.ihomeos.launcher"],
                 capture_output=True, text=True, errors="replace"
             )
             pid = res.stdout.strip()

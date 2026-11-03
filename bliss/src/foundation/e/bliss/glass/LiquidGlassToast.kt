@@ -410,16 +410,6 @@ class LiquidGlassToast @JvmOverloads constructor(
             if (launcher != null) {
                 return show(launcher, message, iconResId)
             }
-            val activity = (context as? Activity)
-                ?: ((context as? ContextWrapper)?.baseContext as? Activity)
-            if (activity != null) {
-                val toast = LiquidGlassToast(activity).apply {
-                    this.messageText = message
-                    this.iconRes = iconResId
-                }
-                toast.showInternal()
-                return toast
-            }
             android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
             return null
         }

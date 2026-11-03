@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import os
+import time
+import shutil
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUTPUT_FILE_MD = os.path.join(PROJECT_ROOT, "launcher_important_logic.md")
@@ -17,6 +19,7 @@ PARTS = {
             "src/com/android/launcher3/LauncherState.java",
             "src/com/android/launcher3/states/RotationHelper.java",
             "src/com/android/launcher3/settings/SettingsActivity.java",
+            "src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt",
         ],
     },
     "part2_workspace_paging": {

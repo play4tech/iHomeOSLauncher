@@ -63,7 +63,7 @@ def generate():
     doc.append("- **ADB Serial:** `693a9b29`")
     doc.append("- **OS Version:** Android 13 / Android 14 (ColorOS / Realme UI)")
     doc.append("- **Display Metrics:** 1080 x 2400 px, 480 dpi")
-    doc.append("- **Target Package:** `com.ihome.launcher` (`withoutQuickstepDebug` variant)")
+    doc.append("- **Target Package:** `com.ihomeos.launcher` (`withoutQuickstepDebug` variant)")
     doc.append("- **Primary Activity:** `com.android.launcher3.Launcher`")
     doc.append("- **Test Date:** October 18, 2026\n")
     doc.append("---\n")
@@ -120,7 +120,7 @@ def generate():
     doc.append("- **TC-73 / TC-74 (Popup Menu Deep Shortcuts):** Resolved by verifying popup menu inflation coordinates.")
     doc.append("- **TC-75 (Notification Badges):** Verified dot state binding on BubbleTextView.")
     doc.append("- **TC-77 (Empty Screen Pruning):** Verified `Workspace.stripEmptyScreens` invocation upon item removal.")
-    doc.append("- **TC-83 (Package Changed Broadcast):** Resolved by dispatching explicit broadcast `android.intent.action.PACKAGE_CHANGED` directly to `com.ihome.launcher`.")
+    doc.append("- **TC-83 (Package Changed Broadcast):** Resolved by dispatching explicit broadcast `android.intent.action.PACKAGE_CHANGED` directly to `com.ihomeos.launcher`.")
     doc.append("- **Hardware Verification:** All 7 UI states verified cleanly.\n")
     doc.append("---\n")
     

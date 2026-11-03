@@ -116,7 +116,7 @@ def main():
     benchmark("foundation.e.blisslauncher", "HEAD Build", runs=3)
     
     # Run Vivo
-    benchmark("com.ihome.launcher", "Vivo Build", runs=3)
+    benchmark("com.ihomeos.launcher", "Vivo Build", runs=3)
 
 if __name__ == "__main__":
     main()

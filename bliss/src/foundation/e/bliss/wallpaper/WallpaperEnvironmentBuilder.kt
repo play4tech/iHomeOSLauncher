@@ -40,7 +40,7 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
     }
 
     override fun onWallpaperChanged(bitmap: Bitmap?) {
-        rebuildEnvironment(bitmap, parallaxOffset)
+        rebuildEnvironment(bitmap, parallaxOffset, forceBitmapChanged = true)
     }
 
     fun setParallaxOffset(offset: Float) {
@@ -60,7 +60,7 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         rebuildEnvironment(repository.currentWallpaper, parallaxOffset)
     }
 
-    private fun rebuildEnvironment(bitmap: Bitmap?, offset: Float) {
+    private fun rebuildEnvironment(bitmap: Bitmap?, offset: Float, forceBitmapChanged: Boolean = false) {
         if (bitmap == null) {
             environment = null
             notifyListeners(false)
@@ -75,11 +75,12 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
                 displaySize.x.toFloat() / wallpaperSize.x,
                 displaySize.y.toFloat() / wallpaperSize.y
             )
+        val oemZoomMultiplier = if (isOplusFamily()) 1.10f else 1.0f
         val scale = if (foundation.e.bliss.multimode.MultiModeController.isSingleLayerMode) {
-            baseScale * 1.10f
+            baseScale * oemZoomMultiplier
         } else {
             val minParallaxScale = (displaySize.x * 1.15f) / wallpaperSize.x
-            Math.max(baseScale * 1.10f, minParallaxScale)
+            Math.max(baseScale * oemZoomMultiplier, minParallaxScale)
         }
 
         val scaledWidth = wallpaperSize.x * scale
@@ -122,14 +123,17 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
                 parallaxOffset = offset
             )
 
-        // Only signal a "wallpaper changed" event if the actual bitmap reference changed.
-        val bitmapChanged = oldEnv == null || oldEnv.wallpaper !== bitmap
+        // Only signal a "wallpaper changed" event if the actual bitmap reference changed or forced.
+        val bitmapChanged = forceBitmapChanged || oldEnv == null || oldEnv.wallpaper !== bitmap
         notifyListeners(bitmapChanged)
     }
 
     private fun notifyListeners(bitmapChanged: Boolean) {
         runOnMainThread {
             mListeners.forEach { it.onEnvironmentChanged(environment, bitmapChanged) }
+            if (bitmapChanged) {
+                foundation.e.bliss.glass.GlassConfig.invalidateAll()
+            }
         }
     }
 
@@ -159,6 +163,36 @@ class WallpaperEnvironmentBuilder(val context: Context) : WallpaperRepository.Li
         @JvmStatic
         fun getInstance(context: Context): WallpaperEnvironmentBuilder {
             return INSTANCE.get(context)
+        }
+
+        /**
+         * ColorOS / RealmeUI / OxygenOS (Oplus family) devices internally scale wallpapers
+         * by 1.10x for lockscreen zoom and recents breathing room. Other OEMs (Vivo, Pixel,
+         * Samsung) use standard 1.0x aspect fill.
+         */
+        fun isOplusFamily(): Boolean {
+            val m = android.os.Build.MANUFACTURER.lowercase(java.util.Locale.ROOT)
+            val b = android.os.Build.BRAND.lowercase(java.util.Locale.ROOT)
+            if (m.contains("realme") || m.contains("oppo") || m.contains("oneplus") ||
+                b.contains("realme") || b.contains("oppo") || b.contains("oneplus")) {
+                return true
+            }
+            try {
+                val prop = Class.forName("android.os.SystemProperties")
+                val getMethod = prop.getMethod("get", String::class.java)
+                val oppo = getMethod.invoke(null, "ro.build.version.opporom") as? String
+                val oplus = getMethod.invoke(null, "ro.build.version.oplusrom") as? String
+                val ui = getMethod.invoke(null, "ro.product.brand.ui") as? String
+                if (!oppo.isNullOrEmpty() || !oplus.isNullOrEmpty()) {
+                    return true
+                }
+                if (ui != null && ui.contains("realme", ignoreCase = true)) {
+                    return true
+                }
+            } catch (t: Throwable) {
+                // Ignore reflection errors on restricted ROMs
+            }
+            return false
         }
     }
 }

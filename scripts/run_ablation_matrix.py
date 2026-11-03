@@ -10,7 +10,7 @@ def run_adb(cmd):
     return run_cmd(f"adb {cmd}")
 
 def parse_gfxinfo():
-    out = run_adb("shell dumpsys gfxinfo com.ihome.launcher framestats")
+    out = run_adb("shell dumpsys gfxinfo com.ihomeos.launcher framestats")
     lines = out.splitlines()
     in_profile = False
     frames = []
@@ -41,7 +41,7 @@ def set_condition(cull, loop_opt, early_out, fetch_collapse, hoist):
     time.sleep(0.2)
 
 def go_page_1():
-    run_adb("shell am start -n com.ihome.launcher/com.android.launcher3.Launcher")
+    run_adb("shell am start -n com.ihomeos.launcher/com.android.launcher3.Launcher")
     time.sleep(0.4)
     for _ in range(3):
         run_adb("shell input swipe 200 1000 850 1000 120")
@@ -54,7 +54,7 @@ def run_10_swipes():
     all_frames = []
     for swipe_idx in range(10):
         go_page_1()
-        run_adb("shell dumpsys gfxinfo com.ihome.launcher reset")
+        run_adb("shell dumpsys gfxinfo com.ihomeos.launcher reset")
         time.sleep(0.15)
         # Smooth swipe from Page 1 to App Library (~350ms)
         run_adb("shell input swipe 850 1000 200 1000 350")
