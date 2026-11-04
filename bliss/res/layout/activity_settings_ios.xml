@@ -771,6 +771,22 @@
                             android:textSize="12sp" />
                     </LinearLayout>
 
+                    <TextView
+                        android:id="@+id/badge_customize_glass_pro"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="PRO"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/ios_icon_blue"
+                        android:background="@drawable/bg_ios_badge_pro"
+                        android:paddingStart="8dp"
+                        android:paddingEnd="8dp"
+                        android:paddingTop="3dp"
+                        android:paddingBottom="3dp"
+                        android:layout_marginEnd="6dp"
+                        android:visibility="gone" />
+
                     <ImageView
                         android:layout_width="20dp"
                         android:layout_height="20dp"
@@ -866,4 +882,16 @@
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- AdMob Banner Container (Pinned at bottom, hidden for Pro) -->
+    <FrameLayout
+        android:id="@+id/ad_banner_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@color/ios_settings_bg"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone" />
+
 </LinearLayout>

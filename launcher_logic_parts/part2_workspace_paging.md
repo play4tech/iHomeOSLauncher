@@ -6294,7 +6294,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
-**Lines**: 554 | **Bytes**: 25827
+**Lines**: 578 | **Bytes**: 27189
 
 ```java
 /*
@@ -6408,16 +6408,34 @@ public class ItemClickHandler {
             }
         }
 
-        if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView
-                || v instanceof foundation.e.bliss.widgets.clock.DigitalClockWidgetHostView) {
+        if (v instanceof foundation.e.bliss.widgets.clock.DigitalClockWidgetHostView) {
+            if (!workspace.isWobbling()) {
+                if (!com.android.launcher3.billing.BillingManager.isProUser(launcher)) {
+                    foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(launcher,
+                            foundation.e.bliss.widgets.clock.DigitalClockAppWidgetProvider.COMPONENT_NAME);
+                    return;
+                }
+                onClickClockWidget(v.getContext());
+                return;
+            }
+        } else if (v instanceof foundation.e.bliss.widgets.clock.ClockWidgetHostView) {
             if (!workspace.isWobbling()) {
                 onClickClockWidget(v.getContext());
                 return;
             }
         }
 
-        if (v instanceof foundation.e.bliss.widgets.calendar.CalendarDayWidgetHostView
-                || v instanceof foundation.e.bliss.widgets.calendar.CalendarMonthWidgetHostView) {
+        if (v instanceof foundation.e.bliss.widgets.calendar.CalendarMonthWidgetHostView) {
+            if (!workspace.isWobbling()) {
+                if (!com.android.launcher3.billing.BillingManager.isProUser(launcher)) {
+                    foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(launcher,
+                            foundation.e.bliss.widgets.calendar.CalendarMonthAppWidgetProvider.COMPONENT_NAME);
+                    return;
+                }
+                onClickCalendarWidget(v.getContext());
+                return;
+            }
+        } else if (v instanceof foundation.e.bliss.widgets.calendar.CalendarDayWidgetHostView) {
             if (!workspace.isWobbling()) {
                 onClickCalendarWidget(v.getContext());
                 return;
@@ -6461,6 +6479,12 @@ public class ItemClickHandler {
                     launcher.getString(R.string.long_accessible_way_to_add_shortcut));
             Snackbar.show(launcher, msg, null);
         } else if (tag instanceof PendingAddWidgetInfo) {
+            PendingAddWidgetInfo pawi = (PendingAddWidgetInfo) tag;
+            if (foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(pawi.componentName)
+                    && !com.android.launcher3.billing.BillingManager.isProUser(launcher)) {
+                foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(launcher, pawi.componentName);
+                return;
+            }
             CharSequence msg = Utilities.wrapForTts(
                     launcher.getText(R.string.long_press_widget_to_add),
                     launcher.getString(R.string.long_accessible_way_to_add));
@@ -6857,7 +6881,7 @@ public class ItemClickHandler {
 # src/com/android/launcher3/touch/ItemLongClickListener.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemLongClickListener.java`  
-**Lines**: 230 | **Bytes**: 10079
+**Lines**: 238 | **Bytes**: 10567
 
 ```java
 /*
@@ -6989,6 +7013,14 @@ public class ItemLongClickListener {
     }
 
     private static boolean onWidgetItemLongClick(WidgetCell v) {
+        com.android.launcher3.model.WidgetItem item = v.getWidgetItem();
+        if (item != null && foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(item.componentName)
+                && !com.android.launcher3.billing.BillingManager.isProUser(v.getContext())) {
+            Launcher launcher = Launcher.getLauncher(v.getContext());
+            foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(launcher, item.componentName);
+            return true;
+        }
+
         // Get the widget preview as the drag representation
         WidgetImageView image = v.getWidgetView();
         Launcher launcher = Launcher.getLauncher(v.getContext());

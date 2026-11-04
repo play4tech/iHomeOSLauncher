@@ -84,6 +84,7 @@ public class WidgetCell extends LinearLayout {
     private FrameLayout mWidgetImageContainer;
     private WidgetImageView mWidgetImage;
     private ImageView mWidgetBadge;
+    private TextView mWidgetProBadge;
     private TextView mWidgetName;
     private TextView mWidgetDims;
     private TextView mWidgetDescription;
@@ -136,6 +137,7 @@ public class WidgetCell extends LinearLayout {
         mWidgetImageContainer = findViewById(R.id.widget_preview_container);
         mWidgetImage = findViewById(R.id.widget_preview);
         mWidgetBadge = findViewById(R.id.widget_badge);
+        mWidgetProBadge = findViewById(R.id.widget_pro_badge);
         mWidgetName = findViewById(R.id.widget_name);
         mWidgetDims = findViewById(R.id.widget_dims);
         mWidgetDescription = findViewById(R.id.widget_description);
@@ -172,6 +174,9 @@ public class WidgetCell extends LinearLayout {
         mWidgetImage.setVisibility(View.VISIBLE);
         mWidgetBadge.setImageDrawable(null);
         mWidgetBadge.setVisibility(View.GONE);
+        if (mWidgetProBadge != null) {
+            mWidgetProBadge.setVisibility(View.GONE);
+        }
         mWidgetName.setText(null);
         mWidgetDims.setText(null);
         mWidgetDescription.setText(null);
@@ -240,6 +245,12 @@ public class WidgetCell extends LinearLayout {
             mWidgetDescription.setVisibility(GONE);
         }
 
+        if (mWidgetProBadge != null) {
+            boolean isProWidget = foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(item.componentName);
+            boolean isProUser = com.android.launcher3.billing.BillingManager.isProUser(context);
+            mWidgetProBadge.setVisibility(isProWidget && !isProUser ? View.VISIBLE : View.GONE);
+        }
+
         if (item.activityInfo != null) {
             setTag(new PendingAddShortcutInfo(item.activityInfo));
         } else {
@@ -247,6 +258,15 @@ public class WidgetCell extends LinearLayout {
         }
         if (mWidgetImageContainer != null) {
             mWidgetImageContainer.setTag(getTag());
+        }
+
+        if (foundation.e.bliss.widgets.GlassWidgetFactory.isGlassWidget(item.componentName)) {
+            mAppWidgetHostViewPreview = foundation.e.bliss.widgets.GlassWidgetFactory.createHostView(
+                    context, /* appWidgetId= */ -1, item.widgetInfo);
+            if (mAppWidgetHostViewPreview != null) {
+                setAppWidgetHostViewPreview(mAppWidgetHostViewPreview, item.widgetInfo, null);
+                return;
+            }
         }
 
         if (mRemoteViewsPreview != null) {

@@ -1020,6 +1020,14 @@ public class WidgetsFullSheet extends BaseWidgetSheet
                             info = (PendingAddItemInfo) cell.getTag();
                         }
                         if (info != null) {
+                            if (info instanceof PendingAddWidgetInfo) {
+                                PendingAddWidgetInfo pawi = (PendingAddWidgetInfo) info;
+                                if (foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(pawi.componentName)
+                                        && !com.android.launcher3.billing.BillingManager.isProUser(context)) {
+                                    foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(Launcher.getLauncher(context), pawi.componentName);
+                                    return;
+                                }
+                            }
                             if (cell instanceof WidgetCell && ((WidgetCell) cell).getWidgetItem() != null) {
                                 WidgetItem wi = ((WidgetCell) cell).getWidgetItem();
                                 info.spanX = wi.spanX;

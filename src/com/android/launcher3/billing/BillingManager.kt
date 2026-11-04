@@ -113,7 +113,7 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
     fun getCachedProductDetails(): ProductDetails? = cachedProductDetails
 
     fun getFormattedPrice(): String {
-        return cachedProductDetails?.oneTimePurchaseOfferDetails?.formattedPrice ?: "$2.99"
+        return cachedProductDetails?.oneTimePurchaseOfferDetails?.formattedPrice ?: ""
     }
 
     fun startConnection(onReady: (() -> Unit)? = null, onError: ((String) -> Unit)? = null) {

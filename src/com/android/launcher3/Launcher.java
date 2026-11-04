@@ -611,6 +611,12 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         super.onCreate(savedInstanceState);
 
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+
         LauncherAppState app = LauncherAppState.getInstance(this);
         mModel = app.getModel();
 
@@ -2301,7 +2307,13 @@ public class Launcher extends StatefulActivity<LauncherState>
         info.spanY = spanY;
 
         if (info instanceof PendingAddWidgetInfo) {
-            addAppWidgetFromDrop((PendingAddWidgetInfo) info);
+            PendingAddWidgetInfo pawi = (PendingAddWidgetInfo) info;
+            if (foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(pawi.componentName)
+                    && !com.android.launcher3.billing.BillingManager.isProUser(this)) {
+                foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(this, pawi.componentName);
+                return;
+            }
+            addAppWidgetFromDrop(pawi);
         } else { // info can only be PendingAddShortcutInfo
             processShortcutFromDrop((PendingAddShortcutInfo) info);
         }

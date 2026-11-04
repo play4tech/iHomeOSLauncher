@@ -16,7 +16,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # AndroidManifest-common.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest-common.xml`  
-**Lines**: 237 | **Bytes**: 10721
+**Lines**: 244 | **Bytes**: 11150
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -66,6 +66,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
     <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <uses-permission android:name="android.permission.BIND_APPWIDGET" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+    <!-- Remove transitive WorkManager foreground service permission (AdMob uses JobScheduler for background workers) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <!--
     Permissions required for read/write access to the workspace data. These permission name
@@ -253,6 +255,11 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:label="@string/trust_apps_manager_name"
             android:theme="@android:style/Theme.DeviceDefault.Settings"
             android:autoRemoveFromRecents="true" />
+
+        <!-- Remove transitive WorkManager foreground service component -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
     </application>
 </manifest>
 ```

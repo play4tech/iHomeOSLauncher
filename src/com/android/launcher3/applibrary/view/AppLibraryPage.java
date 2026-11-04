@@ -286,19 +286,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
             mDashboardAdapter.updateData(initialData);
         }
         mDashboardView.setOnOverscrollListener(translationY -> {
-            invalidateCategoryPodsOnly();
+            postInvalidateCategoryPods();
         });
         mDashboardView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
                 if (dy != 0) {
-                    invalidateCategoryPodsOnly();
+                    postInvalidateCategoryPods();
                 }
             }
 
             @Override
             public void onScrollStateChanged(@NonNull RecyclerView recyclerView, int newState) {
                 if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    removeCallbacks(mPodInvalidationRunnable);
+                    mPodInvalidationScheduled = false;
                     invalidateCategoryPodsOnly();
                 }
             }
@@ -1016,6 +1018,19 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         sDoseResponseOverride = count;
     }
 
+    private boolean mPodInvalidationScheduled = false;
+    private final Runnable mPodInvalidationRunnable = () -> {
+        mPodInvalidationScheduled = false;
+        invalidateCategoryPodsOnly();
+    };
+
+    public void postInvalidateCategoryPods() {
+        if (!mPodInvalidationScheduled) {
+            mPodInvalidationScheduled = true;
+            postOnAnimation(mPodInvalidationRunnable);
+        }
+    }
+
     public void invalidateCategoryPodsOnly() {
         if (mDashboardView == null) return;
 
@@ -1093,7 +1108,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mSearchBackdropGlass != null && mSearchBackdropGlass.getVisibility() == VISIBLE) {
             mSearchBackdropGlass.invalidate();
         }
-        invalidateCategoryPodsOnly();
+        postInvalidateCategoryPods();
     }
 
     public void updateNotificationDots(Predicate<PackageUserKey> updatedDots) {
@@ -1227,6 +1242,8 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
     @Override
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
+        removeCallbacks(mPodInvalidationRunnable);
+        mPodInvalidationScheduled = false;
         if (mAppLibraryModel != null) {
             mAppLibraryModel.removeListener(mAppLibraryUpdateListener);
         }

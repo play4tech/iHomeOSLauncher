@@ -430,8 +430,7 @@ class OnboardingActivity : Activity() {
                 tipsCard.visibility = View.GONE
                 proCard.visibility = View.VISIBLE
                 restoreButton.visibility = View.VISIBLE
-                val price = billingManager?.getFormattedPrice() ?: "$2.99"
-                primaryButton.text = getString(R.string.onboarding_pro_action_price, price)
+                primaryButton.setText(R.string.onboarding_pro_action)
                 secondaryButton.setText(R.string.onboarding_pro_skip)
                 secondaryButton.visibility = View.VISIBLE
             }

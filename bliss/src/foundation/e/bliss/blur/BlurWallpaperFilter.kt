@@ -19,7 +19,7 @@ package foundation.e.bliss.blur
 
 import android.content.Context
 import android.graphics.Bitmap
-import com.hoko.blur.HokoBlur
+import com.example.blur.NativeGauss
 import foundation.e.bliss.wallpaper.WallpaperBlurRenderer
 
 class BlurWallpaperFilter(private val context: Context) :
@@ -60,25 +60,34 @@ class BlurWallpaperFilter(private val context: Context) :
     }
 
     private fun blur(wallpaper: Bitmap, config: WallpaperBlurRenderer.BlurConfig): Bitmap {
-        val source =
-            if (config.scale == 1) {
-                wallpaper
-            } else {
-                Bitmap.createScaledBitmap(
-                    wallpaper,
-                    wallpaper.width / config.scale,
-                    wallpaper.height / config.scale,
-                    true
-                )
+        val scaled = if (config.scale == 1) {
+            wallpaper
+        } else {
+            Bitmap.createScaledBitmap(
+                wallpaper,
+                (wallpaper.width / config.scale).coerceAtLeast(1),
+                (wallpaper.height / config.scale).coerceAtLeast(1),
+                true
+            )
+        }
+        val target = if (scaled.isMutable && scaled.config == Bitmap.Config.ARGB_8888) {
+            scaled
+        } else {
+            scaled.copy(Bitmap.Config.ARGB_8888, true).also {
+                if (scaled !== wallpaper) {
+                    scaled.recycle()
+                }
             }
-        val blurred =
-            HokoBlur.with(context)
-                .scheme(HokoBlur.SCHEME_NATIVE)
-                .mode(HokoBlur.MODE_STACK)
-                .radius(config.radius)
-                .forceCopy(false)
-                .processor()
-                .blur(source)
-        return blurred
+        }
+        val sigma = config.radius.toFloat().coerceAtLeast(1f)
+        try {
+            NativeGauss.smartBlur(target, sigma, highQuality = true)
+        } catch (t: Throwable) {
+            android.util.Log.w("BlurWallpaperFilter", "NativeGauss.smartBlur failed, using box3 fallback", t)
+            try {
+                NativeGauss.box3Inplace(target, config.radius.coerceAtLeast(1))
+            } catch (ignored: Throwable) {}
+        }
+        return target
     }
 }

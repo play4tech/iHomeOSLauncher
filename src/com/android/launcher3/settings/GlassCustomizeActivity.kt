@@ -17,6 +17,7 @@
  */
 package com.android.launcher3.settings
 
+import android.app.Dialog
 import android.app.WallpaperManager
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -36,11 +37,13 @@ import android.provider.Settings
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.SeekBar
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -63,6 +66,7 @@ import foundation.e.bliss.glass.PreviewWallpaperView
 import foundation.e.bliss.glass.SearchPillGlassView
 import foundation.e.bliss.wallpaper.WallpaperRepository
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * Interactive Liquid Glass effect customization screen with a real-time live preview.
@@ -80,8 +84,28 @@ class GlassCustomizeActivity : FragmentActivity() {
     private val switchBindings = mutableListOf<SwitchBinding>()
 
     private var bannerAdView: AdView? = null
-
     private var isSaving = false
+    private var pendingSaveAfterPro = false
+
+    private val proStatusListener: (Boolean) -> Unit = { isPro ->
+        if (isPro) {
+            runOnUiThread {
+                updateProUi(true)
+                val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                if (container != null) {
+                    AdManager.destroyBanner(container)
+                }
+                bannerAdView?.destroy()
+                bannerAdView = null
+
+                if (pendingSaveAfterPro) {
+                    pendingSaveAfterPro = false
+                    saveAndFinish()
+                }
+            }
+        }
+    }
+
     private val saveFinishHandler = Handler(Looper.getMainLooper())
     private val saveFinishRunnable = Runnable {
         if (!isFinishing && !isDestroyed) {
@@ -108,6 +132,12 @@ class GlassCustomizeActivity : FragmentActivity() {
         initSwitches()
         initResetButton()
         initAds()
+        updateProUi(BillingManager.isProUser(this))
+        BillingManager.getInstance(this).addProStatusListener(proStatusListener)
+    }
+
+    private fun updateProUi(isPro: Boolean) {
+        findViewById<View>(R.id.badge_save_pro)?.visibility = if (isPro) View.GONE else View.VISIBLE
     }
 
     private fun setupSystemBars() {
@@ -123,24 +153,20 @@ class GlassCustomizeActivity : FragmentActivity() {
         findViewById<View>(R.id.btn_back)?.setOnClickListener {
             if (isSaving) {
                 saveFinishHandler.removeCallbacks(saveFinishRunnable)
-                finish()
-            } else {
-                saveAndFinish(fromSaveButton = false)
             }
+            finishWithAdIfEligible()
         }
 
         findViewById<View>(R.id.btn_save)?.setOnClickListener {
-            saveAndFinish(fromSaveButton = true)
+            handleSaveClicked()
         }
     }
 
     override fun onBackPressed() {
         if (isSaving) {
             saveFinishHandler.removeCallbacks(saveFinishRunnable)
-            finish()
-            return
         }
-        saveAndFinish(fromSaveButton = false)
+        finishWithAdIfEligible()
     }
 
     override fun onResume() {
@@ -151,10 +177,11 @@ class GlassCustomizeActivity : FragmentActivity() {
     override fun onPause() {
         super.onPause()
         bannerAdView?.pause()
-        GlassConfig.saveSettings(this, currentSettings)
+        // Do NOT save settings on pause! Settings are only applied when a Pro user explicitly taps Save.
     }
 
     override fun onDestroy() {
+        BillingManager.getInstance(this).removeProStatusListener(proStatusListener)
         saveFinishHandler.removeCallbacks(saveFinishRunnable)
         bannerAdView?.destroy()
         bannerAdView = null
@@ -643,28 +670,69 @@ class GlassCustomizeActivity : FragmentActivity() {
         }
     }
 
-    private fun saveAndFinish(fromSaveButton: Boolean = false) {
+    private fun handleSaveClicked() {
         if (isSaving) return
 
-        GlassConfig.saveSettings(this, currentSettings)
+        if (BillingManager.isProUser(this)) {
+            saveAndFinish()
+        } else {
+            showProRequiredDialog()
+        }
+    }
 
-        val proceedFinish = {
-            AdManager.showInterstitialOnExitIfEligible(this) {
-                if (!isFinishing && !isDestroyed) {
-                    finish()
+    private fun showProRequiredDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.setContentView(R.layout.dialog_pro_required)
+
+        val width = (resources.displayMetrics.widthPixels * 0.85f).roundToInt()
+        dialog.window?.setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT)
+
+        val bm = BillingManager.getInstance(this)
+        val price = bm.getFormattedPrice()
+        val btnUpgrade = dialog.findViewById<TextView>(R.id.btn_dialog_upgrade)
+        if (btnUpgrade != null && price.isNotEmpty()) {
+            btnUpgrade.text = "Upgrade to Pro ($price)"
+        }
+
+        btnUpgrade?.setOnClickListener {
+            dialog.dismiss()
+            pendingSaveAfterPro = true
+            Toast.makeText(this, "Connecting to Google Play...", Toast.LENGTH_SHORT).show()
+            bm.launchPurchaseFlow(this) { error ->
+                pendingSaveAfterPro = false
+                runOnUiThread {
+                    Toast.makeText(this, error, Toast.LENGTH_LONG).show()
                 }
             }
         }
 
-        if (fromSaveButton) {
-            isSaving = true
-            findViewById<View>(R.id.btn_save)?.isEnabled = false
-            LiquidGlassToast.show(this, "Glass settings saved", R.drawable.ic_ios_check_circle)
-            saveFinishHandler.postDelayed({
-                proceedFinish()
-            }, 850L)
-        } else {
-            proceedFinish()
+        dialog.findViewById<View>(R.id.btn_dialog_cancel)?.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun saveAndFinish() {
+        if (isSaving) return
+        isSaving = true
+        findViewById<View>(R.id.btn_save)?.isEnabled = false
+
+        GlassConfig.saveSettings(this, currentSettings)
+        LiquidGlassToast.show(this, "Glass settings saved", R.drawable.ic_ios_check_circle)
+
+        saveFinishHandler.postDelayed({
+            finishWithAdIfEligible()
+        }, 850L)
+    }
+
+    private fun finishWithAdIfEligible() {
+        AdManager.showInterstitialOnExitIfEligible(this) {
+            if (!isFinishing && !isDestroyed) {
+                finish()
+            }
         }
     }
 

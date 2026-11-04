@@ -6,6 +6,8 @@ import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.RecordingCanvas;
+import android.graphics.RenderNode;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -39,6 +41,9 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
     private int mWhiteBorderPosition = GlassConfig.DEFAULT_WHITE_BORDER_POSITION;
     private float mWhiteBorderFadeSpread = GlassConfig.DEFAULT_WHITE_BORDER_FADE_SPREAD;
 
+    private RenderNode mBorderRenderNode;
+    private boolean mBorderDirty = true;
+
     public AppLibraryCategoryGlassView(Context context) {
         this(context, null);
     }
@@ -63,7 +68,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setBorderEnabled(boolean borderEnabled) {
-        mBorderEnabled = borderEnabled;
+        if (mBorderEnabled != borderEnabled) {
+            mBorderEnabled = borderEnabled;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -73,7 +82,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setBorderWidthPx(float borderWidthPx) {
-        mBorderWidthPx = borderWidthPx;
+        if (mBorderWidthPx != borderWidthPx) {
+            mBorderWidthPx = borderWidthPx;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -83,7 +96,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setBorderOpacity(float borderOpacity) {
-        mBorderOpacity = borderOpacity;
+        if (mBorderOpacity != borderOpacity) {
+            mBorderOpacity = borderOpacity;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -93,7 +110,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setBorderFade(float borderFade) {
-        mBorderFade = borderFade;
+        if (mBorderFade != borderFade) {
+            mBorderFade = borderFade;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -103,7 +124,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setBorderPosition(int borderPosition) {
-        mBorderPosition = borderPosition;
+        if (mBorderPosition != borderPosition) {
+            mBorderPosition = borderPosition;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -113,7 +138,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setBorderFadeSpread(float borderFadeSpread) {
-        mBorderFadeSpread = borderFadeSpread;
+        if (mBorderFadeSpread != borderFadeSpread) {
+            mBorderFadeSpread = borderFadeSpread;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -123,7 +152,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setWhiteBorderEnabled(boolean whiteBorderEnabled) {
-        mWhiteBorderEnabled = whiteBorderEnabled;
+        if (mWhiteBorderEnabled != whiteBorderEnabled) {
+            mWhiteBorderEnabled = whiteBorderEnabled;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -133,7 +166,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setWhiteBorderWidthPx(float whiteBorderWidthPx) {
-        mWhiteBorderWidthPx = whiteBorderWidthPx;
+        if (mWhiteBorderWidthPx != whiteBorderWidthPx) {
+            mWhiteBorderWidthPx = whiteBorderWidthPx;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -143,7 +180,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setWhiteBorderOpacity(float whiteBorderOpacity) {
-        mWhiteBorderOpacity = whiteBorderOpacity;
+        if (mWhiteBorderOpacity != whiteBorderOpacity) {
+            mWhiteBorderOpacity = whiteBorderOpacity;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -153,7 +194,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setWhiteBorderFade(float whiteBorderFade) {
-        mWhiteBorderFade = whiteBorderFade;
+        if (mWhiteBorderFade != whiteBorderFade) {
+            mWhiteBorderFade = whiteBorderFade;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -163,7 +208,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setWhiteBorderPosition(int whiteBorderPosition) {
-        mWhiteBorderPosition = whiteBorderPosition;
+        if (mWhiteBorderPosition != whiteBorderPosition) {
+            mWhiteBorderPosition = whiteBorderPosition;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     @Override
@@ -173,7 +222,11 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
 
     @Override
     public void setWhiteBorderFadeSpread(float whiteBorderFadeSpread) {
-        mWhiteBorderFadeSpread = whiteBorderFadeSpread;
+        if (mWhiteBorderFadeSpread != whiteBorderFadeSpread) {
+            mWhiteBorderFadeSpread = whiteBorderFadeSpread;
+            mBorderDirty = true;
+            invalidate();
+        }
     }
 
     private final ContinuousCornerGeometry mGeometry = new ContinuousCornerGeometry();
@@ -206,6 +259,7 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
     private void init() {
         setEnableSensorHighlight(false);
         setClipToOutline(false);
+        setInvalidateOnBackdropScroll(false);
 
         setOutlineProvider(new ViewOutlineProvider() {
             @Override
@@ -251,6 +305,9 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         super.onDetachedFromWindow();
         GlassConfig.unregisterView(this);
         setBackdropSource(null);
+        if (mBorderRenderNode != null) {
+            mBorderRenderNode.discardDisplayList();
+        }
     }
 
     private View findWallpaperProxy() {
@@ -278,6 +335,7 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         super.onSizeChanged(w, h, oldw, oldh);
         if (w > 0 && h > 0) {
             setCornerRadius(getTargetRadius(w, h));
+            mBorderDirty = true;
         }
     }
 
@@ -292,10 +350,38 @@ public class AppLibraryCategoryGlassView extends LiquidGlassView implements Bord
         float targetRadius = getTargetRadius(w, h);
         if (getCornerRadius() != targetRadius) {
             setCornerRadius(targetRadius);
+            mBorderDirty = true;
         }
 
         super.draw(canvas);
 
+        if (canvas.isHardwareAccelerated()) {
+            if (mBorderDirty || mBorderRenderNode == null || !mBorderRenderNode.hasDisplayList()) {
+                recordBorder((int) w, (int) h);
+            }
+            if (mBorderRenderNode != null && mBorderRenderNode.hasDisplayList()) {
+                canvas.drawRenderNode(mBorderRenderNode);
+            }
+        } else {
+            drawBordersDirect(canvas, (int) w, (int) h);
+        }
+    }
+
+    private void recordBorder(int w, int h) {
+        if (mBorderRenderNode == null) {
+            mBorderRenderNode = new RenderNode("AppLibraryCategoryBorder");
+        }
+        mBorderRenderNode.setPosition(0, 0, w, h);
+        RecordingCanvas recordingCanvas = mBorderRenderNode.beginRecording(w, h);
+        try {
+            drawBordersDirect(recordingCanvas, w, h);
+        } finally {
+            mBorderRenderNode.endRecording();
+        }
+        mBorderDirty = false;
+    }
+
+    private void drawBordersDirect(Canvas canvas, int w, int h) {
         Path path = updatePath(w, h);
         if (mBorderEnabled && mBorderWidthPx > 0f && mBorderOpacity > 0f) {
             GlassConfig.drawBorder(

@@ -649,4 +649,16 @@
             </LinearLayout>
         </LinearLayout>
     </ScrollView>
+
+    <!-- AdMob Banner Container (Pinned at bottom, hidden for Pro) -->
+    <FrameLayout
+        android:id="@+id/ad_banner_container"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@color/ios_settings_bg"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone" />
+
 </LinearLayout>

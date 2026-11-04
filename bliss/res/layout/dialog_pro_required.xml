@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:background="@drawable/bg_ios_settings_card"
+    android:paddingStart="22dp"
+    android:paddingEnd="22dp"
+    android:paddingTop="24dp"
+    android:paddingBottom="20dp">
+
+    <!-- Icon Container -->
+    <FrameLayout
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_ios_icon_container"
+        android:backgroundTint="@color/ios_icon_blue">
+        <ImageView
+            android:id="@+id/img_dialog_icon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_ios_glass_sliders" />
+    </FrameLayout>
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/txt_dialog_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="iHomeOS Pro Feature"
+        android:textColor="@color/onboarding_text_primary"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:gravity="center" />
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/txt_dialog_message"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="20dp"
+        android:text="Customizing optical glass effects requires iHomeOS Pro. Upgrade to apply and save your custom settings to your Home Screen."
+        android:textColor="@color/onboarding_text_secondary"
+        android:textSize="13sp"
+        android:lineSpacingExtra="2dp"
+        android:gravity="center" />
+
+    <!-- Upgrade Button -->
+    <TextView
+        android:id="@+id/btn_dialog_upgrade"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_ios_capsule_button"
+        android:backgroundTint="@color/ios_icon_blue"
+        android:gravity="center"
+        android:text="Upgrade to Pro"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+    <!-- Cancel Button -->
+    <TextView
+        android:id="@+id/btn_dialog_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="38dp"
+        android:layout_marginTop="6dp"
+        android:background="?android:attr/selectableItemBackground"
+        android:gravity="center"
+        android:text="Not Now"
+        android:textColor="@color/ios_icon_blue"
+        android:textSize="14sp" />
+
+</LinearLayout>

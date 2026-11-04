@@ -58,28 +58,6 @@ class PreviewWallpaperView @JvmOverloads constructor(
     }
 
     override fun onDraw(canvas: Canvas) {
-        val isCapturedByGlass = LiquidGlassView.isCapturingAnyGlassBackdrop
-        val d = drawable
-        val useFastBlur = com.example.liquidglass.GlassLensRenderer.getDebugProp("debug.launcher.fast_blur", false)
-        if (useFastBlur && isCapturedByGlass && blurAmount > 0.001f && d is BitmapDrawable) {
-            val rawWp = d.bitmap
-            val blurSizes = blurRenderer.blurSizes
-            val blurBmp = blurSizes?.background
-            if (rawWp != null && !rawWp.isRecycled && blurBmp != null && !blurBmp.isRecycled) {
-                val alpha = ((blurAmount / GlassConfig.DEFAULT_BLUR_AMOUNT).coerceIn(0f, 1f) * 255).toInt()
-                if (alpha < 255) {
-                    super.onDraw(canvas)
-                }
-                blurPaint.alpha = alpha
-                blurMatrix.reset()
-                imageMatrix?.let { blurMatrix.set(it) }
-                val scaleX = rawWp.width.toFloat() / blurBmp.width.toFloat()
-                val scaleY = rawWp.height.toFloat() / blurBmp.height.toFloat()
-                blurMatrix.preScale(scaleX, scaleY)
-                canvas.drawBitmap(blurBmp, blurMatrix, blurPaint)
-                return
-            }
-        }
         super.onDraw(canvas)
     }
 }

@@ -35,6 +35,7 @@ import android.provider.Settings
 import android.util.Log
 import android.util.TypedValue
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -47,9 +48,13 @@ import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
+import com.android.launcher3.ads.ConsentManager
+import com.android.launcher3.billing.BillingManager
 import com.android.launcher3.icons.LauncherIcons
 import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.model.data.ItemInfoWithIcon
+import com.google.android.gms.ads.AdView
 import foundation.e.bliss.glass.FolderGlassView
 import foundation.e.bliss.glass.LiquidGlassToast
 import foundation.e.bliss.glass.PreviewDockGlassView
@@ -97,6 +102,20 @@ class IconSizeCustomizeActivity : FragmentActivity() {
     private var initialScale: Float = 1.0f
     private var currentScale: Float = 1.0f
     private var isSaving = false
+    private var bannerAdView: AdView? = null
+
+    private val proStatusListener: (Boolean) -> Unit = { isPro ->
+        if (isPro) {
+            runOnUiThread {
+                val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                if (container != null) {
+                    AdManager.destroyBanner(container)
+                }
+                bannerAdView?.destroy()
+                bannerAdView = null
+            }
+        }
+    }
 
     private val saveFinishHandler = Handler(Looper.getMainLooper())
     private val saveFinishRunnable = Runnable {
@@ -127,6 +146,8 @@ class IconSizeCustomizeActivity : FragmentActivity() {
         initHeader()
         initPreview()
         initControls()
+        initAds()
+        BillingManager.getInstance(this).addProStatusListener(proStatusListener)
     }
 
     private fun setupSystemBars() {
@@ -158,9 +179,41 @@ class IconSizeCustomizeActivity : FragmentActivity() {
         super.onBackPressed()
     }
 
+    override fun onResume() {
+        super.onResume()
+        bannerAdView?.resume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        bannerAdView?.pause()
+    }
+
     override fun onDestroy() {
         saveFinishHandler.removeCallbacks(saveFinishRunnable)
+        BillingManager.getInstance(this).removeProStatusListener(proStatusListener)
+        bannerAdView?.destroy()
+        bannerAdView = null
         super.onDestroy()
+    }
+
+    private fun initAds() {
+        if (BillingManager.isProUser(this)) return
+
+        ConsentManager.gatherConsent(this) { canRequestAds ->
+            if (canRequestAds && !isFinishing && !isDestroyed) {
+                AdManager.initialize(this) {
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                            if (container != null) {
+                                bannerAdView = AdManager.loadBanner(this, container)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun saveAndFinish() {

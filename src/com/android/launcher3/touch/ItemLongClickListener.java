@@ -127,6 +127,14 @@ public class ItemLongClickListener {
     }
 
     private static boolean onWidgetItemLongClick(WidgetCell v) {
+        com.android.launcher3.model.WidgetItem item = v.getWidgetItem();
+        if (item != null && foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(item.componentName)
+                && !com.android.launcher3.billing.BillingManager.isProUser(v.getContext())) {
+            Launcher launcher = Launcher.getLauncher(v.getContext());
+            foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(launcher, item.componentName);
+            return true;
+        }
+
         // Get the widget preview as the drag representation
         WidgetImageView image = v.getWidgetView();
         Launcher launcher = Launcher.getLauncher(v.getContext());

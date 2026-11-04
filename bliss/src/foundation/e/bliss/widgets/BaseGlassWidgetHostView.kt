@@ -52,6 +52,12 @@ abstract class BaseGlassWidgetHostView(
         color = Color.argb(65, 255, 255, 255)
     }
 
+    protected val previewBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f * resources.displayMetrics.density
+        color = Color.argb(100, 255, 255, 255)
+    }
+
     init {
         setWillNotDraw(false)
         clipChildren = false
@@ -152,6 +158,7 @@ abstract class BaseGlassWidgetHostView(
     }
 
     private fun attachGlassView() {
+        if (appWidgetId == -1) return
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
         val root = rootView
         val source = root?.findViewById<View>(R.id.glass_wallpaper_proxy)
@@ -179,13 +186,17 @@ abstract class BaseGlassWidgetHostView(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         ensureChildren()
+        val isPreview = appWidgetId == -1
+        if (isPreview) {
+            labelView.visibility = View.GONE
+        }
         val w = MeasureSpec.getSize(widthMeasureSpec)
         val h = MeasureSpec.getSize(heightMeasureSpec)
         val dp = launcher.deviceProfile
         val labelSpacing = (6f * resources.displayMetrics.density).toInt().coerceAtLeast(dp.iconDrawablePaddingPx)
 
         var labelHeight = 0
-        if (labelView.visibility == View.VISIBLE) {
+        if (!isPreview && labelView.visibility == View.VISIBLE) {
             labelView.measure(
                 MeasureSpec.makeMeasureSpec(w, MeasureSpec.AT_MOST),
                 MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
@@ -212,12 +223,16 @@ abstract class BaseGlassWidgetHostView(
         clipToOutline = false
         outlineProvider = null
         ensureChildren()
+        val isPreview = appWidgetId == -1
+        if (isPreview) {
+            labelView.visibility = View.GONE
+        }
         val w = right - left
         val h = bottom - top
         val dp = launcher.deviceProfile
         val labelSpacing = (6f * resources.displayMetrics.density).toInt().coerceAtLeast(dp.iconDrawablePaddingPx)
 
-        val labelHeight = if (labelView.visibility == View.VISIBLE) {
+        val labelHeight = if (!isPreview && labelView.visibility == View.VISIBLE) {
             labelView.measuredHeight + labelSpacing
         } else 0
 
@@ -260,6 +275,7 @@ abstract class BaseGlassWidgetHostView(
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (appWidgetId == -1) return false
         if (ev.action == MotionEvent.ACTION_DOWN) {
             downX = ev.x
             downY = ev.y
@@ -268,6 +284,7 @@ abstract class BaseGlassWidgetHostView(
     }
 
     override fun onTouchEvent(ev: MotionEvent): Boolean {
+        if (appWidgetId == -1) return false
         if (isUninstallVisible) {
             return super.onTouchEvent(ev)
         }
@@ -305,6 +322,9 @@ abstract class BaseGlassWidgetHostView(
             canvas.save()
             canvas.translate(squircleBounds.left.toFloat(), squircleBounds.top.toFloat())
             canvas.drawPath(path, fallbackGlassPaint)
+            if (appWidgetId == -1) {
+                canvas.drawPath(path, previewBorderPaint)
+            }
             canvas.restore()
         }
         super.dispatchDraw(canvas)

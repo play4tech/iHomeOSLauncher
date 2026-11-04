@@ -58,4 +58,8 @@ __pycache__/
 /window_dump.xml
 keystore.properties
 *.keystore
+keystore/ihomeos-upload-key.jks
+keystore/*.jks
+!keystore/platform.jks
+!keystore/testkey.jks
 

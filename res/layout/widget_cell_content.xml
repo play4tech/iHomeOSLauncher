@@ -45,19 +45,43 @@
             android:layout_margin="@dimen/profile_badge_margin"/>
     </com.android.launcher3.widget.WidgetCellPreview>
 
-    <!-- The name of the widget. -->
-    <TextView
-        android:id="@+id/widget_name"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:fadingEdge="horizontal"
-        android:gravity="center_horizontal|center_vertical"
-        android:singleLine="true"
-        android:maxLines="1"
-        android:textColor="?android:attr/textColorPrimary"
-        android:drawablePadding="@dimen/widget_cell_app_icon_padding"
-        android:textSize="@dimen/widget_cell_font_size" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_gravity="center_horizontal">
+
+        <!-- The name of the widget. -->
+        <TextView
+            android:id="@+id/widget_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fadingEdge="horizontal"
+            android:gravity="center_horizontal|center_vertical"
+            android:singleLine="true"
+            android:maxLines="1"
+            android:textColor="?android:attr/textColorPrimary"
+            android:drawablePadding="@dimen/widget_cell_app_icon_padding"
+            android:textSize="@dimen/widget_cell_font_size" />
+
+        <TextView
+            android:id="@+id/widget_pro_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:text="PRO"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:textColor="@color/ios_icon_blue"
+            android:background="@drawable/bg_ios_badge_pro"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="1dp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <!-- The original dimensions of the widget -->
     <TextView

@@ -22,6 +22,7 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
 import android.os.UserHandle
 import android.os.UserManager
@@ -30,6 +31,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
@@ -43,8 +45,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
+import com.android.launcher3.ads.ConsentManager
+import com.android.launcher3.billing.BillingManager
 import com.android.launcher3.util.Executors
 import com.android.launcher3.util.RemovedAppStore
+import com.google.android.gms.ads.AdView
 import foundation.e.bliss.glass.LiquidGlassToast
 import foundation.e.bliss.glass.SquircleImageView
 import java.util.Locale
@@ -77,15 +83,72 @@ class AppLibraryOnlyActivity : FragmentActivity() {
     private lateinit var recyclerView: RecyclerView
 
     private var isSaving = false
+    private var bannerAdView: AdView? = null
+
+    private val proStatusListener: (Boolean) -> Unit = { isPro ->
+        if (isPro) {
+            runOnUiThread {
+                val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                if (container != null) {
+                    AdManager.destroyBanner(container)
+                }
+                bannerAdView?.destroy()
+                bannerAdView = null
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_app_library_only)
 
         setupSystemBars()
         initViews()
         loadApps()
+        initAds()
+        BillingManager.getInstance(this).addProStatusListener(proStatusListener)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        bannerAdView?.resume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        bannerAdView?.pause()
+    }
+
+    override fun onDestroy() {
+        BillingManager.getInstance(this).removeProStatusListener(proStatusListener)
+        bannerAdView?.destroy()
+        bannerAdView = null
+        super.onDestroy()
+    }
+
+    private fun initAds() {
+        if (BillingManager.isProUser(this)) return
+
+        ConsentManager.gatherConsent(this) { canRequestAds ->
+            if (canRequestAds && !isFinishing && !isDestroyed) {
+                AdManager.initialize(this) {
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                            if (container != null) {
+                                bannerAdView = AdManager.loadBanner(this, container)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun setupSystemBars() {

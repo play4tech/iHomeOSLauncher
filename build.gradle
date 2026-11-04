@@ -332,6 +332,12 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = false
+            excludes += [
+                '**/libsentry*.so',
+                '**/libhoko_blur.so',
+                '**/librs*.so',
+                '**/libRSSupport.so'
+            ]
         }
     }
 
@@ -373,12 +379,14 @@ dependencies {
     implementation libs.google.material
     implementation libs.androidx.slice.view
     implementation libs.androidx.graphics.shapes
+    implementation libs.androidx.work
     implementation libs.reactivex.rxkotlin3
-    implementation libs.hoko.blur
     implementation project(':liquidglass')
 
     implementation libs.elib
-    implementation libs.e.telemetry
+    implementation(libs.e.telemetry) {
+        exclude group: 'io.sentry', module: 'sentry-android-ndk'
+    }
     implementation libs.timber
 
     implementation libs.square.gson

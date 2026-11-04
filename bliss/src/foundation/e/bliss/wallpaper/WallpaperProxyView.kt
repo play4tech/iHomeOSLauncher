@@ -25,13 +25,17 @@ import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Rect
+import android.graphics.RenderNode
 import android.graphics.Shader
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
 import android.widget.FrameLayout
+import androidx.annotation.RequiresApi
 import com.android.launcher3.Insettable
+import com.example.liquidglass.BlurredBackdropProvider
 import com.example.liquidglass.LiquidGlassView
+import com.example.liquidglass.SharedBlurredBackdrop
 import foundation.e.bliss.glass.GlassConfig
 
 class WallpaperProxyView
@@ -41,10 +45,27 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     WallpaperEnvironmentBuilder.Listener,
     WallpaperRepository.Listener,
     WallpaperBlurRenderer.Listener,
-    Insettable {
+    Insettable,
+    BlurredBackdropProvider {
 
     private var hasLoggedDraw = false
     private var fallbackGradientPaint: Paint? = null
+
+    private val sharedBlur by lazy(LazyThreadSafetyMode.NONE) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            SharedBlurredBackdrop()
+        } else {
+            null
+        }
+    }
+    private val tmpMatrix = Matrix()
+    private val tmpVals = FloatArray(9)
+
+    /** Translation to apply when drawing the node returned by [blurredWallpaper]. */
+    override var blurDx = 0f
+        private set
+    override var blurDy = 0f
+        private set
 
     init {
         setWillNotDraw(false)
@@ -55,9 +76,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
     private val repository = WallpaperRepository.INSTANCE.get(context)
     private val blurRenderer = WallpaperBlurRenderer.INSTANCE.get(context)
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
-    private val blurPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val matrix = Matrix()
-    private val blurMatrix = Matrix()
 
     override fun setInsets(insets: Rect) {}
 
@@ -79,6 +98,45 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
         envBuilder.removeListener(this)
         repository.removeListener(this)
         blurRenderer.removeListener(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            sharedBlur?.release()
+        }
+    }
+
+    override fun onWindowVisibilityChanged(visibility: Int) {
+        super.onWindowVisibilityChanged(visibility)
+        if (visibility == android.view.View.VISIBLE && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            sharedBlur?.invalidate()
+        }
+    }
+
+    /**
+     * Blurred wallpaper in the same space onDraw uses: draw it translated by (blurDx, blurDy).
+     * Returns null when the old capture path must be used (no wallpaper, or the transform is
+     * not a plain scale + translate).
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    override fun blurredWallpaper(radius: Float): RenderNode? {
+        val env = envBuilder.environment
+        val wp = env?.wallpaper ?: repository.currentWallpaper ?: return null
+        if (wp.isRecycled) return null
+        if (env != null) env.transform.toMatrix(tmpMatrix) else tmpMatrix.reset()
+        tmpMatrix.getValues(tmpVals)
+
+        val scale = tmpVals[Matrix.MSCALE_X]
+        if (scale <= 0f ||
+            tmpVals[Matrix.MSCALE_Y] != scale ||
+            tmpVals[Matrix.MSKEW_X] != 0f || tmpVals[Matrix.MSKEW_Y] != 0f
+        ) return null
+
+        val w = kotlin.math.ceil(wp.width * scale).toInt()
+        val h = kotlin.math.ceil(wp.height * scale).toInt()
+        if (w <= 0 || h <= 0) return null
+
+        blurDx = tmpVals[Matrix.MTRANS_X]
+        blurDy = tmpVals[Matrix.MTRANS_Y]
+        val node = sharedBlur?.get(wp, scale, radius, paint)
+        return if (node != null && node.hasDisplayList()) node else null
     }
 
     override fun onBlurCacheUpdated(blurSizes: WallpaperBlurRenderer.BlurSizes?) {
@@ -147,29 +205,6 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
             environment.transform.toMatrix(matrix)
         } else {
             matrix.reset()
-        }
-
-        // Check if this draw call is an offscreen backdrop capture by a glass view
-        val isCapturedByGlass = LiquidGlassView.isCapturingAnyGlassBackdrop
-        val blurAmount = GlassConfig.loadSettings(context).blurAmount
-        val useFastBlur = com.example.liquidglass.GlassLensRenderer.getDebugProp("debug.launcher.fast_blur", false)
-
-        if (useFastBlur && isCapturedByGlass && blurAmount > 0.001f && rawWp != null) {
-            val blurSizes = blurRenderer.blurSizes
-            val blurBmp = blurSizes?.background
-            if (blurBmp != null && !blurBmp.isRecycled) {
-                val alpha = ((blurAmount / GlassConfig.DEFAULT_BLUR_AMOUNT).coerceIn(0f, 1f) * 255).toInt()
-                if (alpha < 255) {
-                    canvas.drawBitmap(rawWp, matrix, paint)
-                }
-                blurPaint.alpha = alpha
-                blurMatrix.set(matrix)
-                val scaleX = rawWp.width.toFloat() / blurBmp.width.toFloat()
-                val scaleY = rawWp.height.toFloat() / blurBmp.height.toFloat()
-                blurMatrix.preScale(scaleX, scaleY)
-                canvas.drawBitmap(blurBmp, blurMatrix, blurPaint)
-                return
-            }
         }
 
         // Normal screen drawing: ALWAYS draw the clean, crisp wallpaper!

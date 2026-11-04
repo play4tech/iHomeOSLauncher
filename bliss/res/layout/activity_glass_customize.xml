@@ -37,20 +37,46 @@
             android:textSize="17sp"
             android:textStyle="bold" />
 
-        <!-- Save Button -->
-        <TextView
+        <!-- Save Button with Pro Badge -->
+        <LinearLayout
             android:id="@+id/btn_save"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingStart="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="8dp"
             android:paddingEnd="4dp"
             android:paddingTop="6dp"
             android:paddingBottom="6dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:text="Save"
-            android:textColor="@color/ios_icon_blue"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/txt_btn_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Save"
+                android:textColor="@color/ios_icon_blue"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/badge_save_pro"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:text="PRO"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="@color/ios_icon_blue"
+                android:background="@drawable/bg_ios_badge_pro"
+                android:paddingStart="6dp"
+                android:paddingEnd="6dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:visibility="gone" />
+        </LinearLayout>
     </LinearLayout>
 
     <!-- LIVE DOCK PREVIEW (PINNED) -->

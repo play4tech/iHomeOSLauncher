@@ -18,7 +18,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 # src/com/android/launcher3/Launcher.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4185 | **Bytes**: 177031
+**Lines**: 4197 | **Bytes**: 177639
 
 ```java
 /*
@@ -633,6 +633,12 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         super.onCreate(savedInstanceState);
+
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
 
         LauncherAppState app = LauncherAppState.getInstance(this);
         mModel = app.getModel();
@@ -2324,7 +2330,13 @@ public class Launcher extends StatefulActivity<LauncherState>
         info.spanY = spanY;
 
         if (info instanceof PendingAddWidgetInfo) {
-            addAppWidgetFromDrop((PendingAddWidgetInfo) info);
+            PendingAddWidgetInfo pawi = (PendingAddWidgetInfo) info;
+            if (foundation.e.bliss.widgets.GlassWidgetFactory.isProWidget(pawi.componentName)
+                    && !com.android.launcher3.billing.BillingManager.isProUser(this)) {
+                foundation.e.bliss.widgets.GlassWidgetFactory.showProWidgetDialog(this, pawi.componentName);
+                return;
+            }
+            addAppWidgetFromDrop(pawi);
         } else { // info can only be PendingAddShortcutInfo
             processShortcutFromDrop((PendingAddShortcutInfo) info);
         }
@@ -6178,7 +6190,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 # src/com/android/launcher3/settings/SettingsActivity.java
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 480 | **Bytes**: 19519
+**Lines**: 565 | **Bytes**: 22669
 
 ```java
 /*
@@ -6206,12 +6218,15 @@ import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -6231,8 +6246,11 @@ import com.android.launcher3.InvariantDeviceProfile;
 import com.android.launcher3.LauncherPrefs;
 import com.android.launcher3.R;
 import com.android.launcher3.SessionCommitReceiver;
+import com.android.launcher3.ads.AdManager;
+import com.android.launcher3.ads.ConsentManager;
 import com.android.launcher3.billing.BillingManager;
 import com.android.launcher3.notification.NotificationListener;
+import com.google.android.gms.ads.AdView;
 
 import foundation.e.bliss.glass.LiquidGlassToast;
 import foundation.e.bliss.multimode.MultiModeController;
@@ -6261,6 +6279,7 @@ public class SettingsActivity extends FragmentActivity
     public static final String KEY_TRUST_APPS = "pref_trust_apps";
 
     private BillingManager mBillingManager;
+    private AdView mBannerAdView;
     private final kotlin.jvm.functions.Function1<Boolean, kotlin.Unit> mProListener = isPro -> {
         updateProStateUi(isPro);
         return kotlin.Unit.INSTANCE;
@@ -6270,11 +6289,36 @@ public class SettingsActivity extends FragmentActivity
     protected void onCreate(Bundle savedInstanceState) {
         setTheme(R.style.Theme_Bliss_Onboarding);
         super.onCreate(savedInstanceState);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+            setTurnScreenOn(true);
+        }
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_settings_ios);
 
         setupSystemBars();
         LauncherPrefs.getPrefs(this).edit().remove(InvariantDeviceProfile.KEY_WORKSPACE_LOCK).apply();
         initViews();
+        handleSubScreenIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleSubScreenIntent(intent);
+    }
+
+    private void handleSubScreenIntent(Intent intent) {
+        if (intent == null) return;
+        String subScreen = intent.getStringExtra("open_sub_screen");
+        if ("icon_size".equals(subScreen)) {
+            startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+        } else if ("app_library_only".equals(subScreen)) {
+            startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+        } else if ("glass".equals(subScreen)) {
+            startActivity(new Intent(this, GlassCustomizeActivity.class));
+        }
     }
 
     private void setupSystemBars() {
@@ -6301,6 +6345,31 @@ public class SettingsActivity extends FragmentActivity
         initAppLibraryOnlyRow();
         initLegalRow();
         initFooter();
+        initAds();
+
+        View badgeGlassPro = findViewById(R.id.badge_customize_glass_pro);
+        if (badgeGlassPro != null) {
+            badgeGlassPro.setVisibility(BillingManager.isProUser(this) ? View.GONE : View.VISIBLE);
+        }
+    }
+
+    private void initAds() {
+        if (BillingManager.isProUser(this)) return;
+
+        ConsentManager.gatherConsent(this, canRequestAds -> {
+            if (canRequestAds && !isFinishing() && !isDestroyed()) {
+                AdManager.initialize(this, () -> {
+                    runOnUiThread(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            ViewGroup container = findViewById(R.id.ad_banner_container);
+                            if (container != null) {
+                                mBannerAdView = AdManager.loadBanner(this, container);
+                            }
+                        }
+                    });
+                });
+            }
+        });
     }
 
     private void initBillingSection() {
@@ -6355,11 +6424,24 @@ public class SettingsActivity extends FragmentActivity
                 return;
             }
 
+            View badgeGlassPro = findViewById(R.id.badge_customize_glass_pro);
+            if (badgeGlassPro != null) {
+                badgeGlassPro.setVisibility(isPro ? View.GONE : View.VISIBLE);
+            }
+
             if (isPro) {
                 txtSubtitle.setText("Pro Active — Enjoy full ad-free experience");
                 btnBuy.setVisibility(View.GONE);
                 badgeActive.setVisibility(View.VISIBLE);
                 rowUpgrade.setClickable(false);
+                ViewGroup container = findViewById(R.id.ad_banner_container);
+                if (container != null) {
+                    AdManager.destroyBanner(container);
+                }
+                if (mBannerAdView != null) {
+                    mBannerAdView.destroy();
+                    mBannerAdView = null;
+                }
             } else {
                 String price = mBillingManager.getFormattedPrice();
                 btnBuy.setText(price.isEmpty() ? "Upgrade" : price);
@@ -6625,6 +6707,9 @@ public class SettingsActivity extends FragmentActivity
     @Override
     protected void onResume() {
         super.onResume();
+        if (mBannerAdView != null) {
+            mBannerAdView.resume();
+        }
         updateDefaultLauncherState();
         updateNotificationAccessState();
         updateIconSizeSummary();
@@ -6632,7 +6717,19 @@ public class SettingsActivity extends FragmentActivity
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (mBannerAdView != null) {
+            mBannerAdView.pause();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        if (mBannerAdView != null) {
+            mBannerAdView.destroy();
+            mBannerAdView = null;
+        }
         super.onDestroy();
         if (mBillingManager != null) {
             mBillingManager.removeProStatusListener(mProListener);
@@ -6667,7 +6764,7 @@ public class SettingsActivity extends FragmentActivity
 # src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt
 
 **Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt`  
-**Lines**: 377 | **Bytes**: 14572
+**Lines**: 440 | **Bytes**: 16692
 
 ```kotlin
 /*
@@ -6694,6 +6791,7 @@ import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.res.Configuration
 import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
 import android.os.UserHandle
 import android.os.UserManager
@@ -6702,6 +6800,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.ImageView
@@ -6715,8 +6814,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherSettings
 import com.android.launcher3.R
+import com.android.launcher3.ads.AdManager
+import com.android.launcher3.ads.ConsentManager
+import com.android.launcher3.billing.BillingManager
 import com.android.launcher3.util.Executors
 import com.android.launcher3.util.RemovedAppStore
+import com.google.android.gms.ads.AdView
 import foundation.e.bliss.glass.LiquidGlassToast
 import foundation.e.bliss.glass.SquircleImageView
 import java.util.Locale
@@ -6749,15 +6852,72 @@ class AppLibraryOnlyActivity : FragmentActivity() {
     private lateinit var recyclerView: RecyclerView
 
     private var isSaving = false
+    private var bannerAdView: AdView? = null
+
+    private val proStatusListener: (Boolean) -> Unit = { isPro ->
+        if (isPro) {
+            runOnUiThread {
+                val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                if (container != null) {
+                    AdManager.destroyBanner(container)
+                }
+                bannerAdView?.destroy()
+                bannerAdView = null
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_app_library_only)
 
         setupSystemBars()
         initViews()
         loadApps()
+        initAds()
+        BillingManager.getInstance(this).addProStatusListener(proStatusListener)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        bannerAdView?.resume()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        bannerAdView?.pause()
+    }
+
+    override fun onDestroy() {
+        BillingManager.getInstance(this).removeProStatusListener(proStatusListener)
+        bannerAdView?.destroy()
+        bannerAdView = null
+        super.onDestroy()
+    }
+
+    private fun initAds() {
+        if (BillingManager.isProUser(this)) return
+
+        ConsentManager.gatherConsent(this) { canRequestAds ->
+            if (canRequestAds && !isFinishing && !isDestroyed) {
+                AdManager.initialize(this) {
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            val container = findViewById<ViewGroup>(R.id.ad_banner_container)
+                            if (container != null) {
+                                bannerAdView = AdManager.loadBanner(this, container)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun setupSystemBars() {
