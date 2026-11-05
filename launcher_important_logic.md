@@ -45221,7 +45221,7 @@ object DefaultHomeLayoutResolver {
 # AndroidManifest.xml
 
 **Absolute Path**: `D:\Code\OS_Launcher\AndroidManifest.xml`  
-**Lines**: 79 | **Bytes**: 3327
+**Lines**: 83 | **Bytes**: 3538
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -45248,6 +45248,10 @@ object DefaultHomeLayoutResolver {
     xmlns:tools="http://schemas.android.com/tools"
     package="com.android.launcher3">
     <uses-sdk android:targetSdkVersion="36" android:minSdkVersion="33"/>
+
+    <!-- Remove transitive WorkManager foreground service permission (Target SDK 34+ Play Store compliance) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
+
     <!--
     Manifest entries specific to Launcher3. This is merged with AndroidManifest-common.xml.
     Refer comments around specific entries on how to extend individual components.
