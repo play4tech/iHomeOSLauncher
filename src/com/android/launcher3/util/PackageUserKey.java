@@ -24,8 +24,13 @@ public class PackageUserKey {
 
     @Nullable
     public static PackageUserKey fromItemInfo(ItemInfo info) {
-        if (info.getTargetComponent() == null) return null;
-        return new PackageUserKey(info.getTargetComponent().getPackageName(), info.user);
+        if (info == null) return null;
+        String pkg = info.getTargetPackage();
+        if (pkg == null && info.getTargetComponent() != null) {
+            pkg = info.getTargetComponent().getPackageName();
+        }
+        if (pkg == null) return null;
+        return new PackageUserKey(pkg, info.user);
     }
 
     public static PackageUserKey fromNotification(StatusBarNotification notification) {
@@ -64,9 +69,14 @@ public class PackageUserKey {
      * @return Whether this PackageUserKey was successfully updated - it shouldn't be used if not.
      */
     public boolean updateFromItemInfo(ItemInfo info) {
-        if (info.getTargetComponent() == null) return false;
+        if (info == null) return false;
+        String pkg = info.getTargetPackage();
+        if (pkg == null && info.getTargetComponent() != null) {
+            pkg = info.getTargetComponent().getPackageName();
+        }
+        if (pkg == null) return false;
         if (ShortcutUtil.supportsShortcuts(info)) {
-            update(info.getTargetComponent().getPackageName(), info.user);
+            update(pkg, info.user);
             return true;
         }
         return false;

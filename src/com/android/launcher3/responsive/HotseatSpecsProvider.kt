@@ -51,7 +51,7 @@ class HotseatSpecsProvider(groupOfSpecs: List<ResponsiveSpecGroup<HotseatSpec>>)
 
     fun getCalculatedSpec(
         aspectRatio: Float,
-        dimensionType: DimensionType,
+        @Suppress("UNUSED_PARAMETER") dimensionType: DimensionType,
         availableSpace: Int,
     ): CalculatedHotseatSpec {
         val specsGroup = getSpecsByAspectRatio(aspectRatio)

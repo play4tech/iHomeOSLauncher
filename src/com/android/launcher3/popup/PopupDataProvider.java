@@ -39,9 +39,11 @@ import com.android.launcher3.widget.picker.WidgetRecommendationCategory;
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -133,8 +135,12 @@ public class PopupDataProvider implements NotificationListener.NotificationsChan
             }
         }
 
-        if (!updatedDots.isEmpty()) {
-            updateNotificationDots(updatedDots::containsKey);
+        // Build the complete set of keys that have changed, were removed, or currently have dots
+        Set<PackageUserKey> keysToUpdate = new HashSet<>(updatedDots.keySet());
+        keysToUpdate.addAll(mPackageUserToDotInfos.keySet());
+
+        if (!keysToUpdate.isEmpty()) {
+            updateNotificationDots(keysToUpdate::contains);
         }
     }
 
@@ -157,10 +163,11 @@ public class PopupDataProvider implements NotificationListener.NotificationsChan
     }
 
     public @Nullable DotInfo getDotInfoForItem(@NonNull ItemInfo info) {
-        if (!ShortcutUtil.supportsShortcuts(info)) {
+        PackageUserKey key = PackageUserKey.fromItemInfo(info);
+        if (key == null) {
             return null;
         }
-        DotInfo dotInfo = mPackageUserToDotInfos.get(PackageUserKey.fromItemInfo(info));
+        DotInfo dotInfo = mPackageUserToDotInfos.get(key);
         if (dotInfo == null) {
             return null;
         }

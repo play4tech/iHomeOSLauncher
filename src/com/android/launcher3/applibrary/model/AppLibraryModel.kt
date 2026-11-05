@@ -91,8 +91,8 @@ class AppLibraryModel(private val context: Context) {
 
             android.util.Log.d("AppLibraryModel", "updateApps seq $seq timing: categorize=${t1 - t0}ms, sort=${t2 - t1}ms, suggestions=${t3 - t2}ms, total=${t3 - t0}ms")
 
-            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute {
-                if (seq != pendingSequence) return@execute
+            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute main@ {
+                if (seq != pendingSequence) return@main
                 categorizedApps.clear()
                 categorizedApps.putAll(newCategorized)
                 cachedSuggestions = suggestions

@@ -116,11 +116,6 @@ class GlassCustomizeActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_glass_customize)
 
         setupSystemBars()
@@ -154,7 +149,7 @@ class GlassCustomizeActivity : FragmentActivity() {
             if (isSaving) {
                 saveFinishHandler.removeCallbacks(saveFinishRunnable)
             }
-            finishWithAdIfEligible()
+            finish()
         }
 
         findViewById<View>(R.id.btn_save)?.setOnClickListener {
@@ -166,7 +161,7 @@ class GlassCustomizeActivity : FragmentActivity() {
         if (isSaving) {
             saveFinishHandler.removeCallbacks(saveFinishRunnable)
         }
-        finishWithAdIfEligible()
+        super.onBackPressed()
     }
 
     override fun onResume() {
@@ -724,16 +719,10 @@ class GlassCustomizeActivity : FragmentActivity() {
         LiquidGlassToast.show(this, "Glass settings saved", R.drawable.ic_ios_check_circle)
 
         saveFinishHandler.postDelayed({
-            finishWithAdIfEligible()
-        }, 850L)
-    }
-
-    private fun finishWithAdIfEligible() {
-        AdManager.showInterstitialOnExitIfEligible(this) {
             if (!isFinishing && !isDestroyed) {
                 finish()
             }
-        }
+        }, 850L)
     }
 
     // --- Helper Binding Classes ---
@@ -764,7 +753,7 @@ class GlassCustomizeActivity : FragmentActivity() {
             updateFromSettings(settings)
 
             slider.onSliderChangeListener = object : IosSlider.OnSliderChangeListener {
-                override fun onProgressChanged(s: IosSlider, progress: Float, fromUser: Boolean) {
+                override fun onProgressChanged(slider: IosSlider, progress: Float, fromUser: Boolean) {
                     if (fromUser) {
                         setter(settings, progress)
                         txtValue.text = formatter(progress)
@@ -772,7 +761,7 @@ class GlassCustomizeActivity : FragmentActivity() {
                     }
                 }
 
-                override fun onStopTrackingTouch(s: IosSlider) {
+                override fun onStopTrackingTouch(slider: IosSlider) {
                     onStopTracking?.invoke()
                 }
             }

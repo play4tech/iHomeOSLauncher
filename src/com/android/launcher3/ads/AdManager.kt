@@ -34,6 +34,8 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -53,22 +55,26 @@ object AdManager {
     /** Official Google AdMob sample test ad unit IDs */
     private const val TEST_BANNER_ID = "ca-app-pub-3940256099942544/6300978111"
     private const val TEST_INTERSTITIAL_ID = "ca-app-pub-3940256099942544/1033173712"
+    private const val TEST_REWARDED_ID = "ca-app-pub-3940256099942544/5224354917"
 
     /** Minimum cooldown between full-screen ads to prevent disruptive ad spam (Google Play Better Ads policy) */
     private const val INTERSTITIAL_COOLDOWN_MS = 60_000L
+
+    /** Grace period after earning a reward during which user can freely re-enter customization */
+    private const val REWARDED_GRACE_PERIOD_MS = 60_000L
 
     private val isMobileAdsInitialized = AtomicBoolean(false)
     private var interstitialAd: InterstitialAd? = null
     private var isInterstitialLoading = false
 
+    private var rewardedAd: RewardedAd? = null
+    private var isRewardedLoading = false
+
     @Volatile
     private var lastInterstitialTimeMs: Long = 0L
 
-    /**
-     * Session-level flag capping exit interstitial impressions inside GlassCustomizeActivity to at most once per process.
-     */
     @Volatile
-    private var hasShownCustomizeExitInterstitial = false
+    private var lastRewardedTimeMs: Long = 0L
 
     /**
      * Initializes the Mobile Ads SDK on the main thread once consent is gathered.
@@ -120,6 +126,15 @@ object AdManager {
             TEST_INTERSTITIAL_ID
         } else {
             context.getString(R.string.admob_interstitial_id)
+        }
+    }
+
+    @JvmStatic
+    fun getRewardedAdUnitId(context: Context): String {
+        return if (com.android.launcher3.BuildConfig.DEBUG) {
+            TEST_REWARDED_ID
+        } else {
+            context.getString(R.string.admob_rewarded_id)
         }
     }
 
@@ -222,6 +237,46 @@ object AdManager {
     }
 
     /**
+     * Preloads a rewarded ad in the background.
+     */
+    @JvmStatic
+    fun preloadRewarded(context: Context) {
+        if (BillingManager.isProUser(context)) {
+            return
+        }
+
+        if (rewardedAd != null || isRewardedLoading) {
+            return
+        }
+
+        isRewardedLoading = true
+        val adRequest = AdRequest.Builder().build()
+        val adUnitId = getRewardedAdUnitId(context)
+
+        RewardedAd.load(
+            context,
+            adUnitId,
+            adRequest,
+            object : RewardedAdLoadCallback() {
+                override fun onAdLoaded(ad: RewardedAd) {
+                    rewardedAd = ad
+                    isRewardedLoading = false
+                    Log.d(TAG, "Rewarded ad loaded successfully.")
+                }
+
+                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                    rewardedAd = null
+                    isRewardedLoading = false
+                    Log.w(TAG, "Rewarded ad failed to load: ${loadAdError.message}")
+                }
+            }
+        )
+    }
+
+    @JvmStatic
+    fun isRewardedAdReady(): Boolean = rewardedAd != null
+
+    /**
      * Shows an interstitial ad when user explicitly clicks an edit/customization action
      * ("Change Wallpaper", "Add Widget", "Customize"), subject to a 60-second cooldown.
      * Invokes [onFinished] immediately if on cooldown, ineligible, or dismissed.
@@ -287,79 +342,114 @@ object AdManager {
     }
 
     /**
-     * Shows the interstitial ad upon user exit from [GlassCustomizeActivity] if all policy conditions are met.
+     * Shows a rewarded ad to unlock a customization action (e.g. Icon Size, App Library Only).
+     *
+     * Invariants enforced:
+     * 1. Pro users bypass ads completely and immediately unlock.
+     * 2. If the user recently earned the reward (within [REWARDED_GRACE_PERIOD_MS]),
+     *    they can access the feature freely without back-to-back ad fatigue.
+     * 3. If an ad is shown, [onRewarded] is invoked ONLY if the user watches through
+     *    and earns the reward.
+     * 4. If the user dismisses the ad early (e.g., via the Android Back button or early close),
+     *    [onDismissedWithoutReward] is invoked and [onRewarded] is NOT called.
+     * 5. If the ad fails to show or is not ready, user navigation proceeds gracefully to prevent blocking.
      */
     @JvmStatic
-    fun showInterstitialOnExitIfEligible(activity: Activity, onFinished: () -> Unit) {
+    @JvmOverloads
+    fun showRewardedAd(
+        activity: Activity,
+        onRewarded: Runnable,
+        onDismissedWithoutReward: Runnable? = null
+    ) {
         // 1. Pro Users are exempt
         if (BillingManager.isProUser(activity)) {
-            Log.d(TAG, "Skipping interstitial: Pro user.")
-            onFinished()
+            Log.d(TAG, "Skipping rewarded ad: Pro user.")
+            onRewarded.run()
             return
         }
 
-        // 2. Skip on first run to avoid frustrating new users
-        val prefs = LauncherPrefs.get(activity)
-        val hasRunBefore = prefs.get(LauncherPrefs.CUSTOMIZE_GLASS_FIRST_RUN_DONE)
-        if (!hasRunBefore) {
-            Log.d(TAG, "Skipping interstitial: First-time customization screen grace.")
-            prefs.put(LauncherPrefs.CUSTOMIZE_GLASS_FIRST_RUN_DONE, true)
-            onFinished()
-            return
-        }
-
-        // 3. Frequency cap: At most once per app session for customize exit
-        if (hasShownCustomizeExitInterstitial) {
-            Log.d(TAG, "Skipping interstitial: Frequency cap reached (once per session).")
-            onFinished()
-            return
-        }
-
-        // 4. Cooldown check
+        // 2. Grace period check: if user already earned reward recently, let them in
         val now = SystemClock.elapsedRealtime()
-        if (lastInterstitialTimeMs > 0 && (now - lastInterstitialTimeMs) < INTERSTITIAL_COOLDOWN_MS) {
-            Log.d(TAG, "Skipping interstitial: Cooldown active.")
-            onFinished()
+        if (lastRewardedTimeMs > 0 && (now - lastRewardedTimeMs) < REWARDED_GRACE_PERIOD_MS) {
+            val remainingSec = (REWARDED_GRACE_PERIOD_MS - (now - lastRewardedTimeMs)) / 1000
+            Log.d(TAG, "Skipping rewarded ad: Reward grace period active (${remainingSec}s remaining).")
+            onRewarded.run()
             return
         }
 
-        // 5. Verify ad readiness
-        val ad = interstitialAd
+        // 3. Check ad readiness
+        val ad = rewardedAd
         if (ad == null) {
-            Log.d(TAG, "Interstitial ad not ready; proceeding without blocking user.")
-            onFinished()
+            Log.d(TAG, "Rewarded ad not ready; preloading and proceeding gracefully.")
+            preloadRewarded(activity)
+            onRewarded.run()
             return
         }
 
-        // 6. Present ad with completion callback
-        hasShownCustomizeExitInterstitial = true
+        // 4. Show rewarded ad and track reward completion
+        var isRewardEarned = false
+
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdClicked() {
-                Log.d(TAG, "Customize exit interstitial ad clicked.")
+                Log.d(TAG, "Rewarded ad clicked.")
             }
 
             override fun onAdImpression() {
-                Log.d(TAG, "Customize exit interstitial ad impression recorded.")
+                Log.d(TAG, "Rewarded ad impression recorded.")
             }
 
             override fun onAdShowedFullScreenContent() {
-                Log.d(TAG, "Customize exit interstitial showed full screen content.")
+                Log.d(TAG, "Rewarded ad showed full screen content.")
             }
 
             override fun onAdDismissedFullScreenContent() {
-                Log.d(TAG, "Interstitial ad dismissed by user.")
-                interstitialAd = null
-                lastInterstitialTimeMs = SystemClock.elapsedRealtime()
-                onFinished()
+                Log.d(TAG, "Rewarded ad dismissed by user. Earned: $isRewardEarned")
+                rewardedAd = null
+                preloadRewarded(activity)
+                if (isRewardEarned) {
+                    lastRewardedTimeMs = SystemClock.elapsedRealtime()
+                    onRewarded.run()
+                } else {
+                    onDismissedWithoutReward?.run()
+                }
             }
 
             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                Log.w(TAG, "Interstitial ad failed to show: ${adError.message}")
-                interstitialAd = null
-                onFinished()
+                Log.w(TAG, "Rewarded ad failed to show: ${adError.message}")
+                rewardedAd = null
+                preloadRewarded(activity)
+                onRewarded.run()
             }
         }
 
-        ad.show(activity)
+        ad.show(activity) { rewardItem ->
+            Log.d(TAG, "User earned reward: ${rewardItem.type} (${rewardItem.amount})")
+            isRewardEarned = true
+        }
+    }
+
+    @JvmStatic
+    @JvmOverloads
+    fun showRewardedAd(
+        activity: Activity,
+        onRewarded: () -> Unit,
+        onDismissedWithoutReward: (() -> Unit)? = null
+    ) {
+        showRewardedAd(
+            activity,
+            Runnable { onRewarded() },
+            if (onDismissedWithoutReward != null) Runnable { onDismissedWithoutReward() } else null
+        )
+    }
+
+    /**
+     * Deprecated: Exit interstitials are prohibited under Google Play's Disruptive Ads Policy.
+     * Invokes [onFinished] immediately without showing an ad.
+     */
+    @Deprecated("Prohibited by Google Play Disruptive Ads Policy")
+    @JvmStatic
+    @Suppress("UNUSED_PARAMETER")
+    fun showInterstitialOnExitIfEligible(activity: Activity, onFinished: () -> Unit) {
+        onFinished()
     }
 }

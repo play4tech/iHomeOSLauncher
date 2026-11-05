@@ -269,7 +269,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mDashboardView = findViewById(R.id.app_library_dashboard);
         mSearchResultsContainer = findViewById(R.id.app_library_search_results_container);
         mSearchResultsView = findViewById(R.id.app_library_search_results);
-        mIndexScroller = findViewById(R.id.app_library_index_scroller);
+        mIndexScroller = null;
         mExpansionOverlay = findViewById(R.id.app_library_expansion_overlay);
         mSearchBackdrop = findViewById(R.id.app_library_search_backdrop);
         mSearchBackdropGlass = findViewById(R.id.app_library_search_backdrop_glass);
@@ -396,19 +396,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
         mSearchCancel.setOnClickListener(v -> exitSearchMode());
 
-        mIndexScroller.setOnSectionSelectedListener(section -> {
-            if (section != null && section.length() > 0) {
-                int pos = mSearchAdapter.getPositionForSection(section.charAt(0));
-                if (pos >= 0) {
-                    RecyclerView.LayoutManager lm = mSearchResultsView.getLayoutManager();
-                    if (lm instanceof LinearLayoutManager) {
-                        ((LinearLayoutManager) lm).scrollToPositionWithOffset(pos, 0);
-                    } else {
-                        mSearchResultsView.scrollToPosition(pos);
+        if (mIndexScroller != null) {
+            mIndexScroller.setOnSectionSelectedListener(section -> {
+                if (section != null && section.length() > 0) {
+                    int pos = mSearchAdapter.getPositionForSection(section.charAt(0));
+                    if (pos >= 0) {
+                        RecyclerView.LayoutManager lm = mSearchResultsView.getLayoutManager();
+                        if (lm instanceof LinearLayoutManager) {
+                            ((LinearLayoutManager) lm).scrollToPositionWithOffset(pos, 0);
+                        } else {
+                            mSearchResultsView.scrollToPosition(pos);
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // Setup updates from AllAppsStore
         post(this::refreshApps);
@@ -518,7 +520,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
         String query = mSearchInput.getText() != null ? mSearchInput.getText().toString() : "";
         mSearchAdapter.filter(query);
-        mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
+        if (mIndexScroller != null) {
+            mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
+        }
 
         // Prepare Cancel Button with negative end margin so search bar starts at 100% full width
         mSearchCancel.setVisibility(VISIBLE);
@@ -994,7 +998,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mIsClearingSearch || !mInSearchMode) return;
         mSearchAdapter.filter(query);
         // Show alphabet index scroller only when viewing full list (query is empty)
-        mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
+        if (mIndexScroller != null) {
+            mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
+        }
     }
 
     public void saveScrollState() {

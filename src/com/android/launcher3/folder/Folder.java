@@ -892,6 +892,14 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
         mContent.completePendingPageChanges();
         mContent.setCurrentPage(pageNo);
 
+        // Ensure all icons inside folder reflect up-to-date notification dots upon opening
+        iterateOverItems((info, v) -> {
+            if (info instanceof WorkspaceItemInfo && v instanceof BubbleTextView) {
+                ((BubbleTextView) v).applyDotState(info, false);
+            }
+            return false;
+        });
+
         // This is set to true in close(), but isn't reset to false until onDropCompleted(). This
         // leads to an inconsistent state if you drag out of the folder and drag back in without
         // dropping. One resulting issue is that replaceFolderWithFinalItem() can be called twice.

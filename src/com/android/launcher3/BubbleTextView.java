@@ -802,15 +802,24 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             drawUninstallIcon(canvas);
         }
         if (!mForceHideDot && (hasDot() || mDotParams.scale > 0)) {
-            getIconBounds(mDotParams.iconBounds);
-            Utilities.scaleRectAboutCenter(mDotParams.iconBounds,
-                    IconShape.getNormalizationScale());
-            final int scrollX = getScrollX();
-            final int scrollY = getScrollY();
-            canvas.translate(scrollX, scrollY);
-            mDotParams.leftAlign = false;
-            mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
-            canvas.translate(-scrollX, -scrollY);
+            if (mDotRenderer == null && mActivity != null && mActivity.getDeviceProfile() != null) {
+                if (mDisplay == DISPLAY_ALL_APPS) {
+                    mDotRenderer = mActivity.getDeviceProfile().mDotRendererAllApps;
+                } else {
+                    mDotRenderer = mActivity.getDeviceProfile().mDotRendererWorkSpace;
+                }
+            }
+            if (mDotRenderer != null) {
+                getIconBounds(mDotParams.iconBounds);
+                Utilities.scaleRectAboutCenter(mDotParams.iconBounds,
+                        IconShape.getNormalizationScale());
+                final int scrollX = getScrollX();
+                final int scrollY = getScrollY();
+                canvas.translate(scrollX, scrollY);
+                mDotParams.leftAlign = false;
+                mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
+                canvas.translate(-scrollX, -scrollY);
+            }
         }
     }
 

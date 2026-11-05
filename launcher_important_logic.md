@@ -88,8 +88,8 @@ This master document aggregates all 79 core architectural and functional code lo
 
 # src/com/android/launcher3/Launcher.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4197 | **Bytes**: 177639
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Launcher.java`  
+**Lines**: 4196 | **Bytes**: 177635
 
 ```java
 /*
@@ -455,7 +455,6 @@ public class Launcher extends StatefulActivity<LauncherState>
             new KeyboardShortcutsDelegate(this);
 
     private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
-    private boolean mHasLaunchedOnboarding = false;
 
     public LauncherInteractionController getInteractionController() {
         return mInteractionController;
@@ -704,12 +703,6 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         super.onCreate(savedInstanceState);
-
-        if (com.android.launcher3.BuildConfig.DEBUG) {
-            setShowWhenLocked(true);
-            setTurnScreenOn(true);
-            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
 
         LauncherAppState app = LauncherAppState.getInstance(this);
         mModel = app.getModel();
@@ -1445,6 +1438,9 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // Set the notification listener and fetch updated notifications when we resume
         NotificationListener.addNotificationsChangedListener(mPopupDataProvider);
+        if (mWorkspace != null) {
+            mWorkspace.updateNotificationDots(k -> true);
+        }
 
         // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
@@ -1664,12 +1660,14 @@ public class Launcher extends StatefulActivity<LauncherState>
             if (com.android.launcher3.ads.ConsentManager.canRequestAds(this)) {
                 com.android.launcher3.ads.AdManager.initialize(this, () -> {
                     com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                    com.android.launcher3.ads.AdManager.preloadRewarded(this);
                 });
             } else {
                 com.android.launcher3.ads.ConsentManager.gatherConsent(this, (canRequest) -> {
                     if (canRequest) {
                         com.android.launcher3.ads.AdManager.initialize(this, () -> {
                             com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                            com.android.launcher3.ads.AdManager.preloadRewarded(this);
                         });
                     }
                 });
@@ -1749,16 +1747,13 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            if (!mHasLaunchedOnboarding) {
-                mHasLaunchedOnboarding = true;
-                try {
-                    Intent onboardingIntent = new Intent(this,
-                            Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
-                    onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    startActivity(onboardingIntent);
-                } catch (Exception e) {
-                    android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
-                }
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(onboardingIntent);
+            } catch (Exception e) {
+                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
             }
         }
 
@@ -2672,6 +2667,10 @@ public class Launcher extends StatefulActivity<LauncherState>
     @Override
     public void onBackPressed() {
         android.util.Log.d("BACK_DEBUG", "Launcher.onBackPressed() called");
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            moveTaskToBack(true);
+            return;
+        }
         if (mWorkspace != null) {
             com.android.launcher3.applibrary.view.AppLibraryPage alp = mWorkspace.getAppLibraryPage();
             if (alp != null && alp.wasRecentlyInSearchMode()) {
@@ -4295,7 +4294,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 # src/com/android/launcher3/LauncherApplication.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherApplication.java`  
 **Lines**: 148 | **Bytes**: 6103
 
 ```java
@@ -4452,7 +4451,7 @@ public class LauncherApplication extends Application {
 
 # src/com/android/launcher3/LauncherAppState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherAppState.java`  
 **Lines**: 295 | **Bytes**: 12515
 
 ```java
@@ -4756,7 +4755,7 @@ public class LauncherAppState implements SafeCloseable {
 
 # src/com/android/launcher3/statemanager/StateManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/statemanager/StateManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\statemanager\StateManager.java`  
 **Lines**: 740 | **Bytes**: 27878
 
 ```java
@@ -5505,7 +5504,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
 # src/com/android/launcher3/LauncherState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherState.java`  
 **Lines**: 505 | **Bytes**: 19710
 
 ```java
@@ -6019,7 +6018,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
 
 # src/com/android/launcher3/states/RotationHelper.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/states/RotationHelper.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\states\RotationHelper.java`  
 **Lines**: 232 | **Bytes**: 9268
 
 ```java
@@ -6260,8 +6259,8 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 
 # src/com/android/launcher3/settings/SettingsActivity.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 565 | **Bytes**: 22669
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\SettingsActivity.java`  
+**Lines**: 735 | **Bytes**: 30338
 
 ```java
 /*
@@ -6285,10 +6284,15 @@ package com.android.launcher3.settings;
 import static androidx.preference.PreferenceFragmentCompat.ARG_PREFERENCE_ROOT;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.net.Uri;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -6297,7 +6301,9 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -6358,13 +6364,21 @@ public class SettingsActivity extends FragmentActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.Theme_Bliss_Onboarding);
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true);
-            setTurnScreenOn(true);
+
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                startActivity(onboardingIntent);
+                finish();
+                return;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not start OnboardingActivity", e);
+            }
         }
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        setTheme(R.style.Theme_Bliss_Onboarding);
         setContentView(R.layout.activity_settings_ios);
 
         setupSystemBars();
@@ -6377,6 +6391,17 @@ public class SettingsActivity extends FragmentActivity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                startActivity(onboardingIntent);
+                finish();
+                return;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not start OnboardingActivity", e);
+            }
+        }
         handleSubScreenIntent(intent);
     }
 
@@ -6427,6 +6452,8 @@ public class SettingsActivity extends FragmentActivity
     private void initAds() {
         if (BillingManager.isProUser(this)) return;
 
+        AdManager.preloadRewarded(this);
+
         ConsentManager.gatherConsent(this, canRequestAds -> {
             if (canRequestAds && !isFinishing() && !isDestroyed()) {
                 AdManager.initialize(this, () -> {
@@ -6436,6 +6463,7 @@ public class SettingsActivity extends FragmentActivity
                             if (container != null) {
                                 mBannerAdView = AdManager.loadBanner(this, container);
                             }
+                            AdManager.preloadRewarded(this);
                         }
                     });
                 });
@@ -6481,6 +6509,16 @@ public class SettingsActivity extends FragmentActivity
             });
         }
 
+        if (com.android.launcher3.BuildConfig.DEBUG && rowUpgrade != null) {
+            rowUpgrade.setOnLongClickListener(v -> {
+                boolean currentPro = BillingManager.isProUser(this);
+                boolean newPro = !currentPro;
+                mBillingManager.setDebugProOverride(newPro);
+                Toast.makeText(this, "[Debug] Pro testing: " + (newPro ? "ENABLED" : "DISABLED"), Toast.LENGTH_SHORT).show();
+                return true;
+            });
+        }
+
         mBillingManager.addProStatusListener(mProListener);
     }
 
@@ -6501,10 +6539,15 @@ public class SettingsActivity extends FragmentActivity
             }
 
             if (isPro) {
-                txtSubtitle.setText("Pro Active — Enjoy full ad-free experience");
+                txtSubtitle.setText(com.android.launcher3.BuildConfig.DEBUG
+                        ? "Pro Active [Debug Mode] — Long press to toggle"
+                        : "Pro Active — Enjoy full ad-free experience");
                 btnBuy.setVisibility(View.GONE);
                 badgeActive.setVisibility(View.VISIBLE);
                 rowUpgrade.setClickable(false);
+                if (com.android.launcher3.BuildConfig.DEBUG) {
+                    rowUpgrade.setLongClickable(true);
+                }
                 ViewGroup container = findViewById(R.id.ad_banner_container);
                 if (container != null) {
                     AdManager.destroyBanner(container);
@@ -6519,6 +6562,9 @@ public class SettingsActivity extends FragmentActivity
                 btnBuy.setVisibility(View.VISIBLE);
                 badgeActive.setVisibility(View.GONE);
                 rowUpgrade.setClickable(true);
+                if (com.android.launcher3.BuildConfig.DEBUG) {
+                    rowUpgrade.setLongClickable(true);
+                }
             }
         });
     }
@@ -6528,6 +6574,19 @@ public class SettingsActivity extends FragmentActivity
         if (rowLegal != null) {
             rowLegal.setOnClickListener(v -> {
                 startActivity(new Intent(this, OpenSourceLicensesActivity.class));
+            });
+        }
+
+        View rowPrivacy = findViewById(R.id.row_privacy_policy);
+        if (rowPrivacy != null) {
+            rowPrivacy.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("https://play4tech.github.io/iHomeOSLauncher/privacy.html"));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Unable to open browser", Toast.LENGTH_SHORT).show();
+                }
             });
         }
     }
@@ -6654,7 +6713,12 @@ public class SettingsActivity extends FragmentActivity
             switchCount.setOnCheckedChangeListener(null);
             switchCount.setChecked(showCount);
             switchCount.setOnCheckedChangeListener((btn, isChecked) -> {
+                LauncherPrefs.get(this).putSync(
+                        LauncherPrefs.IS_NOTIF_COUNT_ENABLED.to(isChecked)
+                );
                 LauncherPrefs.getPrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
+                LauncherPrefs.getDevicePrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
+                InvariantDeviceProfile.INSTANCE.get(this).onConfigChanged(this);
             });
         }
     }
@@ -6713,7 +6777,18 @@ public class SettingsActivity extends FragmentActivity
         View rowCustomizeGlass = findViewById(R.id.row_customize_glass);
         if (rowCustomizeGlass != null) {
             rowCustomizeGlass.setOnClickListener(v -> {
-                startActivity(new Intent(this, GlassCustomizeActivity.class));
+                if (BillingManager.isProUser(this)) {
+                    startActivity(new Intent(this, GlassCustomizeActivity.class));
+                    return;
+                }
+                showRewardedFeatureDialog(
+                        R.drawable.ic_ios_glass_sliders,
+                        R.color.ios_icon_teal,
+                        "Customize Glass Studio",
+                        "Watch a short ad to enter the Glass Studio and preview real-time optical effects. (Saving custom settings to your Home Screen requires Pro).",
+                        "Watch Ad to Preview",
+                        () -> startActivity(new Intent(this, GlassCustomizeActivity.class))
+                );
             });
         }
     }
@@ -6722,7 +6797,18 @@ public class SettingsActivity extends FragmentActivity
         View rowIconSize = findViewById(R.id.row_customize_icon_size);
         if (rowIconSize != null) {
             rowIconSize.setOnClickListener(v -> {
-                startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+                if (BillingManager.isProUser(this)) {
+                    startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+                    return;
+                }
+                showRewardedFeatureDialog(
+                        R.drawable.ic_apps,
+                        R.color.ios_icon_blue,
+                        "Customize Icon Size",
+                        "Watch a short ad to preview & customize your icon sizes, or upgrade to Pro for an ad-free experience.",
+                        "Watch Ad to Unlock",
+                        () -> startActivity(new Intent(this, IconSizeCustomizeActivity.class))
+                );
             });
         }
         updateIconSizeSummary();
@@ -6732,10 +6818,93 @@ public class SettingsActivity extends FragmentActivity
         View rowAppLibraryOnly = findViewById(R.id.row_app_library_only);
         if (rowAppLibraryOnly != null) {
             rowAppLibraryOnly.setOnClickListener(v -> {
-                startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+                if (BillingManager.isProUser(this)) {
+                    startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+                    return;
+                }
+                showRewardedFeatureDialog(
+                        R.drawable.ic_ios_app_library,
+                        R.color.ios_icon_indigo,
+                        "App Library Only",
+                        "Watch a short ad to manage apps kept only in the App Library, or upgrade to Pro for an ad-free experience.",
+                        "Watch Ad to Unlock",
+                        () -> startActivity(new Intent(this, AppLibraryOnlyActivity.class))
+                );
             });
         }
         updateAppLibraryOnlySummary();
+    }
+
+    private void showRewardedFeatureDialog(
+            int iconRes,
+            int iconTintRes,
+            String title,
+            String message,
+            String watchAdButtonText,
+            Runnable onWatchAdAccepted
+    ) {
+        if (BillingManager.isProUser(this)) {
+            onWatchAdAccepted.run();
+            return;
+        }
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dialog.setContentView(R.layout.dialog_rewarded_feature_unlock);
+
+        int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.85f);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        ImageView imgIcon = dialog.findViewById(R.id.img_dialog_icon);
+        View frameIcon = dialog.findViewById(R.id.frame_dialog_icon);
+        TextView txtTitle = dialog.findViewById(R.id.txt_dialog_title);
+        TextView txtMessage = dialog.findViewById(R.id.txt_dialog_message);
+        TextView btnWatchAd = dialog.findViewById(R.id.btn_dialog_watch_ad);
+        TextView btnUpgrade = dialog.findViewById(R.id.btn_dialog_upgrade_pro);
+        View btnCancel = dialog.findViewById(R.id.btn_dialog_cancel);
+
+        if (imgIcon != null) imgIcon.setImageResource(iconRes);
+        if (frameIcon != null) frameIcon.setBackgroundTintList(ColorStateList.valueOf(getColor(iconTintRes)));
+        if (txtTitle != null) txtTitle.setText(title);
+        if (txtMessage != null) txtMessage.setText(message);
+        if (btnWatchAd != null) btnWatchAd.setText(watchAdButtonText);
+
+        BillingManager bm = BillingManager.getInstance(this);
+        String price = bm.getFormattedPrice();
+        if (btnUpgrade != null && !price.isEmpty()) {
+            btnUpgrade.setText("Upgrade to Pro (" + price + ")");
+        }
+
+        if (btnWatchAd != null) {
+            btnWatchAd.setOnClickListener(v -> {
+                dialog.dismiss();
+                AdManager.showRewardedAd(this, onWatchAdAccepted, () -> {
+                    Toast.makeText(this, "Watch the full ad to unlock this feature", Toast.LENGTH_SHORT).show();
+                });
+            });
+        }
+
+        if (btnUpgrade != null) {
+            btnUpgrade.setOnClickListener(v -> {
+                dialog.dismiss();
+                Toast.makeText(this, "Connecting to Google Play...", Toast.LENGTH_SHORT).show();
+                bm.launchPurchaseFlow(this, error -> {
+                    runOnUiThread(() -> Toast.makeText(this, error, Toast.LENGTH_LONG).show());
+                    return kotlin.Unit.INSTANCE;
+                });
+            });
+        }
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        dialog.show();
     }
 
     private void updateAppLibraryOnlySummary() {
@@ -6834,8 +7003,8 @@ public class SettingsActivity extends FragmentActivity
 
 # src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt`  
-**Lines**: 440 | **Bytes**: 16692
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\AppLibraryOnlyActivity.kt`  
+**Lines**: 435 | **Bytes**: 16474
 
 ```kotlin
 /*
@@ -6941,11 +7110,6 @@ class AppLibraryOnlyActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_app_library_only)
 
         setupSystemBars()
@@ -7283,7 +7447,7 @@ class AppLibraryOnlyActivity : FragmentActivity() {
 
 # src/com/android/launcher3/Workspace.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Workspace.java`  
 **Lines**: 5320 | **Bytes**: 232088
 
 ```java
@@ -12612,7 +12776,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
 # src/com/android/launcher3/WorkspaceLayoutManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceLayoutManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\WorkspaceLayoutManager.java`  
 **Lines**: 185 | **Bytes**: 7843
 
 ```java
@@ -12806,7 +12970,7 @@ public interface WorkspaceLayoutManager {
 
 # src/com/android/launcher3/WorkspaceStateTransitionAnimation.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceStateTransitionAnimation.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\WorkspaceStateTransitionAnimation.java`  
 **Lines**: 337 | **Bytes**: 16681
 
 ```java
@@ -13153,7 +13317,7 @@ public class WorkspaceStateTransitionAnimation {
 
 # src/com/android/launcher3/InsettableFrameLayout.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/InsettableFrameLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\InsettableFrameLayout.java`  
 **Lines**: 149 | **Bytes**: 4953
 
 ```java
@@ -13311,7 +13475,7 @@ public class InsettableFrameLayout extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/touch/WorkspaceTouchListener.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/WorkspaceTouchListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\WorkspaceTouchListener.java`  
 **Lines**: 239 | **Bytes**: 9932
 
 ```java
@@ -13559,7 +13723,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\ItemClickHandler.java`  
 **Lines**: 578 | **Bytes**: 27189
 
 ```java
@@ -14146,7 +14310,7 @@ public class ItemClickHandler {
 
 # src/com/android/launcher3/touch/ItemLongClickListener.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemLongClickListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\ItemLongClickListener.java`  
 **Lines**: 238 | **Bytes**: 10567
 
 ```java
@@ -14393,7 +14557,7 @@ public class ItemLongClickListener {
 
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\multimode\MultiModeController.kt`  
 **Lines**: 125 | **Bytes**: 4181
 
 ```kotlin
@@ -14527,7 +14691,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 
 # src/com/android/launcher3/CellLayout.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\CellLayout.java`  
 **Lines**: 2370 | **Bytes**: 99252
 
 ```java
@@ -16906,7 +17070,7 @@ public class CellLayout extends ViewGroup {
 
 # src/com/android/launcher3/ShortcutAndWidgetContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/ShortcutAndWidgetContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\ShortcutAndWidgetContainer.java`  
 **Lines**: 387 | **Bytes**: 14893
 
 ```java
@@ -17302,8 +17466,8 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
 
 # src/com/android/launcher3/BubbleTextView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/BubbleTextView.java`  
-**Lines**: 1550 | **Bytes**: 60500
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\BubbleTextView.java`  
+**Lines**: 1559 | **Bytes**: 60972
 
 ```java
 /*
@@ -18110,15 +18274,24 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             drawUninstallIcon(canvas);
         }
         if (!mForceHideDot && (hasDot() || mDotParams.scale > 0)) {
-            getIconBounds(mDotParams.iconBounds);
-            Utilities.scaleRectAboutCenter(mDotParams.iconBounds,
-                    IconShape.getNormalizationScale());
-            final int scrollX = getScrollX();
-            final int scrollY = getScrollY();
-            canvas.translate(scrollX, scrollY);
-            mDotParams.leftAlign = false;
-            mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
-            canvas.translate(-scrollX, -scrollY);
+            if (mDotRenderer == null && mActivity != null && mActivity.getDeviceProfile() != null) {
+                if (mDisplay == DISPLAY_ALL_APPS) {
+                    mDotRenderer = mActivity.getDeviceProfile().mDotRendererAllApps;
+                } else {
+                    mDotRenderer = mActivity.getDeviceProfile().mDotRendererWorkSpace;
+                }
+            }
+            if (mDotRenderer != null) {
+                getIconBounds(mDotParams.iconBounds);
+                Utilities.scaleRectAboutCenter(mDotParams.iconBounds,
+                        IconShape.getNormalizationScale());
+                final int scrollX = getScrollX();
+                final int scrollY = getScrollY();
+                canvas.translate(scrollX, scrollY);
+                mDotParams.leftAlign = false;
+                mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
+                canvas.translate(-scrollX, -scrollY);
+            }
         }
     }
 
@@ -18861,7 +19034,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\celllayout\ReorderAlgorithm.java`  
 **Lines**: 715 | **Bytes**: 32346
 
 ```java
@@ -19585,7 +19758,7 @@ public class ReorderAlgorithm {
 
 # src/com/android/launcher3/celllayout/ItemConfiguration.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ItemConfiguration.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\celllayout\ItemConfiguration.kt`  
 **Lines**: 63 | **Bytes**: 2047
 
 ```kotlin
@@ -19657,7 +19830,7 @@ class ItemConfiguration : CellAndSpan() {
 
 # src/com/android/launcher3/dragndrop/DragController.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragController.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragController.java`  
 **Lines**: 646 | **Bytes**: 24015
 
 ```java
@@ -20312,7 +20485,7 @@ public abstract class DragController<T extends ActivityContext>
 
 # src/com/android/launcher3/dragndrop/DragLayer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragLayer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragLayer.java`  
 **Lines**: 513 | **Bytes**: 21145
 
 ```java
@@ -20834,7 +21007,7 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
 
 # src/com/android/launcher3/dragndrop/DragView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragView.java`  
 **Lines**: 644 | **Bytes**: 25140
 
 ```java
@@ -21487,7 +21660,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
 
 # src/com/android/launcher3/dragndrop/DragOptions.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragOptions.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragOptions.java`  
 **Lines**: 90 | **Bytes**: 3283
 
 ```java
@@ -21586,7 +21759,7 @@ public class DragOptions {
 
 # src/com/android/launcher3/dragndrop/DragDriver.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragDriver.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragDriver.java`  
 **Lines**: 219 | **Bytes**: 7190
 
 ```java
@@ -21814,7 +21987,7 @@ public abstract class DragDriver {
 
 # src/com/android/launcher3/DropTarget.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/DropTarget.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\DropTarget.java`  
 **Lines**: 149 | **Bytes**: 5773
 
 ```java
@@ -21972,8 +22145,8 @@ public interface DropTarget {
 
 # src/com/android/launcher3/folder/Folder.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
-**Lines**: 2172 | **Bytes**: 83412
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\Folder.java`  
+**Lines**: 2180 | **Bytes**: 83746
 
 ```java
 /*
@@ -22869,6 +23042,14 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
         mContent.completePendingPageChanges();
         mContent.setCurrentPage(pageNo);
+
+        // Ensure all icons inside folder reflect up-to-date notification dots upon opening
+        iterateOverItems((info, v) -> {
+            if (info instanceof WorkspaceItemInfo && v instanceof BubbleTextView) {
+                ((BubbleTextView) v).applyDotState(info, false);
+            }
+            return false;
+        });
 
         // This is set to true in close(), but isn't reset to false until onDropCompleted(). This
         // leads to an inconsistent state if you drag out of the folder and drag back in without
@@ -24153,7 +24334,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
 # src/com/android/launcher3/folder/FolderAnimationManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderAnimationManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderAnimationManager.java`  
 **Lines**: 669 | **Bytes**: 31395
 
 ```java
@@ -24831,7 +25012,7 @@ public class FolderAnimationManager {
 
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\folder\GridFolder.java`  
 **Lines**: 573 | **Bytes**: 22235
 
 ```java
@@ -25413,8 +25594,8 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
 # src/com/android/launcher3/folder/FolderIcon.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
-**Lines**: 1072 | **Bytes**: 41875
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderIcon.java`  
+**Lines**: 1073 | **Bytes**: 41954
 
 ```java
 /*
@@ -26255,6 +26436,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
             mDotParams.dotColor = getContext().getResources()
                     .getColor(R.color.notification_dot_bg, getContext().getTheme());
             mDotParams.leftAlign = false;
+            mDotRenderer = mActivity.getDeviceProfile().mDotRendererWorkSpace;
             mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
         }
     }
@@ -26494,7 +26676,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
 # src/com/android/launcher3/folder/FolderPagedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderPagedView.java`  
 **Lines**: 825 | **Bytes**: 29987
 
 ```java
@@ -27328,7 +27510,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
 # src/com/android/launcher3/folder/LauncherDelegate.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/LauncherDelegate.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\LauncherDelegate.java`  
 **Lines**: 220 | **Bytes**: 8277
 
 ```java
@@ -27557,7 +27739,7 @@ public class LauncherDelegate {
 
 # src/com/android/launcher3/Hotseat.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Hotseat.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Hotseat.java`  
 **Lines**: 387 | **Bytes**: 14453
 
 ```java
@@ -27954,7 +28136,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\pageindicators\PageIndicatorDots.java`  
 **Lines**: 1044 | **Bytes**: 39619
 
 ```java
@@ -29007,7 +29189,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
 # src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\pageindicators\WorkspacePageIndicator.java`  
 **Lines**: 283 | **Bytes**: 10259
 
 ```java
@@ -29299,7 +29481,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\wobble\JiggleTopBarView.kt`  
 **Lines**: 359 | **Bytes**: 13877
 
 ```kotlin
@@ -29667,7 +29849,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\wobble\JiggleEditMenuPopup.kt`  
 **Lines**: 402 | **Bytes**: 14528
 
 ```kotlin
@@ -30078,7 +30260,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # src/com/android/launcher3/util/RemovedAppStore.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\util\RemovedAppStore.java`  
 **Lines**: 81 | **Bytes**: 3497
 
 ```java
@@ -30168,8 +30350,8 @@ public class RemovedAppStore {
 
 # src/com/android/launcher3/applibrary/model/CategoryProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
-**Lines**: 509 | **Bytes**: 25467
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\CategoryProvider.kt`  
+**Lines**: 510 | **Bytes**: 25498
 
 ```kotlin
 package com.android.launcher3.applibrary.model
@@ -30239,7 +30421,7 @@ class CategoryProvider(private val context: Context) {
             bulkAppCategoryMap = newMap
             map = newMap
         }
-        return map?.get(packageName) ?: try {
+        return map[packageName] ?: try {
             context.packageManager.getApplicationInfo(packageName, 0).category
         } catch (e: Exception) {
             null
@@ -30436,7 +30618,8 @@ class CategoryProvider(private val context: Context) {
             "com.sec.android.app.sbrowser", "com.vivo.browser", "com.mi.globalbrowser", "com.android.browser",
             "com.vivo.FMRadio",
             "com.google.android.soundpicker", "com.android.soundrecorder", "com.coloros.soundrecorder",
-            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk" -> AppLibraryCategory.UTILITIES
+            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk",
+            "com.ihomeos.launcher" -> AppLibraryCategory.UTILITIES
 
             // Finance: Wallets, UPI, Payments, Banks, Crypto, Investing
             "com.google.android.apps.walletnf", "com.google.android.apps.nbu.paisa.user",
@@ -30686,8 +30869,8 @@ class CategoryProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryModel.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryModel.kt`  
-**Lines**: 140 | **Bytes**: 4889
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryModel.kt`  
+**Lines**: 140 | **Bytes**: 4892
 
 ```kotlin
 package com.android.launcher3.applibrary.model
@@ -30783,8 +30966,8 @@ class AppLibraryModel(private val context: Context) {
 
             android.util.Log.d("AppLibraryModel", "updateApps seq $seq timing: categorize=${t1 - t0}ms, sort=${t2 - t1}ms, suggestions=${t3 - t2}ms, total=${t3 - t0}ms")
 
-            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute {
-                if (seq != pendingSequence) return@execute
+            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute main@ {
+                if (seq != pendingSequence) return@main
                 categorizedApps.clear()
                 categorizedApps.putAll(newCategorized)
                 cachedSuggestions = suggestions
@@ -30835,7 +31018,7 @@ class AppLibraryModel(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryCategory.kt`  
 **Lines**: 20 | **Bytes**: 542
 
 ```kotlin
@@ -30864,7 +31047,7 @@ enum class AppLibraryCategory(val title: String) {
 
 # src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\SuggestionsProvider.kt`  
 **Lines**: 105 | **Bytes**: 3965
 
 ```kotlin
@@ -30978,8 +31161,8 @@ class SuggestionsProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
-**Lines**: 891 | **Bytes**: 34791
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\SpotlightSearchOverlay.java`  
+**Lines**: 891 | **Bytes**: 34752
 
 ```java
 /*
@@ -31105,7 +31288,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mSearchClear = findViewById(R.id.spotlight_search_clear);
         mSearchCancel = findViewById(R.id.spotlight_search_cancel);
         mSearchResultsView = findViewById(R.id.spotlight_search_results);
-        mIndexScroller = findViewById(R.id.spotlight_index_scroller);
+        mIndexScroller = null;
 
         if (mSearchContent != null) {
             int statusBarHeight = mLauncher.getDeviceProfile().getInsets().top;
@@ -31878,7 +32061,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryDashboardView.java`  
 **Lines**: 285 | **Bytes**: 9833
 
 ```java
@@ -32172,8 +32355,8 @@ public class AppLibraryDashboardView extends RecyclerView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryPage.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
-**Lines**: 1262 | **Bytes**: 56089
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryPage.java`  
+**Lines**: 1268 | **Bytes**: 56252
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -32447,7 +32630,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mDashboardView = findViewById(R.id.app_library_dashboard);
         mSearchResultsContainer = findViewById(R.id.app_library_search_results_container);
         mSearchResultsView = findViewById(R.id.app_library_search_results);
-        mIndexScroller = findViewById(R.id.app_library_index_scroller);
+        mIndexScroller = null;
         mExpansionOverlay = findViewById(R.id.app_library_expansion_overlay);
         mSearchBackdrop = findViewById(R.id.app_library_search_backdrop);
         mSearchBackdropGlass = findViewById(R.id.app_library_search_backdrop_glass);
@@ -32574,19 +32757,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
         mSearchCancel.setOnClickListener(v -> exitSearchMode());
 
-        mIndexScroller.setOnSectionSelectedListener(section -> {
-            if (section != null && section.length() > 0) {
-                int pos = mSearchAdapter.getPositionForSection(section.charAt(0));
-                if (pos >= 0) {
-                    RecyclerView.LayoutManager lm = mSearchResultsView.getLayoutManager();
-                    if (lm instanceof LinearLayoutManager) {
-                        ((LinearLayoutManager) lm).scrollToPositionWithOffset(pos, 0);
-                    } else {
-                        mSearchResultsView.scrollToPosition(pos);
+        if (mIndexScroller != null) {
+            mIndexScroller.setOnSectionSelectedListener(section -> {
+                if (section != null && section.length() > 0) {
+                    int pos = mSearchAdapter.getPositionForSection(section.charAt(0));
+                    if (pos >= 0) {
+                        RecyclerView.LayoutManager lm = mSearchResultsView.getLayoutManager();
+                        if (lm instanceof LinearLayoutManager) {
+                            ((LinearLayoutManager) lm).scrollToPositionWithOffset(pos, 0);
+                        } else {
+                            mSearchResultsView.scrollToPosition(pos);
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // Setup updates from AllAppsStore
         post(this::refreshApps);
@@ -32696,7 +32881,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
         String query = mSearchInput.getText() != null ? mSearchInput.getText().toString() : "";
         mSearchAdapter.filter(query);
-        mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
+        if (mIndexScroller != null) {
+            mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
+        }
 
         // Prepare Cancel Button with negative end margin so search bar starts at 100% full width
         mSearchCancel.setVisibility(VISIBLE);
@@ -33172,7 +33359,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mIsClearingSearch || !mInSearchMode) return;
         mSearchAdapter.filter(query);
         // Show alphabet index scroller only when viewing full list (query is empty)
-        mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
+        if (mIndexScroller != null) {
+            mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
+        }
     }
 
     public void saveScrollState() {
@@ -33443,7 +33632,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryBodyContainer.java`  
 **Lines**: 42 | **Bytes**: 1367
 
 ```java
@@ -33494,7 +33683,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\CategoryCardView.java`  
 **Lines**: 312 | **Bytes**: 12567
 
 ```java
@@ -33815,7 +34004,7 @@ public class CategoryCardView extends ViewGroup {
 
 # src/com/android/launcher3/applibrary/view/MiniClusterView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/MiniClusterView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\MiniClusterView.java`  
 **Lines**: 144 | **Bytes**: 4488
 
 ```java
@@ -33968,7 +34157,7 @@ public class MiniClusterView extends View {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryCategoryExpandedView.java`  
 **Lines**: 358 | **Bytes**: 13763
 
 ```java
@@ -34335,7 +34524,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
 # src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryIndexScrollerView.java`  
 **Lines**: 141 | **Bytes**: 4899
 
 ```java
@@ -34485,8 +34674,8 @@ public class AppLibraryIndexScrollerView extends View {
 
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
-**Lines**: 517 | **Bytes**: 20202
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ChangeCategoryPickerView.kt`  
+**Lines**: 517 | **Bytes**: 20196
 
 ```kotlin
 package com.android.launcher3.applibrary.view
@@ -34840,7 +35029,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                             radius = cornerRadiusPx,
                             smoothing = GlassShapeSpec.IOS_SMOOTHING
                         )
-                        outline.setConvexPath(path)
+                        outline.setPath(path)
                     } else {
                         outline.setRoundRect(0, 0, view.width, view.height, cornerRadiusPx)
                     }
@@ -35011,7 +35200,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryFolderTransition.kt`  
 **Lines**: 520 | **Bytes**: 19728
 
 ```kotlin
@@ -35540,7 +35729,7 @@ class AppLibraryFolderTransition(
 
 # src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ExpandedCategoryAdapter.java`  
 **Lines**: 89 | **Bytes**: 3136
 
 ```java
@@ -35638,7 +35827,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
 
 # src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibrarySearchAdapter.java`  
 **Lines**: 200 | **Bytes**: 7235
 
 ```java
@@ -35847,7 +36036,7 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
 
 # src/com/android/launcher3/popup/PopupContainerWithArrow.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/PopupContainerWithArrow.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\PopupContainerWithArrow.java`  
 **Lines**: 1634 | **Bytes**: 74985
 
 ```java
@@ -37490,7 +37679,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/ArrowPopup.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/ArrowPopup.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\ArrowPopup.java`  
 **Lines**: 789 | **Bytes**: 31885
 
 ```java
@@ -38288,7 +38477,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\LauncherPopupLiveUpdateHandler.java`  
 **Lines**: 94 | **Bytes**: 4314
 
 ```java
@@ -38391,7 +38580,7 @@ public class LauncherPopupLiveUpdateHandler extends PopupLiveUpdateHandler<Launc
 
 # src/com/android/launcher3/popup/SystemShortcut.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/SystemShortcut.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\SystemShortcut.java`  
 **Lines**: 613 | **Bytes**: 28795
 
 ```java
@@ -39013,7 +39202,7 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
 
 # src/com/android/launcher3/shortcuts/DeepShortcutView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/shortcuts/DeepShortcutView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\shortcuts\DeepShortcutView.java`  
 **Lines**: 195 | **Bytes**: 7087
 
 ```java
@@ -39217,7 +39406,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 
 # src/com/android/launcher3/LauncherModel.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherModel.java`  
 **Lines**: 722 | **Bytes**: 28501
 
 ```java
@@ -39948,7 +40137,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
 
 # src/com/android/launcher3/model/ModelWriter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/ModelWriter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\ModelWriter.java`  
 **Lines**: 590 | **Bytes**: 23752
 
 ```java
@@ -40547,7 +40736,7 @@ public class ModelWriter {
 
 # src/com/android/launcher3/model/BgDataModel.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/BgDataModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\BgDataModel.java`  
 **Lines**: 566 | **Bytes**: 22683
 
 ```java
@@ -41122,7 +41311,7 @@ public class BgDataModel {
 
 # src/com/android/launcher3/model/LoaderTask.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/LoaderTask.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\LoaderTask.java`  
 **Lines**: 792 | **Bytes**: 34983
 
 ```java
@@ -41923,7 +42112,7 @@ public class LoaderTask implements Runnable {
 
 # src/com/android/launcher3/model/data/ItemInfo.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/ItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\data\ItemInfo.java`  
 **Lines**: 551 | **Bytes**: 21360
 
 ```java
@@ -42483,7 +42672,7 @@ public class ItemInfo {
 
 # src/com/android/launcher3/model/data/FolderInfo.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/FolderInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\data\FolderInfo.java`  
 **Lines**: 395 | **Bytes**: 13500
 
 ```java
@@ -42887,7 +43076,7 @@ public class FolderInfo extends ItemInfo {
 
 # src/com/android/launcher3/model/data/WorkspaceItemInfo.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/WorkspaceItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\data\WorkspaceItemInfo.java`  
 **Lines**: 246 | **Bytes**: 8258
 
 ```java
@@ -43142,7 +43331,7 @@ public class WorkspaceItemInfo extends ItemInfoWithIcon {
 
 # bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\WidgetContainer.kt`  
 **Lines**: 554 | **Bytes**: 22388
 
 ```kotlin
@@ -43705,7 +43894,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
 
 # bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\RoundedWidgetView.java`  
 **Lines**: 192 | **Bytes**: 6494
 
 ```java
@@ -43906,7 +44095,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
 
 # bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\WidgetsDbHelper.kt`  
 **Lines**: 153 | **Bytes**: 5412
 
 ```kotlin
@@ -44068,7 +44257,7 @@ class WidgetsDbHelper(context: Context) :
 
 # bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\DefaultWidgets.kt`  
 **Lines**: 40 | **Bytes**: 1461
 
 ```kotlin
@@ -44117,7 +44306,7 @@ object DefaultWidgets {
 
 # bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\preferences\BlissPrefs.kt`  
 **Lines**: 26 | **Bytes**: 1002
 
 ```kotlin
@@ -44152,7 +44341,7 @@ object BlissPrefs {
 
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\blisslauncher\features\onboarding\DefaultHomeLayoutResolver.kt`  
 **Lines**: 617 | **Bytes**: 26830
 
 ```kotlin
@@ -45119,13 +45308,16 @@ object DefaultHomeLayoutResolver {
 
 # bliss/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 81 | **Bytes**: 3244
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest.xml`  
+**Lines**: 85 | **Bytes**: 3605
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Remove transitive WorkManager/Analytics foreground service permission (Target SDK 34+ Play Store compliance) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -45145,6 +45337,7 @@ object DefaultHomeLayoutResolver {
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
             android:exported="true"
+            android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:theme="@style/Theme.Bliss.Onboarding" />
 
         <!-- iOS 2x2 Clock Widget -->
@@ -45209,8 +45402,8 @@ object DefaultHomeLayoutResolver {
 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
-**Lines**: 75 | **Bytes**: 3204
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest-withoutQuickstep.xml`  
+**Lines**: 79 | **Bytes**: 3501
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -45236,6 +45429,9 @@ object DefaultHomeLayoutResolver {
     xmlns:tools="http://schemas.android.com/tools"
     package="com.android.launcher3">
     <uses-sdk android:targetSdkVersion="36" android:minSdkVersion="33"/>
+
+    <!-- Remove transitive WorkManager/Analytics foreground service permission (Target SDK 34+ Play Store compliance) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <application
         android:backupAgent="com.android.launcher3.LauncherBackupAgent"
@@ -45279,6 +45475,7 @@ object DefaultHomeLayoutResolver {
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"
@@ -45293,7 +45490,7 @@ object DefaultHomeLayoutResolver {
 
 # quickstep/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest.xml`  
 **Lines**: 165 | **Bytes**: 7841
 
 ```xml
@@ -45467,7 +45664,7 @@ object DefaultHomeLayoutResolver {
 
 # quickstep/AndroidManifest-launcher.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest-launcher.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest-launcher.xml`  
 **Lines**: 73 | **Bytes**: 3071
 
 ```xml

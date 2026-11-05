@@ -17,8 +17,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/Launcher.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
-**Lines**: 4197 | **Bytes**: 177639
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Launcher.java`  
+**Lines**: 4196 | **Bytes**: 177635
 
 ```java
 /*
@@ -384,7 +384,6 @@ public class Launcher extends StatefulActivity<LauncherState>
             new KeyboardShortcutsDelegate(this);
 
     private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
-    private boolean mHasLaunchedOnboarding = false;
 
     public LauncherInteractionController getInteractionController() {
         return mInteractionController;
@@ -633,12 +632,6 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         super.onCreate(savedInstanceState);
-
-        if (com.android.launcher3.BuildConfig.DEBUG) {
-            setShowWhenLocked(true);
-            setTurnScreenOn(true);
-            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
 
         LauncherAppState app = LauncherAppState.getInstance(this);
         mModel = app.getModel();
@@ -1374,6 +1367,9 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // Set the notification listener and fetch updated notifications when we resume
         NotificationListener.addNotificationsChangedListener(mPopupDataProvider);
+        if (mWorkspace != null) {
+            mWorkspace.updateNotificationDots(k -> true);
+        }
 
         // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
@@ -1593,12 +1589,14 @@ public class Launcher extends StatefulActivity<LauncherState>
             if (com.android.launcher3.ads.ConsentManager.canRequestAds(this)) {
                 com.android.launcher3.ads.AdManager.initialize(this, () -> {
                     com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                    com.android.launcher3.ads.AdManager.preloadRewarded(this);
                 });
             } else {
                 com.android.launcher3.ads.ConsentManager.gatherConsent(this, (canRequest) -> {
                     if (canRequest) {
                         com.android.launcher3.ads.AdManager.initialize(this, () -> {
                             com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                            com.android.launcher3.ads.AdManager.preloadRewarded(this);
                         });
                     }
                 });
@@ -1678,16 +1676,13 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            if (!mHasLaunchedOnboarding) {
-                mHasLaunchedOnboarding = true;
-                try {
-                    Intent onboardingIntent = new Intent(this,
-                            Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
-                    onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    startActivity(onboardingIntent);
-                } catch (Exception e) {
-                    android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
-                }
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(onboardingIntent);
+            } catch (Exception e) {
+                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
             }
         }
 
@@ -2601,6 +2596,10 @@ public class Launcher extends StatefulActivity<LauncherState>
     @Override
     public void onBackPressed() {
         android.util.Log.d("BACK_DEBUG", "Launcher.onBackPressed() called");
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            moveTaskToBack(true);
+            return;
+        }
         if (mWorkspace != null) {
             com.android.launcher3.applibrary.view.AppLibraryPage alp = mWorkspace.getAppLibraryPage();
             if (alp != null && alp.wasRecentlyInSearchMode()) {
@@ -4224,7 +4223,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 # src/com/android/launcher3/LauncherApplication.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherApplication.java`  
 **Lines**: 148 | **Bytes**: 6103
 
 ```java
@@ -4381,7 +4380,7 @@ public class LauncherApplication extends Application {
 
 # src/com/android/launcher3/LauncherAppState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherAppState.java`  
 **Lines**: 295 | **Bytes**: 12515
 
 ```java
@@ -4685,7 +4684,7 @@ public class LauncherAppState implements SafeCloseable {
 
 # src/com/android/launcher3/statemanager/StateManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/statemanager/StateManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\statemanager\StateManager.java`  
 **Lines**: 740 | **Bytes**: 27878
 
 ```java
@@ -5434,7 +5433,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
 # src/com/android/launcher3/LauncherState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherState.java`  
 **Lines**: 505 | **Bytes**: 19710
 
 ```java
@@ -5948,7 +5947,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
 
 # src/com/android/launcher3/states/RotationHelper.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/states/RotationHelper.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\states\RotationHelper.java`  
 **Lines**: 232 | **Bytes**: 9268
 
 ```java
@@ -6189,8 +6188,8 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 
 # src/com/android/launcher3/settings/SettingsActivity.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
-**Lines**: 565 | **Bytes**: 22669
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\SettingsActivity.java`  
+**Lines**: 735 | **Bytes**: 30338
 
 ```java
 /*
@@ -6214,10 +6213,15 @@ package com.android.launcher3.settings;
 import static androidx.preference.PreferenceFragmentCompat.ARG_PREFERENCE_ROOT;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.role.RoleManager;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.net.Uri;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -6226,7 +6230,9 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
+import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -6287,13 +6293,21 @@ public class SettingsActivity extends FragmentActivity
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.Theme_Bliss_Onboarding);
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true);
-            setTurnScreenOn(true);
+
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                startActivity(onboardingIntent);
+                finish();
+                return;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not start OnboardingActivity", e);
+            }
         }
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+        setTheme(R.style.Theme_Bliss_Onboarding);
         setContentView(R.layout.activity_settings_ios);
 
         setupSystemBars();
@@ -6306,6 +6320,17 @@ public class SettingsActivity extends FragmentActivity
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                startActivity(onboardingIntent);
+                finish();
+                return;
+            } catch (Exception e) {
+                Log.w(TAG, "Could not start OnboardingActivity", e);
+            }
+        }
         handleSubScreenIntent(intent);
     }
 
@@ -6356,6 +6381,8 @@ public class SettingsActivity extends FragmentActivity
     private void initAds() {
         if (BillingManager.isProUser(this)) return;
 
+        AdManager.preloadRewarded(this);
+
         ConsentManager.gatherConsent(this, canRequestAds -> {
             if (canRequestAds && !isFinishing() && !isDestroyed()) {
                 AdManager.initialize(this, () -> {
@@ -6365,6 +6392,7 @@ public class SettingsActivity extends FragmentActivity
                             if (container != null) {
                                 mBannerAdView = AdManager.loadBanner(this, container);
                             }
+                            AdManager.preloadRewarded(this);
                         }
                     });
                 });
@@ -6410,6 +6438,16 @@ public class SettingsActivity extends FragmentActivity
             });
         }
 
+        if (com.android.launcher3.BuildConfig.DEBUG && rowUpgrade != null) {
+            rowUpgrade.setOnLongClickListener(v -> {
+                boolean currentPro = BillingManager.isProUser(this);
+                boolean newPro = !currentPro;
+                mBillingManager.setDebugProOverride(newPro);
+                Toast.makeText(this, "[Debug] Pro testing: " + (newPro ? "ENABLED" : "DISABLED"), Toast.LENGTH_SHORT).show();
+                return true;
+            });
+        }
+
         mBillingManager.addProStatusListener(mProListener);
     }
 
@@ -6430,10 +6468,15 @@ public class SettingsActivity extends FragmentActivity
             }
 
             if (isPro) {
-                txtSubtitle.setText("Pro Active — Enjoy full ad-free experience");
+                txtSubtitle.setText(com.android.launcher3.BuildConfig.DEBUG
+                        ? "Pro Active [Debug Mode] — Long press to toggle"
+                        : "Pro Active — Enjoy full ad-free experience");
                 btnBuy.setVisibility(View.GONE);
                 badgeActive.setVisibility(View.VISIBLE);
                 rowUpgrade.setClickable(false);
+                if (com.android.launcher3.BuildConfig.DEBUG) {
+                    rowUpgrade.setLongClickable(true);
+                }
                 ViewGroup container = findViewById(R.id.ad_banner_container);
                 if (container != null) {
                     AdManager.destroyBanner(container);
@@ -6448,6 +6491,9 @@ public class SettingsActivity extends FragmentActivity
                 btnBuy.setVisibility(View.VISIBLE);
                 badgeActive.setVisibility(View.GONE);
                 rowUpgrade.setClickable(true);
+                if (com.android.launcher3.BuildConfig.DEBUG) {
+                    rowUpgrade.setLongClickable(true);
+                }
             }
         });
     }
@@ -6457,6 +6503,19 @@ public class SettingsActivity extends FragmentActivity
         if (rowLegal != null) {
             rowLegal.setOnClickListener(v -> {
                 startActivity(new Intent(this, OpenSourceLicensesActivity.class));
+            });
+        }
+
+        View rowPrivacy = findViewById(R.id.row_privacy_policy);
+        if (rowPrivacy != null) {
+            rowPrivacy.setOnClickListener(v -> {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW,
+                            Uri.parse("https://play4tech.github.io/iHomeOSLauncher/privacy.html"));
+                    startActivity(intent);
+                } catch (Exception e) {
+                    Toast.makeText(this, "Unable to open browser", Toast.LENGTH_SHORT).show();
+                }
             });
         }
     }
@@ -6583,7 +6642,12 @@ public class SettingsActivity extends FragmentActivity
             switchCount.setOnCheckedChangeListener(null);
             switchCount.setChecked(showCount);
             switchCount.setOnCheckedChangeListener((btn, isChecked) -> {
+                LauncherPrefs.get(this).putSync(
+                        LauncherPrefs.IS_NOTIF_COUNT_ENABLED.to(isChecked)
+                );
                 LauncherPrefs.getPrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
+                LauncherPrefs.getDevicePrefs(this).edit().putBoolean(BlissPrefs.PREF_NOTIF_COUNT, isChecked).apply();
+                InvariantDeviceProfile.INSTANCE.get(this).onConfigChanged(this);
             });
         }
     }
@@ -6642,7 +6706,18 @@ public class SettingsActivity extends FragmentActivity
         View rowCustomizeGlass = findViewById(R.id.row_customize_glass);
         if (rowCustomizeGlass != null) {
             rowCustomizeGlass.setOnClickListener(v -> {
-                startActivity(new Intent(this, GlassCustomizeActivity.class));
+                if (BillingManager.isProUser(this)) {
+                    startActivity(new Intent(this, GlassCustomizeActivity.class));
+                    return;
+                }
+                showRewardedFeatureDialog(
+                        R.drawable.ic_ios_glass_sliders,
+                        R.color.ios_icon_teal,
+                        "Customize Glass Studio",
+                        "Watch a short ad to enter the Glass Studio and preview real-time optical effects. (Saving custom settings to your Home Screen requires Pro).",
+                        "Watch Ad to Preview",
+                        () -> startActivity(new Intent(this, GlassCustomizeActivity.class))
+                );
             });
         }
     }
@@ -6651,7 +6726,18 @@ public class SettingsActivity extends FragmentActivity
         View rowIconSize = findViewById(R.id.row_customize_icon_size);
         if (rowIconSize != null) {
             rowIconSize.setOnClickListener(v -> {
-                startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+                if (BillingManager.isProUser(this)) {
+                    startActivity(new Intent(this, IconSizeCustomizeActivity.class));
+                    return;
+                }
+                showRewardedFeatureDialog(
+                        R.drawable.ic_apps,
+                        R.color.ios_icon_blue,
+                        "Customize Icon Size",
+                        "Watch a short ad to preview & customize your icon sizes, or upgrade to Pro for an ad-free experience.",
+                        "Watch Ad to Unlock",
+                        () -> startActivity(new Intent(this, IconSizeCustomizeActivity.class))
+                );
             });
         }
         updateIconSizeSummary();
@@ -6661,10 +6747,93 @@ public class SettingsActivity extends FragmentActivity
         View rowAppLibraryOnly = findViewById(R.id.row_app_library_only);
         if (rowAppLibraryOnly != null) {
             rowAppLibraryOnly.setOnClickListener(v -> {
-                startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+                if (BillingManager.isProUser(this)) {
+                    startActivity(new Intent(this, AppLibraryOnlyActivity.class));
+                    return;
+                }
+                showRewardedFeatureDialog(
+                        R.drawable.ic_ios_app_library,
+                        R.color.ios_icon_indigo,
+                        "App Library Only",
+                        "Watch a short ad to manage apps kept only in the App Library, or upgrade to Pro for an ad-free experience.",
+                        "Watch Ad to Unlock",
+                        () -> startActivity(new Intent(this, AppLibraryOnlyActivity.class))
+                );
             });
         }
         updateAppLibraryOnlySummary();
+    }
+
+    private void showRewardedFeatureDialog(
+            int iconRes,
+            int iconTintRes,
+            String title,
+            String message,
+            String watchAdButtonText,
+            Runnable onWatchAdAccepted
+    ) {
+        if (BillingManager.isProUser(this)) {
+            onWatchAdAccepted.run();
+            return;
+        }
+
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+        dialog.setContentView(R.layout.dialog_rewarded_feature_unlock);
+
+        int width = (int) (getResources().getDisplayMetrics().widthPixels * 0.85f);
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(width, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
+
+        ImageView imgIcon = dialog.findViewById(R.id.img_dialog_icon);
+        View frameIcon = dialog.findViewById(R.id.frame_dialog_icon);
+        TextView txtTitle = dialog.findViewById(R.id.txt_dialog_title);
+        TextView txtMessage = dialog.findViewById(R.id.txt_dialog_message);
+        TextView btnWatchAd = dialog.findViewById(R.id.btn_dialog_watch_ad);
+        TextView btnUpgrade = dialog.findViewById(R.id.btn_dialog_upgrade_pro);
+        View btnCancel = dialog.findViewById(R.id.btn_dialog_cancel);
+
+        if (imgIcon != null) imgIcon.setImageResource(iconRes);
+        if (frameIcon != null) frameIcon.setBackgroundTintList(ColorStateList.valueOf(getColor(iconTintRes)));
+        if (txtTitle != null) txtTitle.setText(title);
+        if (txtMessage != null) txtMessage.setText(message);
+        if (btnWatchAd != null) btnWatchAd.setText(watchAdButtonText);
+
+        BillingManager bm = BillingManager.getInstance(this);
+        String price = bm.getFormattedPrice();
+        if (btnUpgrade != null && !price.isEmpty()) {
+            btnUpgrade.setText("Upgrade to Pro (" + price + ")");
+        }
+
+        if (btnWatchAd != null) {
+            btnWatchAd.setOnClickListener(v -> {
+                dialog.dismiss();
+                AdManager.showRewardedAd(this, onWatchAdAccepted, () -> {
+                    Toast.makeText(this, "Watch the full ad to unlock this feature", Toast.LENGTH_SHORT).show();
+                });
+            });
+        }
+
+        if (btnUpgrade != null) {
+            btnUpgrade.setOnClickListener(v -> {
+                dialog.dismiss();
+                Toast.makeText(this, "Connecting to Google Play...", Toast.LENGTH_SHORT).show();
+                bm.launchPurchaseFlow(this, error -> {
+                    runOnUiThread(() -> Toast.makeText(this, error, Toast.LENGTH_LONG).show());
+                    return kotlin.Unit.INSTANCE;
+                });
+            });
+        }
+
+        if (btnCancel != null) {
+            btnCancel.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        dialog.show();
     }
 
     private void updateAppLibraryOnlySummary() {
@@ -6763,8 +6932,8 @@ public class SettingsActivity extends FragmentActivity
 
 # src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt`  
-**Lines**: 440 | **Bytes**: 16692
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\AppLibraryOnlyActivity.kt`  
+**Lines**: 435 | **Bytes**: 16474
 
 ```kotlin
 /*
@@ -6870,11 +7039,6 @@ class AppLibraryOnlyActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         setTheme(R.style.Theme_Bliss_Onboarding)
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true)
-            setTurnScreenOn(true)
-        }
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContentView(R.layout.activity_app_library_only)
 
         setupSystemBars()

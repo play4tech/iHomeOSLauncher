@@ -356,13 +356,16 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # bliss/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
-**Lines**: 81 | **Bytes**: 3244
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest.xml`  
+**Lines**: 85 | **Bytes**: 3605
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Remove transitive WorkManager/Analytics foreground service permission (Target SDK 34+ Play Store compliance) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -382,6 +385,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
             android:autoRemoveFromRecents="true"
             android:excludeFromRecents="true"
             android:exported="true"
+            android:configChanges="keyboard|keyboardHidden|mcc|mnc|navigation|orientation|screenSize|screenLayout|smallestScreenSize|uiMode"
             android:theme="@style/Theme.Bliss.Onboarding" />
 
         <!-- iOS 2x2 Clock Widget -->
@@ -446,8 +450,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
-**Lines**: 75 | **Bytes**: 3204
+**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest-withoutQuickstep.xml`  
+**Lines**: 79 | **Bytes**: 3501
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -473,6 +477,9 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
     xmlns:tools="http://schemas.android.com/tools"
     package="com.android.launcher3">
     <uses-sdk android:targetSdkVersion="36" android:minSdkVersion="33"/>
+
+    <!-- Remove transitive WorkManager/Analytics foreground service permission (Target SDK 34+ Play Store compliance) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />
 
     <application
         android:backupAgent="com.android.launcher3.LauncherBackupAgent"
@@ -516,6 +523,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.MONKEY"/>
                 <category android:name="android.intent.category.LAUNCHER_APP" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <meta-data
                 android:name="com.android.launcher3.grid.control"
@@ -530,7 +538,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # quickstep/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest.xml`  
 **Lines**: 165 | **Bytes**: 7841
 
 ```xml
@@ -704,7 +712,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # quickstep/AndroidManifest-launcher.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest-launcher.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest-launcher.xml`  
 **Lines**: 73 | **Bytes**: 3071
 
 ```xml

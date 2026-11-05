@@ -99,7 +99,7 @@ class OnboardingActivity : Activity() {
 
     private var billingManager: BillingManager? = null
     private val proStatusListener: (Boolean) -> Unit = { isPro ->
-        if (isPro) {
+        if (isPro && currentStep == Step.BUY_PRO) {
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     Toast.makeText(this, getString(R.string.onboarding_pro_restored), Toast.LENGTH_SHORT).show()
@@ -125,6 +125,7 @@ class OnboardingActivity : Activity() {
         evaluateSteps()
 
         val targetStepName = intent.getStringExtra("target_step")
+        val savedStepName = savedInstanceState?.getString("current_step")
         if (targetStepName != null) {
             when (targetStepName) {
                 "step1", "default" -> showStep(Step.DEFAULT_LAUNCHER)
@@ -134,12 +135,23 @@ class OnboardingActivity : Activity() {
                 "step5", "pro", "paywall" -> showStep(Step.BUY_PRO)
                 else -> showStep(Step.DEFAULT_LAUNCHER)
             }
+        } else if (savedStepName != null) {
+            try {
+                showStep(Step.valueOf(savedStepName))
+            } catch (e: Exception) {
+                showStep(Step.WALLPAPER_SELECTION)
+            }
         } else if (isDefaultStepNeeded) {
             showStep(Step.DEFAULT_LAUNCHER)
         } else if (isNotificationStepNeeded) {
             showStep(Step.NOTIFICATION_ACCESS)
         } else {
             showStep(Step.WALLPAPER_SELECTION)
+        }
+
+        val savedWallpaperIndex = savedInstanceState?.getInt("selected_wallpaper_index", -1) ?: -1
+        if (savedWallpaperIndex in wallpaperCards.indices) {
+            selectWallpaper(savedWallpaperIndex)
         }
     }
 
@@ -229,7 +241,13 @@ class OnboardingActivity : Activity() {
                 }
                 Step.NOTIFICATION_ACCESS -> requestNotificationAccess()
                 Step.WALLPAPER_SELECTION -> applySelectedWallpaperAndAdvance()
-                Step.CUSTOMIZE_TIPS -> showStep(Step.BUY_PRO)
+                Step.CUSTOMIZE_TIPS -> {
+                    if (BillingManager.isProUser(this)) {
+                        completeOnboarding()
+                    } else {
+                        showStep(Step.BUY_PRO)
+                    }
+                }
                 Step.BUY_PRO -> launchProPurchase()
             }
         }
@@ -246,7 +264,11 @@ class OnboardingActivity : Activity() {
                     showStep(Step.CUSTOMIZE_TIPS)
                 }
                 Step.CUSTOMIZE_TIPS -> {
-                    showStep(Step.BUY_PRO)
+                    if (BillingManager.isProUser(this)) {
+                        completeOnboarding()
+                    } else {
+                        showStep(Step.BUY_PRO)
+                    }
                 }
                 Step.BUY_PRO -> {
                     completeOnboarding()
@@ -282,8 +304,7 @@ class OnboardingActivity : Activity() {
 
     private fun applySelectedWallpaperAndAdvance() {
         val resId = wallpaperResIds.getOrElse(selectedWallpaperIndex) { wallpaperResIds[0] }
-        primaryButton.isEnabled = false
-        primaryButton.alpha = 0.5f
+        showStep(Step.CUSTOMIZE_TIPS)
 
         Executors.THREAD_POOL_EXECUTOR.execute {
             try {
@@ -307,12 +328,6 @@ class OnboardingActivity : Activity() {
                 }
             } catch (t: Throwable) {
                 Log.e(TAG, "Failed to apply onboarding wallpaper", t)
-            }
-
-            runOnUiThread {
-                primaryButton.isEnabled = true
-                primaryButton.alpha = 1.0f
-                showStep(Step.CUSTOMIZE_TIPS)
             }
         }
     }
@@ -560,7 +575,30 @@ class OnboardingActivity : Activity() {
 
     private fun handleBackNavigation() {
         if (isFinishing || isDestroyed) return
-        completeOnboarding()
+        when (currentStep) {
+            Step.BUY_PRO -> showStep(Step.CUSTOMIZE_TIPS)
+            Step.CUSTOMIZE_TIPS -> showStep(Step.WALLPAPER_SELECTION)
+            Step.WALLPAPER_SELECTION -> showStep(Step.NOTIFICATION_ACCESS)
+            Step.NOTIFICATION_ACCESS -> showStep(Step.DEFAULT_LAUNCHER)
+            Step.DEFAULT_LAUNCHER -> handleExitOnboarding()
+        }
+    }
+
+    private fun handleExitOnboarding() {
+        if (!isDefaultLauncherGranted()) {
+            moveTaskToBack(true)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString("current_step", currentStep.name)
+        outState.putInt("selected_wallpaper_index", selectedWallpaperIndex)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        setupSystemBars()
     }
 
     override fun onDestroy() {

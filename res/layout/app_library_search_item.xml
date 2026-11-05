@@ -19,7 +19,7 @@
         android:layout_centerVertical="true"
         android:layout_toEndOf="@id/app_search_item_icon"
         android:layout_marginStart="16dp"
-        android:layout_marginEnd="36dp"
+        android:layout_marginEnd="16dp"
         android:textColor="#FFFFFF"
         android:textSize="17sp"
         android:fontFamily="sans-serif"
@@ -33,7 +33,7 @@
         android:layout_height="0.6dp"
         android:layout_alignParentBottom="true"
         android:layout_marginStart="76dp"
-        android:layout_marginEnd="32dp"
+        android:layout_marginEnd="16dp"
         android:background="#22FFFFFF" />
 
 </RelativeLayout>

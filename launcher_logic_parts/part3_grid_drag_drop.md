@@ -20,7 +20,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/CellLayout.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\CellLayout.java`  
 **Lines**: 2370 | **Bytes**: 99252
 
 ```java
@@ -2399,7 +2399,7 @@ public class CellLayout extends ViewGroup {
 
 # src/com/android/launcher3/ShortcutAndWidgetContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/ShortcutAndWidgetContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\ShortcutAndWidgetContainer.java`  
 **Lines**: 387 | **Bytes**: 14893
 
 ```java
@@ -2795,8 +2795,8 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
 
 # src/com/android/launcher3/BubbleTextView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/BubbleTextView.java`  
-**Lines**: 1550 | **Bytes**: 60500
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\BubbleTextView.java`  
+**Lines**: 1559 | **Bytes**: 60972
 
 ```java
 /*
@@ -3603,15 +3603,24 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             drawUninstallIcon(canvas);
         }
         if (!mForceHideDot && (hasDot() || mDotParams.scale > 0)) {
-            getIconBounds(mDotParams.iconBounds);
-            Utilities.scaleRectAboutCenter(mDotParams.iconBounds,
-                    IconShape.getNormalizationScale());
-            final int scrollX = getScrollX();
-            final int scrollY = getScrollY();
-            canvas.translate(scrollX, scrollY);
-            mDotParams.leftAlign = false;
-            mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
-            canvas.translate(-scrollX, -scrollY);
+            if (mDotRenderer == null && mActivity != null && mActivity.getDeviceProfile() != null) {
+                if (mDisplay == DISPLAY_ALL_APPS) {
+                    mDotRenderer = mActivity.getDeviceProfile().mDotRendererAllApps;
+                } else {
+                    mDotRenderer = mActivity.getDeviceProfile().mDotRendererWorkSpace;
+                }
+            }
+            if (mDotRenderer != null) {
+                getIconBounds(mDotParams.iconBounds);
+                Utilities.scaleRectAboutCenter(mDotParams.iconBounds,
+                        IconShape.getNormalizationScale());
+                final int scrollX = getScrollX();
+                final int scrollY = getScrollY();
+                canvas.translate(scrollX, scrollY);
+                mDotParams.leftAlign = false;
+                mDotRenderer.draw(canvas, mDotParams, mDotInfo == null ? -1 : mDotInfo.getNotificationCount());
+                canvas.translate(-scrollX, -scrollY);
+            }
         }
     }
 
@@ -4354,7 +4363,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\celllayout\ReorderAlgorithm.java`  
 **Lines**: 715 | **Bytes**: 32346
 
 ```java
@@ -5078,7 +5087,7 @@ public class ReorderAlgorithm {
 
 # src/com/android/launcher3/celllayout/ItemConfiguration.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ItemConfiguration.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\celllayout\ItemConfiguration.kt`  
 **Lines**: 63 | **Bytes**: 2047
 
 ```kotlin
@@ -5150,7 +5159,7 @@ class ItemConfiguration : CellAndSpan() {
 
 # src/com/android/launcher3/dragndrop/DragController.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragController.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragController.java`  
 **Lines**: 646 | **Bytes**: 24015
 
 ```java
@@ -5805,7 +5814,7 @@ public abstract class DragController<T extends ActivityContext>
 
 # src/com/android/launcher3/dragndrop/DragLayer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragLayer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragLayer.java`  
 **Lines**: 513 | **Bytes**: 21145
 
 ```java
@@ -6327,7 +6336,7 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
 
 # src/com/android/launcher3/dragndrop/DragView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragView.java`  
 **Lines**: 644 | **Bytes**: 25140
 
 ```java
@@ -6980,7 +6989,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
 
 # src/com/android/launcher3/dragndrop/DragOptions.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragOptions.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragOptions.java`  
 **Lines**: 90 | **Bytes**: 3283
 
 ```java
@@ -7079,7 +7088,7 @@ public class DragOptions {
 
 # src/com/android/launcher3/dragndrop/DragDriver.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragDriver.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragDriver.java`  
 **Lines**: 219 | **Bytes**: 7190
 
 ```java
@@ -7307,7 +7316,7 @@ public abstract class DragDriver {
 
 # src/com/android/launcher3/DropTarget.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/DropTarget.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\DropTarget.java`  
 **Lines**: 149 | **Bytes**: 5773
 
 ```java

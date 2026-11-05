@@ -336,6 +336,7 @@ android {
                 '**/libsentry*.so',
                 '**/libhoko_blur.so',
                 '**/librs*.so',
+                '**/librsjni*.so',
                 '**/libRSSupport.so'
             ]
         }

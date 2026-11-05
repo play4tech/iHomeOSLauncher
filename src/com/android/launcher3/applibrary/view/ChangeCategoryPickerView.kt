@@ -349,7 +349,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                             radius = cornerRadiusPx,
                             smoothing = GlassShapeSpec.IOS_SMOOTHING
                         )
-                        outline.setConvexPath(path)
+                        outline.setPath(path)
                     } else {
                         outline.setRoundRect(0, 0, view.width, view.height, cornerRadiusPx)
                     }

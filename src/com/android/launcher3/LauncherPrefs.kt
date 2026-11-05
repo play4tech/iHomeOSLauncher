@@ -360,6 +360,9 @@ class LauncherPrefs(private val encryptedContext: Context) {
         val PRO_USER_ENABLED =
             nonRestorableItem("pref_pro_user_enabled", false, EncryptionType.MOVE_TO_DEVICE_PROTECTED)
         @JvmField
+        val DEBUG_PRO_OVERRIDE =
+            nonRestorableItem("pref_debug_pro_override", true, EncryptionType.MOVE_TO_DEVICE_PROTECTED)
+        @JvmField
         val CUSTOMIZE_GLASS_FIRST_RUN_DONE =
             nonRestorableItem("pref_customize_glass_first_run_done", false, EncryptionType.MOVE_TO_DEVICE_PROTECTED)
         @JvmField val ENABLE_TWOLINE_ALLAPPS_TOGGLE =

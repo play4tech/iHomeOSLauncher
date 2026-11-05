@@ -65,7 +65,7 @@ class CategoryProvider(private val context: Context) {
             bulkAppCategoryMap = newMap
             map = newMap
         }
-        return map?.get(packageName) ?: try {
+        return map[packageName] ?: try {
             context.packageManager.getApplicationInfo(packageName, 0).category
         } catch (e: Exception) {
             null
@@ -262,7 +262,8 @@ class CategoryProvider(private val context: Context) {
             "com.sec.android.app.sbrowser", "com.vivo.browser", "com.mi.globalbrowser", "com.android.browser",
             "com.vivo.FMRadio",
             "com.google.android.soundpicker", "com.android.soundrecorder", "com.coloros.soundrecorder",
-            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk" -> AppLibraryCategory.UTILITIES
+            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk",
+            "com.ihomeos.launcher" -> AppLibraryCategory.UTILITIES
 
             // Finance: Wallets, UPI, Payments, Banks, Crypto, Investing
             "com.google.android.apps.walletnf", "com.google.android.apps.nbu.paisa.user",

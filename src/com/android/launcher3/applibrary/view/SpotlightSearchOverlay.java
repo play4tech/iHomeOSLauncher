@@ -121,7 +121,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mSearchClear = findViewById(R.id.spotlight_search_clear);
         mSearchCancel = findViewById(R.id.spotlight_search_cancel);
         mSearchResultsView = findViewById(R.id.spotlight_search_results);
-        mIndexScroller = findViewById(R.id.spotlight_index_scroller);
+        mIndexScroller = null;
 
         if (mSearchContent != null) {
             int statusBarHeight = mLauncher.getDeviceProfile().getInsets().top;

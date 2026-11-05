@@ -237,10 +237,10 @@ index 7c112dab..13c2a528 100644
          } else {
              if (icon instanceof BitmapDrawable) {
 diff --git a/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java b/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
-index 94f0402b..677f2ea1 100644
+index 94f0402b..3d0e9962 100644
 --- a/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
 +++ b/iconloaderlib/src/com/android/launcher3/icons/DotRenderer.java
-@@ -138,21 +138,16 @@ public class DotRenderer {
+@@ -138,20 +138,13 @@ public class DotRenderer {
          float dotCenterX = iconBounds.left + iconBounds.width() * dotPosition[0];
          float dotCenterY = iconBounds.top + iconBounds.height() * dotPosition[1];
  
@@ -254,19 +254,32 @@ index 94f0402b..677f2ea1 100644
 -        // We draw the dot relative to its center.
 -        float dx = dotCenterX + offsetX;
 -        float dy = dotCenterY + offsetY - 15f;
+-
+-        if (numNotifications > 9 && numNotifications < 1000) {
 +        // We draw the dot relative to its center at the exact same badge offset across homescreen and App Library
 +        float dx = dotCenterX;
 +        float dy = dotCenterY - 15f;
- 
-         if (numNotifications > 9 && numNotifications < 1000) {
++
++        if (mDisplayCount && numNotifications >= 10 && numNotifications < 1000) {
              canvas.translate(dx - 17f, dy);
-         } else if (numNotifications > 0) {
-             canvas.translate(dx - 12f, dy);
+-        } else if (numNotifications > 0) {
 +        } else {
-+            canvas.translate(dx - 12f, dy);
+             canvas.translate(dx - 12f, dy);
          }
  
-         canvas.scale(params.scale, params.scale);
+@@ -160,10 +153,10 @@ public class DotRenderer {
+         mCirclePaint.setColor(params.dotColor);
+         mCircleShadowPaint.setColor(params.shadowDotColor);
+ 
+-        if (numNotifications >= 10 && numNotifications < 1000) {
++        if (mDisplayCount && numNotifications >= 10 && numNotifications < 1000) {
+             canvas.drawRoundRect(new RectF(-mCircleRadius + 10, -mCircleRadius, mCircleRadius + 20, mCircleRadius), 50, 50, mCircleShadowPaint);
+             canvas.drawRoundRect(new RectF(-mCircleRadius + 10, -mCircleRadius, mCircleRadius + 20, mCircleRadius), 50, 50, mCirclePaint);
+-        } else if (numNotifications > 0) {
++        } else {
+             canvas.drawCircle(5, 10, mCircleRadius, mCircleShadowPaint);
+             canvas.drawCircle(5, 10, mCircleRadius, mCirclePaint);
+         }
 diff --git a/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java b/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java
 index e6668d1e..6a94551b 100644
 --- a/iconloaderlib/src/com/android/launcher3/icons/FastBitmapDrawable.java

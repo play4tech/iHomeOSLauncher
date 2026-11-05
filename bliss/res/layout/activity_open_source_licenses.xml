@@ -51,39 +51,12 @@
             android:paddingEnd="16dp"
             android:paddingBottom="40dp">
 
-            <!-- INTRO NOTICE CARD -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@drawable/bg_ios_settings_card"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Open Source Heritage"
-                    android:textColor="@color/onboarding_text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp"
-                    android:lineSpacingExtra="3dp"
-                    android:text="iHomeOS Launcher is built on and derived from open-source software. Under the GNU General Public License v3.0, modified source code of this derivative work is made available to all users."
-                    android:textColor="@color/onboarding_text_secondary"
-                    android:textSize="13sp" />
-            </LinearLayout>
-
             <!-- SECTION: LICENSES -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="8dp"
                 android:layout_marginBottom="6dp"
                 android:text="THIRD-PARTY SOFTWARE"
                 android:textColor="@color/ios_settings_section_title"
@@ -194,32 +167,6 @@
                     android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- CARD: HokoBlur (Apache 2.0) -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:background="@drawable/bg_ios_settings_card"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Hoko Blur"
-                    android:textColor="@color/onboarding_text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Apache License, Version 2.0\nCopyright © 2019-2024 HokoFly"
-                    android:textColor="@color/onboarding_text_secondary"
-                    android:textSize="12sp" />
-            </LinearLayout>
-
             <!-- CARD: Additional Libraries -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -242,7 +189,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:lineSpacingExtra="3dp"
-                    android:text="• AndroidX &amp; Material Components (Apache 2.0)\n• Lottie Android (Apache 2.0 - Airbnb)\n• RxJava &amp; RxKotlin (Apache 2.0)\n• OkHttp &amp; Retrofit (Apache 2.0 - Square)\n• Timber (Apache 2.0 - Jake Wharton)"
+                    android:text="• AndroidX &amp; Material Components (Apache 2.0)\n• Google Protocol Buffers (BSD-3-Clause)\n• Google Gson (Apache 2.0)\n• Lottie Android (Apache 2.0 - Airbnb)\n• RxJava &amp; RxKotlin (Apache 2.0)\n• OkHttp &amp; Retrofit (Apache 2.0 - Square)\n• Timber (Apache 2.0 - Jake Wharton)"
                     android:textColor="@color/onboarding_text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>

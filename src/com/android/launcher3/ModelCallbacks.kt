@@ -141,6 +141,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         TraceHelper.INSTANCE.endSection()
         launcher.workspace.removeExtraEmptyScreen(/* stripEmptyScreens= */ true)
         launcher.workspace.pageIndicator.setPauseScroll(/*pause=*/ false, deviceProfile.isTwoPanels)
+        launcher.workspace.updateNotificationDots { true }
     }
 
     /**
@@ -296,7 +297,6 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
     override fun bindSmartspaceWidget() {
         val cl: CellLayout? =
             launcher.workspace.getScreenWithId(WorkspaceLayoutManager.FIRST_SCREEN_ID)
-        val spanX = InvariantDeviceProfile.INSTANCE.get(launcher).numSearchContainerColumns
 
         if (cl?.shortcutsAndWidgets?.childCount ?: 0 > 0) {
             return
@@ -323,6 +323,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         )
     }
 
+    @Suppress("DEPRECATION")
     override fun bindScreens(orderedScreenIds: LIntArray) {
         launcher.workspace.pageIndicator.setPauseScroll(
             /*pause=*/ true,
@@ -381,6 +382,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
         launcher.workspace.removeExtraEmptyScreen(false)
     }
 
+    @Suppress("DEPRECATION")
     private fun bindAddScreens(orderedScreenIdsArg: LIntArray) {
         var orderedScreenIds = orderedScreenIdsArg
         if (launcher.deviceProfile.isTwoPanels) {

@@ -65,6 +65,13 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
 
         @JvmStatic
         fun isProUser(context: Context): Boolean {
+            if (com.android.launcher3.BuildConfig.DEBUG) {
+                return try {
+                    LauncherPrefs.get(context).get(LauncherPrefs.DEBUG_PRO_OVERRIDE)
+                } catch (e: Exception) {
+                    true
+                }
+            }
             return try {
                 LauncherPrefs.get(context).get(LauncherPrefs.PRO_USER_ENABLED)
             } catch (e: Exception) {
@@ -93,7 +100,30 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
     private var cachedProductDetails: ProductDetails? = null
 
     init {
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            val debugPro = isProUser(appContext)
+            try {
+                LauncherPrefs.get(appContext).putSync(LauncherPrefs.PRO_USER_ENABLED.to(debugPro))
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
         startConnection()
+    }
+
+    fun setDebugProOverride(enabled: Boolean) {
+        if (!com.android.launcher3.BuildConfig.DEBUG) return
+        try {
+            LauncherPrefs.get(appContext).putSync(LauncherPrefs.DEBUG_PRO_OVERRIDE.to(enabled))
+            LauncherPrefs.get(appContext).putSync(LauncherPrefs.PRO_USER_ENABLED.to(enabled))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error writing debug pro override", e)
+        }
+        mainHandler.post {
+            for (listener in proStatusListeners) {
+                listener(enabled)
+            }
+        }
     }
 
     fun addProStatusListener(listener: (Boolean) -> Unit) {
@@ -233,6 +263,13 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
      * Launch Google Play Billing Purchase Flow for Pro lifetime unlock.
      */
     fun launchPurchaseFlow(activity: Activity, onError: ((String) -> Unit)? = null) {
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            setDebugProOverride(true)
+            mainHandler.post {
+                android.widget.Toast.makeText(activity, "[Debug] Pro unlocked for testing!", android.widget.Toast.LENGTH_SHORT).show()
+            }
+            return
+        }
         val details = cachedProductDetails
         if (details == null) {
             queryProductDetails(
@@ -309,6 +346,11 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
      * Restore existing purchases by querying Google Play Store purchase cache.
      */
     fun restorePurchases(onResult: (Boolean, String) -> Unit) {
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            setDebugProOverride(true)
+            mainHandler.post { onResult(true, "[Debug] iHomeOS Pro restored for testing!") }
+            return
+        }
         Log.i(TAG, "restorePurchases initiated. isConnected=$isConnected")
         if (!isConnected) {
             startConnection(
@@ -352,6 +394,10 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
     }
 
     private fun queryActivePurchases() {
+        if (com.android.launcher3.BuildConfig.DEBUG) {
+            setProState(isProUser(appContext))
+            return
+        }
         val params = QueryPurchasesParams.newBuilder()
             .setProductType(BillingClient.ProductType.INAPP)
             .build()
@@ -368,14 +414,19 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
     }
 
     private fun setProState(enabled: Boolean) {
+        val effectiveEnabled = if (com.android.launcher3.BuildConfig.DEBUG) {
+            isProUser(appContext)
+        } else {
+            enabled
+        }
         try {
-            LauncherPrefs.get(appContext).putSync(LauncherPrefs.PRO_USER_ENABLED.to(enabled))
+            LauncherPrefs.get(appContext).putSync(LauncherPrefs.PRO_USER_ENABLED.to(effectiveEnabled))
         } catch (e: Exception) {
             Log.e(TAG, "Error writing Pro state to LauncherPrefs", e)
         }
         mainHandler.post {
             for (listener in proStatusListeners) {
-                listener(enabled)
+                listener(effectiveEnabled)
             }
         }
     }

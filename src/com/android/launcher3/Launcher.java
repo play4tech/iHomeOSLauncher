@@ -361,7 +361,6 @@ public class Launcher extends StatefulActivity<LauncherState>
             new KeyboardShortcutsDelegate(this);
 
     private final LauncherInteractionController mInteractionController = new LauncherInteractionController();
-    private boolean mHasLaunchedOnboarding = false;
 
     public LauncherInteractionController getInteractionController() {
         return mInteractionController;
@@ -610,12 +609,6 @@ public class Launcher extends StatefulActivity<LauncherState>
         }
 
         super.onCreate(savedInstanceState);
-
-        if (com.android.launcher3.BuildConfig.DEBUG) {
-            setShowWhenLocked(true);
-            setTurnScreenOn(true);
-            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        }
 
         LauncherAppState app = LauncherAppState.getInstance(this);
         mModel = app.getModel();
@@ -1351,6 +1344,9 @@ public class Launcher extends StatefulActivity<LauncherState>
 
         // Set the notification listener and fetch updated notifications when we resume
         NotificationListener.addNotificationsChangedListener(mPopupDataProvider);
+        if (mWorkspace != null) {
+            mWorkspace.updateNotificationDots(k -> true);
+        }
 
         // DiscoveryBounce removed to prevent bouncing animation of hotseat icons on startup
         mAppWidgetHolder.setActivityResumed(true);
@@ -1570,12 +1566,14 @@ public class Launcher extends StatefulActivity<LauncherState>
             if (com.android.launcher3.ads.ConsentManager.canRequestAds(this)) {
                 com.android.launcher3.ads.AdManager.initialize(this, () -> {
                     com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                    com.android.launcher3.ads.AdManager.preloadRewarded(this);
                 });
             } else {
                 com.android.launcher3.ads.ConsentManager.gatherConsent(this, (canRequest) -> {
                     if (canRequest) {
                         com.android.launcher3.ads.AdManager.initialize(this, () -> {
                             com.android.launcher3.ads.AdManager.preloadInterstitial(this);
+                            com.android.launcher3.ads.AdManager.preloadRewarded(this);
                         });
                     }
                 });
@@ -1655,16 +1653,13 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 
         if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
-            if (!mHasLaunchedOnboarding) {
-                mHasLaunchedOnboarding = true;
-                try {
-                    Intent onboardingIntent = new Intent(this,
-                            Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
-                    onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                    startActivity(onboardingIntent);
-                } catch (Exception e) {
-                    android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
-                }
+            try {
+                Intent onboardingIntent = new Intent(this,
+                        Class.forName("foundation.e.blisslauncher.features.onboarding.OnboardingActivity"));
+                onboardingIntent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                startActivity(onboardingIntent);
+            } catch (Exception e) {
+                android.util.Log.w("Launcher", "Could not start OnboardingActivity", e);
             }
         }
 
@@ -2578,6 +2573,10 @@ public class Launcher extends StatefulActivity<LauncherState>
     @Override
     public void onBackPressed() {
         android.util.Log.d("BACK_DEBUG", "Launcher.onBackPressed() called");
+        if (!LauncherPrefs.get(this).get(LauncherPrefs.FIRST_RUN_ONBOARDING_DONE)) {
+            moveTaskToBack(true);
+            return;
+        }
         if (mWorkspace != null) {
             com.android.launcher3.applibrary.view.AppLibraryPage alp = mWorkspace.getAppLibraryPage();
             if (alp != null && alp.wasRecentlyInSearchMode()) {

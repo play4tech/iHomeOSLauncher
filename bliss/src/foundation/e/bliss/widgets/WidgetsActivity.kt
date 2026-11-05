@@ -73,11 +73,10 @@ class WidgetsActivity : Activity(), OnActionClickListener {
             )
         }
 
-        val metrics = DisplayMetrics()
-        windowManager.defaultDisplay.getMetrics(metrics)
+        val densityDpi = resources.displayMetrics.densityDpi
 
-        mAddedWidgetsAdapter = AddedWidgetsAdapter(this, metrics.densityDpi)
-        addedWidgets!!.adapter = mAddedWidgetsAdapter
+        mAddedWidgetsAdapter = AddedWidgetsAdapter(this, densityDpi)
+        addedWidgets.adapter = mAddedWidgetsAdapter
         refreshRecyclerView()
     }
 

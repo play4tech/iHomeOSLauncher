@@ -25,8 +25,8 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/applibrary/model/CategoryProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
-**Lines**: 509 | **Bytes**: 25467
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\CategoryProvider.kt`  
+**Lines**: 510 | **Bytes**: 25498
 
 ```kotlin
 package com.android.launcher3.applibrary.model
@@ -96,7 +96,7 @@ class CategoryProvider(private val context: Context) {
             bulkAppCategoryMap = newMap
             map = newMap
         }
-        return map?.get(packageName) ?: try {
+        return map[packageName] ?: try {
             context.packageManager.getApplicationInfo(packageName, 0).category
         } catch (e: Exception) {
             null
@@ -293,7 +293,8 @@ class CategoryProvider(private val context: Context) {
             "com.sec.android.app.sbrowser", "com.vivo.browser", "com.mi.globalbrowser", "com.android.browser",
             "com.vivo.FMRadio",
             "com.google.android.soundpicker", "com.android.soundrecorder", "com.coloros.soundrecorder",
-            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk" -> AppLibraryCategory.UTILITIES
+            "com.oplus.soundrecorder", "com.sec.android.app.voicenote", "com.android.stk",
+            "com.ihomeos.launcher" -> AppLibraryCategory.UTILITIES
 
             // Finance: Wallets, UPI, Payments, Banks, Crypto, Investing
             "com.google.android.apps.walletnf", "com.google.android.apps.nbu.paisa.user",
@@ -543,8 +544,8 @@ class CategoryProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryModel.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryModel.kt`  
-**Lines**: 140 | **Bytes**: 4889
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryModel.kt`  
+**Lines**: 140 | **Bytes**: 4892
 
 ```kotlin
 package com.android.launcher3.applibrary.model
@@ -640,8 +641,8 @@ class AppLibraryModel(private val context: Context) {
 
             android.util.Log.d("AppLibraryModel", "updateApps seq $seq timing: categorize=${t1 - t0}ms, sort=${t2 - t1}ms, suggestions=${t3 - t2}ms, total=${t3 - t0}ms")
 
-            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute {
-                if (seq != pendingSequence) return@execute
+            com.android.launcher3.util.Executors.MAIN_EXECUTOR.execute main@ {
+                if (seq != pendingSequence) return@main
                 categorizedApps.clear()
                 categorizedApps.putAll(newCategorized)
                 cachedSuggestions = suggestions
@@ -692,7 +693,7 @@ class AppLibraryModel(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryCategory.kt`  
 **Lines**: 20 | **Bytes**: 542
 
 ```kotlin
@@ -721,7 +722,7 @@ enum class AppLibraryCategory(val title: String) {
 
 # src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\SuggestionsProvider.kt`  
 **Lines**: 105 | **Bytes**: 3965
 
 ```kotlin
@@ -835,8 +836,8 @@ class SuggestionsProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
-**Lines**: 891 | **Bytes**: 34791
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\SpotlightSearchOverlay.java`  
+**Lines**: 891 | **Bytes**: 34752
 
 ```java
 /*
@@ -962,7 +963,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
         mSearchClear = findViewById(R.id.spotlight_search_clear);
         mSearchCancel = findViewById(R.id.spotlight_search_cancel);
         mSearchResultsView = findViewById(R.id.spotlight_search_results);
-        mIndexScroller = findViewById(R.id.spotlight_index_scroller);
+        mIndexScroller = null;
 
         if (mSearchContent != null) {
             int statusBarHeight = mLauncher.getDeviceProfile().getInsets().top;
@@ -1735,7 +1736,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryDashboardView.java`  
 **Lines**: 285 | **Bytes**: 9833
 
 ```java
@@ -2029,8 +2030,8 @@ public class AppLibraryDashboardView extends RecyclerView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryPage.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
-**Lines**: 1262 | **Bytes**: 56089
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryPage.java`  
+**Lines**: 1268 | **Bytes**: 56252
 
 ```java
 package com.android.launcher3.applibrary.view;
@@ -2304,7 +2305,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         mDashboardView = findViewById(R.id.app_library_dashboard);
         mSearchResultsContainer = findViewById(R.id.app_library_search_results_container);
         mSearchResultsView = findViewById(R.id.app_library_search_results);
-        mIndexScroller = findViewById(R.id.app_library_index_scroller);
+        mIndexScroller = null;
         mExpansionOverlay = findViewById(R.id.app_library_expansion_overlay);
         mSearchBackdrop = findViewById(R.id.app_library_search_backdrop);
         mSearchBackdropGlass = findViewById(R.id.app_library_search_backdrop_glass);
@@ -2431,19 +2432,21 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
         mSearchCancel.setOnClickListener(v -> exitSearchMode());
 
-        mIndexScroller.setOnSectionSelectedListener(section -> {
-            if (section != null && section.length() > 0) {
-                int pos = mSearchAdapter.getPositionForSection(section.charAt(0));
-                if (pos >= 0) {
-                    RecyclerView.LayoutManager lm = mSearchResultsView.getLayoutManager();
-                    if (lm instanceof LinearLayoutManager) {
-                        ((LinearLayoutManager) lm).scrollToPositionWithOffset(pos, 0);
-                    } else {
-                        mSearchResultsView.scrollToPosition(pos);
+        if (mIndexScroller != null) {
+            mIndexScroller.setOnSectionSelectedListener(section -> {
+                if (section != null && section.length() > 0) {
+                    int pos = mSearchAdapter.getPositionForSection(section.charAt(0));
+                    if (pos >= 0) {
+                        RecyclerView.LayoutManager lm = mSearchResultsView.getLayoutManager();
+                        if (lm instanceof LinearLayoutManager) {
+                            ((LinearLayoutManager) lm).scrollToPositionWithOffset(pos, 0);
+                        } else {
+                            mSearchResultsView.scrollToPosition(pos);
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // Setup updates from AllAppsStore
         post(this::refreshApps);
@@ -2553,7 +2556,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
         String query = mSearchInput.getText() != null ? mSearchInput.getText().toString() : "";
         mSearchAdapter.filter(query);
-        mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
+        if (mIndexScroller != null) {
+            mIndexScroller.setVisibility((query.trim().isEmpty()) ? VISIBLE : GONE);
+        }
 
         // Prepare Cancel Button with negative end margin so search bar starts at 100% full width
         mSearchCancel.setVisibility(VISIBLE);
@@ -3029,7 +3034,9 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
         if (mIsClearingSearch || !mInSearchMode) return;
         mSearchAdapter.filter(query);
         // Show alphabet index scroller only when viewing full list (query is empty)
-        mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
+        if (mIndexScroller != null) {
+            mIndexScroller.setVisibility((query == null || query.trim().isEmpty()) ? VISIBLE : GONE);
+        }
     }
 
     public void saveScrollState() {
@@ -3300,7 +3307,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryBodyContainer.java`  
 **Lines**: 42 | **Bytes**: 1367
 
 ```java
@@ -3351,7 +3358,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\CategoryCardView.java`  
 **Lines**: 312 | **Bytes**: 12567
 
 ```java
@@ -3672,7 +3679,7 @@ public class CategoryCardView extends ViewGroup {
 
 # src/com/android/launcher3/applibrary/view/MiniClusterView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/MiniClusterView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\MiniClusterView.java`  
 **Lines**: 144 | **Bytes**: 4488
 
 ```java
@@ -3825,7 +3832,7 @@ public class MiniClusterView extends View {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryCategoryExpandedView.java`  
 **Lines**: 358 | **Bytes**: 13763
 
 ```java
@@ -4192,7 +4199,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
 # src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryIndexScrollerView.java`  
 **Lines**: 141 | **Bytes**: 4899
 
 ```java
@@ -4342,8 +4349,8 @@ public class AppLibraryIndexScrollerView extends View {
 
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
-**Lines**: 517 | **Bytes**: 20202
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ChangeCategoryPickerView.kt`  
+**Lines**: 517 | **Bytes**: 20196
 
 ```kotlin
 package com.android.launcher3.applibrary.view
@@ -4697,7 +4704,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
                             radius = cornerRadiusPx,
                             smoothing = GlassShapeSpec.IOS_SMOOTHING
                         )
-                        outline.setConvexPath(path)
+                        outline.setPath(path)
                     } else {
                         outline.setRoundRect(0, 0, view.width, view.height, cornerRadiusPx)
                     }
@@ -4868,7 +4875,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryFolderTransition.kt`  
 **Lines**: 520 | **Bytes**: 19728
 
 ```kotlin
@@ -5397,7 +5404,7 @@ class AppLibraryFolderTransition(
 
 # src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ExpandedCategoryAdapter.java`  
 **Lines**: 89 | **Bytes**: 3136
 
 ```java
@@ -5495,7 +5502,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
 
 # src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibrarySearchAdapter.java`  
 **Lines**: 200 | **Bytes**: 7235
 
 ```java

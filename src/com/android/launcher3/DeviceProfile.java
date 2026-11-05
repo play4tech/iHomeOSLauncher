@@ -823,7 +823,7 @@ public class DeviceProfile {
         if (renderer == null) {
             renderer = new DotRenderer(dotSize, getShapePath(context, DEFAULT_DOT_SIZE),
                     DEFAULT_DOT_SIZE, showNotificationCount, typeface);
-            cache.put(size, renderer);
+            cache.put(dotSize, renderer);
         }
         return renderer;
     }
