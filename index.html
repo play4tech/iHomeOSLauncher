@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>iHomeOS Launcher – The iPhone home screen on Android</title>
-<meta name="description" content="iHomeOS brings the iconic iOS home screen, App Library, fluid jiggle mode, Spotlight search, and real-time optical glass refraction to Android.">
+<meta name="description" content="iHomeOS brings authentic iOS liquid glass refraction, customizable widgets, silky 120fps fluid animations, App Library, and Spotlight search to Android.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -586,6 +586,227 @@
     color: var(--sub-dark);
   }
 
+  
+  /* Search Pill */
+  .search-pill-preview {
+    background: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 980px;
+    padding: 6px 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin-bottom: 12px;
+  }
+  .icon-whatsapp { background: linear-gradient(180deg, #25D366 0%, #128C7E 100%); }
+  .icon-camera-lens {
+    background: linear-gradient(180deg, #e5e5ea 0%, #c7c7cc 100%);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Edit Mode Stage */
+  .edit-mode-art {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .edit-header-bar {
+    display: flex;
+    justify-content: space-between;
+    width: 260px;
+    margin-bottom: 4px;
+  }
+  .edit-pill-btn {
+    background: rgba(0, 122, 255, 0.9);
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 14px;
+    border-radius: 980px;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25);
+  }
+  .edit-menu-popup {
+    background: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    backdrop-filter: saturate(180%) blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 18px;
+    padding: 6px 0;
+    width: 190px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  }
+  .edit-menu-row {
+    padding: 7px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  .edit-menu-row:last-child { border-bottom: none; }
+  .edit-menu-icon {
+    width: 16px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    color: var(--blue);
+  }
+
+  /* Context Menu Art */
+  .context-menu-art {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .context-menu-card {
+    background: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: saturate(180%) blur(28px);
+    backdrop-filter: saturate(180%) blur(28px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    width: 220px;
+    padding: 6px 0;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.12);
+  }
+  .context-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  }
+  .context-row:last-child { border-bottom: none; }
+  .context-row.destructive {
+    color: #ff3b30;
+    font-weight: 600;
+  }
+  .context-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* Settings Preview Art */
+  .settings-preview-card {
+    background: rgba(255, 255, 255, 0.85);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    width: 240px;
+    padding: 6px 0;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-toggle-on {
+    width: 32px;
+    height: 18px;
+    background: #34c759;
+    border-radius: 980px;
+    position: relative;
+  }
+  .settings-toggle-on::after {
+    content: "";
+    position: absolute;
+    right: 2px;
+    top: 2px;
+    width: 14px;
+    height: 14px;
+    background: #ffffff;
+    border-radius: 50%;
+  }
+  .settings-badge-default {
+    background: rgba(52, 199, 89, 0.12);
+    color: #28a745;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 980px;
+  }
+
+  /* Authentic iOS Month Calendar Widget */
+  .cal-month-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px 2px;
+    font-size: 9px;
+    text-align: center;
+    line-height: 1.2;
+    margin-top: 4px;
+  }
+  .cal-month-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    font-size: 8px;
+    font-weight: 700;
+    color: #8e8e93;
+    text-align: center;
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+  .cal-day-num {
+    color: var(--text);
+    font-weight: 500;
+  }
+  .cal-day-today {
+    background: #ff3b30;
+    color: #ffffff !important;
+    border-radius: 50%;
+    font-weight: 700;
+  }
+  .widget-label-sub {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--sub);
+    text-align: center;
+    margin-top: 8px;
+  }
+  .ios-widget.glass-widget {
+    background: rgba(255, 255, 255, 0.55);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    backdrop-filter: saturate(180%) blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    padding: 12px 14px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  }
+  .clock-face-white {
+    width: 80px;
+    height: 80px;
+    background: #ffffff;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  }
+  .clock-num-marker {
+    position: absolute;
+    font-size: 9px;
+    font-weight: 600;
+    color: #1a1a1c;
+    transform: translate(-50%, -50%);
+  }
+
   /* 5. Authentic iOS Pro Widgets */
   .widgets-art {
     gap: 22px;
@@ -925,12 +1146,12 @@
   <header class="hero">
     <p class="kicker">iOS Experience on Android</p>
     <h1>iHomeOS</h1>
-    <p class="sub">The iPhone home screen. On your Android.</p>
+    <p class="sub">The iPhone home screen experience. Optimized for 120fps.</p>
     <div class="cta">
       <a class="pill" href="https://play.google.com/store/apps/details?id=com.ihomeos.launcher" target="_blank" rel="noopener">Get it on Google Play</a>
       <a class="more" href="#highlights">Explore features <span class="arrow">›</span></a>
     </div>
-    <p class="fine">Free to download · Available on Google Play · Requires Android 13 or later</p>
+    <p class="fine">Free to download · Available on Google Play · Requires Android 13 or later · 120Hz display optimized</p>
     
     <!-- Precision Device Stage (Clean Bezel - No Dynamic Island Cutout) -->
     <div class="stage">
@@ -944,8 +1165,8 @@
   <section class="metrics-ribbon">
     <div class="metrics-grid">
       <div class="metric-item">
-        <span class="metric-val">60<small>fps</small></span>
-        <span class="metric-desc">Fluid Liquid Glass animations & real-time refraction</span>
+        <span class="metric-val">120<small>fps</small></span>
+        <span class="metric-desc">Engineered for 120Hz displays with silky smooth animations & real-time glass refraction</span>
       </div>
       <div class="metric-item">
         <span class="metric-val">0</span>
@@ -964,59 +1185,69 @@
       <h2 class="big">Get the highlights.</h2>
       <div class="tiles">
         
-        <!-- Tile 1: Glass folders & dock -->
+        <!-- Tile 1: Glass folders & dock (Slide 1 & 2) -->
         <div class="tile">
           <div>
             <h3>Glass folders and dock.</h3>
-            <p>Icons, folders, and the dock dynamically refract your live wallpaper with continuous optical glass physics as you swipe.</p>
+            <p>Icons, folders, and the dock dynamically refract your live wallpaper with continuous optical glass physics, true depth blur, and real-time reflections as you swipe at 120fps.</p>
           </div>
-          <div class="tile-art">
+          <div class="tile-art" style="flex-direction: column;">
+            <div class="search-pill-preview">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>Search</span>
+            </div>
             <div class="mini-dock">
               <div class="app-icon icon-phone" title="Phone">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
               </div>
-              <div class="app-icon icon-msg" title="Messages">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+              <div class="app-icon icon-photos" title="Photos">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="#ff9500"/><circle cx="12" cy="6.5" r="2.5" fill="#ff3b30"/><circle cx="12" cy="17.5" r="2.5" fill="#5856d6"/><circle cx="6.5" cy="12" r="2.5" fill="#34c759"/><circle cx="17.5" cy="12" r="2.5" fill="#007aff"/></svg>
               </div>
-              <div class="app-icon icon-safari" title="Browser">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.5-3.5 3.5-7.5-7.5 3.5-3.5 7.5z"/></svg>
+              <div class="app-icon icon-whatsapp" title="WhatsApp">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0012.04 2zm0 18.06c-1.49 0-2.95-.4-4.22-1.16l-.3-.18-3.12.82.83-3.04-.2-.31c-.83-1.33-1.28-2.88-1.28-4.48 0-4.46 3.63-8.09 8.09-8.09 2.16 0 4.19.84 5.72 2.37 1.53 1.53 2.37 3.56 2.37 5.72 0 4.46-3.63 8.09-8.09 8.09zm4.44-6.05c-.24-.12-1.44-.71-1.66-.79-.22-.08-.39-.12-.55.12-.16.24-.63.79-.77.95-.14.16-.29.18-.53.06-.24-.12-1.03-.38-1.96-1.21-.72-.64-1.21-1.44-1.35-1.68-.14-.24-.01-.37.11-.49.11-.11.24-.29.36-.43.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.55-1.33-.76-1.82-.2-.48-.41-.41-.56-.42h-.48c-.16 0-.43.06-.66.31-.22.25-.87.85-.87 2.07s.89 2.4 1.01 2.56c.12.16 1.75 2.67 4.23 3.74.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.44-.59 1.64-1.16.2-.57.2-1.06.14-1.16-.06-.1-.22-.16-.46-.28z"/></svg>
               </div>
-              <div class="app-icon icon-music" title="Music">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+              <div class="app-icon icon-camera-lens" title="Camera">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="#3a3a3c"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tile 2: Jiggle mode -->
+        <!-- Tile 2: Jiggle mode & Edit Menu (Slide 5) -->
         <div class="tile">
           <div>
-            <h3>Jiggle mode.</h3>
-            <p>Touch and hold any icon to enter edit mode. Rearrange apps fluidly across screens with authentic iOS haptic drop resistance.</p>
+            <h3>Jiggle mode & edit menu.</h3>
+            <p>Touch and hold any icon to enter authentic iOS edit mode with wobbling icons and remove badges. Tap Edit to access the widget gallery, scale icons, or switch wallpapers.</p>
           </div>
           <div class="tile-art">
-            <div class="jiggle-container">
-              <div class="jiggle-item icon-photos w1">
-                <div class="badge-minus">–</div>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3" fill="#ff9500"/><circle cx="12" cy="7" r="2.5" fill="#ff2d55"/><circle cx="12" cy="17" r="2.5" fill="#5856d6"/><circle cx="7" cy="12" r="2.5" fill="#34c759"/><circle cx="17" cy="12" r="2.5" fill="#007aff"/></svg>
+            <div class="edit-mode-art">
+              <div class="edit-header-bar">
+                <span class="edit-pill-btn">Edit</span>
+                <span class="edit-pill-btn" style="background: rgba(255, 255, 255, 0.85); color: var(--text);">Done</span>
               </div>
-              <div class="jiggle-item icon-camera w2">
-                <div class="badge-minus">–</div>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3.2"/><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>
-              </div>
-              <div class="jiggle-item icon-settings w3">
-                <div class="badge-minus">–</div>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+              <div class="edit-menu-popup">
+                <div class="edit-menu-row">
+                  <div class="edit-menu-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><line x1="6.5" y1="4.5" x2="6.5" y2="8.5"></line><line x1="4.5" y1="6.5" x2="8.5" y2="6.5"></line></svg></div>
+                  <span>Add Widget</span>
+                </div>
+                <div class="edit-menu-row">
+                  <div class="edit-menu-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"></circle><circle cx="9" cy="9" r="1.5" fill="currentColor"></circle><circle cx="15" cy="9" r="1.5" fill="currentColor"></circle><circle cx="15" cy="15" r="1.5" fill="currentColor"></circle></svg></div>
+                  <span>Customize</span>
+                </div>
+                <div class="edit-menu-row">
+                  <div class="edit-menu-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/></svg></div>
+                  <span>Change Wallpaper</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tile 3: App Library -->
+        <!-- Tile 3: App Library (Slide 3) -->
         <div class="tile">
           <div>
-            <h3>App Library.</h3>
-            <p>Swipe to the final page to find all installed applications intelligently organized into categorized folders with instant letter search.</p>
+            <h3>Smart App Library.</h3>
+            <p>Swipe to the rightmost screen for intelligent, 100% on-device app categorization into frosted 2×2 glass cards (Suggestions, Social, Productivity, Finance, Utilities) with an instant A–Z index scroller.</p>
           </div>
           <div class="tile-art">
             <div class="app-library-card">
@@ -1040,11 +1271,11 @@
           </div>
         </div>
 
-        <!-- Tile 4: Swipe down search (Spotlight) -->
+        <!-- Tile 4: Instant Spotlight Search (Slide 6) -->
         <div class="tile">
           <div>
-            <h3>Swipe down to search.</h3>
-            <p>From any home screen workspace page, pull down anywhere to reveal Apple-style Spotlight search with app shortcuts.</p>
+            <h3>Instant Spotlight search.</h3>
+            <p>Tap the floating glass Search pill or swipe down anywhere on your home screen to search apps, contacts, and web shortcuts with zero lag and native keyboard focus.</p>
           </div>
           <div class="tile-art">
             <div class="spotlight-art">
@@ -1056,34 +1287,117 @@
                 <div class="spotlight-chip">WhatsApp</div>
                 <div class="spotlight-chip">Chrome</div>
                 <div class="spotlight-chip">Maps</div>
+                <div class="spotlight-chip">ChatGPT</div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tile 5 (Span): Calendar & Clock Widgets -->
+        <!-- Tile 5: Shortcuts at a single touch (Slide 4) -->
+        <div class="tile">
+          <div>
+            <h3>Shortcuts at a single touch.</h3>
+            <p>Long-press any app icon for quick actions: check App info, trigger Edit mode, re-categorize in App Library, browse app widgets, or cleanly remove the app from your home screen.</p>
+          </div>
+          <div class="tile-art">
+            <div class="context-menu-art">
+              <div class="context-menu-card">
+                <div class="context-row">
+                  <div class="context-left"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg> <span>App info</span></div>
+                </div>
+                <div class="context-row">
+                  <div class="context-left"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg> <span>Edit home screen</span></div>
+                </div>
+                <div class="context-row">
+                  <div class="context-left"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> <span>Change Category</span></div>
+                  <span style="color:#a1a1a6; font-size: 11px;">›</span>
+                </div>
+                <div class="context-row">
+                  <div class="context-left"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg> <span>Widgets</span></div>
+                </div>
+                <div class="context-row destructive">
+                  <div class="context-left"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg> <span>Remove App</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tile 6: Fine-tune every detail (Slide 7) -->
+        <div class="tile">
+          <div>
+            <h3>Fine-tune every detail.</h3>
+            <p>Customize everything from default home app status, notification count numbers, newly installed app placement, icon scaling, and App Library Only app exclusions to real-time optical glass refraction.</p>
+          </div>
+          <div class="tile-art">
+            <div class="settings-preview-card">
+              <div class="settings-row">
+                <span>Default Home App</span>
+                <span class="settings-badge-default">✓ Default</span>
+              </div>
+              <div class="settings-row">
+                <span>Notification Badges</span>
+                <div class="settings-toggle-on"></div>
+              </div>
+              <div class="settings-row">
+                <span>Show Notification Count</span>
+                <div class="settings-toggle-on"></div>
+              </div>
+              <div class="settings-row">
+                <span>Customize Icon Size</span>
+                <span style="color:#8e8e93; font-size:11px;">100% ›</span>
+              </div>
+              <div class="settings-row">
+                <span>Customize Glass Effect</span>
+                <span style="color:#007aff; font-size:11px;">Optics ›</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tile 7 (Span): Authentic iOS Glass Widgets (Slide 8 & Home Screen) -->
         <div class="tile span">
           <div>
-            <h3>Calendar and clock widgets.</h3>
-            <p>2×2 desktop widgets designed with iOS metrics and live system time sync, included with iHomeOS Pro.</p>
+            <h3>Authentic 2×2 Liquid Glass widgets.</h3>
+            <p>Desktop widgets with live wallpaper optical refraction and live system synchronization: Month Calendar grid with today's highlighted date, Day Calendar, Analog Clock with ticking second hand, and Digital Clock.</p>
           </div>
-          <div class="tile-art widgets-art">
-            <!-- Calendar Widget -->
-            <div class="ios-widget calendar">
-              <div class="cal-header">TUESDAY</div>
-              <div class="cal-number">28</div>
-              <div class="cal-event">Design Review · 10:30 AM</div>
-            </div>
+          <div class="tile-art widgets-art" style="display: flex; gap: 32px; justify-content: center; align-items: flex-start; flex-wrap: wrap;">
+            
             <!-- Analog Clock Widget -->
-            <div class="ios-widget clock">
-              <div class="clock-face">
-                <div class="clock-hand hour"></div>
-                <div class="clock-hand min"></div>
-                <div class="clock-hand sec"></div>
-                <div class="clock-center"></div>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+              <div class="ios-widget glass-widget" style="align-items: center; justify-content: center; position: relative;">
+                <div class="clock-face-white">
+                  <div class="clock-num-marker" style="top: 10px; left: 50%;">12</div>
+                  <div class="clock-num-marker" style="top: 50%; right: 4px; transform: translateY(-50%);">3</div>
+                  <div class="clock-num-marker" style="bottom: 4px; left: 50%; transform: translateX(-50%);">6</div>
+                  <div class="clock-num-marker" style="top: 50%; left: 8px; transform: translateY(-50%);">9</div>
+                  <div class="clock-hand hour" style="background:#1a1a1c; transform: translate(-50%, 0) rotate(215deg); height: 22px;"></div>
+                  <div class="clock-hand min" style="background:#1a1a1c; transform: translate(-50%, 0) rotate(100deg); height: 28px;"></div>
+                  <div class="clock-hand sec" style="background:#ff9500; transform: translate(-50%, 0) rotate(290deg); height: 32px;"></div>
+                  <div class="clock-center" style="background:#ff9500; width: 4px; height: 4px;"></div>
+                </div>
               </div>
-              <div class="clock-city">CUPERTINO</div>
+              <span class="widget-label-sub">Clock</span>
             </div>
+
+            <!-- Calendar Month Widget -->
+            <div style="display: flex; flex-direction: column; align-items: center;">
+              <div class="ios-widget glass-widget" style="justify-content: flex-start;">
+                <div style="font-size: 10px; font-weight: 800; color: #ff3b30; letter-spacing: 0.08em; text-transform: uppercase;">NOVEMBER</div>
+                <div class="cal-month-days">
+                  <span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span>
+                </div>
+                <div class="cal-month-grid">
+                  <span style="color:transparent">0</span><span style="color:transparent">0</span><span style="color:transparent">0</span><span style="color:transparent">0</span><span style="color:transparent">0</span><span style="color:transparent">0</span><span class="cal-day-num">1</span>
+                  <span class="cal-day-num">2</span><span class="cal-day-num">3</span><span class="cal-day-num">4</span><span class="cal-day-today">5</span><span class="cal-day-num">6</span><span class="cal-day-num">7</span><span class="cal-day-num">8</span>
+                  <span class="cal-day-num">9</span><span class="cal-day-num">10</span><span class="cal-day-num">11</span><span class="cal-day-num">12</span><span class="cal-day-num">13</span><span class="cal-day-num">14</span><span class="cal-day-num">15</span>
+                  <span class="cal-day-num">16</span><span class="cal-day-num">17</span><span class="cal-day-num">18</span><span class="cal-day-num">19</span><span class="cal-day-num">20</span><span class="cal-day-num">21</span><span class="cal-day-num">22</span>
+                  <span class="cal-day-num">23</span><span class="cal-day-num">24</span><span class="cal-day-num">25</span><span class="cal-day-num">26</span><span class="cal-day-num">27</span><span class="cal-day-num">28</span><span class="cal-day-num">29</span>
+                </div>
+              </div>
+              <span class="widget-label-sub">Calendar</span>
+            </div>
+
           </div>
         </div>
 
@@ -1101,46 +1415,56 @@
       <table class="compare-table">
         <thead>
           <tr>
-            <th></th>
+            <th>Feature</th>
             <th>Free</th>
             <th class="col-pro">Pro</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td>Home screen, dock and folders</td>
+            <td>Home screen, liquid glass dock, and folders</td>
             <td class="check-free">✓</td>
             <td class="check-pro">✓</td>
           </tr>
           <tr>
-            <td>Jiggle mode, App Library & Spotlight search</td>
+            <td>Fluid Jiggle mode, App Library & Spotlight search</td>
             <td class="check-free">✓</td>
             <td class="check-pro">✓</td>
           </tr>
           <tr>
-            <td>Ads on the home screen & wallpaper</td>
-            <td class="dash-dim">None</td>
-            <td class="check-pro">None</td>
+            <td>Optimized 120fps high-refresh rate animations</td>
+            <td class="check-free">✓</td>
+            <td class="check-pro">✓</td>
           </tr>
           <tr>
-            <td>Banners in settings & secondary screens</td>
-            <td class="dash-dim">Yes</td>
-            <td class="check-pro">None</td>
+            <td>Home screen ads & background telemetry</td>
+            <td class="dash-dim">Zero</td>
+            <td class="check-pro">Zero</td>
           </tr>
           <tr>
-            <td>iOS Calendar and Analog Clock widgets</td>
+            <td>Settings & secondary menu banner ads</td>
+            <td class="dash-dim">Banners</td>
+            <td class="check-pro">100% Ad-Free</td>
+          </tr>
+          <tr>
+            <td>Exclusive iOS Glass Widgets (Month/Day Calendar, Analog/Digital Clock)</td>
             <td class="dash-dim">—</td>
-            <td class="check-pro">✓</td>
-          </tr>
-          <tr>
-            <td>Liquid Glass refraction fine-tuning</td>
-            <td class="dash-dim">Standard</td>
             <td class="check-pro">Full Access</td>
           </tr>
           <tr>
-            <td>Cloud restore across all your Android devices</td>
-            <td class="dash-dim">—</td>
-            <td class="check-pro">✓</td>
+            <td>Liquid Glass Refraction Customizer (Blur, Optics, Highlights)</td>
+            <td class="dash-dim">Standard</td>
+            <td class="check-pro">Full Precision Controls</td>
+          </tr>
+          <tr>
+            <td>Icon Size & App Library Only Customization</td>
+            <td class="dash-dim">Rewarded Ad</td>
+            <td class="check-pro">Instant Unrestricted Access</td>
+          </tr>
+          <tr>
+            <td>License & Device Restores via Google Play Account</td>
+            <td class="dash-dim">Free Forever</td>
+            <td class="check-pro">Single Lifetime Purchase</td>
           </tr>
         </tbody>
       </table>
@@ -1158,19 +1482,19 @@
       <div class="faq">
         <details>
           <summary>Which Android devices and versions are supported?</summary>
-          <p>iHomeOS supports Android 13 and later. It is engineered and tested on Samsung One UI, Realme UI, Xiaomi HyperOS, OnePlus OxygenOS, Google Pixel devices, and standard AOSP distributions without requiring root or custom ROMs.</p>
+          <p>iHomeOS supports Android 13 and later (API 33+). It is optimized for silky 120fps refresh rates on modern displays and tested on Samsung One UI, Realme UI, Xiaomi HyperOS, OnePlus OxygenOS, Google Pixel devices, and standard AOSP distributions without requiring root or custom ROMs.</p>
         </details>
         <details>
           <summary>Where do ads appear?</summary>
-          <p>Never on your home screen, desktop pages, wallpaper backdrop, dock, or folders. Small non-intrusive banners can appear only inside secondary menus (like settings), and purchasing iHomeOS Pro removes all advertisements permanently. The launcher strictly conforms with Google Play’s Better Ads and Disruptive Ads policies.</p>
+          <p>Never on your home screen, desktop pages, wallpaper backdrop, dock, or folders. Small non-disruptive banner ads can appear only inside secondary menus (like settings), and purchasing iHomeOS Pro removes all advertisements permanently. Free users can also unlock customization features (such as icon resizing or App Library Only) by watching an optional rewarded ad. The launcher strictly conforms with Google Play’s Better Ads and Disruptive Ads policies.</p>
         </details>
         <details>
           <summary>What data does iHomeOS collect?</summary>
-          <p>Zero personal telemetry. iHomeOS does not upload your app list, usage history, photos, or contacts to any external servers. All App Library categorization occurs 100% on-device. Please review our <a href="privacy.html">Privacy Policy</a> for full compliance details.</p>
+          <p>Zero personal telemetry. iHomeOS does not collect, harvest, or upload your app list, usage history, photos, or contacts to any external servers. All App Library categorization occurs 100% on-device. Anonymous diagnostic crash logs (via Sentry) help identify software bugs to improve stability. Please review our <a href="privacy.html">Privacy Policy</a> for full compliance details.</p>
         </details>
         <details>
           <summary>How does the Liquid Glass refraction effect work?</summary>
-          <p>On devices with modern GPU rendering, iHomeOS calculates real-time optical light refraction and chromatic aberration against the wallpaper backdrop. A high-efficiency Gaussian blur fallback runs seamlessly on battery-saver mode or older chipsets.</p>
+          <p>Optimized for 120fps displays, iHomeOS calculates real-time optical light refraction, specular highlights, and chromatic aberration directly against your wallpaper backdrop using native GPU hardware acceleration and custom Skia shaders. A high-efficiency Gaussian blur fallback runs seamlessly on battery-saver mode or older chipsets.</p>
         </details>
       </div>
     </div>
@@ -1181,9 +1505,9 @@
 <footer>
   <div class="foot-notes">
     <ol>
-      <li>Liquid Glass optical refraction is calculated in real time using native GPU acceleration. High-performance Gaussian blur fallback is provided on all devices.</li>
+      <li>Liquid Glass optical refraction is calculated in real time using native GPU acceleration, optimized for silky smooth 120fps refresh rates on supported hardware. High-performance Gaussian blur fallback is provided on all devices.</li>
       <li>Requires Android 13 (API level 33) or later. Some custom manufacturer gesture systems may require setting iHomeOS as the default home app in system settings.</li>
-      <li>iHomeOS Pro is a single lifetime purchase tied to your Google Play account. It restores automatically on new devices without recurring subscription charges.</li>
+      <li>iHomeOS Pro is a single lifetime purchase tied to your Google Play account. It automatically restores your ad-free and pro features on all devices with the same account.</li>
       <li>iHomeOS is an independent software application developed for the Android platform. It is not affiliated with, endorsed by, or sponsored by Apple Inc.</li>
     </ol>
   </div>
