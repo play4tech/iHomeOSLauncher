@@ -161,7 +161,7 @@
   .more:hover span.arrow { transform: translateX(3px); }
 
   /* ==========================================================================
-     Hero Section (Pure Apple White)
+     Hero Section (Pure Minimalist White)
      ========================================================================== */
   .hero {
     position: relative;
@@ -475,18 +475,18 @@
   }
   .icon-camera { background: linear-gradient(180deg, #6c6c70 0%, #48484a 100%); }
   .icon-settings { background: linear-gradient(180deg, #8e8e93 0%, #636366 100%); }
-  .w1 { animation: appleWobble1 0.28s infinite alternate ease-in-out; }
-  .w2 { animation: appleWobble2 0.32s infinite alternate ease-in-out; }
-  .w3 { animation: appleWobble3 0.26s infinite alternate ease-in-out; }
-  @keyframes appleWobble1 {
+  .w1 { animation: jiggleWobble1 0.28s infinite alternate ease-in-out; }
+  .w2 { animation: jiggleWobble2 0.32s infinite alternate ease-in-out; }
+  .w3 { animation: jiggleWobble3 0.26s infinite alternate ease-in-out; }
+  @keyframes jiggleWobble1 {
     0%   { transform: rotate(-2.4deg) translate(-0.5px, 0.5px); }
     100% { transform: rotate(2.4deg) translate(0.5px, -0.5px); }
   }
-  @keyframes appleWobble2 {
+  @keyframes jiggleWobble2 {
     0%   { transform: rotate(2.2deg) translate(0.5px, -0.5px); }
     100% { transform: rotate(-2.2deg) translate(-0.5px, 0.5px); }
   }
-  @keyframes appleWobble3 {
+  @keyframes jiggleWobble3 {
     0%   { transform: rotate(-2.6deg) translate(-0.5px, -0.5px); }
     100% { transform: rotate(2.6deg) translate(0.5px, 0.5px); }
   }
@@ -922,7 +922,7 @@
   }
 
   /* ==========================================================================
-     Pro Section (Apple-Style Titanium Obsidian Stage)
+     Pro Section (Titanium Obsidian Stage)
      ========================================================================== */
   .pro-kicker {
     font-size: 14px;
@@ -938,10 +938,15 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
   }
-  table.compare-table {
+  .table-scroll-container {
     width: 100%;
     max-width: 820px;
     margin: 64px auto 0;
+  }
+  table.compare-table {
+    width: 100%;
+    max-width: 820px;
+    margin: 0 auto;
     border-collapse: separate;
     border-spacing: 0;
   }
@@ -983,10 +988,14 @@
   .dash-dim {
     color: #636366;
     font-weight: 400;
+    font-size: 15px;
+  }
+  .table-swipe-hint {
+    display: none;
   }
 
   /* ==========================================================================
-     FAQ Section (Apple Native Accordion)
+     FAQ Section (Native Accordion)
      ========================================================================== */
   .faq {
     max-width: 760px;
@@ -1027,7 +1036,7 @@
   }
 
   /* ==========================================================================
-     Footer (Authentic Apple Directory & Legal Architecture)
+     Footer (Authentic Directory & Legal Architecture)
      ========================================================================== */
   footer {
     background: var(--gray);
@@ -1107,17 +1116,338 @@
   .foot-links a { color: #424245; }
 
   /* ==========================================================================
-     Responsive Breakpoints
+     Mobile & Tablet Responsive Breakpoints
      ========================================================================== */
   @media (max-width: 768px) {
-    .nav a.l { display: none; }
-    .nav { width: calc(100% - 24px); }
-    .metrics-grid { grid-template-columns: 1fr; gap: 24px; }
-    section { padding: 88px 20px; }
-    .tiles { grid-template-columns: 1fr; }
-    .tile { padding: 40px 30px; min-height: 0; }
-    .foot-directory { grid-template-columns: 1fr 1fr; gap: 24px; }
-    .more { font-size: 19px; }
+    html, body, #lg-root {
+      max-width: 100vw;
+      overflow-x: hidden;
+    }
+
+    /* Navigation Mobile */
+    .nav {
+      width: calc(100% - 20px);
+      height: 48px;
+      margin: 10px auto -58px;
+    }
+    .nav .in {
+      padding: 0 14px;
+      gap: 10px;
+    }
+    .nav a.l {
+      display: none;
+    }
+    .nav .title {
+      font-size: 17px;
+    }
+    .nav .pill {
+      font-size: 11.5px;
+      padding: 5px 12px;
+    }
+
+    /* Hero Mobile */
+    .hero {
+      padding: 92px 16px 0;
+    }
+    .hero h1 {
+      font-size: clamp(38px, 10.5vw, 52px);
+    }
+    .hero .sub {
+      font-size: clamp(17px, 4.4vw, 20px);
+      margin: 12px auto 0;
+      max-width: 90%;
+    }
+    .cta {
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      margin: 24px 0 10px;
+    }
+    .cta .pill {
+      width: min(290px, 85vw);
+      text-align: center;
+      font-size: 16px;
+      padding: 13px 20px;
+    }
+    .cta .more {
+      font-size: 17px;
+    }
+
+    /* Phone Device Stage */
+    .stage {
+      margin: 40px auto 0;
+    }
+    .phone {
+      width: min(285px, 80vw);
+      border-width: 8px;
+      border-radius: 36px 36px 0 0;
+    }
+    .phone::after {
+      top: -6px;
+      width: 36px;
+      height: 2.5px;
+    }
+
+    /* Key Numbers Ribbon Mobile */
+    .metrics-ribbon {
+      padding: 36px 16px 48px;
+    }
+    .metrics-grid {
+      grid-template-columns: 1fr;
+      gap: 28px;
+    }
+    .metric-val {
+      font-size: clamp(34px, 8vw, 44px);
+    }
+    .metric-desc {
+      max-width: 260px;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    /* Sections Mobile */
+    section {
+      padding: 64px 16px;
+    }
+    h2.big {
+      font-size: clamp(28px, 7vw, 38px);
+      line-height: 1.12;
+    }
+    .lede {
+      font-size: clamp(16px, 4vw, 19px);
+      margin: 12px auto 0;
+      line-height: 1.38;
+    }
+
+    /* Bento Grid Mobile */
+    .tiles {
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 36px;
+    }
+    .tile {
+      padding: 28px 18px;
+      min-height: auto;
+      border-radius: 22px;
+    }
+    .tile.span {
+      min-height: auto;
+      padding: 28px 18px;
+    }
+    .tile h3 {
+      font-size: 22px;
+      line-height: 1.2;
+      max-width: 100%;
+    }
+    .tile p {
+      font-size: 15px;
+      line-height: 1.45;
+      max-width: 100%;
+      margin-top: 10px;
+    }
+    .tile-art {
+      margin-top: 24px;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* Component Visuals in Bento Tiles */
+    .mini-dock {
+      padding: 8px 10px;
+      gap: 8px;
+      border-radius: 20px;
+    }
+    .app-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+    }
+    .search-pill-preview {
+      padding: 5px 12px;
+      font-size: 12px;
+    }
+    .jiggle-container {
+      gap: 12px;
+      padding: 6px;
+    }
+    .jiggle-item {
+      width: 44px;
+      height: 44px;
+      font-size: 20px;
+      border-radius: 11px;
+    }
+    .edit-header-bar {
+      width: min(240px, 85vw);
+    }
+    .edit-menu-popup {
+      width: min(190px, 75vw);
+    }
+    .app-library-card {
+      width: 126px;
+      height: 126px;
+      border-radius: 22px;
+      gap: 6px;
+      padding: 8px;
+    }
+    .spotlight-bar {
+      width: min(240px, 82vw);
+      padding: 8px 14px;
+    }
+    .spotlight-chips {
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 270px;
+      gap: 6px;
+    }
+    .spotlight-chip {
+      font-size: 11px;
+      padding: 3px 8px;
+    }
+    .context-menu-card {
+      width: min(220px, 85vw);
+    }
+    .context-row {
+      padding: 7px 12px;
+      font-size: 12px;
+    }
+    .settings-preview-card {
+      width: min(230px, 85vw);
+    }
+    .settings-row {
+      padding: 7px 10px;
+      font-size: 11.5px;
+    }
+    .widgets-art {
+      gap: 16px !important;
+    }
+    .glass-widget-box {
+      width: 112px;
+      height: 112px;
+      border-radius: 20px;
+    }
+    .clock-face-white {
+      width: 70px;
+      height: 70px;
+    }
+    .cal-month-days {
+      font-size: 7px;
+    }
+    .cal-month-grid {
+      font-size: 8px;
+      gap: 2px 1px;
+    }
+
+    /* Pro Comparison Table Mobile */
+    .table-scroll-container {
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      display: block;
+      margin-top: 24px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 4px;
+      box-sizing: border-box;
+    }
+    table.compare-table {
+      min-width: 440px;
+      width: 100%;
+      margin: 0;
+    }
+    .compare-table th, .compare-table td {
+      padding: 10px 8px;
+      font-size: 13px;
+    }
+    .compare-table th {
+      font-size: 14px;
+      padding-bottom: 10px;
+    }
+    .compare-table td:first-child {
+      max-width: 180px;
+      font-size: 12.5px;
+      line-height: 1.3;
+    }
+    .check-pro { font-size: 15px; }
+    .check-free { font-size: 14px; }
+    .dash-dim { font-size: 12px; }
+    .table-swipe-hint {
+      display: block;
+      font-size: 11px;
+      color: #8e8e93;
+      text-align: center;
+      margin-top: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    /* FAQ Section Mobile */
+    .faq {
+      margin-top: 28px;
+    }
+    details {
+      padding: 0;
+    }
+    summary {
+      font-size: 16px;
+      padding: 16px 28px 16px 0;
+      line-height: 1.35;
+    }
+    summary::after {
+      font-size: 22px;
+    }
+    details p {
+      font-size: 14px;
+      line-height: 1.45;
+      margin: 0 0 20px;
+    }
+
+    /* Footer Mobile */
+    footer {
+      padding: 32px 16px 40px;
+    }
+    .foot-notes {
+      font-size: 11px;
+      line-height: 1.4;
+      padding-bottom: 18px;
+    }
+    .foot-notes ol {
+      padding-left: 14px;
+    }
+    .foot-notes li {
+      margin-bottom: 6px;
+    }
+    .foot-nav-row {
+      font-size: 11px;
+      margin-top: 14px;
+    }
+    .foot-directory {
+      grid-template-columns: 1fr 1fr;
+      gap: 20px 14px;
+      margin-top: 18px;
+      padding-bottom: 24px;
+    }
+    .foot-col h4 {
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .foot-col ul {
+      gap: 6px;
+      display: flex;
+      flex-direction: column;
+    }
+    .foot-col a {
+      font-size: 11.5px;
+    }
+    .foot-legal-bar {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 11px;
+      margin-top: 20px;
+    }
+    .foot-links {
+      gap: 8px 14px;
+    }
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -1405,13 +1735,14 @@
     </div>
   </section>
 
-  <!-- Pro Section (Apple Titanium Obsidian Style) -->
+  <!-- Pro Section (Titanium Obsidian Style) -->
   <section class="dark" id="pro">
     <div class="wide">
       <p class="pro-kicker">iHomeOS Pro</p>
       <h2 class="big">Pay once. Keep forever.</h2>
       <p class="lede">One simple in-app purchase. No recurring subscriptions. Zero ads.</p>
       
+      <div class="table-scroll-container">
       <table class="compare-table">
         <thead>
           <tr>
@@ -1468,14 +1799,15 @@
           </tr>
         </tbody>
       </table>
-      
-      <div class="cta" style="margin-top: 56px">
+    </div>
+    <div class="table-swipe-hint">‹ Swipe horizontally to compare ›</div>
+    <div class="cta" style="margin-top: 56px">
         <a class="pill" href="https://play.google.com/store/apps/details?id=com.ihomeos.launcher" target="_blank" rel="noopener">Get Pro on Google Play</a>
       </div>
     </div>
   </section>
 
-  <!-- Questions (Apple Accordion) -->
+  <!-- Questions (Native Accordion) -->
   <section id="faq">
     <div class="wide">
       <h2 class="big">Questions you might have.</h2>
@@ -1501,7 +1833,7 @@
   </section>
 </main>
 
-<!-- Footer (Authentic Apple Directory & Legal Layout) -->
+<!-- Footer (Authentic Directory & Legal Layout) -->
 <footer>
   <div class="foot-notes">
     <ol>
