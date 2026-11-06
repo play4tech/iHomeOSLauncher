@@ -131,6 +131,42 @@ Any future modification to this codebase MUST NOT unfix or regress any previousl
 
 ---
 
+# Rule: Google Play Store Release & In-App Billing Architecture
+
+To maintain continuous Google Play compliance and prevent submission rejections, all production release builds and billing modifications must adhere to these standards:
+
+### 1. Invariant: Transitive `FOREGROUND_SERVICE` Purge (`AndroidManifest.xml`)
+- **Rule**: The root `AndroidManifest.xml` MUST retain `<uses-permission android:name="android.permission.FOREGROUND_SERVICE" tools:node="remove" />`.
+- **Why**: Transitive dependencies (`androidx.work:work-runtime`, pulled in by AdMob) declare `FOREGROUND_SERVICE`. On Target SDK 34+ (Android 14+), Google Play will reject any app bundle requesting `FOREGROUND_SERVICE` without foreground service types (`android:foregroundServiceType`) and an approved policy justification video. Placing `tools:node="remove"` in secondary manifests alone is insufficient because AGP priority allows library manifests to leak into the merged APK; it must remain in the root manifest.
+
+### 2. Invariant: Play Billing Library Architecture (`BillingManager.kt`, `libs.versions.toml`)
+- **Rule**:
+  - Maintain Google Play Billing Library at **version 8.0.0+** using the standard Java dependency (`com.android.billingclient:billing:8.0.0`) in `gradle/libs.versions.toml`, **NOT** `billing-ktx`. The `-ktx` artifact is compiled with Kotlin 2.1 metadata which produces binary incompatibility errors with the project's Kotlin 1.9 compiler.
+  - In `BillingManager.kt`, `queryProductDetailsAsync` MUST handle the PBL 8+ `QueryProductDetailsResult` object (`(billingResult, queryProductDetailsResult) -> val productDetailsList = queryProductDetailsResult.productDetailsList`).
+  - The in-app lifetime product constant is strictly `PRODUCT_PRO_LIFETIME = "pro_lifetime"`.
+
+### 3. Invariant: Google Play Console Product & Policy Declarations
+- **One-Time In-App Product**:
+  - Product ID: `pro_lifetime` (all lowercase, no spaces, type: "Buy", active in all regions).
+- **Package Visibility Policy (`QUERY_ALL_PACKAGES`)**:
+  - Core justification: Select **"Device Home Screen / Launcher"** (officially permitted core use-case under Google Play Policy).
+- **Advertising ID (`AD_ID`)**:
+  - Declared as "Yes (Advertising or marketing & Analytics)".
+- **Data Safety Declarations**:
+  - Google AdMob: Declare Device/Ad ID collected and shared with 3rd parties (encrypted in transit).
+  - All launcher features (app indexing, search queries, custom widgets, wallpapers, and biometrics) are strictly on-device / local-only and not collected.
+
+### 4. Invariant: Production Release AAB Generation & Signing
+- **Command**:
+  ```bash
+  ./gradlew bundleBlissWithoutQuickstepRelease
+  ```
+- **Signing**: Uses `keystore/ihomeos-upload-key.jks` with credentials in `keystore.properties` (`alias: ihomeos-release`).
+- **Native Symbols**: `build.gradle` release block includes `ndk { debugSymbolLevel 'SYMBOL_TABLE' }` to automatically package native symbol tables.
+- **Never publish `withQuickstep`**: Contains system-privileged signature permissions (`INTERNAL_SYSTEM_WINDOW`, `WRITE_SECURE_SETTINGS`, `STATUS_BAR_SERVICE`, `STOP_APP_SWITCHES`, `MANAGE_ACTIVITY_TASKS`, `ALLOW_SLIPPERY_TOUCHES`) that cause immediate Play Store rejection.
+
+---
+
 # Rule: Mandatory Synchronization of `launcher_important_logic.md`
 
 Every time the codebase is updated, modified, or refactored:
