@@ -360,7 +360,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # bliss/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
 **Lines**: 85 | **Bytes**: 3605
 
 ```xml
@@ -454,7 +454,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest-withoutQuickstep.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
 **Lines**: 79 | **Bytes**: 3501
 
 ```xml
@@ -542,7 +542,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # quickstep/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest.xml`  
 **Lines**: 165 | **Bytes**: 7841
 
 ```xml
@@ -716,7 +716,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # quickstep/AndroidManifest-launcher.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest-launcher.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest-launcher.xml`  
 **Lines**: 73 | **Bytes**: 3071
 
 ```xml

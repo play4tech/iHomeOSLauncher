@@ -25,7 +25,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/applibrary/model/CategoryProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\CategoryProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
 **Lines**: 510 | **Bytes**: 25498
 
 ```kotlin
@@ -544,7 +544,7 @@ class CategoryProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryModel.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryModel.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryModel.kt`  
 **Lines**: 140 | **Bytes**: 4892
 
 ```kotlin
@@ -693,7 +693,7 @@ class AppLibraryModel(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryCategory.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt`  
 **Lines**: 20 | **Bytes**: 542
 
 ```kotlin
@@ -722,7 +722,7 @@ enum class AppLibraryCategory(val title: String) {
 
 # src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\SuggestionsProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt`  
 **Lines**: 105 | **Bytes**: 3965
 
 ```kotlin
@@ -836,7 +836,7 @@ class SuggestionsProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\SpotlightSearchOverlay.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
 **Lines**: 891 | **Bytes**: 34752
 
 ```java
@@ -1736,7 +1736,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryDashboardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
 **Lines**: 285 | **Bytes**: 9833
 
 ```java
@@ -2030,7 +2030,7 @@ public class AppLibraryDashboardView extends RecyclerView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryPage.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryPage.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
 **Lines**: 1268 | **Bytes**: 56252
 
 ```java
@@ -3307,7 +3307,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryBodyContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
 **Lines**: 42 | **Bytes**: 1367
 
 ```java
@@ -3358,7 +3358,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\CategoryCardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
 **Lines**: 312 | **Bytes**: 12567
 
 ```java
@@ -3679,7 +3679,7 @@ public class CategoryCardView extends ViewGroup {
 
 # src/com/android/launcher3/applibrary/view/MiniClusterView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\MiniClusterView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/MiniClusterView.java`  
 **Lines**: 144 | **Bytes**: 4488
 
 ```java
@@ -3832,7 +3832,7 @@ public class MiniClusterView extends View {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryCategoryExpandedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
 **Lines**: 358 | **Bytes**: 13763
 
 ```java
@@ -4199,7 +4199,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
 # src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryIndexScrollerView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
 **Lines**: 141 | **Bytes**: 4899
 
 ```java
@@ -4349,7 +4349,7 @@ public class AppLibraryIndexScrollerView extends View {
 
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ChangeCategoryPickerView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
 **Lines**: 517 | **Bytes**: 20196
 
 ```kotlin
@@ -4875,7 +4875,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryFolderTransition.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
 **Lines**: 520 | **Bytes**: 19728
 
 ```kotlin
@@ -5404,7 +5404,7 @@ class AppLibraryFolderTransition(
 
 # src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ExpandedCategoryAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
 **Lines**: 89 | **Bytes**: 3136
 
 ```java
@@ -5502,7 +5502,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
 
 # src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibrarySearchAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
 **Lines**: 200 | **Bytes**: 7235
 
 ```java

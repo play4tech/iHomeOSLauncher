@@ -17,7 +17,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/Workspace.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Workspace.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
 **Lines**: 5320 | **Bytes**: 232088
 
 ```java
@@ -5346,7 +5346,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
 # src/com/android/launcher3/WorkspaceLayoutManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\WorkspaceLayoutManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceLayoutManager.java`  
 **Lines**: 185 | **Bytes**: 7843
 
 ```java
@@ -5540,7 +5540,7 @@ public interface WorkspaceLayoutManager {
 
 # src/com/android/launcher3/WorkspaceStateTransitionAnimation.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\WorkspaceStateTransitionAnimation.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceStateTransitionAnimation.java`  
 **Lines**: 337 | **Bytes**: 16681
 
 ```java
@@ -5887,7 +5887,7 @@ public class WorkspaceStateTransitionAnimation {
 
 # src/com/android/launcher3/InsettableFrameLayout.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\InsettableFrameLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/InsettableFrameLayout.java`  
 **Lines**: 149 | **Bytes**: 4953
 
 ```java
@@ -6045,7 +6045,7 @@ public class InsettableFrameLayout extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/touch/WorkspaceTouchListener.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\WorkspaceTouchListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/WorkspaceTouchListener.java`  
 **Lines**: 239 | **Bytes**: 9932
 
 ```java
@@ -6293,7 +6293,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\ItemClickHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
 **Lines**: 578 | **Bytes**: 27189
 
 ```java
@@ -6880,7 +6880,7 @@ public class ItemClickHandler {
 
 # src/com/android/launcher3/touch/ItemLongClickListener.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\ItemLongClickListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemLongClickListener.java`  
 **Lines**: 238 | **Bytes**: 10567
 
 ```java
@@ -7127,7 +7127,7 @@ public class ItemLongClickListener {
 
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\multimode\MultiModeController.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
 **Lines**: 125 | **Bytes**: 4181
 
 ```kotlin

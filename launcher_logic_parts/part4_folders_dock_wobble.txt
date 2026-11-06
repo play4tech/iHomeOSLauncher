@@ -21,7 +21,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/folder/Folder.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\Folder.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
 **Lines**: 2180 | **Bytes**: 83746
 
 ```java
@@ -2210,7 +2210,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
 # src/com/android/launcher3/folder/FolderAnimationManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderAnimationManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderAnimationManager.java`  
 **Lines**: 669 | **Bytes**: 31395
 
 ```java
@@ -2888,7 +2888,7 @@ public class FolderAnimationManager {
 
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\folder\GridFolder.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
 **Lines**: 573 | **Bytes**: 22235
 
 ```java
@@ -3470,7 +3470,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
 # src/com/android/launcher3/folder/FolderIcon.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderIcon.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
 **Lines**: 1073 | **Bytes**: 41954
 
 ```java
@@ -4552,7 +4552,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
 # src/com/android/launcher3/folder/FolderPagedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderPagedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
 **Lines**: 825 | **Bytes**: 29987
 
 ```java
@@ -5386,7 +5386,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
 # src/com/android/launcher3/folder/LauncherDelegate.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\LauncherDelegate.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/LauncherDelegate.java`  
 **Lines**: 220 | **Bytes**: 8277
 
 ```java
@@ -5615,7 +5615,7 @@ public class LauncherDelegate {
 
 # src/com/android/launcher3/Hotseat.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Hotseat.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Hotseat.java`  
 **Lines**: 387 | **Bytes**: 14453
 
 ```java
@@ -6012,7 +6012,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\pageindicators\PageIndicatorDots.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
 **Lines**: 1044 | **Bytes**: 39619
 
 ```java
@@ -7065,7 +7065,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
 # src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\pageindicators\WorkspacePageIndicator.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
 **Lines**: 283 | **Bytes**: 10259
 
 ```java
@@ -7357,7 +7357,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\wobble\JiggleTopBarView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
 **Lines**: 359 | **Bytes**: 13877
 
 ```kotlin
@@ -7725,7 +7725,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\wobble\JiggleEditMenuPopup.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
 **Lines**: 402 | **Bytes**: 14528
 
 ```kotlin
@@ -8136,7 +8136,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # src/com/android/launcher3/util/RemovedAppStore.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\util\RemovedAppStore.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
 **Lines**: 81 | **Bytes**: 3497
 
 ```java

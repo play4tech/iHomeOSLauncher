@@ -216,6 +216,9 @@ android {
             shrinkResources true
             proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
             signingConfig signingConfigs.releaseConfig
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
         }
 
     }

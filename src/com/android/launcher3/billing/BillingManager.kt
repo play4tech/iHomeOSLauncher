@@ -235,7 +235,8 @@ class BillingManager private constructor(context: Context) : PurchasesUpdatedLis
             .setProductList(productList)
             .build()
 
-        billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+        billingClient.queryProductDetailsAsync(params) { billingResult, queryProductDetailsResult ->
+            val productDetailsList = queryProductDetailsResult.productDetailsList
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && !productDetailsList.isNullOrEmpty()) {
                 val details = productDetailsList.firstOrNull { it.productId == PRODUCT_PRO_LIFETIME }
                 cachedProductDetails = details

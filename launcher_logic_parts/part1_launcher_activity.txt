@@ -17,7 +17,7 @@ Modular code logic bundle designed to stay within Gemini attachment size limits 
 
 # src/com/android/launcher3/Launcher.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Launcher.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
 **Lines**: 4196 | **Bytes**: 177635
 
 ```java
@@ -4223,7 +4223,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 # src/com/android/launcher3/LauncherApplication.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherApplication.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
 **Lines**: 148 | **Bytes**: 6103
 
 ```java
@@ -4380,7 +4380,7 @@ public class LauncherApplication extends Application {
 
 # src/com/android/launcher3/LauncherAppState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherAppState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
 **Lines**: 295 | **Bytes**: 12515
 
 ```java
@@ -4684,7 +4684,7 @@ public class LauncherAppState implements SafeCloseable {
 
 # src/com/android/launcher3/statemanager/StateManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\statemanager\StateManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/statemanager/StateManager.java`  
 **Lines**: 740 | **Bytes**: 27878
 
 ```java
@@ -5433,7 +5433,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
 # src/com/android/launcher3/LauncherState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherState.java`  
 **Lines**: 505 | **Bytes**: 19710
 
 ```java
@@ -5947,7 +5947,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
 
 # src/com/android/launcher3/states/RotationHelper.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\states\RotationHelper.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/states/RotationHelper.java`  
 **Lines**: 232 | **Bytes**: 9268
 
 ```java
@@ -6188,7 +6188,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 
 # src/com/android/launcher3/settings/SettingsActivity.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\SettingsActivity.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
 **Lines**: 735 | **Bytes**: 30338
 
 ```java
@@ -6932,7 +6932,7 @@ public class SettingsActivity extends FragmentActivity
 
 # src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\AppLibraryOnlyActivity.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt`  
 **Lines**: 435 | **Bytes**: 16474
 
 ```kotlin

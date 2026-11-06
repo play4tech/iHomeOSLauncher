@@ -88,7 +88,7 @@ This master document aggregates all 79 core architectural and functional code lo
 
 # src/com/android/launcher3/Launcher.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Launcher.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Launcher.java`  
 **Lines**: 4196 | **Bytes**: 177635
 
 ```java
@@ -4294,7 +4294,7 @@ public class Launcher extends StatefulActivity<LauncherState>
 
 # src/com/android/launcher3/LauncherApplication.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherApplication.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherApplication.java`  
 **Lines**: 148 | **Bytes**: 6103
 
 ```java
@@ -4451,7 +4451,7 @@ public class LauncherApplication extends Application {
 
 # src/com/android/launcher3/LauncherAppState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherAppState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherAppState.java`  
 **Lines**: 295 | **Bytes**: 12515
 
 ```java
@@ -4755,7 +4755,7 @@ public class LauncherAppState implements SafeCloseable {
 
 # src/com/android/launcher3/statemanager/StateManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\statemanager\StateManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/statemanager/StateManager.java`  
 **Lines**: 740 | **Bytes**: 27878
 
 ```java
@@ -5504,7 +5504,7 @@ public class StateManager<STATE_TYPE extends BaseState<STATE_TYPE>> {
 
 # src/com/android/launcher3/LauncherState.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherState.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherState.java`  
 **Lines**: 505 | **Bytes**: 19710
 
 ```java
@@ -6018,7 +6018,7 @@ public abstract class LauncherState implements BaseState<LauncherState> {
 
 # src/com/android/launcher3/states/RotationHelper.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\states\RotationHelper.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/states/RotationHelper.java`  
 **Lines**: 232 | **Bytes**: 9268
 
 ```java
@@ -6259,7 +6259,7 @@ public class RotationHelper implements OnSharedPreferenceChangeListener,
 
 # src/com/android/launcher3/settings/SettingsActivity.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\SettingsActivity.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/SettingsActivity.java`  
 **Lines**: 735 | **Bytes**: 30338
 
 ```java
@@ -7003,7 +7003,7 @@ public class SettingsActivity extends FragmentActivity
 
 # src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\settings\AppLibraryOnlyActivity.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/settings/AppLibraryOnlyActivity.kt`  
 **Lines**: 435 | **Bytes**: 16474
 
 ```kotlin
@@ -7447,7 +7447,7 @@ class AppLibraryOnlyActivity : FragmentActivity() {
 
 # src/com/android/launcher3/Workspace.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Workspace.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Workspace.java`  
 **Lines**: 5320 | **Bytes**: 232088
 
 ```java
@@ -12776,7 +12776,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
 # src/com/android/launcher3/WorkspaceLayoutManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\WorkspaceLayoutManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceLayoutManager.java`  
 **Lines**: 185 | **Bytes**: 7843
 
 ```java
@@ -12970,7 +12970,7 @@ public interface WorkspaceLayoutManager {
 
 # src/com/android/launcher3/WorkspaceStateTransitionAnimation.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\WorkspaceStateTransitionAnimation.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/WorkspaceStateTransitionAnimation.java`  
 **Lines**: 337 | **Bytes**: 16681
 
 ```java
@@ -13317,7 +13317,7 @@ public class WorkspaceStateTransitionAnimation {
 
 # src/com/android/launcher3/InsettableFrameLayout.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\InsettableFrameLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/InsettableFrameLayout.java`  
 **Lines**: 149 | **Bytes**: 4953
 
 ```java
@@ -13475,7 +13475,7 @@ public class InsettableFrameLayout extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/touch/WorkspaceTouchListener.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\WorkspaceTouchListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/WorkspaceTouchListener.java`  
 **Lines**: 239 | **Bytes**: 9932
 
 ```java
@@ -13723,7 +13723,7 @@ public class WorkspaceTouchListener extends GestureDetector.SimpleOnGestureListe
 
 # src/com/android/launcher3/touch/ItemClickHandler.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\ItemClickHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemClickHandler.java`  
 **Lines**: 578 | **Bytes**: 27189
 
 ```java
@@ -14310,7 +14310,7 @@ public class ItemClickHandler {
 
 # src/com/android/launcher3/touch/ItemLongClickListener.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\touch\ItemLongClickListener.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/touch/ItemLongClickListener.java`  
 **Lines**: 238 | **Bytes**: 10567
 
 ```java
@@ -14557,7 +14557,7 @@ public class ItemLongClickListener {
 
 # bliss/src/foundation/e/bliss/multimode/MultiModeController.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\multimode\MultiModeController.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/multimode/MultiModeController.kt`  
 **Lines**: 125 | **Bytes**: 4181
 
 ```kotlin
@@ -14691,7 +14691,7 @@ class MultiModeController(val context: Context, val monitor: LauncherAppMonitor)
 
 # src/com/android/launcher3/CellLayout.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\CellLayout.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/CellLayout.java`  
 **Lines**: 2370 | **Bytes**: 99252
 
 ```java
@@ -17070,7 +17070,7 @@ public class CellLayout extends ViewGroup {
 
 # src/com/android/launcher3/ShortcutAndWidgetContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\ShortcutAndWidgetContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/ShortcutAndWidgetContainer.java`  
 **Lines**: 387 | **Bytes**: 14893
 
 ```java
@@ -17466,7 +17466,7 @@ public class ShortcutAndWidgetContainer extends ViewGroup implements FolderIcon.
 
 # src/com/android/launcher3/BubbleTextView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\BubbleTextView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/BubbleTextView.java`  
 **Lines**: 1559 | **Bytes**: 60972
 
 ```java
@@ -19034,7 +19034,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
 # src/com/android/launcher3/celllayout/ReorderAlgorithm.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\celllayout\ReorderAlgorithm.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ReorderAlgorithm.java`  
 **Lines**: 715 | **Bytes**: 32346
 
 ```java
@@ -19758,7 +19758,7 @@ public class ReorderAlgorithm {
 
 # src/com/android/launcher3/celllayout/ItemConfiguration.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\celllayout\ItemConfiguration.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/celllayout/ItemConfiguration.kt`  
 **Lines**: 63 | **Bytes**: 2047
 
 ```kotlin
@@ -19830,7 +19830,7 @@ class ItemConfiguration : CellAndSpan() {
 
 # src/com/android/launcher3/dragndrop/DragController.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragController.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragController.java`  
 **Lines**: 646 | **Bytes**: 24015
 
 ```java
@@ -20485,7 +20485,7 @@ public abstract class DragController<T extends ActivityContext>
 
 # src/com/android/launcher3/dragndrop/DragLayer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragLayer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragLayer.java`  
 **Lines**: 513 | **Bytes**: 21145
 
 ```java
@@ -21007,7 +21007,7 @@ public class DragLayer extends BaseDragLayer<Launcher> implements LauncherOverla
 
 # src/com/android/launcher3/dragndrop/DragView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragView.java`  
 **Lines**: 644 | **Bytes**: 25140
 
 ```java
@@ -21660,7 +21660,7 @@ public abstract class DragView<T extends Context & ActivityContext> extends Fram
 
 # src/com/android/launcher3/dragndrop/DragOptions.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragOptions.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragOptions.java`  
 **Lines**: 90 | **Bytes**: 3283
 
 ```java
@@ -21759,7 +21759,7 @@ public class DragOptions {
 
 # src/com/android/launcher3/dragndrop/DragDriver.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\dragndrop\DragDriver.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/dragndrop/DragDriver.java`  
 **Lines**: 219 | **Bytes**: 7190
 
 ```java
@@ -21987,7 +21987,7 @@ public abstract class DragDriver {
 
 # src/com/android/launcher3/DropTarget.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\DropTarget.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/DropTarget.java`  
 **Lines**: 149 | **Bytes**: 5773
 
 ```java
@@ -22145,7 +22145,7 @@ public interface DropTarget {
 
 # src/com/android/launcher3/folder/Folder.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\Folder.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/Folder.java`  
 **Lines**: 2180 | **Bytes**: 83746
 
 ```java
@@ -24334,7 +24334,7 @@ public class Folder extends AbstractFloatingView implements ClipPathView, DragSo
 
 # src/com/android/launcher3/folder/FolderAnimationManager.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderAnimationManager.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderAnimationManager.java`  
 **Lines**: 669 | **Bytes**: 31395
 
 ```java
@@ -25012,7 +25012,7 @@ public class FolderAnimationManager {
 
 # bliss/src/foundation/e/bliss/folder/GridFolder.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\folder\GridFolder.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/folder/GridFolder.java`  
 **Lines**: 573 | **Bytes**: 22235
 
 ```java
@@ -25594,7 +25594,7 @@ public class GridFolder extends Folder implements OnAlarmListener {
 
 # src/com/android/launcher3/folder/FolderIcon.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderIcon.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderIcon.java`  
 **Lines**: 1073 | **Bytes**: 41954
 
 ```java
@@ -26676,7 +26676,7 @@ public class FolderIcon extends FrameLayout implements FolderListener, IconLabel
 
 # src/com/android/launcher3/folder/FolderPagedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\FolderPagedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/FolderPagedView.java`  
 **Lines**: 825 | **Bytes**: 29987
 
 ```java
@@ -27510,7 +27510,7 @@ public class FolderPagedView extends PagedView<PageIndicatorDots> implements Cli
 
 # src/com/android/launcher3/folder/LauncherDelegate.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\folder\LauncherDelegate.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/folder/LauncherDelegate.java`  
 **Lines**: 220 | **Bytes**: 8277
 
 ```java
@@ -27739,7 +27739,7 @@ public class LauncherDelegate {
 
 # src/com/android/launcher3/Hotseat.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\Hotseat.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/Hotseat.java`  
 **Lines**: 387 | **Bytes**: 14453
 
 ```java
@@ -28136,7 +28136,7 @@ public class Hotseat extends CellLayout implements Insettable, OffsetParent {
 
 # src/com/android/launcher3/pageindicators/PageIndicatorDots.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\pageindicators\PageIndicatorDots.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/PageIndicatorDots.java`  
 **Lines**: 1044 | **Bytes**: 39619
 
 ```java
@@ -29189,7 +29189,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
 
 # src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\pageindicators\WorkspacePageIndicator.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/pageindicators/WorkspacePageIndicator.java`  
 **Lines**: 283 | **Bytes**: 10259
 
 ```java
@@ -29481,7 +29481,7 @@ public class WorkspacePageIndicator extends View implements Insettable, PageIndi
 
 # bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\wobble\JiggleTopBarView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleTopBarView.kt`  
 **Lines**: 359 | **Bytes**: 13877
 
 ```kotlin
@@ -29849,7 +29849,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\wobble\JiggleEditMenuPopup.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/wobble/JiggleEditMenuPopup.kt`  
 **Lines**: 402 | **Bytes**: 14528
 
 ```kotlin
@@ -30260,7 +30260,7 @@ constructor(context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 
 # src/com/android/launcher3/util/RemovedAppStore.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\util\RemovedAppStore.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/util/RemovedAppStore.java`  
 **Lines**: 81 | **Bytes**: 3497
 
 ```java
@@ -30350,7 +30350,7 @@ public class RemovedAppStore {
 
 # src/com/android/launcher3/applibrary/model/CategoryProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\CategoryProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/CategoryProvider.kt`  
 **Lines**: 510 | **Bytes**: 25498
 
 ```kotlin
@@ -30869,7 +30869,7 @@ class CategoryProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryModel.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryModel.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryModel.kt`  
 **Lines**: 140 | **Bytes**: 4892
 
 ```kotlin
@@ -31018,7 +31018,7 @@ class AppLibraryModel(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\AppLibraryCategory.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/AppLibraryCategory.kt`  
 **Lines**: 20 | **Bytes**: 542
 
 ```kotlin
@@ -31047,7 +31047,7 @@ enum class AppLibraryCategory(val title: String) {
 
 # src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\model\SuggestionsProvider.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/model/SuggestionsProvider.kt`  
 **Lines**: 105 | **Bytes**: 3965
 
 ```kotlin
@@ -31161,7 +31161,7 @@ class SuggestionsProvider(private val context: Context) {
 
 # src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\SpotlightSearchOverlay.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/SpotlightSearchOverlay.java`  
 **Lines**: 891 | **Bytes**: 34752
 
 ```java
@@ -32061,7 +32061,7 @@ public class SpotlightSearchOverlay extends AbstractFloatingView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryDashboardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryDashboardView.java`  
 **Lines**: 285 | **Bytes**: 9833
 
 ```java
@@ -32355,7 +32355,7 @@ public class AppLibraryDashboardView extends RecyclerView {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryPage.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryPage.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryPage.java`  
 **Lines**: 1268 | **Bytes**: 56252
 
 ```java
@@ -33632,7 +33632,7 @@ public class AppLibraryPage extends FrameLayout implements Insettable {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryBodyContainer.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryBodyContainer.java`  
 **Lines**: 42 | **Bytes**: 1367
 
 ```java
@@ -33683,7 +33683,7 @@ public class AppLibraryBodyContainer extends FrameLayout {
 
 # src/com/android/launcher3/applibrary/view/CategoryCardView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\CategoryCardView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/CategoryCardView.java`  
 **Lines**: 312 | **Bytes**: 12567
 
 ```java
@@ -34004,7 +34004,7 @@ public class CategoryCardView extends ViewGroup {
 
 # src/com/android/launcher3/applibrary/view/MiniClusterView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\MiniClusterView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/MiniClusterView.java`  
 **Lines**: 144 | **Bytes**: 4488
 
 ```java
@@ -34157,7 +34157,7 @@ public class MiniClusterView extends View {
 
 # src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryCategoryExpandedView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryCategoryExpandedView.java`  
 **Lines**: 358 | **Bytes**: 13763
 
 ```java
@@ -34524,7 +34524,7 @@ public class AppLibraryCategoryExpandedView extends AbstractFloatingView impleme
 
 # src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryIndexScrollerView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryIndexScrollerView.java`  
 **Lines**: 141 | **Bytes**: 4899
 
 ```java
@@ -34674,7 +34674,7 @@ public class AppLibraryIndexScrollerView extends View {
 
 # src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ChangeCategoryPickerView.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ChangeCategoryPickerView.kt`  
 **Lines**: 517 | **Bytes**: 20196
 
 ```kotlin
@@ -35200,7 +35200,7 @@ class ChangeCategoryPickerView @JvmOverloads constructor(
 
 # src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibraryFolderTransition.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibraryFolderTransition.kt`  
 **Lines**: 520 | **Bytes**: 19728
 
 ```kotlin
@@ -35729,7 +35729,7 @@ class AppLibraryFolderTransition(
 
 # src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\ExpandedCategoryAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/ExpandedCategoryAdapter.java`  
 **Lines**: 89 | **Bytes**: 3136
 
 ```java
@@ -35827,7 +35827,7 @@ public class ExpandedCategoryAdapter extends RecyclerView.Adapter<ExpandedCatego
 
 # src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\applibrary\view\AppLibrarySearchAdapter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/applibrary/view/AppLibrarySearchAdapter.java`  
 **Lines**: 200 | **Bytes**: 7235
 
 ```java
@@ -36036,7 +36036,7 @@ public class AppLibrarySearchAdapter extends RecyclerView.Adapter<AppLibrarySear
 
 # src/com/android/launcher3/popup/PopupContainerWithArrow.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\PopupContainerWithArrow.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/PopupContainerWithArrow.java`  
 **Lines**: 1634 | **Bytes**: 74985
 
 ```java
@@ -37679,7 +37679,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/ArrowPopup.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\ArrowPopup.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/ArrowPopup.java`  
 **Lines**: 789 | **Bytes**: 31885
 
 ```java
@@ -38477,7 +38477,7 @@ public abstract class ArrowPopup<T extends Context & ActivityContext>
 
 # src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\LauncherPopupLiveUpdateHandler.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/LauncherPopupLiveUpdateHandler.java`  
 **Lines**: 94 | **Bytes**: 4314
 
 ```java
@@ -38580,7 +38580,7 @@ public class LauncherPopupLiveUpdateHandler extends PopupLiveUpdateHandler<Launc
 
 # src/com/android/launcher3/popup/SystemShortcut.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\popup\SystemShortcut.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/popup/SystemShortcut.java`  
 **Lines**: 613 | **Bytes**: 28795
 
 ```java
@@ -39202,7 +39202,7 @@ public abstract class SystemShortcut<T extends ActivityContext> extends ItemInfo
 
 # src/com/android/launcher3/shortcuts/DeepShortcutView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\shortcuts\DeepShortcutView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/shortcuts/DeepShortcutView.java`  
 **Lines**: 195 | **Bytes**: 7087
 
 ```java
@@ -39406,7 +39406,7 @@ public class DeepShortcutView extends FrameLayout implements BubbleTextHolder {
 
 # src/com/android/launcher3/LauncherModel.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\LauncherModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/LauncherModel.java`  
 **Lines**: 722 | **Bytes**: 28501
 
 ```java
@@ -40137,7 +40137,7 @@ public class LauncherModel implements InstallSessionTracker.Callback {
 
 # src/com/android/launcher3/model/ModelWriter.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\ModelWriter.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/ModelWriter.java`  
 **Lines**: 590 | **Bytes**: 23752
 
 ```java
@@ -40736,7 +40736,7 @@ public class ModelWriter {
 
 # src/com/android/launcher3/model/BgDataModel.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\BgDataModel.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/BgDataModel.java`  
 **Lines**: 566 | **Bytes**: 22683
 
 ```java
@@ -41311,7 +41311,7 @@ public class BgDataModel {
 
 # src/com/android/launcher3/model/LoaderTask.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\LoaderTask.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/LoaderTask.java`  
 **Lines**: 792 | **Bytes**: 34983
 
 ```java
@@ -42112,7 +42112,7 @@ public class LoaderTask implements Runnable {
 
 # src/com/android/launcher3/model/data/ItemInfo.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\data\ItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/ItemInfo.java`  
 **Lines**: 551 | **Bytes**: 21360
 
 ```java
@@ -42672,7 +42672,7 @@ public class ItemInfo {
 
 # src/com/android/launcher3/model/data/FolderInfo.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\data\FolderInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/FolderInfo.java`  
 **Lines**: 395 | **Bytes**: 13500
 
 ```java
@@ -43076,7 +43076,7 @@ public class FolderInfo extends ItemInfo {
 
 # src/com/android/launcher3/model/data/WorkspaceItemInfo.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\src\com\android\launcher3\model\data\WorkspaceItemInfo.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\src/com/android/launcher3/model/data/WorkspaceItemInfo.java`  
 **Lines**: 246 | **Bytes**: 8258
 
 ```java
@@ -43331,7 +43331,7 @@ public class WorkspaceItemInfo extends ItemInfoWithIcon {
 
 # bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\WidgetContainer.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetContainer.kt`  
 **Lines**: 554 | **Bytes**: 22388
 
 ```kotlin
@@ -43894,7 +43894,7 @@ class WidgetContainer(context: Context, attrs: AttributeSet?) : FrameLayout(cont
 
 # bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\RoundedWidgetView.java`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/RoundedWidgetView.java`  
 **Lines**: 192 | **Bytes**: 6494
 
 ```java
@@ -44095,7 +44095,7 @@ public class RoundedWidgetView extends LauncherAppWidgetHostView implements Offs
 
 # bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\WidgetsDbHelper.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/WidgetsDbHelper.kt`  
 **Lines**: 153 | **Bytes**: 5412
 
 ```kotlin
@@ -44257,7 +44257,7 @@ class WidgetsDbHelper(context: Context) :
 
 # bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\widgets\DefaultWidgets.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/widgets/DefaultWidgets.kt`  
 **Lines**: 40 | **Bytes**: 1461
 
 ```kotlin
@@ -44306,7 +44306,7 @@ object DefaultWidgets {
 
 # bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\bliss\preferences\BlissPrefs.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/bliss/preferences/BlissPrefs.kt`  
 **Lines**: 26 | **Bytes**: 1002
 
 ```kotlin
@@ -44341,7 +44341,7 @@ object BlissPrefs {
 
 # bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\src\foundation\e\blisslauncher\features\onboarding\DefaultHomeLayoutResolver.kt`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/src/foundation/e/blisslauncher/features/onboarding/DefaultHomeLayoutResolver.kt`  
 **Lines**: 617 | **Bytes**: 26830
 
 ```kotlin
@@ -45312,7 +45312,7 @@ object DefaultHomeLayoutResolver {
 
 # bliss/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest.xml`  
 **Lines**: 85 | **Bytes**: 3605
 
 ```xml
@@ -45406,7 +45406,7 @@ object DefaultHomeLayoutResolver {
 
 # bliss/AndroidManifest-withoutQuickstep.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\bliss\AndroidManifest-withoutQuickstep.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\bliss/AndroidManifest-withoutQuickstep.xml`  
 **Lines**: 79 | **Bytes**: 3501
 
 ```xml
@@ -45494,7 +45494,7 @@ object DefaultHomeLayoutResolver {
 
 # quickstep/AndroidManifest.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest.xml`  
 **Lines**: 165 | **Bytes**: 7841
 
 ```xml
@@ -45668,7 +45668,7 @@ object DefaultHomeLayoutResolver {
 
 # quickstep/AndroidManifest-launcher.xml
 
-**Absolute Path**: `D:\Code\OS_Launcher\quickstep\AndroidManifest-launcher.xml`  
+**Absolute Path**: `D:\Code\OS_Launcher\quickstep/AndroidManifest-launcher.xml`  
 **Lines**: 73 | **Bytes**: 3071
 
 ```xml
